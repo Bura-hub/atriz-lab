@@ -181,7 +181,7 @@ export default function SystemMetricsCard() {
           const Icon = metric.icon
           const TrendIcon = getTrendIcon(metric.trend)
           return (
-            <div key={index} className="space-y-3 p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
+            <div key={index} className="space-y-3 p-4 bg-muted/30 border border-border/20 rounded-lg hover:bg-muted/60 hover:border-primary/20 hover:shadow-sm transition-all duration-300">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <Icon className="h-4 w-4 text-muted-foreground" />

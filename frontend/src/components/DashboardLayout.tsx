@@ -38,7 +38,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [notifications] = useState(3)
   const [systemStatus] = useState('Operacional')
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('dark')
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('light')
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [themeMenuOpen, setThemeMenuOpen] = useState(false)
 
