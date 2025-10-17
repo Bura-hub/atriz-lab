@@ -114,117 +114,99 @@ export default function ActiveExperimentsCard() {
         </div>
       </div>
 
-      <div className="p-6">
-        <div className="space-y-4">
+      <div className="p-4">
+        <div className="space-y-3">
           {mockExperiments.map((experiment) => (
             <div 
               key={experiment.id} 
-              className={`flex items-center space-x-4 p-4 bg-muted rounded-lg transition-all duration-200 cursor-pointer hover:shadow-md hover:scale-[1.02] ${
-                selectedExperiment === experiment.id ? 'ring-2 ring-primary bg-primary/5' : ''
+              className={`experiment-card-compact flex items-center space-x-4 p-3 cursor-pointer ${
+                selectedExperiment === experiment.id ? 'ring-2 ring-primary bg-primary/5 border-primary/50' : ''
               }`}
               onClick={() => setSelectedExperiment(selectedExperiment === experiment.id ? null : experiment.id)}
             >
-              {/* Avatar del usuario con indicador de estado */}
-              <div className="flex-shrink-0 relative">
-                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                  <User className="h-5 w-5 text-primary-foreground" />
+              {/* Avatar del usuario */}
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                  <User className="h-4 w-4 text-primary-foreground" />
                 </div>
-                <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-card flex items-center justify-center ${
-                  experiment.status === 'running' ? 'bg-success' : 'bg-warning'
-                }`}>
-                  {experiment.status === 'running' ? (
-                    <div className="w-2 h-2 bg-success-foreground rounded-full animate-pulse"></div>
-                  ) : (
-                    <Pause className="h-2 w-2 text-warning-foreground" />
-                  )}
+              </div>
+
+              {/* Progreso circular compacto */}
+              <div className="flex items-center space-x-3">
+                <div className="relative w-8 h-8">
+                  <svg className="w-8 h-8 transform -rotate-90" viewBox="0 0 32 32">
+                    <path
+                      className="text-secondary"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      fill="none"
+                      d="M16 2 a 14 14 0 0 1 0 28 a 14 14 0 0 1 0 -28"
+                    />
+                    <path
+                      className="text-success"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      fill="none"
+                      strokeDasharray={`${experiment.progress}, 100`}
+                      strokeLinecap="round"
+                      d="M16 2 a 14 14 0 0 1 0 28 a 14 14 0 0 1 0 -28"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-bold text-success">
+                      {experiment.progress}%
+                    </span>
+                  </div>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  {experiment.elapsedTime}
                 </div>
               </div>
 
               {/* Información del experimento */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center space-x-2">
-                    <h4 className="text-sm font-medium text-card-foreground truncate">
-                      {experiment.name}
-                    </h4>
-                    <span className={`px-2 py-0.5 text-xs rounded-full ${getPriorityColor(experiment.priority)}`}>
-                      {getPriorityText(experiment.priority)}
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs text-muted-foreground">{experiment.robot}</span>
-                    {experiment.errors > 0 && (
-                      <div className="flex items-center text-xs text-destructive">
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        {experiment.errors}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-4">
-                  {/* Barra de progreso circular mejorada */}
-                  <div className="relative w-10 h-10">
-                    <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 36 36">
-                      <path
-                        className="text-secondary"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        fill="none"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                      <path
-                        className={experiment.progress > 50 ? 'text-success' : experiment.progress > 25 ? 'text-warning' : 'text-destructive'}
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        fill="none"
-                        strokeDasharray={`${experiment.progress}, 100`}
-                        strokeLinecap="round"
-                        d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-bold text-card-foreground">
-                        {experiment.progress}%
-                      </span>
+                <h4 className="text-sm font-medium text-card-foreground truncate">
+                  {experiment.name}
+                </h4>
+                <div className="flex items-center space-x-2 text-xs text-muted-foreground">
+                  <span>{experiment.robot}</span>
+                  {experiment.errors > 0 && (
+                    <div className="flex items-center text-destructive">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {experiment.errors}
                     </div>
-                  </div>
-
-                  {/* Métricas de tiempo */}
-                  <div className="flex items-center space-x-3">
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3 mr-1" />
-                      <span>{experiment.elapsedTime}</span>
-                    </div>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Timer className="h-3 w-3 mr-1" />
-                      <span>ETA: {experiment.estimatedTime}</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
-              {/* Botones de acción mejorados */}
-              <div className="flex items-center space-x-1">
+              {/* Botones de acción compactos */}
+              <div className="flex items-center space-x-2">
                 <button 
-                  className={`p-2 rounded-lg transition-all duration-200 ${
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
                     experiment.status === 'running' 
-                      ? 'text-warning hover:bg-warning/10' 
-                      : 'text-success hover:bg-success/10'
+                      ? 'bg-warning text-warning-foreground hover:bg-warning/90' 
+                      : 'bg-success text-success-foreground hover:bg-success/90'
                   }`}
                   title={experiment.status === 'running' ? 'Pausar' : 'Reanudar'}
                 >
                   {experiment.status === 'running' ? (
-                    <Pause className="h-4 w-4" />
+                    <>
+                      <Pause className="h-3 w-3 inline mr-1" />
+                      Pausar
+                    </>
                   ) : (
-                    <Play className="h-4 w-4" />
+                    <>
+                      <Play className="h-3 w-3 inline mr-1" />
+                      Reanudar
+                    </>
                   )}
                 </button>
                 <button 
-                  className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-all duration-200"
+                  className="px-3 py-1 bg-destructive text-destructive-foreground rounded-lg text-xs font-medium hover:bg-destructive/90 transition-all duration-200"
                   title="Detener experimento"
                 >
-                  <Square className="h-4 w-4" />
+                  <Square className="h-3 w-3 inline mr-1" />
+                  Detener
                 </button>
               </div>
             </div>

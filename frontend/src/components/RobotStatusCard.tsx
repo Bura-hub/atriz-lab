@@ -73,7 +73,7 @@ export default function RobotStatusCard() {
 
   return (
     <div className="card p-6 hover:shadow-lg transition-all duration-300">
-      {/* Header con estadísticas */}
+      {/* Header con estadísticas mejorado */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-3">
           <div className="p-2 bg-primary/10 rounded-lg">
@@ -84,82 +84,76 @@ export default function RobotStatusCard() {
             <p className="text-sm text-muted-foreground">{connectedRobots}/{totalRobots} conectados</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
             <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
             <span className="text-xs text-muted-foreground">En línea</span>
+          </div>
+          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+            <span>6/18</span>
           </div>
         </div>
       </div>
 
-      {/* Grid 3x2 de robots */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      {/* Grid 2x3 de robots minimalista */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         {mockRobots.map((robot) => (
           <div 
             key={robot.id} 
-            className={`bg-muted rounded-lg p-4 transition-all duration-200 cursor-pointer hover:shadow-md hover:scale-105 ${
-              selectedRobot === robot.id ? 'ring-2 ring-primary bg-primary/5' : ''
+            className={`robot-card-minimal p-4 cursor-pointer ${
+              selectedRobot === robot.id ? 'ring-2 ring-primary bg-primary/5 border-primary/50' : ''
             }`}
             onClick={() => setSelectedRobot(selectedRobot === robot.id ? null : robot.id)}
           >
-            {/* Header del robot */}
+            {/* Header minimalista: Estado + ID + Tiempo */}
             <div className="flex items-center justify-between mb-3">
-              <div className={`w-3 h-3 rounded-full ${getStatusColor(robot.status)} animate-pulse`}></div>
-              <span className="text-xs font-medium text-muted-foreground">{robot.name}</span>
+              <div className="flex items-center space-x-3">
+                <div className={`w-3 h-3 rounded-full ${getStatusColor(robot.status)} animate-pulse`}></div>
+                <span className="text-lg font-bold text-card-foreground">{robot.name}</span>
+              </div>
+              <span className="text-sm text-muted-foreground">{robot.lastActivity}</span>
             </div>
             
-            {/* Estado y métricas principales */}
+            {/* Badge de estado */}
             <div className="mb-3">
-              <div className="text-sm font-medium text-card-foreground mb-2">
+              <span className={`status-badge-minimal ${
+                robot.status === 'connected' ? 'connected' :
+                robot.status === 'busy' ? 'busy' :
+                'disconnected'
+              }`}>
                 {getStatusText(robot.status)}
-              </div>
-              
-              {/* Batería */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <Battery className="h-3 w-3 mr-1" />
-                  <span>{robot.battery}%</span>
-                </div>
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <Activity className="h-3 w-3 mr-1" />
-                  <span className={getTemperatureColor(robot.temperature)}>{robot.temperature}°C</span>
-                </div>
-              </div>
-
-              {/* Barra de batería */}
-              <div className="w-full bg-secondary rounded-full h-2 mb-2">
+              </span>
+            </div>
+            
+            {/* Barra de progreso */}
+            <div className="mb-3">
+              <div className="w-full bg-secondary rounded-full h-2">
                 <div 
-                  className={`h-2 rounded-full transition-all duration-300 ${getBatteryColor(robot.battery)}`}
+                  className={`h-2 rounded-full transition-all duration-500 ${getBatteryColor(robot.battery)}`}
                   style={{ width: `${robot.battery}%` }}
                 ></div>
               </div>
+            </div>
 
-              {/* Señal WiFi */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center text-xs text-muted-foreground">
-                  {robot.signal > 0 ? <Wifi className="h-3 w-3 mr-1" /> : <WifiOff className="h-3 w-3 mr-1" />}
-                  <span className={getSignalColor(robot.signal)}>{robot.signal}%</span>
-                </div>
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3 mr-1" />
-                  <span>{robot.lastActivity}</span>
-                </div>
-              </div>
+            {/* Información de batería y última actividad */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-card-foreground">{robot.battery}%</span>
+              <span className="text-sm text-muted-foreground">Última act. {robot.lastActivity}</span>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Footer con acciones */}
+      {/* Footer con acciones mejorado */}
       <div className="flex items-center justify-between pt-4 border-t border-border">
         <div className="flex items-center space-x-4 text-xs text-muted-foreground">
           <span>Promedio batería: {Math.round(mockRobots.reduce((acc, robot) => acc + robot.battery, 0) / mockRobots.length)}%</span>
           <span>•</span>
           <span>Temperatura: {Math.round(mockRobots.reduce((acc, robot) => acc + robot.temperature, 0) / mockRobots.length)}°C</span>
         </div>
-        <button className="flex items-center text-sm text-primary hover:text-primary/80 transition-colors group">
+        <button className="flex items-center px-4 py-2 bg-card border border-border rounded-lg text-sm text-card-foreground hover:bg-muted hover:border-primary/30 hover:shadow-sm transition-all duration-200 group">
           Ver Todos
-          <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
+          <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
     </div>

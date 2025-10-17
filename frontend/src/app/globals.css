@@ -194,8 +194,9 @@ code, pre, kbd, samp {
 
 .card:hover {
   box-shadow: var(--shadow-lg);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   background: rgb(var(--card-hover));
+  border-color: rgb(var(--primary) / 0.2);
 }
 
 .card::before {
@@ -383,6 +384,183 @@ code, pre, kbd, samp {
   font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
 }
 
+/* === ROBOT CARD MINIMALISTA === */
+.robot-card-minimal {
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border) / 0.2);
+  border-radius: 0.75rem; /* rounded-xl */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  min-height: 120px;
+}
+
+.robot-card-minimal:hover {
+  background: rgb(var(--card));
+  border-color: rgb(var(--primary) / 0.3);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.robot-card-minimal:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgb(var(--primary) / 0.3), transparent);
+  opacity: 1;
+}
+
+/* === STATUS BADGE MINIMALISTA === */
+.status-badge-minimal {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.status-badge-minimal.connected {
+  background-color: rgb(var(--success));
+  color: white;
+  border-color: rgb(var(--success));
+}
+
+.status-badge-minimal.busy {
+  background-color: rgb(var(--warning));
+  color: white;
+  border-color: rgb(var(--warning));
+}
+
+.status-badge-minimal.disconnected {
+  background-color: rgb(var(--destructive));
+  color: white;
+  border-color: rgb(var(--destructive));
+}
+
+/* === STATUS BADGE IMPROVEMENTS === */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid;
+  transition: all 0.2s ease;
+}
+
+.status-badge.connected {
+  background-color: rgb(var(--success) / 0.1);
+  color: rgb(var(--success));
+  border-color: rgb(var(--success) / 0.2);
+}
+
+.status-badge.busy {
+  background-color: rgb(var(--warning) / 0.1);
+  color: rgb(var(--warning));
+  border-color: rgb(var(--warning) / 0.2);
+}
+
+.status-badge.disconnected {
+  background-color: rgb(var(--destructive) / 0.1);
+  color: rgb(var(--destructive));
+  border-color: rgb(var(--destructive) / 0.2);
+}
+
+/* === GRID CARD IMPROVEMENTS === */
+.grid-card {
+  background: rgb(var(--muted) / 0.3);
+  border: 1px solid rgb(var(--border) / 0.3);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.grid-card:hover {
+  background: rgb(var(--muted) / 0.6);
+  border-color: rgb(var(--primary) / 0.3);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.grid-card:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgb(var(--primary) / 0.4), transparent);
+  opacity: 1;
+}
+
+/* === EXPERIMENT CARD COMPACTO === */
+.experiment-card-compact {
+  background: rgb(var(--card));
+  border: 1px solid rgb(var(--border) / 0.2);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  min-height: 60px;
+}
+
+.experiment-card-compact:hover {
+  background: rgb(var(--card));
+  border-color: rgb(var(--primary) / 0.3);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.experiment-card-compact:hover::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgb(var(--primary) / 0.3), transparent);
+  opacity: 1;
+}
+
+/* === EXPERIMENT CARD IMPROVEMENTS === */
+.experiment-card {
+  background: rgb(var(--muted) / 0.4);
+  border: 1px solid rgb(var(--border) / 0.2);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.experiment-card:hover {
+  background: rgb(var(--muted) / 0.7);
+  border-color: rgb(var(--primary) / 0.4);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* === METRIC CARD IMPROVEMENTS === */
+.metric-card {
+  background: rgb(var(--muted) / 0.2);
+  border: 1px solid rgb(var(--border) / 0.1);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-card:hover {
+  background: rgb(var(--muted) / 0.4);
+  border-color: rgb(var(--primary) / 0.2);
+  box-shadow: var(--shadow-sm);
+}
+
 /* === RESPONSIVE UTILITIES === */
 @media (max-width: 768px) {
   .card {
@@ -392,5 +570,13 @@ code, pre, kbd, samp {
   .sidebar {
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
+  }
+  
+  .grid-card:hover {
+    transform: none;
+  }
+  
+  .experiment-card:hover {
+    transform: none;
   }
 }
