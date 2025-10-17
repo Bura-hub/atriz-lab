@@ -1,280 +1,227 @@
-# Atriz Lab - Robot Experiment Management Platform
+# 🤖 Atriz Lab - Laboratorio Remoto de Robótica
 
-A complete full-stack application for managing and executing Python scripts on remote robots via SSH, built with FastAPI, Celery, Next.js, and Docker.
+> **Sistema de laboratorio remoto para experimentos de robótica en enjambre**  
+> Universidad de Nariño - Colombia
 
-## 🏗️ Architecture
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-green?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.3-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
+
+## 🎯 Descripción
+
+Atriz Lab es un sistema completo de laboratorio remoto que permite a investigadores y estudiantes realizar experimentos de robótica en enjambre de forma remota. El sistema integra robots Mercator (RVR + Raspberry Pi) con una plataforma web moderna para monitoreo y control en tiempo real.
+
+## ✨ Características Principales
+
+### 🖥️ **Frontend Moderno**
+- **Dashboard responsivo** con diseño profesional
+- **Monitoreo en tiempo real** de robots y experimentos
+- **Streaming de video** del laboratorio
+- **Métricas del sistema** en tiempo real
+- **Tema oscuro/claro** con transiciones suaves
+- **Animaciones profesionales** y efectos visuales
+
+### 🔧 **Backend Robusto**
+- **API RESTful** con FastAPI
+- **Base de datos** PostgreSQL con SQLAlchemy
+- **Cache Redis** para rendimiento
+- **Cola de tareas** Celery para procesos asíncronos
+- **Comunicación SSH** con robots
+- **Monitoreo de salud** del sistema
+
+### 🤖 **Integración con Robots**
+- **Robots Mercator** (RVR + Raspberry Pi 4)
+- **ROS Noetic** en Ubuntu 20.04
+- **Control remoto** vía SSH
+- **Telemetría en tiempo real** (20-30 Hz)
+- **Ejecución segura** con Docker + cgroups
+
+## 🏗️ Arquitectura del Sistema
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Cliente Web   │◄──►│  Servidor API   │◄──►│   Robots RVR    │
+│   (Next.js)     │    │   (FastAPI)     │    │  (Raspberry Pi) │
+│                 │    │                 │    │                 │
+│ • Dashboard     │    │ • PostgreSQL    │    │ • ROS Noetic    │
+│ • Video Stream  │    │ • Redis Cache  │    │ • Python Scripts│
+│ • Telemetría    │    │ • Celery Tasks │    │ • SSH Control   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+## 📁 Estructura del Proyecto
 
 ```
 atriz-lab/
-├── backend/                  # FastAPI, Celery, DB Config
-│   ├── Dockerfile            # Imagen del servicio Python
-│   ├── requirements.txt      # Dependencias de Python
+├── 📁 frontend/                 # Dashboard Next.js
+│   ├── src/
+│   │   ├── app/                 # App Router
+│   │   └── components/          # Componentes React
+│   ├── package.json
+│   └── tailwind.config.ts
+├── 📁 backend/                  # API FastAPI
 │   ├── app/
-│   │   ├── __init__.py       # Inicialización de FastAPI
-│   │   ├── main.py           # Endpoints de la API
-│   │   ├── tasks.py          # Tareas asíncronas (Celery/AsyncSSH)
-│   │   ├── models/           # SQLAlchemy/Alembic models
-│   │   │   ├── __init__.py
-│   │   │   ├── database.py
-│   │   │   ├── experiment.py
-│   │   │   └── task.py
-│   │   ├── routers/          # API Routes
-│   │   │   ├── experiments.py
-│   │   │   └── tasks.py
-│   │   ├── config.py         # Configuration
-│   │   └── worker.py         # Celery Worker
-│   ├── docker-compose.yml    # Orquestación de DB, Redis, API, Worker
-│   └── config.env            # Variables de entorno
-└── frontend/                 # Next.js (React)
-    ├── Dockerfile
-    ├── package.json
-    ├── next.config.js
-    ├── tailwind.config.js
-    ├── public/
-    ├── src/
-    │   ├── app/              # App Router
-    │   │   ├── layout.tsx
-    │   │   ├── page.tsx
-    │   │   └── globals.css
-    │   └── components/       # Componentes React
-    │       ├── ExperimentCard.tsx
-    │       ├── TaskStatus.tsx
-    │       └── LoadingSpinner.tsx
-    └── node_modules/
+│   │   ├── api/endpoints/       # Endpoints REST
+│   │   ├── models/              # Modelos SQLAlchemy
+│   │   ├── services/            # Lógica de negocio
+│   │   └── core/                # Configuración
+│   ├── requirements.txt
+│   └── docker-compose.yml
+├── 📁 mockups/                  # Diseños y prototipos
+└── 📄 README.md
 ```
 
-## 🚀 Features
+## 🚀 Instalación y Configuración
 
-### Backend (FastAPI + Celery)
-- **FastAPI REST API** with automatic documentation
-- **Celery Task Queue** for asynchronous SSH operations
-- **PostgreSQL + TimescaleDB** for data persistence
-- **Redis** for task queue and caching
-- **SQLAlchemy** models for experiments and tasks
-- **AsyncSSH** for secure robot connections
-- **Docker** containerization
+### Prerrequisitos
+- **Node.js** 18+ y npm
+- **Python** 3.11+
+- **Docker** y Docker Compose
+- **PostgreSQL** 14+
+- **Redis** 6+
 
-### Frontend (Next.js + React)
-- **Modern React** with TypeScript
-- **Tailwind CSS** for styling
-- **Responsive Design** for all devices
-- **Real-time Updates** for task status
-- **Component-based Architecture**
-
-### Robot Integration
-- **SSH Key Authentication** for secure connections
-- **Script Execution** on remote robots
-- **File Transfer** capabilities
-- **Real-time Monitoring** of task progress
-- **Error Handling** and logging
-
-## 🛠️ Setup Instructions
-
-### Prerequisites
-- Docker and Docker Compose
-- Node.js 18+ (for local development)
-- Python 3.10+ (for local development)
-
-### 1. Clone and Setup
+### 1. Clonar el Repositorio
 ```bash
-git clone <repository-url>
+git clone https://github.com/universidad-narino/atriz-lab.git
 cd atriz-lab
 ```
 
-### 2. Environment Configuration
-```bash
-# Copy environment template
-cp backend/config.env backend/.env
-
-# Edit the .env file with your settings
-# - Update ROBOT_HOST, ROBOT_USER
-# - Configure SSH_PRIVATE_KEY_PATH
-# - Set database credentials
-```
-
-### 3. SSH Key Setup
-```bash
-# Generate SSH key pair
-ssh-keygen -t rsa -b 4096 -f C:\Users\Public\.ssh\id_rsa_atriz
-
-# Copy public key to robot
-ssh-copy-id -i C:\Users\Public\.ssh\id_rsa_atriz.pub sphero@192.168.1.100
-```
-
-### 4. Start with Docker Compose
-```bash
-# Start all services
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f
-```
-
-### 5. Access the Application
-- **Frontend**: http://localhost:3000
-- **API Documentation**: http://localhost:8000/docs
-- **API**: http://localhost:8000
-
-## 🔧 Development Setup
-
-### Backend Development
+### 2. Configurar Backend
 ```bash
 cd backend
-
-# Install dependencies
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
+```
 
-# Start Redis
-docker run -d -p 6379:6379 redis:7-alpine
+### 3. Configurar Frontend
+```bash
+cd frontend
+npm install
+```
 
-# Start Celery Worker
-python app/worker.py
+### 4. Variables de Entorno
+```bash
+# backend/.env
+DATABASE_URL=postgresql://user:password@localhost:5432/atriz_lab
+REDIS_URL=redis://localhost:6379
+SECRET_KEY=your-secret-key
+```
 
-# Start FastAPI
+## 🏃‍♂️ Desarrollo
+
+### Backend (API)
+```bash
+cd backend
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### Frontend Development
+### Frontend (Dashboard)
 ```bash
 cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
 npm run dev
 ```
 
-## 📡 API Endpoints
-
-### Experiments
-- `GET /api/v1/experiments` - List experiments
-- `POST /api/v1/experiments` - Create experiment
-- `GET /api/v1/experiments/{id}` - Get experiment details
-
-### Tasks
-- `POST /api/v1/tasks/robot/execute` - Execute robot script
-- `GET /api/v1/tasks/status/{task_id}` - Check task status
-- `GET /api/v1/tasks/` - List available endpoints
-
-### Health
-- `GET /` - Root endpoint
-- `GET /health` - Health check
-
-## 🤖 Robot Script Execution
-
-### Example Script
-```python
-# Simple robot script
-print("Hello from Atriz Robot!")
-print("Current time:", __import__('datetime').datetime.now())
-
-# Robot movement example
-import time
-print("Starting robot movement...")
-time.sleep(2)
-print("Movement completed!")
-```
-
-### API Usage
+### Base de Datos
 ```bash
-# Execute script on robot
-curl -X POST "http://localhost:8000/api/v1/tasks/robot/execute" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "robot_host": "192.168.1.100",
-    "user_script_content": "print(\"Hello from robot!\")",
-    "script_name": "test_script.py"
-  }'
-
-# Check task status
-curl "http://localhost:8000/api/v1/tasks/status/{task_id}"
+cd backend
+alembic upgrade head
 ```
 
-## 🐳 Docker Services
-
-| Service | Port | Description |
-|---------|------|-------------|
-| Frontend | 3000 | Next.js React application |
-| API | 8000 | FastAPI backend |
-| Database | 5432 | PostgreSQL + TimescaleDB |
-| Redis | 6379 | Task queue and caching |
-| Worker | - | Celery worker (no external port) |
-
-## 🔒 Security Features
-
-- **SSH Key Authentication** - No password-based access
-- **Environment Variables** - Secure configuration
-- **Docker Isolation** - Containerized services
-- **Input Validation** - Pydantic data validation
-- **Error Handling** - Comprehensive error capture
-
-## 📊 Monitoring
-
-### Task States
-- `PENDING` - Task queued, waiting for worker
-- `PROGRESS` - Task being processed
-- `SUCCESS` - Task completed successfully
-- `FAILURE` - Task failed with error
-
-### Logs
+### Cola de Tareas
 ```bash
-# Check all logs
-docker-compose logs
-
-# Check specific service
-docker-compose logs api
-docker-compose logs worker
-docker-compose logs frontend
+cd backend
+celery -A app.worker worker --loglevel=info
 ```
 
-## 🚀 Production Deployment
+## 🐳 Docker
 
-### Environment Variables
+### Desarrollo Completo
 ```bash
-# Production settings
-DEBUG=False
-SECRET_KEY=your-production-secret-key
-DATABASE_URL=postgresql://user:pass@db:5432/atriz_experiments
-REDIS_URL=redis://redis:6379/0
+cd backend
+docker-compose up -d
 ```
 
-### Docker Compose Production
+### Producción
 ```bash
-# Build and start in production mode
-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
-## 🤝 Contributing
+## 📊 Componentes del Dashboard
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+### 🎛️ **RobotStatusCard**
+- Estado de robots conectados
+- Nivel de batería y temperatura
+- Señal WiFi y última actividad
+- Métricas en tiempo real
 
-## 📝 License
+### 🧪 **ActiveExperimentsCard**
+- Experimentos en ejecución
+- Progreso y tiempo estimado
+- Control de pausa/reanudación
+- Sistema de prioridades
 
-This project is licensed under the MIT License.
+### 📈 **SystemMetricsCard**
+- Rendimiento del servidor
+- Latencia y conexiones
+- Uso de CPU y memoria
+- Gráficas de tendencia
 
-## 🆘 Troubleshooting
+### 📹 **LaboratoryVideoCard**
+- Stream en tiempo real
+- Controles de video
+- Indicadores de calidad
+- Grabación de sesiones
 
-### Common Issues
+## 🔧 Tecnologías Utilizadas
 
-1. **SSH Connection Failed**
-   - Check robot IP and connectivity
-   - Verify SSH key configuration
-   - Ensure robot SSH service is running
+### Frontend
+- **Next.js 14** - Framework React
+- **TypeScript** - Tipado estático
+- **Tailwind CSS** - Estilos utilitarios
+- **Lucide React** - Iconografía
+- **Inter Font** - Tipografía
 
-2. **Task Timeout**
-   - Check script execution time
-   - Verify robot resources
-   - Review script for infinite loops
+### Backend
+- **FastAPI** - API moderna y rápida
+- **SQLAlchemy** - ORM para PostgreSQL
+- **Celery** - Cola de tareas asíncronas
+- **Redis** - Cache y broker
+- **Alembic** - Migraciones de BD
 
-3. **Docker Issues**
-   - Check Docker daemon is running
-   - Verify port availability
-   - Check container logs
+### DevOps
+- **Docker** - Containerización
+- **Docker Compose** - Orquestación
+- **PostgreSQL** - Base de datos
+- **Nginx** - Proxy reverso
 
-### Support
-For issues and questions, please create an issue in the repository.
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📝 Licencia
+
+Este proyecto está bajo la Licencia MIT. Ver `LICENSE` para más detalles.
+
+## 👥 Equipo
+
+- **Desarrollo Frontend** - Universidad de Nariño
+- **Desarrollo Backend** - Universidad de Nariño
+- **Integración Robótica** - Universidad de Nariño
+
+## 📞 Contacto
+
+- **Proyecto**: [Atriz Lab](https://github.com/universidad-narino/atriz-lab)
+- **Universidad**: Universidad de Nariño
+- **Email**: atriz-lab@udenar.edu.co
+
+---
+
+<div align="center">
+  <strong>🤖 Desarrollado con ❤️ para la investigación en robótica</strong>
+</div>
