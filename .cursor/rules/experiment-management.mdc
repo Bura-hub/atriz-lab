@@ -1,0 +1,75 @@
+---
+description: Experiment management and robot control patterns
+---
+
+# Experiment Management Guidelines
+
+## Experiment Lifecycle
+Experiments follow this lifecycle:
+1. **Created**: Experiment is created with metadata
+2. **Pending**: Waiting for robot availability
+3. **Running**: Script is deployed and executing on robot
+4. **Completed**: Experiment finished successfully
+5. **Failed**: Experiment encountered errors
+
+## Experiment Model
+Use the [Experiment model](mdc:backend/app/models/experiment.py) with these key fields:
+- `name`: Human-readable experiment name
+- `description`: Detailed experiment description
+- `status`: Current experiment status
+- `robot_host`: Target robot IP address
+- `script_content`: Python control script
+- `script_name`: Script filename
+- `output`: Experiment results
+- `error`: Error messages if failed
+- `execution_time`: Duration in seconds
+
+## Robot Script Deployment
+- Validate Python scripts before deployment
+- Use SSH to deploy scripts to robot Raspberry Pi
+- Execute scripts in isolated environments
+- Monitor script execution in real-time
+- Collect outputs and error logs
+- Implement proper cleanup after execution
+
+## Experiment Scheduling
+- Queue experiments when robots are busy
+- Implement priority-based scheduling
+- Handle robot unavailability gracefully
+- Support experiment cancellation
+- Implement timeout handling
+
+## Real-time Monitoring
+- Use WebSocket connections for real-time updates
+- Monitor robot status and health
+- Track experiment progress
+- Implement status notifications
+- Handle connection drops gracefully
+
+## Data Collection
+- Collect experiment metrics and results
+- Store time-series data in TimescaleDB
+- Implement data visualization
+- Export experiment data
+- Maintain experiment history
+
+## Error Handling
+- Implement comprehensive error handling
+- Log all experiment activities
+- Handle robot communication failures
+- Manage script execution errors
+- Provide meaningful error messages
+
+## Security Considerations
+- Validate all script content before execution
+- Implement sandboxing for script execution
+- Monitor for malicious script content
+- Use secure SSH connections
+- Implement access controls
+
+## Performance Optimization
+- Use async operations for robot communication
+- Implement connection pooling
+- Cache robot status information
+- Optimize database queries
+- Monitor system performance

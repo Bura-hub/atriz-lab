@@ -1,0 +1,95 @@
+version: '3.8'
+
+# Volúmenes para persistencia de datos
+volumes:
+  postgres_data:
+  redis_data:
+  node_modules:
+
+services:
+  # 1. Base de Datos: PostgreSQL + TimescaleDB
+  db:
+    image: timescale/timescaledb:2.14.2-pg16
+    container_name: atriz_db
+    restart: always
+    environment:
+      POSTGRES_USER: user_atriz
+      POSTGRES_PASSWORD: password_atriz_dev
+      POSTGRES_DB: atriz_experiments
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - atriz_network
+
+  # 2. Broker de Colas y Cache: Redis
+  redis:
+    image: redis:7-alpine
+    container_name: atriz_redis
+    restart: always
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - atriz_network
+  
+  # 3. Servicio de API (FastAPI)
+  api:
+    build: .
+    container_name: atriz_api
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://user_atriz:password_atriz_dev@db:5432/atriz_experiments
+    depends_on:
+      - db
+      - redis
+    networks:
+      - atriz_network
+    volumes:
+      - ./app:/app/app
+
+  # 4. Servicio Worker (Celery)
+  worker:
+    build: .
+    container_name: atriz_worker
+    restart: always
+    command: python app/worker.py
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=postgresql://user_atriz:password_atriz_dev@db:5432/atriz_experiments
+    depends_on:
+      - db
+      - redis
+    networks:
+      - atriz_network
+    volumes:
+      - ./app:/app/app
+
+  # 5. Frontend (Next.js)
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: atriz_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - api
+    networks:
+      - atriz_network
+    volumes:
+      - ../frontend:/app
+      - node_modules:/app/node_modules
+
+networks:
+  atriz_network:
+    driver: bridge

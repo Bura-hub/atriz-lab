@@ -1,0 +1,61 @@
+---
+description: Robot integration and SSH communication patterns
+---
+
+# Robot Integration Guidelines
+
+## Mercator Robot Architecture
+The system integrates with Mercator robots (RVR + Raspberry Pi) running ROS Noetic:
+- Each robot has a Raspberry Pi 4 with Ubuntu 20.04
+- Robots communicate via SSH over WiFi
+- Control scripts are deployed and executed remotely
+- Robots operate autonomously without centralized control
+
+## SSH Communication Patterns
+- Use [SSH service](mdc:backend/app/services/ssh_service.py) for robot operations
+- Implement connection pooling for multiple robots
+- Handle SSH connection timeouts and retries
+- Use async SSH operations for better performance
+- Store SSH keys securely in environment variables
+
+## Robot Control Script Deployment
+- Deploy Python control scripts to robot Raspberry Pi
+- Execute scripts in isolated environments
+- Monitor script execution and collect outputs
+- Handle script errors and timeouts gracefully
+- Implement proper cleanup after script execution
+
+## Experiment Management
+- Track experiment status across multiple robots
+- Implement experiment queuing and scheduling
+- Monitor robot availability and health
+- Collect experiment results and metrics
+- Handle robot failures and recovery
+
+## ROS Integration
+- Robots run ROS Noetic on Ubuntu 20.04
+- Use ROS topics for robot communication
+- Implement proper ROS node lifecycle management
+- Handle ROS service calls and responses
+- Monitor ROS node health and status
+
+## Security Considerations
+- Use SSH key-based authentication
+- Implement proper access controls
+- Secure robot network communication
+- Validate and sanitize robot inputs
+- Monitor for unauthorized access attempts
+
+## Error Handling
+- Implement comprehensive error handling for robot operations
+- Use proper logging for debugging robot issues
+- Handle network connectivity problems
+- Implement robot health monitoring
+- Provide meaningful error messages to users
+
+## Performance Optimization
+- Use connection pooling for SSH operations
+- Implement proper timeout handling
+- Cache robot status information
+- Optimize script deployment process
+- Monitor and optimize network performance

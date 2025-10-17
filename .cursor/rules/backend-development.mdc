@@ -1,0 +1,51 @@
+---
+globs: backend/**/*.py
+---
+
+# Backend Development Guidelines
+
+## FastAPI Best Practices
+- Use async/await for all endpoint functions
+- Implement proper error handling with HTTPException
+- Use Pydantic models for request/response validation
+- Follow RESTful API conventions
+- Include comprehensive docstrings for all endpoints
+
+## Database Models (SQLAlchemy)
+- All models inherit from [Base](mdc:backend/app/core/db.py)
+- Use proper column types and constraints
+- Include timestamps (created_at, updated_at) for audit trails
+- Use indexes for frequently queried fields
+- Follow naming conventions: snake_case for columns, PascalCase for classes
+
+## API Endpoints Structure
+- Place endpoint logic in [backend/app/api/endpoints/](mdc:backend/app/api/endpoints/)
+- Use router prefix for versioning: `/api/v1/`
+- Include proper HTTP status codes
+- Implement pagination for list endpoints
+- Use dependency injection for database sessions
+
+## Configuration Management
+- Use [Settings class](mdc:backend/app/core/config.py) for environment variables
+- Never hardcode sensitive values
+- Use type hints for all configuration properties
+- Provide sensible defaults for development
+
+## Task Queue (Celery)
+- Place background tasks in [backend/app/tasks.py](mdc:backend/app/tasks.py)
+- Use proper task decorators and error handling
+- Implement task status tracking
+- Use Redis as message broker
+
+## SSH Integration
+- Use [SSH service](mdc:backend/app/services/ssh_service.py) for robot communication
+- Implement proper connection pooling
+- Handle SSH connection errors gracefully
+- Use async SSH operations when possible
+
+## Code Style
+- Follow PEP 8 guidelines
+- Use type hints for all function parameters and return values
+- Include docstrings for all classes and functions
+- Use meaningful variable and function names
+- Keep functions focused and single-purpose

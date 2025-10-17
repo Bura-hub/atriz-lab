@@ -1,0 +1,238 @@
+Paleta de Colores Completa para Laboratorio Remoto Atriz
+Colores Base del Sistema
+
+:root {
+  /* === COLORES BASE === */
+  --background: #ffffff;                    /* Fondo principal blanco */
+  --foreground: #111827;                    /* Texto principal negro */
+  
+  /* === BORDES === */
+  --border: #e5e7eb;                        /* Bordes grises claros */
+  
+  /* === INPUTS === */
+  --input: #f9fafb;                         /* Fondo de inputs gris muy claro */
+  
+  /* === COLORES PRIMARIOS === */
+  --primary: #3b82f6;                       /* Azul corporativo principal */
+  --primary-foreground: #ffffff;            /* Texto sobre azul (blanco) */
+  
+  /* === COLORES SECUNDARIOS === */
+  --secondary: #f3f4f6;                     /* Gris claro para elementos secundarios */
+  --secondary-foreground: #374151;            /* Texto sobre gris (gris oscuro) */
+  
+  /* === COLORES MUTED === */
+  --muted: #f8fafc;                         /* Fondo muted gris muy claro */
+  --muted-foreground: #6b7280;             /* Texto muted gris medio */
+  
+  /* === COLORES DE ÉXITO === */
+  --success: #22c55e;                       /* Verde éxito */
+  --success-foreground: #ffffff;            /* Texto sobre verde (blanco) */
+  
+  /* === COLORES DE ACENTO === */
+  --accent: #1e40af;                        /* Azul oscuro para acentos */
+  --accent-foreground: #ffffff;            /* Texto sobre acento (blanco) */
+  
+  /* === COLORES DESTRUCTIVOS === */
+  --destructive: #ef4444;                   /* Rojo destructivo */
+  --destructive-foreground: #ffffff;        /* Texto sobre rojo (blanco) */
+  
+  /* === COLORES DE ADVERTENCIA === */
+  --warning: #f59e0b;                       /* Amarillo advertencia */
+  --warning-foreground: #111827;           /* Texto sobre amarillo (negro) */
+  
+  /* === COLORES DE CARDS === */
+  --card: #ffffff;                          /* Fondo de cards blanco */
+  --card-foreground: #111827;              /* Texto de cards negro */
+  
+  /* === COLORES DE SIDEBAR === */
+  --sidebar: #f8fafc;                       /* Fondo sidebar gris muy claro */
+  --sidebar-foreground: #374151;           /* Texto sidebar gris oscuro */
+  --sidebar-primary: #3b82f6;              /* Azul para elementos activos */
+  --sidebar-primary-foreground: #ffffff;   /* Texto sobre azul activo (blanco) */
+}
+
+Variantes para Modo Oscuro
+[data-theme="dark"] {
+  /* === COLORES BASE === */
+  --background: #111827;                    /* Fondo principal negro */
+  --foreground: #f9fafb;                   /* Texto principal blanco */
+  
+  /* === BORDES === */
+  --border: #374151;                        /* Bordes grises oscuros */
+  
+  /* === INPUTS === */
+  --input: #1f2937;                        /* Fondo de inputs gris oscuro */
+  
+  /* === COLORES PRIMARIOS === */
+  --primary: #3b82f6;                       /* Azul corporativo (igual) */
+  --primary-foreground: #ffffff;            /* Texto sobre azul (blanco) */
+  
+  /* === COLORES SECUNDARIOS === */
+  --secondary: #374151;                     /* Gris oscuro para elementos secundarios */
+  --secondary-foreground: #d1d5db;         /* Texto sobre gris (gris claro) */
+  
+  /* === COLORES MUTED === */
+  --muted: #1f2937;                         /* Fondo muted gris oscuro */
+  --muted-foreground: #9ca3af;            /* Texto muted gris medio */
+  
+  /* === COLORES DE ÉXITO === */
+  --success: #22c55e;                       /* Verde éxito (igual) */
+  --success-foreground: #ffffff;            /* Texto sobre verde (blanco) */
+  
+  /* === COLORES DE ACENTO === */
+  --accent: #60a5fa;                        /* Azul claro para acentos */
+  --accent-foreground: #111827;            /* Texto sobre acento (negro) */
+  
+  /* === COLORES DESTRUCTIVOS === */
+  --destructive: #ef4444;                   /* Rojo destructivo (igual) */
+  --destructive-foreground: #ffffff;        /* Texto sobre rojo (blanco) */
+  
+  /* === COLORES DE ADVERTENCIA === */
+  --warning: #f59e0b;                       /* Amarillo advertencia (igual) */
+  --warning-foreground: #111827;           /* Texto sobre amarillo (negro) */
+  
+  /* === COLORES DE CARDS === */
+  --card: #1f2937;                          /* Fondo de cards gris oscuro */
+  --card-foreground: #f9fafb;              /* Texto de cards blanco */
+  
+  /* === COLORES DE SIDEBAR === */
+  --sidebar: #111827;                       /* Fondo sidebar negro */
+  --sidebar-foreground: #d1d5db;           /* Texto sidebar gris claro */
+  --sidebar-primary: #3b82f6;              /* Azul para elementos activos */
+  --sidebar-primary-foreground: #ffffff;   /* Texto sobre azul activo (blanco) */
+}
+
+Colores Específicos por Componente
+Dashboard Principal
+.dashboard {
+  --dashboard-bg: var(--background);
+  --dashboard-header: var(--primary);
+  --dashboard-header-text: var(--primary-foreground);
+  --dashboard-sidebar: var(--sidebar);
+  --dashboard-sidebar-text: var(--sidebar-foreground);
+  --dashboard-card: var(--card);
+  --dashboard-card-text: var(--card-foreground);
+}
+
+Estados de Robots
+.robot-status {
+  --robot-connected: var(--success);
+  --robot-connected-text: var(--success-foreground);
+  --robot-disconnected: var(--destructive);
+  --robot-disconnected-text: var(--destructive-foreground);
+  --robot-busy: var(--warning);
+  --robot-busy-text: var(--warning-foreground);
+  --robot-maintenance: var(--muted);
+  --robot-maintenance-text: var(--muted-foreground);
+}
+
+Estados de Experimentos
+.experiment-status {
+  --experiment-active: var(--success);
+  --experiment-active-text: var(--success-foreground);
+  --experiment-paused: var(--warning);
+  --experiment-paused-text: var(--warning-foreground);
+  --experiment-completed: var(--primary);
+  --experiment-completed-text: var(--primary-foreground);
+  --experiment-failed: var(--destructive);
+  --experiment-failed-text: var(--destructive-foreground);
+}
+
+Notificaciones
+.notification {
+  --notification-success: var(--success);
+  --notification-success-text: var(--success-foreground);
+  --notification-warning: var(--warning);
+  --notification-warning-text: var(--warning-foreground);
+  --notification-error: var(--destructive);
+  --notification-error-text: var(--destructive-foreground);
+  --notification-info: var(--primary);
+  --notification-info-text: var(--primary-foreground);
+}
+
+Implementación en Tailwind CSS
+
+/* Configuración de Tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 255 255 255;
+    --foreground: 17 24 39;
+    --border: 229 231 235;
+    --input: 249 250 251;
+    --primary: 59 130 246;
+    --primary-foreground: 255 255 255;
+    --secondary: 243 244 246;
+    --secondary-foreground: 55 65 81;
+    --muted: 248 250 252;
+    --muted-foreground: 107 114 128;
+    --success: 34 197 94;
+    --success-foreground: 255 255 255;
+    --accent: 30 64 175;
+    --accent-foreground: 255 255 255;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --warning: 245 158 11;
+    --warning-foreground: 17 24 39;
+    --card: 255 255 255;
+    --card-foreground: 17 24 39;
+    --sidebar: 248 250 252;
+    --sidebar-foreground: 55 65 81;
+    --sidebar-primary: 59 130 246;
+    --sidebar-primary-foreground: 255 255 255;
+  }
+
+  [data-theme="dark"] {
+    --background: 17 24 39;
+    --foreground: 249 250 251;
+    --border: 55 65 81;
+    --input: 31 41 55;
+    --primary: 59 130 246;
+    --primary-foreground: 255 255 255;
+    --secondary: 55 65 81;
+    --secondary-foreground: 209 213 219;
+    --muted: 31 41 55;
+    --muted-foreground: 156 163 175;
+    --success: 34 197 94;
+    --success-foreground: 255 255 255;
+    --accent: 96 165 250;
+    --accent-foreground: 17 24 39;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --warning: 245 158 11;
+    --warning-foreground: 17 24 39;
+    --card: 31 41 55;
+    --card-foreground: 249 250 251;
+    --sidebar: 17 24 39;
+    --sidebar-foreground: 209 213 219;
+    --sidebar-primary: 59 130 246;
+    --sidebar-primary-foreground: 255 255 255;
+  }
+}
+
+Uso en Componentes React
+
+// Ejemplo de uso en componentes
+const Button = ({ variant, children, ...props }) => {
+  const baseClasses = "px-4 py-2 rounded-md font-medium transition-colors";
+  
+  const variants = {
+    primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+    secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
+    success: "bg-success text-success-foreground hover:bg-success/90",
+    warning: "bg-warning text-warning-foreground hover:bg-warning/90",
+    destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+  };
+  
+  return (
+    <button 
+      className={`${baseClasses} ${variants[variant]}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};

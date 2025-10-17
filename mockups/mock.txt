@@ -1,0 +1,659 @@
+1. Dashboard Principal - Panel de Control del Laboratorio
+
+Diseña un dashboard profesional de nivel empresarial para el Laboratorio Remoto Atriz con las siguientes especificaciones:
+
+**DISEÑO GENERAL:**
+- Layout moderno tipo "Enterprise Dashboard" con paleta de colores profesional
+- Colores principales: Azul corporativo (#1e40af), Verde éxito (#10b981), Rojo alerta (#ef4444)
+- Tipografía: Inter/Poppins para títulos, Roboto Mono para datos técnicos
+- Espaciado consistente con grid de 8px
+- Sombras sutiles y bordes redondeados (4px)
+
+**HEADER SUPERIOR:**
+- Barra superior fija con altura 64px
+- Logo "Atriz Lab" a la izquierda con icono de robot
+- Indicador de estado del sistema (punto verde/rojo + texto)
+- Notificaciones (badge con número) + perfil de usuario (avatar + dropdown)
+- Botón de emergencia rojo "STOP ALL" en esquina derecha
+
+**SIDEBAR IZQUIERDO (240px de ancho):**
+- Navegación vertical con iconos + texto
+- Secciones: Dashboard, Experimentos, Robots, Telemetría, Video, Configuración
+- Indicador activo con línea azul lateral
+- Collapsible para pantallas pequeñas
+- Footer con versión del sistema
+
+**ÁREA PRINCIPAL - GRID 2x2:**
+
+**Cuadrante Superior Izquierdo - "Estado de Robots":**
+- Card con sombra sutil y padding 24px
+- Título "Robots Activos" con icono de robot
+- Grid de 3x2 robots con cards individuales:
+  * Avatar circular con color de estado
+  * Nombre del robot (RVR-001, RVR-002, etc.)
+  * Estado: "Conectado" (verde) / "Desconectado" (rojo) / "Ocupado" (amarillo)
+  * Barra de batería horizontal con porcentaje
+  * Última actividad (timestamp relativo)
+- Botón "Ver Todos" en esquina inferior derecha
+
+**Cuadrante Superior Derecho - "Experimentos Activos":**
+- Card con header azul y título "Experimentos en Ejecución"
+- Lista vertical de experimentos:
+  * Avatar del usuario + nombre
+  * Nombre del experimento (truncado)
+  * Robot asignado
+  * Barra de progreso circular (0-100%)
+  * Tiempo transcurrido (formato MM:SS)
+  * Botones de acción: Pausar (amarillo), Detener (rojo)
+- Indicador de experimentos en cola (badge numérico)
+
+**Cuadrante Inferior Izquierdo - "Métricas del Sistema":**
+- Card con título "Rendimiento del Sistema"
+- Grid de métricas 2x2:
+  * "Latencia Promedio": 45ms (verde si <50ms)
+  * "Conexiones Activas": 12/50 (barra de progreso)
+  * "CPU Servidor": 34% (barra de progreso)
+  * "Memoria": 2.1GB/8GB (barra de progreso)
+- Gráfica mini de tendencia (últimos 5 minutos)
+- Botón "Ver Detalles" para métricas completas
+
+**Cuadrante Inferior Derecho - "Video del Laboratorio":**
+- Card con video player integrado
+- Header con controles: Play/Pause, Grabación (botón rojo), Pantalla completa
+- Overlay semitransparente con información:
+  * Número de robots visibles
+  * Latencia del video (ms)
+  * Resolución actual
+- Indicador de calidad de conexión (barras de señal)
+
+**ELEMENTOS ADICIONALES:**
+- Toast notifications en esquina superior derecha
+- Modal de configuración rápida (accesible desde header)
+- Indicador de estado WebSocket (punto verde/rojo)
+- Loading states con skeletons
+- Responsive design para tablets y móviles
+
+2. Página de Experimentos - Gestión Avanzada
+
+Diseña una página profesional de gestión de experimentos con diseño tipo "Data Management Platform":
+
+**HEADER DE PÁGINA:**
+- Título "Gestión de Experimentos" con icono de experimento
+- Breadcrumb: Dashboard > Experimentos
+- Barra de acciones superior:
+  * Botón primario "Nuevo Experimento" (azul, icono +)
+  * Filtros dropdown: Estado, Usuario, Fecha
+  * Búsqueda con icono de lupa
+  * Botón de vista (grid/lista)
+  * Botón de exportar (descargar)
+
+**FILTROS AVANZADOS:**
+- Panel colapsible con filtros múltiples:
+  * Rango de fechas (date picker)
+  * Estado: Todos, Activos, Completados, Fallidos, Pausados
+  * Usuario (dropdown con avatares)
+  * Robot asignado
+  * Duración del experimento
+  * Tags personalizados
+- Botones: "Aplicar Filtros", "Limpiar", "Guardar Vista"
+
+**TABLA DE EXPERIMENTOS:**
+- Tabla con columnas:
+  * Checkbox para selección múltiple
+  * Nombre del experimento (enlace a detalle)
+  * Usuario (avatar + nombre)
+  * Estado (badge con color)
+  * Robot asignado
+  * Fecha de creación
+  * Duración
+  * Progreso (barra + porcentaje)
+  * Acciones (menú de 3 puntos)
+- Paginación en la parte inferior
+- Ordenamiento por columnas
+- Selección múltiple con acciones en lote
+
+**CARD DE EXPERIMENTO (Vista Grid):**
+- Card con sombra y hover effect
+- Header con nombre y estado
+- Avatar del usuario creador
+- Información del robot asignado
+- Barra de progreso visual
+- Tiempo transcurrido/estimado
+- Botones de acción rápida
+- Tags del experimento
+
+**MODAL DE CREAR EXPERIMENTO:**
+- Modal de pantalla completa con pasos:
+  * Paso 1: Información básica
+  * Paso 2: Selección de robot
+  * Paso 3: Editor de código
+  * Paso 4: Configuración avanzada
+  * Paso 5: Revisión y confirmación
+- Navegación entre pasos con botones anterior/siguiente
+- Validación en tiempo real
+- Preview del experimento
+
+**VISTA DE DETALLE DE EXPERIMENTO:**
+- Layout de 3 columnas:
+  * Columna izquierda: Información general
+  * Columna central: Editor de código
+  * Columna derecha: Logs y telemetría
+- Pestañas para diferentes secciones
+- Panel de control en tiempo real
+- Gráficas de telemetría integradas
+
+
+3. Monitor de Robots - Centro de Control
+
+Diseña un monitor profesional tipo "Control Center" para supervisión de robots:
+
+**LAYOUT PRINCIPAL:**
+- Header con título "Centro de Control de Robots"
+- Indicador de estado general del sistema
+- Controles globales: "Conectar Todos", "Reiniciar Sistema", "Modo Mantenimiento"
+- Filtros por estado, tipo de robot, ubicación
+
+**VISTA DE GRID DE ROBOTS:**
+- Grid responsivo 3x2 o 4x2 según pantalla
+- Cada card de robot con:
+  * Header con nombre e ID
+  * Avatar del robot con estado visual
+  * Indicadores de estado (LEDs virtuales)
+  * Métricas clave en tiempo real
+  * Gráfica mini de telemetría
+  * Botones de acción rápida
+
+**CARD DE ROBOT DETALLADO:**
+- Header con nombre, ID y estado
+- Sección de hardware:
+  * Nivel de batería (barra circular)
+  * Temperatura del sistema
+  * Uso de CPU y RAM
+  * Estado de sensores (IMU, Odometría, Proximidad)
+- Sección de red:
+  * Dirección IP
+  * Fuerza de señal WiFi
+  * Latencia de conexión
+  * Estado SSH/ROS
+- Sección de actividad:
+  * Última actividad
+  * Experimento actual
+  * Tiempo de funcionamiento
+  * Historial de errores
+
+**PANEL DE TELEMETRÍA EN TIEMPO REAL:**
+- Gráficas interactivas:
+  * Posición (X, Y, Theta) vs tiempo
+  * Velocidad lineal y angular
+  * Datos del IMU (aceleración, giroscopio)
+  * Sensores de proximidad
+- Controles de visualización:
+  * Zoom y pan
+  * Selección de métricas
+  * Rango de tiempo
+  * Exportación de datos
+- Indicadores de alerta:
+  * Colisiones detectadas
+  * Límites de velocidad excedidos
+  * Errores de sensores
+
+**PANEL DE CONTROL INDIVIDUAL:**
+- Al seleccionar un robot, panel lateral con:
+  * Información detallada del hardware
+  * Configuración de red
+  * Parámetros de sensores
+  * Logs del sistema
+  * Controles de emergencia
+  * Configuración de límites
+  * Actualización de firmware
+
+**ALERTAS Y NOTIFICACIONES:**
+- Panel de alertas en tiempo real
+- Categorías: Crítico, Advertencia, Informativo
+- Acciones automáticas sugeridas
+- Historial de alertas
+- Configuración de umbrales
+
+4. Editor de Código - IDE Profesional
+
+Diseña un editor de código profesional tipo "VS Code Web" para programación de robots:
+
+**LAYOUT DEL EDITOR:**
+- Barra superior con:
+  * Nombre del archivo y estado de guardado
+  * Lenguaje (Python) con icono
+  * Indicador de conexión con robot
+  * Botones: Guardar, Ejecutar, Validar, Configuración
+- Área principal dividida en 3 paneles
+
+**PANEL PRINCIPAL - EDITOR DE CÓDIGO:**
+- Editor Monaco con características profesionales:
+  * Syntax highlighting para Python
+  * Autocompletado inteligente con IntelliSense
+  * Folding de código
+  * Números de línea
+  * Indentación automática
+  * Búsqueda y reemplazo avanzado
+  * Múltiples cursores
+  * Snippets personalizados
+- Temas: Claro/Oscuro/Personalizado
+- Zoom in/out
+- Minimap del código
+- Breadcrumbs de navegación
+
+**PANEL LATERAL IZQUIERDO - EXPLORADOR:**
+- Estructura de archivos del proyecto
+- Plantillas predefinidas:
+  * Navegación básica
+  * Seguimiento de trayectorias
+  * Control de enjambre
+  * Comunicación entre robots
+- Bibliotecas disponibles:
+  * rospy (ROS Python)
+  * geometry_msgs
+  * nav_msgs
+  * sensor_msgs
+- Snippets de código
+- Historial de archivos
+
+**PANEL INFERIOR - TERMINAL Y OUTPUT:**
+- Terminal integrado con pestañas:
+  * Terminal del sistema
+  * Logs de ROS
+  * Output del experimento
+  * Errores y warnings
+  * Debug del robot
+- Controles del terminal:
+  * Limpiar pantalla
+  * Guardar logs
+  * Filtrar output
+  * Buscar en logs
+
+**CARACTERÍSTICAS AVANZADAS:**
+- Debugger integrado con breakpoints
+- Validación de código en tiempo real
+- Sugerencias de optimización
+- Integración con Git
+- Documentación integrada de ROS
+- Autocompletado de funciones ROS
+- Validación de sintaxis Python
+- Refactoring de código
+
+**PANEL LATERAL DERECHO - AYUDA:**
+- Documentación de ROS
+- Ejemplos de código
+- Referencia de API
+- Tutoriales interactivos
+- Configuración del proyecto
+
+5. Visualizador de Telemetría - Dashboard de Análisis
+
+Diseña un dashboard profesional de análisis de datos tipo "Business Intelligence":
+
+**HEADER DE CONTROL:**
+- Título "Análisis de Telemetría"
+- Controles de tiempo:
+  * Play/Pause con botones grandes
+  * Velocidad de reproducción (0.5x, 1x, 2x, 4x)
+  * Rango temporal (slider con fechas)
+  * Botón de tiempo real
+- Filtros avanzados:
+  * Robot específico (dropdown)
+  * Tipo de sensor (checkboxes)
+  * Rango de fechas (date picker)
+  * Métricas específicas
+
+**PANEL DE GRÁFICAS PRINCIPALES:**
+- Gráfica de trayectoria 2D:
+  * Mapa del laboratorio como fondo
+  * Trayectorias de robots con colores diferentes
+  * Puntos de inicio y fin marcados
+  * Obstáculos y límites del área
+  * Zoom y pan interactivo
+  * Leyenda con información de robots
+  * Controles de capas (trayectorias, obstáculos, etc.)
+- Gráfica de velocidad:
+  * Velocidad lineal vs tiempo
+  * Velocidad angular vs tiempo
+  * Límites de velocidad del robot
+  * Análisis de aceleración
+  * Detección de picos
+
+**PANEL DE MÉTRICAS EN TIEMPO REAL:**
+- Cards con métricas clave:
+  * Distancia total recorrida
+  * Tiempo de ejecución
+  * Eficiencia del enjambre
+  * Colisiones detectadas
+  * Energía consumida
+  * Velocidad promedio
+- Gráficas de barras y líneas
+- Indicadores de tendencia
+- Comparación con experimentos anteriores
+
+**PANEL DE ANÁLISIS AVANZADO:**
+- Estadísticas descriptivas:
+  * Media, mediana, desviación estándar
+  * Percentiles
+  * Rango de valores
+- Análisis de patrones:
+  * Detección de ciclos
+  * Análisis de frecuencia
+  * Correlaciones entre variables
+- Detección de anomalías:
+  * Valores atípicos
+  * Comportamientos anómalos
+  * Alertas automáticas
+
+**CONTROLES DE VISUALIZACIÓN:**
+- Selección de robots a mostrar
+- Filtros de datos por sensor
+- Configuración de colores
+- Overlay de información
+- Modo de comparación
+- Exportación de gráficas
+- Configuración de ejes
+- Anotaciones personalizadas
+
+**PANEL DE EXPORTACIÓN:**
+- Formatos disponibles: CSV, JSON, PNG, PDF
+- Configuración de datos a exportar
+- Rango temporal de exportación
+- Compresión de archivos
+- Envío por email
+- Integración con servicios cloud
+
+6. Streaming de Video - Monitor Visual Profesional
+
+
+Diseña un monitor de video profesional tipo "Security Control Center":
+
+**LAYOUT PRINCIPAL:**
+- Header con título "Monitor del Laboratorio"
+- Indicador de estado de conexión
+- Controles globales: Grabación, Captura, Configuración
+- Información del sistema: Latencia, Resolución, FPS
+
+**VISTA PRINCIPAL DE VIDEO:**
+- Player de video WebRTC de pantalla completa
+- Controles de video profesionales:
+  * Play/Pause con botón grande
+  * Barra de progreso
+  * Controles de volumen
+  * Botón de pantalla completa
+  * Botón de grabación (rojo pulsante)
+- Overlay con información de robots:
+  * IDs de robots visibles
+  * Trayectorias en tiempo real
+  * Estado de cada robot
+  * Marcadores ArUco detectados
+- Indicadores de calidad:
+  * Latencia del video (ms)
+  * Resolución actual
+  * FPS del stream
+  * Calidad de conexión
+
+**PANEL DE CONTROLES:**
+- Configuración de cámara:
+  * Selección de cámara (dropdown)
+  * Resolución y calidad
+  * Filtros de imagen
+  * Estabilización
+  * Balance de blancos
+  * Exposición
+- Controles de grabación:
+  * Iniciar/Detener grabación
+  * Configuración de calidad
+  * Duración máxima
+  * Almacenamiento
+  * Compresión de video
+
+**PANEL DE ANÁLISIS VISUAL:**
+- Detección automática de robots:
+  * Contornos detectados
+  * IDs identificados
+  * Confianza de detección
+- Seguimiento de trayectorias:
+  * Trayectorias en tiempo real
+  * Predicción de movimiento
+  * Análisis de velocidad
+- Métricas de eficiencia visual:
+  * Cobertura del área
+  * Tiempo de exploración
+  * Patrones de movimiento
+- Alertas de colisión:
+  * Detección de proximidad
+  * Alertas visuales
+  * Historial de eventos
+
+**CONFIGURACIÓN AVANZADA:**
+- Parámetros de Tycho:
+  * Sensibilidad de detección
+  * Filtros de Kalman
+  * Calibración de cámara
+  * Parámetros de ArUco
+- Configuración de red:
+  * Latencia objetivo
+  * Calidad de stream
+  * Ancho de banda
+  * Protocolo de transmisión
+- Configuración de grabación:
+  * Formato de video
+  * Compresión
+  * Almacenamiento
+  * Retención de datos
+
+**PANEL DE HISTORIAL:**
+- Lista de grabaciones anteriores
+- Información de cada grabación:
+  * Fecha y hora
+  * Duración
+  * Tamaño del archivo
+  * Calidad
+  * Eventos detectados
+- Acciones disponibles:
+  * Reproducir
+  * Descargar
+  * Eliminar
+  * Compartir
+- Búsqueda y filtros
+- Exportación en lote
+
+
+7. Configuración del Sistema - Panel de Administración
+
+
+Diseña un panel de administración profesional tipo "Enterprise Admin Panel":
+
+**LAYOUT PRINCIPAL:**
+- Header con título "Configuración del Sistema"
+- Breadcrumb de navegación
+- Indicador de estado de configuración
+- Botón de guardar cambios
+- Botón de resetear configuración
+
+**NAVEGACIÓN LATERAL:**
+- Sidebar con secciones:
+  * General (icono de configuración)
+  * Robots (icono de robot)
+  * Red (icono de red)
+  * Seguridad (icono de candado)
+  * Notificaciones (icono de campana)
+  * Avanzado (icono de engranaje)
+- Indicador de sección activa
+- Contador de cambios no guardados
+
+**CONFIGURACIÓN GENERAL:**
+- Información del laboratorio:
+  * Nombre del laboratorio
+  * Descripción
+  * Ubicación
+  * Contacto del administrador
+- Configuración de interfaz:
+  * Idioma (dropdown)
+  * Tema (claro/oscuro/automático)
+  * Zona horaria
+  * Formato de fecha/hora
+- Configuración de usuario:
+  * Perfil de usuario
+  * Preferencias de notificaciones
+  * Configuración de privacidad
+
+**CONFIGURACIÓN DE ROBOTS:**
+- Lista de robots registrados:
+  * Tabla con información detallada
+  * Estado de conexión
+  * Última actividad
+  * Configuración de red
+- Configuración por robot:
+  * Parámetros de red
+  * Configuración de sensores
+  * Límites de recursos
+  * Configuración de SSH
+  * Actualización de firmware
+- Configuración global:
+  * Límites del sistema
+  * Políticas de uso
+  * Configuración de mantenimiento
+
+**CONFIGURACIÓN DE RED:**
+- Configuración WiFi:
+  * Redes disponibles
+  * Configuración de seguridad
+  * Ancho de banda
+  * Calidad de servicio
+- Configuración de puertos:
+  * Puertos abiertos
+  * Protocolos permitidos
+  * Configuración de firewall
+- Configuración de proxy:
+  * Servidor proxy
+  * Autenticación
+  * Configuración de SSL
+
+**CONFIGURACIÓN DE SEGURIDAD:**
+- Gestión de usuarios:
+  * Lista de usuarios
+  * Roles y permisos
+  * Configuración de acceso
+  * Políticas de contraseñas
+- Configuración de SSH:
+  * Claves SSH
+  * Configuración de acceso
+  * Políticas de seguridad
+- Logs de seguridad:
+  * Historial de accesos
+  * Intentos de intrusión
+  * Configuración de alertas
+- Políticas de sandboxing:
+  * Límites de recursos
+  * Configuración de Docker
+  * Políticas de ejecución
+
+**MONITOREO DEL SISTEMA:**
+- Métricas de rendimiento:
+  * Uso de CPU
+  * Uso de memoria
+  * Uso de disco
+  * Latencia de red
+- Estado de servicios:
+  * Estado de la API
+  * Estado de la base de datos
+  * Estado de Redis
+  * Estado de Celery
+- Alertas del sistema:
+  * Configuración de umbrales
+  * Canales de notificación
+  * Políticas de escalación
+- Logs del sistema:
+  * Filtros de logs
+  * Búsqueda en logs
+  * Exportación de logs
+  * Rotación de logs
+
+
+8. Notificaciones y Alertas - Sistema de Comunicación
+
+
+Diseña un sistema profesional de notificaciones tipo "Enterprise Notification Center":
+
+**LAYOUT PRINCIPAL:**
+- Header con título "Centro de Notificaciones"
+- Filtros y búsqueda
+- Controles de notificaciones
+- Indicador de notificaciones no leídas
+
+**PANEL DE NOTIFICACIONES:**
+- Lista de notificaciones con:
+  * Icono de tipo de notificación
+  * Título y descripción
+  * Timestamp
+  * Estado (leído/no leído)
+  * Prioridad (crítica, alta, media, baja)
+  * Acciones disponibles
+- Agrupación por fecha
+- Indicadores visuales de estado
+- Acciones en lote
+
+**TIPOS DE NOTIFICACIONES:**
+- Experimentos:
+  * Iniciado (verde)
+  * Completado (azul)
+  * Fallido (rojo)
+  * Pausado (amarillo)
+- Robots:
+  * Conectado (verde)
+  * Desconectado (rojo)
+  * Error (rojo)
+  * Mantenimiento (amarillo)
+- Sistema:
+  * Actualizaciones (azul)
+  * Mantenimiento (amarillo)
+  * Alertas (rojo)
+  * Información (gris)
+- Seguridad:
+  * Intentos de acceso (rojo)
+  * Violaciones (rojo)
+  * Cambios de configuración (amarillo)
+
+**CONFIGURACIÓN DE ALERTAS:**
+- Preferencias por tipo:
+  * Canales de notificación
+  * Horarios de notificación
+  * Umbrales de alerta
+  * Políticas de escalación
+- Canales disponibles:
+  * In-app (notificaciones web)
+  * Email
+  * SMS
+  * Webhook
+  * Slack/Teams
+- Configuración de horarios:
+  * Horarios de trabajo
+  * Días de la semana
+  * Zona horaria
+  * Políticas de emergencia
+
+**HISTORIAL DE NOTIFICACIONES:**
+- Búsqueda avanzada:
+  * Por contenido
+  * Por tipo
+  * Por fecha
+  * Por usuario
+  * Por estado
+- Filtros múltiples
+- Exportación de logs
+- Análisis de patrones
+- Estadísticas de notificaciones
+
+**CONFIGURACIÓN DE EMERGENCIA:**
+- Alertas críticas:
+  * Configuración de umbrales
+  * Canales de emergencia
+  * Políticas de escalación
+  * Contactos de emergencia
+- Configuración de sistema:
+  * Modo de mantenimiento
+  * Políticas de notificación
+  * Configuración de backup
+  * Políticas de retención

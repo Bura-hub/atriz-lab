@@ -1,0 +1,198 @@
+Desarrollo de un laboratorio remoto y abierto en la l´ınea de rob´otica de
+enjambres para la Universidad de Nari˜no
+Estrategia de implementaci´on
+David Garz´on Ramos
+May 27, 2024
+Un enjambre de robots es un grupo de robots aut´onomo y auto-organizado. Los robots de un enjambre de robots
+operan mediante percepci´on local y reactiva, y no requieren de control centralizado o infraestructura externa para
+ejecutar sus tareas. El comportamiento colectivo de un enjambre nace de las interacciones individuales entre robots,
+y entre robots y su entorno. Para un discusi´on mas extensa sobre rob´otica de enjambres, ver Dorigo et al. [1,2] y
+Brambilla et al. [3].
+En el proyecto se propone el despliegue un laboratorio remoto y abierto para experimentar con rob´otica de
+enjambres en la Universidad de Nari˜no. El car´acter remoto da a cuenta la posibilidad de acceder al laboratorio y
+experimentar con los robots a trav´es de internet. El car´acter abierto describe la misi´on de compartir los dise˜nos
+de hardware y software para que puedan ser reproducidos en otras instituciones. En este documento se resume la
+estrategia de implementaci´on del laboratorio. Adicionalmente, se listan algunas oportunidades pedag´ogicas para
+articular el proyecto con otras actividades en de la Universidad de Nari˜no.
+1 Descripci´on general del sistema
+La Figura1ilustra la infraestructura requerida para desplegar el laboratorio. A continuaci´on se describe en forma
+general cada uno de los componentes.
+1.1 Robots
+Los robots considerados en la planeaci´on del proyecto son una adaptaci´on de Mercator: un robot dise˜nador para
+realizar experimentos con enjambres de robots. Una descripci´on completa del robot est´a disponible en Kegeleirs et
+al. [4]. Mercator es una versi´on extendida del robot RVR
+. El robot RVR es un robot
+de orugas de accionamiento diferencial que cuenta con sensores de color del suelo, sensor de intensidad lum´ınica,
+LEDs RGB, y transceptores infrarrojos. Adicionalmente, en Mercator se han a˜nadido una Raspberry Pi, sensores
+infrarrojos de proximidad y un sensor de distancia tipo LIDAR. Los dos componentes de hardware principales
+para operar Mercator son el robot RVR y la Raspberry Pi. Dependiendo del presupuesto final por cada robot, se
+pueden escoger combinaciones alternativas de sensores para Mercator. Por ejemplo, si el LIDAR saca el robot de
+presupuesto, podr´ıa reemplazarse por una c´amara USB y algunos sensores de proximidad.
+El robot RVR, en si mismo, est´a dise˜nador para emplearse en actividades educativas. Sphero provee dos formas
+de interactuar con el RVR. A un nivel m´as b´asico, el robot se puede programar y controlar con un dispositivo m´ovil
+o un ordenador conectado al robot mediante una conexi´on Bluetooth. El software de control del robot se ejecuta
+en el dispositivo m´ovil u ordenador y se comunican comandos de velocidad al robot a trav´es de Blueetooth. En
+un nivel m´as avanzado, se puede programar y controlar el robot mediante un ordenador conectado f´ısicamente al
+robot con una conexi´on UART. En la conexi´on UART, es posible controlar el robot mediante una API en Python
+provista por el fabricante del robot.
+1
+, de la empresa Sphero
+2
+1
+https://sphero.com/products/rvr
+2
+https://sphero.com
+1
+Figure 1: Ilustraci´on representativa de la infraestructura del laboratorio: 1) Robots; 2) V´ıdeo y seguimiento; 3)
+, con
+una instalaci´on de Ubuntu 20.04 Focal Fossa
+En el caso de Mercator, el robot RVR est´a f´ısicamente conectado a una Raspberry Pi 4 Model B 8GB
+3
+. La Rasbperry Pi 4 es el ordenador embebido del robot y ejecuta
+directamente el control software. Cada robot tiene su propia Raspberri Pi, y de esta forma los robots del enjambre
+operan de forma aut´onoma sin necesidad de control centralizado. El sistema operativo se encarga de gestionar y
+ejecutar en paralelo los procesos asociados a la operaci´on del robot. El ordenador embebido y el sistema operativo
+permiten una conexi´on remota a los robots mediante clientes SSH. La Raspberry Pi tambi´en permite la conexi´on
+de otros dispositivos como los sensores de proximidad y el LIDAR.
+En Mercator, no se programa directamente el robot mediante la API provista por Sphero. En su lugar, se emplea
+el Robot Operating System (Robot Operating System), versi´on Noetic. Robot Operating System
+4
+es un conjunto
+de herramientas para el desarrollo de rob´otica que se ha convertido en la soluci´on de facto para desarrollar este
+tipo de sistemas—tanto en la academia como en la industria. Robot Operating System tiene provee herramientas
+para la gesti´on de comunicaci´on entre procesos y librer´ıas para el desarrollo de software de rob´otica. El software
+del robot tiene dos componentes principales. Primero, un driver que recibe y almacena informaci´on proveniente de
+el RVR y otros sensores, y tambi´en comunica los comandos de control a las orugas y LEDs del robot. Segundo,
+el software de control en donde se ejecuta la l´ogica de control para desarrollar una tarea espec´ıca con los robots.
+El driver se desarrolla una vez y se mantiene sin modificaciones—a este solo tienen acceso los responsables de los
+robots. En Mercator, el driver est´a desarrollado en C++. El software de control es el nivel en donde los usuarios
+experimentan con el robot y se desarrolla en Python.
+La versi´on original de Mercator fue dise˜nada en IRIDIA, el laboratorio para el desarrollo de inteligencia artificial
+de la Unviersit´e libre de Bruxelles, B´elgica. Actualmente, el robot se encuentra en un nuevo proceso de prototipado
+y su software tiene soporte por parte de IRIDIA.
+5
+1.2 V´ıdeo y monitorizaci´on
+El laboratorio requiere un sistema de monitorizaci´on del enjambre mediante v´ıdeo. El sistema propuesto se basa
+en Tycho: un sistema de seguimiento de robots basado en Robot Operating System. Una descripci´on completa
+de Tycho est´a disponible en Legarda et al. [5]. Tycho es un sistema de seguimiento de trayectorias que emplea
+c´amaras cenitales, filtros de Kalman y marcadores ArUco
+6
+para hacer una monitorizaci´on robusta de las posiciones
+3
+https://www.raspberrypi.com/products/raspberry-pi-4-model-b/specifications
+4
+https://wiki.ubuntu.com/Releases
+5
+https://www.ros.org
+6
+https://docs.opencv.org/4.x/d9/d6d/tutorial_table_of_content_aruco.htm
+2
+de los robots durante la ejecuci´on de un experimento. Originalmente, Tycho ha sido implementado con cuatro
+c´amaras Ethernet que proveen un streaming constante de v´ıdeo a un ordenador en donde se ejecuta el software de
+seguimiento de trayectorias. Sin embargo, las c´amaras Ethernet pueden ser reemplazadas por una o m´as c´amaras
+USB, para reducir costos y simplificar los requerimientos de infraestructura.
+En el actual proyecto, el sistema de monitorizaci´on permitir´a visualizar de forma remota la ejecuci´on de los
+experimentos. Tambi´en, autom´aticamente proveer´a estimados de la eficiencia de los robots en la ejecuci´on de la
+tarea propuesta en los experimentos. El sistema de monitorizaci´on no es requerido para que los robots ejecuten su
+software de control.
+La versi´on original de Tycho fue dise˜nada en IRIDIA y actualmente el software tiene soporte por parte del
+grupo.
+1.3 Servidor para gesti´on de experimentos
+La gesti´on de experimentos debe ejecutarse en un ordenador dedicado para ello. Sus funciones principales son:
+(i) recibir y transmitir el v´ıdeo en la conexi´on de clientes remotos; (ii) aceptar el software de control (scripts
+de Python) provistos por los clientes remotos; (iii) ejecutar el software de seguimiento de trayectorias para la
+monitorizaci´on de experimentos; (ii) desplegar el software de control en los robots mediante SSH; (iv) iniciar,
+registrar, y detener experimentos; (v) devolver resultados de los experimentos a los clientes remotos. El servidor
+debe ejecutar el software de seguimiento de trayectorias, y por tanto, debe ser compatible con la versi´on de ROS
+sobre la cual han sido desarrolladas las herramientas. Al igual que Mercator, el servidor deber´ıa correr Ubuntu
+20.04 Focal Fossa. Los requisitos computacionales son est´andar, con preferencia a un n´umero elevado de n´ucleos.
+A priori, no se espera que el servidor requiera GPUs para operar.
+En su forma m´as b´asica, el servidor podr´ıa proveer acceso a los usuarios mediante una conexi´on SSH. La
+seguridad del servidor es un problema a abordar.
+1.4 Cliente para ejecuci´on de experimentos
+El cliente para la ejecuci´on remota de experimentos deber´ıa permitir a los usuarios visualizar el streaming de v´ıdeo de
+el laboratorio, enviar un script de Python que tenga la l´ogica de control de los robots, y gestionar los experimentos.
+Idealmente, este cliente debe ser ligero y no deber´ıa poner restricciones a los usuarios en cuanto a tipo de ordenador
+o sistema operativo. Podr´ıan considerarse aplicaciones web que sean clientes que se conectan al servidor de gesti´on
+de experimentos. A´un no se han identificado herramientas de partida para desarrollar este cliente.
+1.5 Conexi´on Robots-Servidor
+La conexi´on entre robots y servidor se realiza de forma inal´ambrica mediante WiFi y conexiones SSH. Para esto se
+requiere desplegar una red WiFi a la cual se conectan los robots y el servidor.
+1.6 Conexi´on c´amaras-Servidor
+La conexi´on entre c´amaras y servidor se realiza de forma cableada para disminuir la latencia en la transmisi´on de
+v´ıdeo
+1.7 Conexi´on Clientes-Servidor
+Los clientes deben conectarse al servidor de gesti´on de experimentos por internet.
+1.8 Estaci´on de carga
+Es posible cargar las bater´ıas de los robots mediante conexiones USB. Se requiere desarrollar una estaci´on de carga
+para alimentar simult´aneamente m´ultiples bater´ıas.
+3
+2 Oportunidades
+A continuaci´on se detallan algunas oportunidades para articular el desarrollo del proyecto con otras actividades
+acad´emicas que podr´ıan realizarse en la Universidad de Nari˜no.
+2.1 Simulaci´on
+Actualmente, se pueden simular experimentos de rob´otica de enjambres con Mercator utilizando el simulador ARGoS3
+7
+. ARGoS3 [6] es un simulador especializado en la experimentaci´on con sistemas multi-robot, el cu´al se basa
+en modelos simplificados de los robots. C´omo alternativa, se podr´ıa desarrollar una versi´on simulada del laboratorio
+remoto en Gazebo
+. Gazebo un simulador de alta fidelidad directamente compatible con Robot Operating System
+y que es ampliamente utilizado para desarrollar sistemas robotizados—desde robots m´oviles a manipuladores. Una
+oportunidad de trabajo podr´ıa ser desarrollar una versi´on simulada del laboratorio, para que los estudiantes puedan
+trabajar en sus desarrollos a´un cuando el laboratorio se encuentra off-line. Esto permitir´ıa tambi´en a los estudiantes
+estudiar las diferencias de los resultados obetnidos en simulaci´on con los resultados obtenidos con los robots f´ısicos.
+8
+2.2 Nuevos m´odulos de hardware/software para Mercator
+Dado que Mercator opera con una Raspberry Pi y con Robot Operating System, es posible desarrollar nuevos
+m´odulos para ser a˜nadidos a los robots. Por ejemplo, podr´ıa establecerse actividades acad´emicas en donde los
+estudiantes construyen nuevas funcionalidades para los robots—por ejemplo, procesamiento de audio, registro de
+temperatura, entre otros.
+2.3 Entornos interactivos para los robots
+Los robots de un enjambre tienen capacidades sensoriales y de actuaci´on relativamente simples. Una estrategia
+para compensar sus capacidades imples es desarrollar entornos interactivos que permitan interactuar de forma m´as
+rica con los robots. Por ejemplo, MoCA [7] es un entorno RGB programable que permite brindar informaci´on a
+los robots durante la ejecuci´on de una tarea. Cuando MoCA toma un color (por ejemplo rojo) los robots deben
+ejecutar una tarea A, y cuando MoCa cambia su color (por ejemplo a Azul), los robots deben ejecutar una tarea B.
+De este modo, es posible crear experimentos m´as ricos en donde los robots deben reaccionar a los cambios ocurridos
+en su entorno. Esta podr´ıa ser una estrategia para incrementar la dificultad de los retos que se pueden proponer a
+los estudiantes.
+2.4 Uso de los robots
+Los robots RVR pueden ser operados directamente desde un dispositivo m´ovil y sin la necesidad de una Raspberry
+Pi. La aplicaci´on desarrollada por Sphero provee un lenguage de programaci´on gr´afico para jugar con los robots.
+De este modo, los robots RVR podr´ıan aprovecharse desde el momento de su compra para realizar actividades y
+competiciones con los estudiantes. Para las actividades m´as avanzadas, se podr´ıa usar a Mercator (RVR + Raspberri
+Pi + otros sensores). Para actividades m´as pedag´ogicas, se podr´ıa usar el RVR y cada estudiante usar´ıa su tel´efono
+o portatil para operar los robots.
+2.5 Actividades acad´emicas
+En torno al desarrollo del proyecto se podr´ıan llevar a cabo workshops, tutoriales, y competiciones en la programaci´on
+de robots. Estos podr´ıan hacerse en principio en simulaci´on. Los estudiantes podr´ıan adquirir habilidades
+transversales en la programaci´on con Python, el uso de sistemas operativos basados en Linux, entre otros.
+2.6 Matlab
+Matlab cuenta con un toolbox que sirve de interfaz con dispositivos que corren software desarrollado con Robot
+Operating System. Con acceso directo a la red de los robots, los estudiantes podr´ıan desarrollar la l´ogica de control
+7
+https://www.argos-sim.info
+8
+https://staging.gazebosim.org/home
+4
+de los robots en Matlab y podr´ıan ejecutarla en sus ordenadores. En este caso, la Raspberry pi solo servir´ıa de
+puente entre el RVR y el ordenador de los estudiantes.
+References
+[1]Marco Dorigo, Guy Theraulaz, and Vito Trianni. Swarm robotics: past, present, and future [point of view].
+Proceedings of the IEEE, 109(7):1152–1165, 2021.
+[2]Marco Dorigo, Mauro Birattari, and Manuele Brambilla. Swarm robotics. Scholarpedia, 9(1):1463, 2014.
+[3]Manuele Brambilla, Eliseo Ferrante, Mauro Birattari, and Marco Dorigo. Swarm robotics: a review from the
+swarm engineering perspective. Swarm Intelligence, 7(1):1–41, 2013.
+[4]Miquel Kegeleirs, Raffaele Todesco, David Garz´on Ramos, Guillermo Legarda Herranz, and Mauro Birattari.
+Mercator: hardware and software architecture for experiments in swarm SLAM. Technical Report
+TR/IRIDIA/2022-012, IRIDIA, Universit´e libre de Bruxelles, Brussels, Belgium, 2022.
+[5]Guillermo Legarda Herranz, David Garz´on Ramos, Jonas Kuckling, Miquel Kegeleirs, and Mauro Birattari. Tycho:
+a robust, ROS-based tracking system for robot swarms. Technical Report TR/IRIDIA/2022-009, IRIDIA,
+Universit´e Libre de Bruxelles, Brussels, Belgium, 2022.
+[6]Carlo Pinciroli, Vito Trianni, Rehan O’Grady, Giovanni Pini, Arne Brutschy, Manuele Brambilla, Nithin Mathews,
+Eliseo Ferrante, Gianni A. Di Caro, Frederick Ducatelle, Mauro Birattari, Luca Maria Gambardella, and
+Marco Dorigo. ARGoS: a modular, parallel, multi-engine simulator for multi-robot systems. Swarm Intelligence,
+6(4):271–295, 2012.
+[7]David Garz´on Ramos, Muhammad Salman, Keneth Ubeda Arriaza, Ken Hasselmann, and Mauro Birattari.
+MoCA: a modular RGB color arena for swarm robotics experiments. Technical Report TR/IRIDIA/2022-014,
+IRIDIA, Universit´e libre de Bruxelles, Brussels, Belgium, 2022.

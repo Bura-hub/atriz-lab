@@ -1,0 +1,353 @@
+---
+description: Telemetry and video streaming patterns
+---
+
+# Telemetría y Streaming de Video - Patrones de Desarrollo
+
+## Arquitectura de Telemetría
+
+### Flujo de Datos de Alta Frecuencia
+```
+Robot (ROS) → Foxglove Bridge → Backend → WebSockets → Frontend
+```
+
+### Componentes Críticos
+- **Foxglove Bridge**: Puente ROS-Web de alto rendimiento (C++)
+- **WebSockets**: Comunicación bidireccional en tiempo real
+- **Redis**: Caché para datos de telemetría
+- **TimescaleDB**: Almacenamiento de series de tiempo
+
+## Patrones de Telemetría
+
+### 1. Data Collection (Recolección de Datos)
+```python
+# Ejemplo de recolección de telemetría
+import rospy
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import Imu
+
+class TelemetryCollector:
+    def __init__(self):
+        rospy.init_node('telemetry_collector')
+        self.odom_sub = rospy.Subscriber('/rvr/odom', Odometry, self.odom_callback)
+        self.imu_sub = rospy.Subscriber('/rvr/imu', Imu, self.imu_callback)
+        self.data_buffer = []
+    
+    def odom_callback(self, msg):
+        data = {
+            'timestamp': rospy.Time.now().to_sec(),
+            'x': msg.pose.pose.position.x,
+            'y': msg.pose.pose.position.y,
+            'theta': msg.pose.pose.orientation.z
+        }
+        self.data_buffer.append(data)
+```
+
+### 2. Real-time Transmission (Transmisión en Tiempo Real)
+```python
+# Ejemplo de transmisión WebSocket
+import asyncio
+import websockets
+import json
+
+class TelemetryWebSocket:
+    def __init__(self):
+        self.clients = set()
+    
+    async def register_client(self, websocket):
+        self.clients.add(websocket)
+        try:
+            await websocket.wait_closed()
+        finally:
+            self.clients.remove(websocket)
+    
+    async def broadcast_telemetry(self, data):
+        if self.clients:
+            message = json.dumps(data)
+            await asyncio.gather(
+                *[client.send(message) for client in self.clients],
+                return_exceptions=True
+            )
+```
+
+### 3. Data Visualization (Visualización de Datos)
+```typescript
+// Ejemplo de visualización en Frontend
+import { useEffect, useState } from 'react';
+import { Line } from 'react-chartjs-2';
+
+const TelemetryChart = () => {
+  const [data, setData] = useState([]);
+  
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/ws/telemetry');
+    ws.onmessage = (event) => {
+      const telemetryData = JSON.parse(event.data);
+      setData(prev => [...prev, telemetryData]);
+    };
+    
+    return () => ws.close();
+  }, []);
+  
+  return <Line data={data} />;
+};
+```
+
+## Streaming de Video con WebRTC
+
+### 1. Server-side Signaling (Señalización del Servidor)
+```python
+# Ejemplo de señalización WebRTC
+from fastapi import WebSocket
+import json
+
+class WebRTCSignaling:
+    def __init__(self):
+        self.sessions = {}
+    
+    async def handle_signaling(self, websocket: WebSocket, session_id: str):
+        await websocket.accept()
+        self.sessions[session_id] = websocket
+        
+        try:
+            while True:
+                data = await websocket.receive_text()
+                message = json.loads(data)
+                
+                if message['type'] == 'offer':
+                    # Procesar offer SDP
+                    await self.handle_offer(session_id, message)
+                elif message['type'] == 'answer':
+                    # Procesar answer SDP
+                    await self.handle_answer(session_id, message)
+        except WebSocketDisconnect:
+            del self.sessions[session_id]
+```
+
+### 2. Client-side WebRTC (WebRTC del Cliente)
+```typescript
+// Ejemplo de cliente WebRTC
+class WebRTCClient {
+  private peerConnection: RTCPeerConnection;
+  private websocket: WebSocket;
+  
+  constructor() {
+    this.peerConnection = new RTCPeerConnection({
+      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+    });
+    
+    this.websocket = new WebSocket('ws://localhost:8000/ws/video');
+    this.setupSignaling();
+  }
+  
+  private setupSignaling() {
+    this.websocket.onmessage = async (event) => {
+      const message = JSON.parse(event.data);
+      
+      if (message.type === 'offer') {
+        await this.peerConnection.setRemoteDescription(message.offer);
+        const answer = await this.peerConnection.createAnswer();
+        await this.peerConnection.setLocalDescription(answer);
+        
+        this.websocket.send(JSON.stringify({
+          type: 'answer',
+          answer: answer
+        }));
+      }
+    };
+  }
+}
+```
+
+## Integración con Sistema Tycho
+
+### 1. Tycho Data Processing (Procesamiento de Datos Tycho)
+```python
+# Ejemplo de procesamiento de datos Tycho
+import rospy
+from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Float32
+
+class TychoProcessor:
+    def __init__(self):
+        rospy.init_node('tycho_processor')
+        self.pose_sub = rospy.Subscriber('/tycho/pose', PoseStamped, self.pose_callback)
+        self.efficiency_sub = rospy.Subscriber('/tycho/efficiency', Float32, self.efficiency_callback)
+        self.trajectory_data = []
+        self.efficiency_data = []
+    
+    def pose_callback(self, msg):
+        pose_data = {
+            'timestamp': rospy.Time.now().to_sec(),
+            'x': msg.pose.position.x,
+            'y': msg.pose.position.y,
+            'z': msg.pose.position.z
+        }
+        self.trajectory_data.append(pose_data)
+    
+    def efficiency_callback(self, msg):
+        efficiency_data = {
+            'timestamp': rospy.Time.now().to_sec(),
+            'efficiency': msg.data
+        }
+        self.efficiency_data.append(efficiency_data)
+```
+
+### 2. Tycho Visualization (Visualización Tycho)
+```typescript
+// Ejemplo de visualización de trayectorias
+import { useEffect, useState } from 'react';
+import { MapContainer, TileLayer, Polyline } from 'react-leaflet';
+
+const TychoMap = () => {
+  const [trajectories, setTrajectories] = useState([]);
+  
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8000/ws/tycho');
+    ws.onmessage = (event) => {
+      const tychoData = JSON.parse(event.data);
+      setTrajectories(prev => [...prev, tychoData]);
+    };
+    
+    return () => ws.close();
+  }, []);
+  
+  return (
+    <MapContainer center={[0, 0]} zoom={13}>
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      {trajectories.map((trajectory, index) => (
+        <Polyline
+          key={index}
+          positions={trajectory.positions}
+          color={trajectory.color}
+        />
+      ))}
+    </MapContainer>
+  );
+};
+```
+
+## Optimizaciones de Rendimiento
+
+### 1. Data Compression (Compresión de Datos)
+```python
+# Ejemplo de compresión de telemetría
+import zlib
+import json
+
+def compress_telemetry_data(data):
+    json_data = json.dumps(data)
+    compressed = zlib.compress(json_data.encode())
+    return compressed
+
+def decompress_telemetry_data(compressed_data):
+    decompressed = zlib.decompress(compressed_data)
+    return json.loads(decompressed.decode())
+```
+
+### 2. Data Batching (Agrupación de Datos)
+```python
+# Ejemplo de agrupación de datos
+import asyncio
+from collections import deque
+
+class TelemetryBatcher:
+    def __init__(self, batch_size=10, batch_interval=0.1):
+        self.batch_size = batch_size
+        self.batch_interval = batch_interval
+        self.data_buffer = deque()
+        self.last_batch_time = time.time()
+    
+    async def add_data(self, data):
+        self.data_buffer.append(data)
+        
+        if (len(self.data_buffer) >= self.batch_size or 
+            time.time() - self.last_batch_time >= self.batch_interval):
+            await self.flush_batch()
+    
+    async def flush_batch(self):
+        if self.data_buffer:
+            batch = list(self.data_buffer)
+            self.data_buffer.clear()
+            self.last_batch_time = time.time()
+            await self.send_batch(batch)
+```
+
+### 3. Connection Pooling (Agrupación de Conexiones)
+```python
+# Ejemplo de agrupación de conexiones
+import asyncio
+from asyncio import Queue
+
+class ConnectionPool:
+    def __init__(self, max_connections=100):
+        self.max_connections = max_connections
+        self.connections = Queue(maxsize=max_connections)
+        self.active_connections = 0
+    
+    async def get_connection(self):
+        if self.connections.empty() and self.active_connections < self.max_connections:
+            connection = await self.create_connection()
+            self.active_connections += 1
+            return connection
+        else:
+            return await self.connections.get()
+    
+    async def return_connection(self, connection):
+        await self.connections.put(connection)
+```
+
+## Monitoreo y Alertas
+
+### 1. Performance Metrics (Métricas de Rendimiento)
+```python
+# Ejemplo de métricas de rendimiento
+import time
+from prometheus_client import Counter, Histogram, Gauge
+
+# Métricas de telemetría
+telemetry_messages = Counter('telemetry_messages_total', 'Total telemetry messages')
+telemetry_latency = Histogram('telemetry_latency_seconds', 'Telemetry processing latency')
+active_connections = Gauge('active_websocket_connections', 'Active WebSocket connections')
+
+class TelemetryMetrics:
+    def __init__(self):
+        self.start_time = time.time()
+    
+    def record_message(self):
+        telemetry_messages.inc()
+    
+    def record_latency(self, latency):
+        telemetry_latency.observe(latency)
+    
+    def update_connections(self, count):
+        active_connections.set(count)
+```
+
+### 2. Error Handling (Manejo de Errores)
+```python
+# Ejemplo de manejo de errores robusto
+import logging
+from typing import Optional
+
+class TelemetryErrorHandler:
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.retry_count = 0
+        self.max_retries = 3
+    
+    async def handle_telemetry_error(self, error: Exception, data: dict) -> Optional[dict]:
+        self.logger.error(f"Telemetry error: {error}")
+        
+        if self.retry_count < self.max_retries:
+            self.retry_count += 1
+            await asyncio.sleep(2 ** self.retry_count)  # Exponential backoff
+            return await self.retry_telemetry(data)
+        else:
+            self.logger.critical("Max retries exceeded for telemetry")
+            return None
+    
+    async def retry_telemetry(self, data: dict) -> dict:
+        # Implementar lógica de reintento
+        pass
+```

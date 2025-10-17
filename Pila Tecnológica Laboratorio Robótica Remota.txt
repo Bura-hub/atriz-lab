@@ -1,0 +1,435 @@
+﻿Reporte Técnico sobre la Pila Tecnológica para el Laboratorio Remoto de Robótica de Enjambres Atriz
+
+
+
+
+1. Arquitectura de Referencia General
+
+
+El diseño del Laboratorio Remoto Atriz se fundamenta en una arquitectura de tres capas: Cliente, Servidor de Gestión y Robot (CSR). Esta estructura es esencial para desacoplar las responsabilidades de la interacción remota, la orquestación de experimentos y la ejecución autónoma en el hardware embebido.
+
+
+1.1. Estructura Cliente-Servidor-Robot (CSR) y Flujo de Datos
+
+
+Los robots Mercator, basados en Sphero RVR modificados con Raspberry Pi 4, operan de manera autónoma utilizando ROS Noetic en Ubuntu 20.04.1 El Servidor Central debe actuar como un punto de agregación y despliegue, facilitando la interacción entre los clientes remotos a través de Internet y la flota de robots vía WiFi.
+El flujo de control, que inicia con la subida de scripts de usuario, se establece de la siguiente manera:
+1. Cliente a Servidor: El usuario remoto interactúa con la plataforma web (Frontend) y sube un script Python conteniendo la lógica de control del enjambre. La petición se procesa a través de una API REST del Backend (Servidor de Gestión), donde se realiza la autenticación y el almacenamiento inicial del código.
+2. Servidor a Robot (Despliegue de Control): El Backend, a través de un servicio de Ejecución Remota de Código (RCE) en un entorno aislado (Sandbox), utiliza un túnel SSH y el protocolo SCP/SFTP para transferir el script Python al Raspberry Pi de destino.2 Posteriormente, se ejecuta un comando remoto SSH (roslaunch o rosrun) para iniciar el experimento dentro del entorno aislado del robot.
+El flujo de datos de retorno (telemetría y monitoreo) debe priorizar la baja latencia:
+1. Robot a Servidor (Telemetría): Los nodos ROS del robot (el driver híbrido C++/Python) publican datos continuos de odometría, IMU y estado a alta frecuencia (20-30 Hz).1 Un componente crucial, el puente ROS-Web de alto rendimiento (ver Sección 1.3), consume estos tópicos.
+2. Servidor a Cliente (Visualización): El Backend retransmite estos datos:
+   * Telemetría: Vía WebSockets para la visualización de métricas y estados en tiempo real.
+   * Video y Seguimiento (Tycho): Utilizando el protocolo WebRTC para garantizar una latencia ultrabaja, esencial para la conciencia situacional remota.3
+
+
+1.2. Mecanismos de Conexión SSH y Flujo de Despliegue
+
+
+La conectividad Robots-Servidor se realiza mediante conexiones inalámbricas (WiFi) y SSH.1 El servidor actúa como un nodo de salto seguro, gestionando la orquestación.
+Para el despliegue de scripts, el servidor debe utilizar librerías Python de bajo nivel (como Paramiko) para dos tareas fundamentales:
+1. Transferencia de Archivos: Usar SCP para mover el script del usuario al Raspberry Pi.
+2. Ejecución Remota: Invocar comandos de shell remotos para iniciar el script dentro del entorno de ejecución aislado del robot (ejecutando un comando source /opt/ros/noetic/setup.bash && python3 user_script.py).
+
+
+1.3. Integración del Sistema de Monitoreo (Tycho)
+
+
+El Servidor Central es responsable de ejecutar el sistema Tycho, un sistema de seguimiento de trayectorias basado en ROS que emplea cámaras cenitales, filtros de Kalman y marcadores ArUco.1 La ejecución de Tycho en el servidor refuerza la necesidad de que este último sea compatible con ROS Noetic.
+La información crítica generada por Tycho (pose estimada, trayectorias y métricas de eficiencia del enjambre) debe ser consumida por el Backend y serializada para su envío al Frontend. Para este flujo de datos de alta frecuencia, es fundamental la elección de un puente ROS-Web de alto rendimiento.
+La limitación de ancho de banda impuesta por el puerto UART (115200 bps) del RVR para la telemetría 1 exige que cualquier sobrecarga de software se minimice. Por ello, el análisis favorece un puente ROS-Web implementado en C++, como Foxglove Bridge.5 El uso de una implementación de alto rendimiento evita que la serialización de mensajes ROS (como la odometría o los datos IMU publicados a 20-30 Hz) se convierta en un cuello de botella de software y garantiza que la latencia total del sistema se aproxime al límite físico impuesto por la comunicación serial subyacente.
+
+
+1.4. Uso de Contenedores y Entornos Virtualizados
+
+
+Se establece una estrategia de aislamiento en dos niveles para garantizar la seguridad y la reproducibilidad:
+1. Aislamiento del Servidor (Orquestación DevOps): Todos los servicios de Backend (API web, bases de datos, colas de tareas y el puente ROS-Web) deben estar encapsulados y orquestados mediante Docker Compose. Esto asegura un entorno reproducible, facilita el mantenimiento y simplifica el proceso de despliegue.
+2. Aislamiento del Robot (Runtime del Usuario): El driver principal ROS Noetic del robot debe ejecutarse directamente sobre el sistema operativo base del Raspberry Pi (Ubuntu 20.04) para optimizar el acceso de baja latencia a la UART del RVR.1 Sin embargo, la lógica de control del usuario (script Python) debe ejecutarse en un entorno aislado, tal como un entorno virtual Python (venv) o un contenedor Docker con recursos limitados.6 Este aislamiento es crucial para proteger el sistema operativo base de ROS de código malicioso o defectuoso, una necesidad crítica en un laboratorio de RCE multiusuario.8
+
+
+2. Backend (Servidor de Gestión de Experimentos)
+
+
+El servidor de gestión de experimentos es el orquestador central que maneja la concurrencia multiusuario, la seguridad del código y la interacción con los robots.
+
+
+2.1. Lenguajes y Frameworks Web Recomendados
+
+
+El Backend requiere un framework capaz de gestionar grandes volúmenes de tareas de E/S (I/O bound), como WebSockets persistentes para telemetría, el polling de estado de colas y las conexiones SSH concurrentes para el despliegue.
+La recomendación es FastAPI (Python).
+Justificación: FastAPI es nativamente asíncrono, construido sobre el estándar ASGI (así como Starlette y Uvicorn), lo que le permite manejar la concurrencia de miles de conexiones simultáneas con un rendimiento significativamente superior en tareas de E/S en comparación con las arquitecturas síncronas tradicionales de Python (como las versiones históricas de Django).9
+La elección de un framework asíncrono como FastAPI es fundamental para el aislamiento del rendimiento entre sesiones de usuario. Por ejemplo, si el despliegue SSH para el Usuario A se retrasa debido a una interrupción en la conexión WiFi, un Backend síncrono bloquearía el hilo de gestión, impidiendo que el Usuario B reciba datos de telemetría en tiempo real. FastAPI, al utilizar async/await, suspende elegantemente la tarea de despliegue de A y continúa procesando el streaming de B, garantizando la equidad y la capacidad de respuesta en un entorno multiusuario. Adicionalmente, FastAPI ofrece validación automática de datos mediante Pydantic y documentación API (OpenAPI/Swagger) de forma nativa, lo cual es esencial para la seguridad y la mantenibilidad académica.
+
+
+2.2. Tecnologías para Ejecutar Scripts de Usuarios en Entornos Seguros (Sandboxing)
+
+
+La Ejecución Remota de Código (RCE) es el punto de mayor riesgo de seguridad. La estrategia de sandboxing debe ser robusta para imponer aislamiento de red, archivos y recursos.
+La estrategia más recomendable es la combinación de Contenedores Docker con la imposición de límites mediante cgroups y ulimit.
+* Aislamiento de Entorno: Cada experimento de usuario debe ejecutarse dentro de un contenedor Docker efímero.8 Docker proporciona aislamiento de namespaces de red y de sistema de archivos, garantizando que el código de un usuario no pueda acceder a los datos de otro usuario ni al sistema operativo central.
+* Límites de Recursos (cgroups/ulimit): El aislamiento de namespaces debe complementarse con la limitación de recursos a nivel de kernel. Los cgroups (Control Groups) se utilizan para limitar el uso de CPU y RAM, previniendo ataques de Denegación de Servicio (DoS), como los bucles infinitos o las asignaciones masivas de memoria, que podrían inmovilizar al robot o al servidor de gestión.11 El comando ulimit puede imponer límites específicos dentro del contenedor, como el tiempo máximo de CPU (ulimit -t) y el número máximo de procesos (ulimit -u) que puede generar el script.12
+* Interacción Segura con ROS: El contenedor RCE en el Raspberry Pi debe ejecutarse con acceso controlado a la red ROS para que el script del usuario pueda publicar comandos (/cmd_vel) y suscribirse a datos de sensores. Los límites impuestos por cgroups garantizan que, incluso con acceso a la red, el proceso no pueda sobrecargar el roscore ni interferir con el driver base del RVR.
+
+
+2.3. Integración con ROS y Gestión de Colas y Tareas Distribuidas
+
+
+La comunicación entre el Backend (FastAPI) y el ecosistema ROS se gestiona a través de dos mecanismos:
+1. Tiempo Real (Telemetría): Usando el Foxglove Bridge (C++ de alto rendimiento) para la ingesta de datos ROS y su retransmisión al Frontend vía WebSockets.
+2. Orquestación Asíncrona (Tareas de Larga Duración): Para gestionar el flujo de experimentos multiusuario (subida, despliegue, espera y recolección de resultados), se requiere una cola de tareas distribuida.
+La recomendación es Celery como gestor de colas, utilizando Redis como broker y backend de resultados.13 Celery permite al Backend web (FastAPI) delegar tareas que consumen tiempo (como la transferencia de archivos SSH y la espera de la finalización del experimento) a procesos worker separados. Esto evita que las peticiones HTTP/WebSockets del Frontend se bloqueen, manteniendo la capacidad de respuesta del sistema.
+
+
+2.4. Bases de Datos Adecuadas para Registros de Experimentos
+
+
+El sistema debe almacenar metadatos estructurados y logs de telemetría masiva (series de tiempo) de alta frecuencia.
+* Metadatos Estructurados: Para la gestión de usuarios, autenticación, metadatos de scripts (autor, fecha de ejecución, ID de script) y el registro de experimentos. Se recomienda PostgreSQL por su robustez, integridad transaccional y amplio soporte académico e industrial.
+* Logs y Telemetría (Series de Tiempo): Los datos generados continuamente por los sensores del RVR y el sistema Tycho (20-30 Hz) son voluminosos. Para este tipo de datos, se requiere una base de datos optimizada para series de tiempo. Se recomienda ReductStore o InfluxDB. ReductStore se destaca por estar específicamente optimizado para la gestión de grandes volúmenes de datos de robótica, ofreciendo ingesta rápida y control granular sobre el flujo de datos edge-to-cloud.15 Esta especialización lo hace más eficiente que bases de datos de propósito general como MongoDB, especialmente en entornos donde la ingesta y el análisis basado en tiempo son primordiales.
+
+
+2.5. Herramientas para el Despliegue Seguro de Scripts a Través de SSH
+
+
+Para la interacción programática y segura con el subsistema SSH de los robots, la librería recomendada es Paramiko.
+Justificación: Paramiko es una implementación Python nativa del protocolo SSH2, que proporciona control de bajo nivel para la conexión, ejecución de comandos remotos y transferencia de archivos (SFTP/SCP).16 A diferencia de frameworks de orquestación de más alto nivel como Fabric (cuya versión moderna debe ser evaluada), Paramiko ofrece la granularidad necesaria para la implementación del sandboxing seguro (transferir, establecer permisos de ejecución y lanzar el comando en el contexto aislado del robot).2
+
+
+3. Frontend (Cliente Web)
+
+
+El Frontend debe ser un cliente web ligero que permita la interacción multiusuario, la subida de código, la gestión de experimentos y la visualización de datos de baja latencia.
+
+
+3.1. Frameworks Modernos para Desarrollo Web Multiplataforma (UX/UI)
+
+
+Para construir la interfaz de usuario rica e interactiva, se recomiendan los frameworks JavaScript modernos que utilizan Virtual DOM: React o Vue.js.
+Justificación:
+* React: Lidera el mercado y la comunidad, asegurando una gran cantidad de librerías para visualización de datos (data visualization) y sostenibilidad a largo plazo.18
+* Vue.js: Ofrece una curva de aprendizaje más suave y una sintaxis limpia, lo que puede ser ventajoso en un entorno académico con alta rotación de estudiantes desarrolladores.20
+La interfaz debe centrarse en una experiencia de usuario (UX/UI) orientada a la investigación: un editor de código integrado, paneles de gestión de experimentos y visualización interactiva de gráficas de telemetría y el mapa de seguimiento de Tycho.
+
+
+3.2. Tecnologías para Streaming de Video en Tiempo Real
+
+
+El monitoreo visual del enjambre debe realizarse con la menor latencia posible para el control y la verificación de experimentos. El streaming de video de alta calidad a través de Internet requiere soluciones especializadas que superen las limitaciones de los protocolos basados en TCP.
+La recomendación es WebRTC (Web Real-Time Communication).
+Justificación: WebRTC está optimizado para la transmisión peer-to-peer de audio y video, operando primariamente sobre UDP, lo que resulta en latencias típicamente inferiores a 100 ms.3 Esto es crucial para la teleoperación y el monitoreo interactivo, donde soluciones basadas en HTTP o WebSockets puros para video suelen introducir latencias significativas (> 500 ms).22
+WebRTC requiere un servidor de señalización (STUN/TURN) para el establecimiento de la conexión peer-to-peer. Esta señalización debe integrarse directamente en el Backend de FastAPI, utilizando sus capacidades de WebSockets para intercambiar metadatos de sesión (incluyendo información de codecs y datos de red) entre el servidor de gestión (que recibe la señal de Tycho) y el cliente remoto.24
+
+
+3.3. Integración con APIs REST y WebSockets del Backend
+
+
+La comunicación entre el Frontend y el Backend de FastAPI se estructura en dos canales distintos:
+* API REST: Se utiliza para operaciones transaccionales y de baja frecuencia, tales como la autenticación de usuarios, la gestión de perfiles, la subida inicial de scripts y la consulta de resultados históricos de experimentos.
+* WebSockets (Tiempo Real): Se utiliza para la comunicación bidireccional de alta frecuencia.
+   * Control: El cliente envía comandos de gestión de experimentos (Iniciar, Detener) en tiempo real.
+   * Telemetría: El Backend retransmite continuamente los datos serializados del Foxglove Bridge (pose, odometría, estado del robot) al cliente web.25
+La elección del Foxglove Bridge (C++) en el servidor central impacta directamente en la eficiencia del Frontend. Dado que Foxglove utiliza un protocolo WebSocket especializado para robótica, su adopción minimiza la sobrecarga de serialización/deserialización de mensajes ROS en el lado del cliente (un desafío común con roslibjs/rosbridge), lo que permite que el Frontend React/Vue procese el alto volumen de datos generado por el enjambre de manera más eficiente.
+
+
+4. Comunicación y Seguridad
+
+
+La seguridad, particularmente el aislamiento multiusuario y la prevención de RCE maliciosa, es el desafío más significativo de un laboratorio abierto.
+
+
+4.1. Mecanismos Seguros de Conexión SSH y Manejo de Credenciales
+
+
+La autenticación SSH entre el Servidor de Gestión y los Robots debe ser sin contraseña, utilizando pares de llaves SSH (llave pública).26
+* Aislamiento de Credenciales: La llave privada del servidor que permite el acceso a los robots debe ser tratada como un secreto y almacenada en un almacén de secretos (como Azure Key Vault o, en una implementación inicial en un entorno académico, un archivo cifrado accesible solo por el proceso Celery/Paramiko).27
+* Seguridad SSH y Movimiento Lateral: Es una práctica de seguridad fundamental deshabilitar el reenvío de agentes SSH (Agent Forwarding) en el Servidor de Gestión.28 Esto mitiga el riesgo de movimiento lateral; si un atacante compromete el servidor, no puede utilizar las credenciales SSH del servidor para acceder a otros recursos de la red interna (como otros robots o servidores) sin obtener primero el archivo de clave privada cifrado.
+
+
+4.2. Aislamiento de Sesiones de Usuario para Evitar Interferencia
+
+
+El aislamiento se logra a través de una combinación de hardware (cgroups) y software (ROS namespaces).
+* Aislamiento de Recursos Físicos: El sandboxing del código de usuario mediante Docker y cgroups (ver Sección 2.2) asegura que los scripts de los usuarios no puedan consumir recursos de CPU, RAM o tiempo de ejecución más allá de los límites predefinidos, previniendo la interferencia a nivel de sistema operativo.11
+* Aislamiento de Control (ROS): Para evitar la interferencia lógica (que el script del Usuario A envíe comandos al robot del Usuario B), cada experimento debe ejecutarse dentro de un namespace ROS diferente en el Raspberry Pi (ej. /user_A/cmd_vel, /user_B/cmd_vel). Los scripts de launch generados dinámicamente para cada experimento deben encargarse de remapear los tópicos de control que el script de usuario publica hacia un multiplexer seguro (ej. twist_mux), el cual valida los comandos antes de pasarlos al driver base del RVR. Esto crea una capa de seguridad programática entre el código no confiable y el núcleo funcional del robot.
+
+
+4.3. Estrategias para Prevenir Ejecución Maliciosa o Acceso No Autorizado
+
+
+* Hardening del Sandbox: El contenedor RCE puede reforzarse con perfiles de AppArmor o SELinux para restringir estrictamente las llamadas al sistema que puede hacer el script de usuario (ej. prohibir el acceso a sockets de red o directorios del sistema de archivos no mapeados).29
+* Cifrado de Datos en Tránsito: Es obligatorio que todo el tráfico de red entre el Cliente y el Servidor (API REST y WebSockets) se cifre mediante TLS/HTTPS y WebSockets seguros (wss). El protocolo WebRTC, al ser utilizado para video, incorpora nativamente cifrado (DTLS/SRTP), cumpliendo con el estándar de seguridad para transmisión multimedia.24
+
+
+4.4. Buenas Prácticas de Seguridad en Servidores Linux (Hardening)
+
+
+Se debe configurar el Servidor de Gestión (Ubuntu 20.04 LTS) con prácticas de hardening estándar:
+* Firewall: Configurar ufw para exponer únicamente los puertos esenciales: SSH (con acceso limitado por clave), HTTPS (443/80), y los puertos requeridos para el Foxglove Bridge y la señalización WebRTC.
+* Minimalismo del SO: Instalar el sistema operativo con el mínimo de paquetes necesarios para reducir la superficie de ataque.1
+* Auditoría y Logging: Implementar un sistema de logging centralizado (ver Sección 5.3) para registrar y auditar todos los eventos de seguridad, tales como conexiones SSH, fallos de autenticación y el ciclo de vida de los contenedores RCE.
+
+
+5. Infraestructura y Despliegue
+
+
+La infraestructura se basa en la distribución Ubuntu Server 20.04 LTS (Focal Fossa), optimizada para ROS Noetic en el Servidor de Gestión y en los Raspberry Pi 4 de los robots.1
+
+
+5.1. Contenedores y Orquestadores
+
+
+Para la orquestación inicial del Backend en el Servidor de Gestión, la recomendación es Docker Compose.
+Justificación: Docker Compose es ideal para definir, desplegar y gestionar aplicaciones multi-contenedor en un host único.30 Dado que la estrategia inicial se centra en un servidor centralizado 1, Docker Compose ofrece la simplicidad y el bajo umbral de aprendizaje requeridos en un entorno académico, en comparación con la complejidad añadida por Kubernetes, cuya curva de aprendizaje e infraestructura operativa son excesivas para una implementación inicial de un solo host.32
+La arquitectura basada en contenedores garantiza la reproducibilidad de la plataforma completa y facilita la transición a una arquitectura más escalable en el futuro.
+
+
+5.2. Monitoreo y Logging del Sistema (Observabilidad)
+
+
+Una arquitectura de observabilidad proactiva es esencial para mantener la salud del sistema y diagnosticar problemas causados por la concurrencia o los fallos de hardware (UART).
+* Métricas y Telemetría de Sistema: Se recomienda la combinación de Prometheus (recolección de series de tiempo) y Grafana (visualización).33 Prometheus debe recopilar métricas estándar del servidor (carga de CPU, uso de RAM, latencia de la red) y métricas de la aplicación (rendimiento de FastAPI, estado de las colas de Celery).
+* Monitoreo Específico de ROS: Las métricas de Prometheus deben ampliarse para incluir métricas de la red ROS, tales como la frecuencia de publicación de tópicos (/rvr/odom, /rvr/imu) y la latencia del Foxglove Bridge. La capacidad de monitorear la tasa de publicación es crucial para detectar si la limitación de la UART está saturando el sistema o si un script de usuario mal diseñado está inyectando latencia al driver del RVR.1
+* Logging Centralizado: Para la gestión de logs de seguridad, errores de aplicación y logs del sistema, se recomienda Loki (integrado con Grafana).35 Loki es una alternativa más ligera y costo-eficiente que el ELK Stack (Elasticsearch/Logstash/Kibana) para entornos académicos, ya que se centra en indexar metadatos de los logs en lugar de los logs completos.
+
+
+5.3. Uso de CI/CD para Automatizar Despliegues del Software
+
+
+La automatización de la integración y el despliegue continuos (CI/CD) es fundamental para mantener la calidad y reproducibilidad.
+Se recomienda utilizar herramientas modernas como GitLab CI/CD o GitHub Actions. El flujo de trabajo debe incluir:
+1. Construcción de Imágenes: Automatizar la creación de imágenes Docker para el Backend, la cola de tareas, la base de datos y, críticamente, la imagen sandbox RCE de ejecución de código.
+2. Pruebas Automatizadas: Ejecutar pruebas unitarias y de integración, incluyendo la validación de la conversión cinemática del driver del RVR y pruebas de límites de recursos del sandbox.
+3. Despliegue Continuo: Desplegar automáticamente el stack en el servidor de gestión mediante la actualización del archivo docker-compose.yml.
+
+
+6. Simulación y Pruebas
+
+
+
+
+6.1. Simuladores de Robótica Compatibles con ROS
+
+
+El proyecto utiliza ARGOS3 para el desarrollo algorítmico de robótica de enjambres.1 Sin embargo, para la ingeniería de drivers y la validación de cinemática avanzada (Sim-to-Real), se requiere un simulador de alta fidelidad.
+La recomendación es Gazebo (Classic).
+Justificación: Gazebo es el simulador de facto totalmente compatible con ROS Noetic.36 Permite la modelización precisa de la física (cinemática de orugas del RVR, sensores IMU) 38, lo cual es esencial para que los scripts de control desarrollados por los usuarios en simulación sean directamente transferibles al hardware físico, minimizando el desfase Sim-to-Real.1
+
+
+6.2. Herramientas para Crear un Entorno Virtual Aislado para Pruebas
+
+
+Para el desarrollo y pruebas internas del equipo de la Universidad de Nariño, la paridad entre los entornos de desarrollo local y el entorno de producción en el servidor es vital.
+Se recomienda utilizar Docker y Docker Compose para replicar el stack de Backend y el runtime ROS en máquinas de desarrollo locales.30 Un desarrollador puede levantar un entorno completo utilizando el mismo archivo docker-compose.yml que se usa en producción, pero reemplazando el driver físico del RVR por un nodo simulado que publique datos ROS (Odometría, IMU).39 Esto garantiza la consistencia del código y la infraestructura.
+
+
+6.3. Comparativa entre Simulación y Hardware Físico
+
+
+La simulación cumple un doble propósito: permite a los estudiantes desarrollar código cuando el hardware está inactivo y sirve como una fase de prueba de seguridad. Antes de ser desplegado al RVR físico, el script del usuario puede ejecutarse primero contra un robot simulado dentro del mismo contenedor RCE/cgroups.1 Si el script excede los límites de recursos impuestos en simulación, el sistema lo mata, protegiendo al hardware real de fallos en el código de usuario. La transferencia de la lógica de control desde la simulación al robot físico se facilita por la adhesión a los mensajes estándar de ROS, asegurando que la cinemática inversa diferencial implementada en el driver del RVR 1 sea directamente aplicable a los modelos de Gazebo.
+
+
+7. Comparativa Tecnológica
+
+
+La elección de la pila tecnológica se basa en el rendimiento, la seguridad y la compatibilidad con ROS Noetic.
+
+
+7.1. Tabla Comparativa de Protocolos ROS-Web (ROS Noetic)
+
+
+La siguiente tabla resume la evaluación de las tecnologías críticas para el transporte de telemetría de alta frecuencia.
+Tabla Comparativa de Protocolos de Comunicación ROS-Web (Noetic)
+
+
+Protocolo
+	rosbridge_suite
+	Foxglove Bridge
+	Transitive ROS Tool
+	Lenguaje Implementación
+	Python/C++
+	C++ (Alto Rendimiento) 5
+	Plataforma Externa (Cloud) 40
+	Soporte Noetic
+	Sí (WebSocket/TCP) 41
+	Sí (WebSocket) 5
+	Sí (Cloud API) 40
+	Rendimiento (Alta Frecuencia)
+	Deficiente (JSON overhead, Python GIL) 42
+	Excelente (Baja sobrecarga, C++) 5
+	Depende del servicio Cloud
+	Capacidades ROS
+	Mensajes/Servicios
+	Parámetros, Introspección de Grafo 43
+	Caché Offline, Gestión de Flotas
+	Recomendación para Atriz
+	Servidor de respaldo
+	Principal (Crítico para telemetría)
+	Evolución futura (Integración Cloud)
+	La superioridad del Foxglove Bridge 5 en términos de rendimiento y baja sobrecarga es un factor decisivo para un sistema que ya está limitado por la velocidad de la UART (115200 bps).1
+
+
+7.2. Tabla de Evaluación de Tecnologías de Sandboxing para Python (RCE)
+
+
+El aislamiento de código de usuario requiere la máxima seguridad posible, con limitaciones estrictas de recursos.
+Tabla de Evaluación de Tecnologías de Sandboxing para RCE
+
+
+Tecnología
+	Base de Aislamiento
+	Límite de Recursos
+	Complejidad / Sostenibilidad
+	Restricted Python
+	Lenguaje (Políticas)
+	Bajo (Limitado)
+	Baja (Nivel de código)
+	chroot + ulimit
+	Sistema de Archivos/Proceso
+	Medio (CPU/Procesos) 12
+	Media (Configuración de OS)
+	Docker + cgroups
+	Kernel Linux (Namespaces) 8
+	Alto (CPU, Memoria, Red) 11
+	Media (Estándar DevOps)
+	CodeJail (AppArmor)
+	Kernel Linux (ACLs) 29
+	Alto (Acceso a red/archivos)
+	Alta (Dependencia del Kernel/distro)
+	La combinación de Docker + cgroups ofrece el equilibrio óptimo entre seguridad (aislamiento a nivel de kernel) y operabilidad (DevOps) para un entorno multiusuario.31
+
+
+7.3. Tabla de Comparativa de Soluciones de Streaming de Video en Tiempo Real
+
+
+El monitoreo de video requiere baja latencia para ser funcionalmente útil en la experimentación remota.
+Tabla de Comparativa de Soluciones de Streaming de Video
+
+
+Solución
+	Protocolo Primario
+	Latencia Típica
+	Robustez / Cifrado
+	web_video_server (ROS)
+	HTTP/MJPEG 23
+	Media a Alta ( > 500ms)
+	Baja
+	WebSockets (Data)
+	TCP/WebSockets 24
+	Baja (para datos)
+	Alta (TLS/wss)
+	WebRTC
+	UDP (P2P) 4
+	Ultra Baja (< 100ms) 3
+	Alta (DTLS/SRTP nativo) 24
+	WebRTC es la tecnología claramente superior para la transmisión de video de Tycho al cliente web debido a su optimización para el tráfico multimedia en tiempo real y su cifrado nativo.
+
+
+8. Recomendación Final y Evolución Estratégica
+
+
+
+
+8.1. Pila Tecnológica Recomendada para el Laboratorio Remoto Atriz
+
+
+La pila tecnológica recomendada se selecciona para maximizar el rendimiento en I/O concurrente, garantizar la seguridad del RCE y ofrecer sostenibilidad académica.
+
+
+Componente
+	Tecnología Recomendada
+	Justificación Principal
+	Middleware Robótico
+	ROS Noetic / Ubuntu 20.04 LTS (RPi) 1
+	Madurez y compatibilidad con driver RVR.
+	Backend Web (API/Control)
+	FastAPI (Python Asíncrono) 9
+	Alto rendimiento en E/S concurrente y WebSockets.
+	Cola de Tareas
+	Celery + Redis 13
+	Orquestación confiable de tareas de larga duración (SSH).
+	Conexión ROS-Web Bridge
+	Foxglove Bridge (C++) 5
+	Mínima sobrecarga para telemetría de alta frecuencia.
+	Despliegue SSH
+	Paramiko (Python) 16
+	Control granular para transferencia y ejecución segura.
+	Ejecución Segura (RCE)
+	Docker + cgroups/ulimit 11
+	Aislamiento robusto de código de usuario y límites de recursos.
+	Frontend (UI/UX)
+	React o Vue.js 18
+	Marcos modernos para visualización interactiva.
+	Streaming de Video
+	WebRTC (Señalización vía WebSockets/FastAPI) 3
+	Latencia ultra-baja y cifrado nativo.
+	Bases de Datos
+	PostgreSQL (Metadatos) + ReductStore/InfluxDB (Series de tiempo) 15
+	Integridad relacional y eficiencia en datos robóticos.
+	Orquestación Infraestructura
+	Docker Compose 30
+	Simplicidad de despliegue en host único.
+	Observabilidad
+	Prometheus + Grafana + Loki 33
+	Monitoreo proactivo de métricas del sistema y de ROS.
+	
+
+8.2. Justificación Estratégica
+
+
+La pila tecnológica seleccionada resuelve los principales conflictos del proyecto. El driver ROS del RVR, con su arquitectura híbrida que maneja concurrencia síncrona/asíncrona y la limitación física de la UART a 115200 bps 1, impone restricciones en el rendimiento del middleware.
+La elección de FastAPI y Foxglove Bridge aborda directamente esta restricción. FastAPI garantiza que el servidor pueda manejar simultáneamente múltiples conexiones de clientes sin bloquearse por operaciones lentas (E/S), mientras que Foxglove Bridge asegura que el cuello de botella de la UART no se reemplace por un cuello de botella de software (como la serialización JSON en Python), manteniendo así el throughput de la telemetría.
+El uso de WebRTC y Docker + cgroups son pilares de la funcionalidad multiusuario: WebRTC proporciona la baja latencia crítica para el monitoreo interactivo 3, y Docker/cgroups proporciona la única forma viable de ejecutar código no confiable de manera segura y reproducible, garantizando la estabilidad y el aislamiento de la flota de robots.
+
+
+8.3. Hoja de Ruta para Evolución Futura
+
+
+1. Migración a ROS 2: La arquitectura de control híbrida actual (rospy/asyncio) del driver RVR es un compromiso pragmático.1 Para mejorar el determinismo y la mantenibilidad a largo plazo, se recomienda planificar la migración a ROS 2 (especialmente a rclpy), que ofrece una integración nativa y limpia con el ecosistema asyncio de Python a través de constructores como AsyncioExecutor, simplificando la complejidad de las tres capas del driver.
+2. Escalabilidad a Kubernetes: Si el Laboratorio Atriz crece y requiere alta disponibilidad o el despliegue de microservicios en múltiples hosts, la transición de Docker Compose a Kubernetes será directa, gracias a la modularidad lograda.31
+3. APIs REST para Terceros y Cloud: Utilizar la documentación OpenAPI de FastAPI para exponer APIs REST robustas y seguras, permitiendo que otras instituciones o partners de investigación se integren programáticamente al laboratorio. La futura adopción de plataformas Cloud Robóticas (como Transitive ROS Tool) podría optimizar la gestión de flotas y proporcionar capacidades de caché de datos y análisis offline a gran escala.40
+Obras citadas
+1. Atriz_rvr.tex
+2. Use SSH to send URScript (and other files) to the robot — PolyScope Tutorials documentation, fecha de acceso: octubre 16, 2025, https://docs.universal-robots.com/tutorials/urscript-tutorials/ssh.html
+3. WebSocket vs WebRTC: A Comprehensive Comparison - Apizee, fecha de acceso: octubre 16, 2025, https://www.apizee.com/websocket-vs-webrtc.php
+4. WebRTC vs. WebSocket: Key differences and which to use - Ably, fecha de acceso: octubre 16, 2025, https://ably.com/topic/webrtc-vs-websocket
+5. ROS Foxglove bridge, fecha de acceso: octubre 16, 2025, https://docs.foxglove.dev/docs/visualization/ros-foxglove-bridge
+6. ROS with python virtual environment - Robotics Stack Exchange, fecha de acceso: octubre 16, 2025, https://robotics.stackexchange.com/questions/103091/ros-with-python-virtual-environment
+7. How to install ROS in Docker - on Raspberry Pi 4 running Ubuntu - YouTube, fecha de acceso: octubre 16, 2025, https://www.youtube.com/watch?v=UySK0AggZZY
+8. Executing Python code submitted via a web service - Software Sustainability Institute, fecha de acceso: octubre 16, 2025, https://www.software.ac.uk/blog/executing-python-code-submitted-web-service
+9. Django vs FastAPI: Choosing the Right Python Web Framework | Better Stack Community, fecha de acceso: octubre 16, 2025, https://betterstack.com/community/guides/scaling-python/django-vs-fastapi/
+10. Choosing the Right Python Web Framework: Django, Flask, FastAPI, Tornado, and Bottle | by Kanak Sengar | Medium, fecha de acceso: octubre 16, 2025, https://medium.com/@KanakSengar/choosing-the-right-python-web-framework-django-flask-fastapi-tornado-and-bottle-19bb6f6c5d3d
+11. Secure way to run other people code (sandbox) on my server? - Stack Overflow, fecha de acceso: octubre 16, 2025, https://stackoverflow.com/questions/792764/secure-way-to-run-other-people-code-sandbox-on-my-server
+12. Implementing a remote code execution engine from scratch | by Blogs4devs - Medium, fecha de acceso: octubre 16, 2025, https://medium.com/@blogs4devs/implementing-a-remote-code-execution-engine-from-scratch-4a765a3c7303
+13. Celery - Distributed Task Queue — Celery 5.5.3 documentation, fecha de acceso: octubre 16, 2025, https://docs.celeryq.dev/
+14. celery/celery: Distributed Task Queue (development branch) - GitHub, fecha de acceso: octubre 16, 2025, https://github.com/celery/celery
+15. MongoDB vs ReductStore: Choosing the Right Database for Robotics Applications, fecha de acceso: octubre 16, 2025, https://www.reduct.store/blog/robotics-mongodb-vs-reductstore
+16. Python (programming language): What's the difference between Fabric and Paramiko?, fecha de acceso: octubre 16, 2025, https://www.quora.com/Python-programming-language-Whats-the-difference-between-Fabric-and-Paramiko
+17. One of the most heavily uses packages, Paramiko, has now has python 3 support. - Reddit, fecha de acceso: octubre 16, 2025, https://www.reddit.com/r/Python/comments/210e1d/one_of_the_most_heavily_uses_packages_paramiko/
+18. Modern Front-End Frameworks Compared: React, Vue, and Angular in 2025, fecha de acceso: octubre 16, 2025, https://www.refontelearning.com/blog/modern-front-end-frameworks-compared-react-vue-and-angular-in-2025
+19. Best Frontend Frameworks for Web Development - Simform, fecha de acceso: octubre 16, 2025, https://www.simform.com/blog/best-frontend-frameworks/
+20. Exploring Front-end Frameworks: A Comparative Study of React, Angular, and Vue.js, fecha de acceso: octubre 16, 2025, https://medium.com/@SahilShaikhh/exploring-front-end-frameworks-a-comparative-study-of-react-angular-and-vue-js-7686ccee5f7f
+21. Front End JavaScript Development Handbook – React, Angular, and Vue Compared, fecha de acceso: octubre 16, 2025, https://www.freecodecamp.org/news/front-end-javascript-development-react-angular-vue-compared/
+22. Low Latency Teleoperation Recommendation - Projects - Open Robotics Discourse, fecha de acceso: octubre 16, 2025, https://discourse.openrobotics.org/t/low-latency-teleoperation-recommendation/43824
+23. web_video_server - ROS Wiki, fecha de acceso: octubre 16, 2025, https://wiki.ros.org/web_video_server
+24. WebRTC vs WebSockets: What Are the Differences? - GetStream.io, fecha de acceso: octubre 16, 2025, https://getstream.io/blog/webrtc-websockets/
+25. Websocket Client Library API - MoveIt Pro Docs, fecha de acceso: octubre 16, 2025, https://docs.picknik.ai/how_to/programmatic_sdks/rosbridge/
+26. SSH Key Management: Best Practices, Tools, and Security Insights - TerraZone, fecha de acceso: octubre 16, 2025, https://terrazone.io/ssh-key-management/
+27. Azure guidance for secure isolation - Azure Government | Microsoft Learn, fecha de acceso: octubre 16, 2025, https://learn.microsoft.com/en-us/azure/azure-government/azure-secure-isolation-guidance
+28. Secure Remote Deployments with SSH Agent Forwarding and GitHub | Sebos Technology, fecha de acceso: octubre 16, 2025, https://richard-sebos.github.io/sebostechnology/posts/Agent-Forwarding/
+29. openedx/codejail: Secure code execution - GitHub, fecha de acceso: octubre 16, 2025, https://github.com/openedx/codejail
+30. Docker Compose vs Kubernetes: A Detailed Comparison - DataCamp, fecha de acceso: octubre 16, 2025, https://www.datacamp.com/blog/docker-compose-vs-kubernetes
+31. Docker Compose vs Kubernetes - Differences Explained - Spacelift, fecha de acceso: octubre 16, 2025, https://spacelift.io/blog/docker-compose-vs-kubernetes
+32. Docker Compose vs. Kubernetes: Features & Use Cases - KaaIoT, fecha de acceso: octubre 16, 2025, https://www.kaaiot.com/iot-knowledge-base/docker-compose-vs-kubernetes-differences-and-use-cases
+33. Comparing ELK, Grafana, and Prometheus for Observability - Last9, fecha de acceso: octubre 16, 2025, https://last9.io/blog/elk-vs-grafana-vs-prometheus/
+34. Get started with Grafana and Prometheus | Grafana documentation, fecha de acceso: octubre 16, 2025, https://grafana.com/docs/grafana/latest/getting-started/get-started-grafana-prometheus/
+35. Monitoring & Logging with Prometheus, Grafana, ELK, and Loki (2025 Guide for DevOps), fecha de acceso: octubre 16, 2025, https://www.refontelearning.com/blog/monitoring-logging-prometheus-grafana-elk-stack-loki
+36. ROS-Compatible Robotics Simulators for Industry 4.0 and Industry 5.0: A Systematic Review of Trends and Technologies - MDPI, fecha de acceso: octubre 16, 2025, https://www.mdpi.com/2076-3417/15/15/8637
+37. Feature and performance comparison of the V-REP, Gazebo and ARGoS robot simulators, fecha de acceso: octubre 16, 2025, https://lenkaspace.net/downloads/Pitonakova_simulatorsComparison.pdf
+38. Eindhoven University of Technology BACHELOR Comparison of Robotic Simulation Environments Wolfs, E.J.L. (Guido), fecha de acceso: octubre 16, 2025, https://research.tue.nl/files/212630827/1439537_Comparison_of_Robotic_Simulation_Environments.pdf
+39. ros - Official Image | Docker Hub, fecha de acceso: octubre 16, 2025, https://hub.docker.com/_/ros
+40. Announcing ros-tool: The easiest way to create web UIs for ROS - Open Robotics Discourse, fecha de acceso: octubre 16, 2025, https://discourse.openrobotics.org/t/announcing-ros-tool-the-easiest-way-to-create-web-uis-for-ros/38505
+41. RobotWebTools/rosbridge_suite: Server Implementations of the rosbridge v2 Protocol - GitHub, fecha de acceso: octubre 16, 2025, https://github.com/RobotWebTools/rosbridge_suite
+42. Foxglove WebSocket bridge for ROS 1 - GitHub, fecha de acceso: octubre 16, 2025, https://github.com/foxglove/ros-foxglove-bridge
+43. foxglove_bridge - ROS Package Overview, fecha de acceso: octubre 16, 2025, https://index.ros.org/p/foxglove_bridge/

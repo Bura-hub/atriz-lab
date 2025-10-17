@@ -1,0 +1,38 @@
+# Core FastAPI and ASGI server (compatible with Python 3.12)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
+# Task queue and caching
+celery==5.3.4
+redis==4.6.0
+
+# SSH client for remote operations
+asyncssh==2.13.2
+
+# Environment and configuration
+python-dotenv==1.0.0
+
+# Data validation (compatible with Python 3.12)
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database dependencies
+asyncpg==0.28.0
+sqlalchemy[asyncio]==1.4.50
+alembic==1.11.1
+psycopg2-binary==2.9.9
+
+# Optional: Authentication (uncomment if needed)
+# python-jose[cryptography]==3.3.0
+# passlib[bcrypt]==1.7.4
+# python-multipart==0.0.6
+
+# Optional: HTTP clients (uncomment if needed)
+# httpx==0.24.1
+# aiohttp==3.8.5
+
+# Optional: Development tools (uncomment if needed)
+# pytest==7.3.1
+# pytest-asyncio==0.21.0
+# black==23.3.0
+# isort==5.12.0

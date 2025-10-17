@@ -1,0 +1,58 @@
+---
+globs: frontend/**/*.{ts,tsx,js,jsx}
+---
+
+# Frontend Development Guidelines
+
+## Next.js 14 Best Practices
+- Use App Router structure in [frontend/src/app/](mdc:frontend/src/app/)
+- Implement proper TypeScript types for all components
+- Use Server Components by default, Client Components when needed
+- Follow Next.js file conventions (page.tsx, layout.tsx, etc.)
+
+## React Component Guidelines
+- Create reusable components in [frontend/src/components/](mdc:frontend/src/components/)
+- Use functional components with hooks
+- Implement proper prop types with TypeScript interfaces
+- Follow single responsibility principle
+- Use meaningful component names
+
+## Styling with Tailwind CSS
+- Use Tailwind utility classes for styling
+- Follow mobile-first responsive design
+- Use consistent spacing and color schemes
+- Implement dark mode support when applicable
+- Keep custom CSS minimal
+
+## State Management
+- Use React hooks for local state
+- Implement custom hooks in [frontend/src/hooks/](mdc:frontend/src/hooks/)
+- Use context for global state when needed
+- Prefer server state management for API data
+
+## API Integration
+- Use [useApi hook](mdc:frontend/src/hooks/useApi.ts) for API calls
+- Implement proper error handling
+- Use loading states for better UX
+- Cache API responses when appropriate
+
+## TypeScript Guidelines
+- Use strict TypeScript configuration
+- Define interfaces for all data structures
+- Use proper type annotations
+- Avoid `any` type usage
+- Use generic types when appropriate
+
+## Performance Optimization
+- Use React.memo for expensive components
+- Implement proper key props for lists
+- Use dynamic imports for code splitting
+- Optimize images with Next.js Image component
+- Implement proper loading states
+
+## Code Organization
+- Keep components small and focused
+- Use barrel exports for clean imports
+- Follow consistent file naming conventions
+- Group related functionality together
+- Use proper folder structure

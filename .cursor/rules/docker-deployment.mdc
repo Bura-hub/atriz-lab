@@ -1,0 +1,69 @@
+---
+globs: **/Dockerfile,**/docker-compose.yml,**/Dockerfile*
+---
+
+# Docker and Deployment Guidelines
+
+## Container Architecture
+The system uses Docker Compose with the following services:
+- **db**: PostgreSQL with TimescaleDB for time-series data
+- **redis**: Redis for caching and message queuing
+- **api**: FastAPI backend service
+- **worker**: Celery worker for background tasks
+- **frontend**: Next.js frontend service
+
+## Docker Configuration
+- Use [docker-compose.yml](mdc:backend/docker-compose.yml) for service orchestration
+- Implement proper service dependencies
+- Use named volumes for data persistence
+- Configure proper networking between services
+- Use environment variables for configuration
+
+## Database Configuration
+- Use TimescaleDB for time-series experiment data
+- Configure proper database connections
+- Implement database migrations with Alembic
+- Use connection pooling for performance
+- Set up proper backup strategies
+
+## Redis Configuration
+- Use Redis for Celery message broker
+- Implement proper caching strategies
+- Configure Redis persistence
+- Use Redis for session storage
+- Monitor Redis performance
+
+## Environment Management
+- Use environment variables for all configuration
+- Implement proper secrets management
+- Use different configurations for dev/staging/prod
+- Never commit sensitive data to version control
+- Use proper environment file structure
+
+## Service Dependencies
+- API service depends on database and Redis
+- Worker service depends on database and Redis
+- Frontend service depends on API service
+- Implement proper health checks
+- Use restart policies for reliability
+
+## Volume Management
+- Use named volumes for data persistence
+- Mount source code for development
+- Implement proper backup strategies
+- Use volume drivers for production
+- Monitor volume usage
+
+## Network Configuration
+- Use custom bridge network for service communication
+- Implement proper port mapping
+- Use internal networking for service-to-service communication
+- Configure proper firewall rules
+- Monitor network performance
+
+## Production Deployment
+- Use production-ready base images
+- Implement proper logging
+- Use reverse proxy for external access
+- Configure SSL/TLS certificates
+- Implement monitoring and alerting

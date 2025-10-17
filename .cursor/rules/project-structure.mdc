@@ -1,0 +1,32 @@
+---
+alwaysApply: true
+---
+
+# Atriz Lab Project Structure
+
+This is a remote robotics laboratory system for swarm robotics experiments at Universidad de Nariño. The project consists of:
+
+## Architecture Overview
+- **Backend**: FastAPI-based API with PostgreSQL database, Redis for caching, and Celery for task queues
+- **Frontend**: Next.js 14 with TypeScript and Tailwind CSS
+- **Robots**: Mercator robots (RVR + Raspberry Pi) running ROS Noetic
+- **Infrastructure**: Docker Compose for containerized deployment
+
+## Key Directories
+- [backend/](mdc:backend/) - FastAPI backend with API endpoints, models, and services
+- [frontend/](mdc:frontend/) - Next.js frontend with React components
+- [backend/app/api/endpoints/](mdc:backend/app/api/endpoints/) - API route handlers
+- [backend/app/models/](mdc:backend/app/models/) - SQLAlchemy database models
+- [backend/app/services/](mdc:backend/app/services/) - Business logic services
+- [frontend/src/components/](mdc:frontend/src/components/) - React components
+- [frontend/src/hooks/](mdc:frontend/src/hooks/) - Custom React hooks
+
+## Core Files
+- [backend/app/main.py](mdc:backend/app/main.py) - FastAPI application entry point
+- [backend/app/core/config.py](mdc:backend/app/core/config.py) - Application configuration
+- [backend/docker-compose.yml](mdc:backend/docker-compose.yml) - Container orchestration
+- [frontend/package.json](mdc:frontend/package.json) - Frontend dependencies
+- [backend/requirements.txt](mdc:backend/requirements.txt) - Backend dependencies
+
+## Robot Integration
+The system manages Mercator robots (RVR + Raspberry Pi) that run ROS Noetic. Robots communicate via SSH and execute Python control scripts remotely.
