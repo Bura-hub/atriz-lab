@@ -144,3 +144,5 @@ temp/
 test-results/
 playwright-report/
 playwright/.cache/
+# Espacio de trabajo de subagent-driven-development (no se versiona)
+.superpowers/

@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import RobotStatusCard from './RobotStatusCard'
 import ActiveExperimentsCard from './ActiveExperimentsCard'
 import SystemMetricsCard from './SystemMetricsCard'
-import LaboratoryVideoCard from './LaboratoryVideoCard'
 
 export default function Dashboard() {
   const [isLoaded, setIsLoaded] = useState(false)
@@ -50,9 +49,13 @@ export default function Dashboard() {
           <SystemMetricsCard />
         </div>
 
-        {/* Cuadrante Inferior Derecho - Video del Laboratorio */}
+        {/* Cuadrante Inferior Derecho - Hueco del antiguo vídeo */}
         <div className={`lg:col-span-1 ${isLoaded ? 'fade-in' : 'opacity-0'}`} style={{ animationDelay: '0.4s' }}>
-          <LaboratoryVideoCard />
+          {/* Hueco del antiguo vídeo. No hay cámaras en los robots (decisión cerrada
+              del proyecto). Aquí irá el estado del enlace cuando exista la capa de datos. */}
+          <div className="card flex items-center justify-center text-muted-foreground">
+            Sin cámaras en este laboratorio
+          </div>
         </div>
       </div>
     </div>

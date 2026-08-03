@@ -227,7 +227,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               </button>
 
               {/* Botón de emergencia STOP ALL */}
-              <button className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-destructive/90 transition-all duration-200 shadow-sm hover:shadow-md">
+              <button
+                disabled
+                title="Sin cablear todavía: no hay capa de datos. Un botón de parada que no para es peor que ninguno."
+                className="bg-destructive text-destructive-foreground px-4 py-2 rounded-lg text-sm font-medium hover:bg-destructive/90 transition-all duration-200 shadow-sm hover:shadow-md"
+              >
                 <AlertTriangle className="h-4 w-4 inline mr-2" />
                 STOP ALL
               </button>
