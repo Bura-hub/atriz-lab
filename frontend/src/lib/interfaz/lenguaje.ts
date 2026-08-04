@@ -37,12 +37,32 @@ import { ConfirmacionServicio, confirmaEfecto } from '../rosbridge/contrato'
 export const ORDEN_ENVIADA = 'orden enviada'
 
 /**
- * 🔴 «parada enviada», NUNCA «parada activa». El driver **no publica su bandera
- * de parada** -tiene 7 publicadores y ninguno es ese-, asi que el cliente no
- * tiene ningun dato del robot con el que afirmar que la parada este puesta.
- * Decirlo seria adivinar sobre el unico control que no puede fallar en silencio.
+ * Lo que se dice al PULSAR: el mensaje salio por el WebSocket, y nada mas.
+ *
+ * 🔴 Sigue sin poder decir que la parada este PUESTA. Que un `publish` no lance
+ * no prueba que el driver lo recibiera ni que lo aplicara: la parada de este
+ * proyecto ha fallado CINCO veces, cuatro de ellas devolviendo exito con cero
+ * efecto. Para afirmar que esta puesta hay que MIRAR AL ROBOT -> `PARADA_ACTIVA`.
  */
 export const PARADA_ENVIADA = 'parada enviada'
+
+/**
+ * 🔴🔴 «PARADA ACTIVA» — y esto es un cambio de lo que esta interfaz podia decir.
+ *
+ * Hasta el 2026-08-04 estaba PROHIBIDO, y con razon: el driver no publicaba su
+ * bandera de parada (7 publicadores y ninguno era ese), asi que afirmarlo era
+ * adivinar sobre el unico control que no puede fallar en silencio.
+ *
+ * ✅ **Ahora el robot la publica y esta VERIFICADO contra el hardware**:
+ * `/estado_robot.parada_emergencia`, con un flanco `false -> true` presenciado
+ * desde los dos lados a la vez —el log del driver y el campo— mientras el robot
+ * se movia (evidencia 71). No es una lectura optimista de un `200 OK`: es un
+ * dato del robot diciendo que la bandera esta puesta.
+ *
+ * → Solo se usa con el mensaje EN LA MANO. Si `/estado_robot` no llega, la
+ *   respuesta es «no se sabe», nunca «no esta puesta»: el silencio no es un no.
+ */
+export const PARADA_ACTIVA = 'parada ACTIVA'
 
 /** Cuando `publicar()` lanza: el mensaje NO salio, y hay que decirlo asi de claro. */
 export const PARADA_NO_ENVIADA = 'LA PARADA NO SE HA ENVIADO'
@@ -149,7 +169,15 @@ export const LO_QUE_NO_SE_PUEDE_DECIR: readonly { que: string; porque: string }[
  * en `LO_QUE_NO_SE_PUEDE_DECIR`, que es `lib/` y no `componentes/`.
  */
 export const FRASES_PROHIBIDAS: readonly string[] = [
-  'parada activa',
+  // 🔴 «parada activa» YA NO ESTA AQUI, y quitarla fue deliberado (2026-08-04).
+  //    Se prohibio porque el driver no publicaba su bandera. Ahora la publica en
+  //    `/estado_robot.parada_emergencia`, y el flanco `false -> true` se
+  //    presencio con el robot en marcha desde los dos lados a la vez
+  //    (evidencia 71). La frase dejo de ser una suposicion y paso a ser un dato.
+  //    ⚠️ Lo que sigue prohibido es afirmarla SIN el mensaje: eso lo protege el
+  //    tipo -`PARADA_ACTIVA` solo se usa con `/estado_robot` en la mano-, no
+  //    esta lista, porque una lista de cadenas no puede ver de donde sale un
+  //    dato. Si alguna vez se quita ese campo del robot, esta linea vuelve.
   'parada esta activa',
   'color cambiado',
   'led encendido',

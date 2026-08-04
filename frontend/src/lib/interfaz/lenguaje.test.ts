@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
+  PARADA_ACTIVA,
   FRASES_PROHIBIDAS, LO_QUE_NO_SE_PUEDE_DECIR, ORDEN_ENVIADA, PARADA_ENVIADA, PARADA_NO_ENVIADA,
   buscarFrasesProhibidas, esLineaDeComentario, normalizar, textoDeConfirmacion,
 } from './lenguaje'
@@ -91,7 +92,7 @@ describe('normalizar / esLineaDeComentario / buscarFrasesProhibidas', () => {
   })
 
   it('encuentra una frase prohibida en codigo', () => {
-    expect(buscarFrasesProhibidas('const t = "parada ACTIVA"')).toEqual(['parada activa'])
+    expect(buscarFrasesProhibidas('const t = "LED ENCENDIDO"')).toEqual(['led encendido'])
   })
 
   it('la encuentra aunque venga acentuada o en otra caja', () => {
@@ -166,8 +167,22 @@ describe('la guardia sobre los componentes y las rutas de verdad', () => {
 
   it('la lista de frases prohibidas no se ha vaciado por el camino', () => {
     expect(FRASES_PROHIBIDAS.length).toBeGreaterThanOrEqual(8)
-    expect(FRASES_PROHIBIDAS).toContain('parada activa')
     expect(FRASES_PROHIBIDAS).toContain('led encendido')
     expect(FRASES_PROHIBIDAS).toContain('robot averiado')
+    expect(FRASES_PROHIBIDAS).toContain('latencia')
+  })
+
+  it('🔴 «parada activa» se quito de la lista, y eso NO es un descuido', () => {
+    // Se prohibio cuando el driver no publicaba su bandera de parada. Desde el
+    // 2026-08-04 la publica en `/estado_robot.parada_emergencia`, con el flanco
+    // false->true presenciado desde los dos lados mientras el robot se movia
+    // (evidencia 71). La frase paso de suposicion a dato.
+    //
+    // Esta prueba existe para que la retirada sea DELIBERADA: si alguien la
+    // vuelve a meter sin quitar tambien `PARADA_ACTIVA`, falla y obliga a
+    // decidir. Y si el campo desaparece del robot, el camino de vuelta es
+    // borrar `PARADA_ACTIVA` y volver a añadirla aqui.
+    expect(FRASES_PROHIBIDAS).not.toContain('parada activa')
+    expect(PARADA_ACTIVA.toLowerCase()).toContain('parada activa')
   })
 })

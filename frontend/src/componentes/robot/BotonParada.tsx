@@ -33,8 +33,10 @@
  */
 
 import { useState } from 'react'
+import { useRobot } from '@/hooks/ContextoRobot'
+import { useTopic } from '@/hooks/useTopic'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
-import { PARADA_ENVIADA, PARADA_NO_ENVIADA } from '@/lib/interfaz/lenguaje'
+import { PARADA_ACTIVA, PARADA_ENVIADA, PARADA_NO_ENVIADA } from '@/lib/interfaz/lenguaje'
 import { horaCorta } from '@/lib/interfaz/formato'
 
 interface Resultado {
@@ -54,6 +56,18 @@ export interface PropsBotonParada {
 
 export function BotonParada({ teleoperacion }: PropsBotonParada) {
   const [resultado, setResultado] = useState<Resultado | null>(null)
+  const { transporte } = useRobot()
+
+  // 🔴 EL TESTIGO DEL ROBOT. Hasta el 2026-08-04 esto no existia y esta pantalla
+  //    solo podia decir «parada enviada». Ahora el driver publica su bandera y
+  //    el flanco false->true se presencio con el robot en marcha, desde los dos
+  //    lados a la vez (evidencia 71). Cuesta ~0,03 kB/s.
+  //
+  // ⚠️ `null` es «NO SE SABE», nunca «no esta puesta». Si `/estado_robot` no
+  //    llega -driver anterior a esa fecha, o enlace caido- la pantalla se queda
+  //    en «enviada», que es lo unico cierto. El silencio no es un no.
+  const estado = useTopic(transporte, '/estado_robot')
+  const paradaPuesta: boolean | null = estado === null ? null : estado.parada_emergencia
 
   const pulsar = () => {
     const hora = horaCorta(Date.now())
@@ -78,6 +92,19 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
 
   return (
     <div className="space-y-2">
+      {/* 🔴 Se ve SIN haber pulsado: si alguien llega a esta pantalla con la
+          parada ya puesta -por otra pestaña, o por la sesion anterior-, tiene
+          que saberlo antes de intentar conducir y creer que el robot no obedece. */}
+      {paradaPuesta === true && (
+        <p
+          role="status"
+          className="rounded-md border border-destructive/60 bg-destructive/15 px-3 py-2 text-sm font-semibold"
+        >
+          🔴 {PARADA_ACTIVA} — el robot no aceptará ninguna orden de movimiento hasta que se libere
+          presencialmente.
+        </p>
+      )}
+
       <button
         type="button"
         onClick={pulsar}
@@ -101,9 +128,24 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
           <p className="text-muted-foreground max-w-prose">{resultado.detalle}</p>
           {resultado.salio && (
             <p className="text-muted-foreground max-w-prose mt-1">
-              Esto es lo que sabe el navegador: que el mensaje salió. El robot no publica ninguna
-              señal de vuelta que permita comprobarlo desde aquí, así que{' '}
-              <strong>mira el robot</strong>.
+              {paradaPuesta === true ? (
+                <>
+                  Y el robot lo confirma: su bandera de parada está puesta. Para liberarla hay que
+                  hacerlo <strong>presencialmente</strong>, con el robot delante.
+                </>
+              ) : paradaPuesta === false ? (
+                <>
+                  ⚠️ El mensaje salió, pero el robot <strong>sigue diciendo que su bandera no está
+                  puesta</strong>. Puede ser que aún no haya llegado, o que no la haya aplicado —{' '}
+                  <strong>mira el robot</strong>.
+                </>
+              ) : (
+                <>
+                  Esto es lo que sabe el navegador: que el mensaje salió. No está llegando{' '}
+                  <code>/estado_robot</code>, así que desde aquí <strong>no se sabe</strong> si la
+                  parada se aplicó — <strong>mira el robot</strong>.
+                </>
+              )}
             </p>
           )}
         </div>
