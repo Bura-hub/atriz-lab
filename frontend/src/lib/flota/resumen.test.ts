@@ -42,7 +42,7 @@ describe('resumirBaldosa — regla 1: la bateria se decide por VOLTIOS', () => {
     expect(b.bateria).toBe('DESCONOCIDO')
     expect(b.bateria).not.toBe('OK')
     expect(b.voltios).toBeNull()
-    expect(b.motivos.some((m) => m.includes('no se sabe la bateria'))).toBe(true)
+    expect(b.motivos.some((m) => m.includes('no se sabe la batería'))).toBe(true)
   })
 
   it('un NaN (lo que publica el driver cuando la lectura falla) tampoco es OK', () => {
@@ -102,7 +102,7 @@ describe('resumirBaldosa — regla 2: sin datos es MIRAR, nunca IR', () => {
 
   it('el motivo dice explicitamente que NO es una averia (el robot cargando es lo cotidiano)', () => {
     const b = resumirBaldosa(sana({ msDesdeUltimoLatido: 999999 }))
-    expect(b.motivos.some((m) => m.includes('NO es una averia'))).toBe(true)
+    expect(b.motivos.some((m) => m.includes('NO es una avería'))).toBe(true)
     expect(b.motivos.some((m) => m.includes('cargando'))).toBe(true)
   })
 
@@ -161,7 +161,7 @@ describe('resumirBaldosa — regla 3: IR solo con un hecho positivo y actual', (
   it('una bateria CRITICA en un robot vivo manda IR', () => {
     const b = resumirBaldosa(sana({ voltios: 6.4 }))
     expect(b.atencion).toBe('IR')
-    expect(b.motivos.some((m) => m.includes('CRITICA'))).toBe(true)
+    expect(b.motivos.some((m) => m.includes('CRÍTICA'))).toBe(true)
   })
 
   it('🔴 un robot del que no se sabe NADA (todo null) nunca es IR', () => {

@@ -150,9 +150,9 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
     motivos.push(TEXTO_SIN_SENAL)
     motivos.push(
       estado === 'SIN_CONEXION'
-        ? 'no hay WebSocket abierto con el robot, asi que no se sabe nada de el. Eso NO es una averia'
-        : 'el enlace esta abierto y no llega /motor_status: puede estar cargando (RVR apagado con la ' +
-          'Pi viva), dormido, o el driver caido. NO es una averia por si solo',
+        ? 'no hay WebSocket abierto con el robot, así que no se sabe nada de él. Eso NO es una avería'
+        : 'el enlace está abierto y no llega /motor_status: puede estar cargando (RVR apagado con la ' +
+          'Pi viva), dormido, o el driver caído. NO es una avería por sí solo',
     )
   } else {
     // 🔴 `atascado: null` no genera frase: que no se sepa no es que no lo haya,
@@ -165,18 +165,18 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
       //    en voz alta es mas seguro que callar: asi nadie lee el hueco como
       //    una bateria sana.
       motivos.push(
-        'no se sabe la bateria: /battery_state no ha traido un voltaje valido (el driver publica NaN ' +
-          'cuando la lectura falla). La baldosa NO esta diciendo que este bien',
+        'no se sabe la batería: /battery_state no ha traído un voltaje válido (el driver publica NaN ' +
+          'cuando la lectura falla). La baldosa NO está diciendo que esté bien',
       )
     } else if (bateria === 'CRITICA') {
-      motivos.push(`bateria CRITICA: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_CRITICA)}. El RVR se va a apagar`)
+      motivos.push(`batería CRÍTICA: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_CRITICA)}. El RVR se va a apagar`)
     } else if (bateria === 'BAJA') {
-      motivos.push(`bateria baja: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_BAJA)}: toca cargar`)
+      motivos.push(`batería baja: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_BAJA)}: toca cargar`)
     }
     if (termicoRancio && frescuraTermico.conocido) {
       motivos.push(
         `la temperatura de los motores tiene ${Math.round(frescuraTermico.antiguedadS)} s: el sondeo va ` +
-          `cada 30 s, asi que por encima de ${UMBRAL_TERMICO_RANCIO_S} s es el MISMO dato repetido, ` +
+          `cada 30 s, así que por encima de ${UMBRAL_TERMICO_RANCIO_S} s es el MISMO dato repetido, ` +
           'no una temperatura que se mantiene',
       )
     }
