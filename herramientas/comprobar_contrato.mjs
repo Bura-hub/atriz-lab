@@ -26,7 +26,36 @@ const launch = readFileSync(rutaLaunch, 'utf8')
 const contrato = readFileSync(join(raizProyecto, 'frontend/src/lib/rosbridge/contrato.ts'), 'utf8')
 
 /**
- * Saca las cadenas '/loquesea' de un bloque `NOMBRE = [ ... ]`.
+ * Extrae las cadenas '/loquesea' del CONTENIDO ya capturado de un bloque
+ * `NOMBRE = [ ... ]` y aplica la guarda de lista vacia.
+ *
+ * 🔴 Guarda obligatoria: ninguna de las tres listas (LEER/ESCRIBIR/SERVICIOS,
+ * 12/3/8 entradas respectivamente) puede estar legitimamente vacia — es el
+ * minimo estructural del sistema. El regex de `bloquePython`/`bloqueTs` NO es
+ * voraz (`[\s\S]*?`) y se detiene en el PRIMER `]` que encuentra, sea el
+ * cierre real de la lista o uno prematuro escondido en un comentario — p.ej.
+ * `# ver tabla[0]`, y el propio `robot.launch.py` ya usa `[0,0,0]` en un
+ * comentario unas lineas mas abajo, asi que no es un estilo ajeno al fichero.
+ * Sin esta guarda, ese corte da `[]` SIN lanzar excepcion: dos listas vacias
+ * se comparan y "coinciden", o si solo se trunca un lado, el OTRO lado queda
+ * acusado de "divergir" cuando el fallo real esta en el PARSEO, no en el
+ * contenido. Con la politica "gana el robot" eso puede llevar a borrar de la
+ * web una entrada legitima. Mejor morir aqui, ruidosamente, diciendo que
+ * bloque y de que lado.
+ */
+function extraerItems(contenidoBloque, origen, nombre) {
+  const items = [...contenidoBloque.matchAll(/'(\/[^']+)'/g)].map((x) => x[1]).sort()
+  if (items.length === 0) {
+    throw new Error(
+      `${nombre} en ${origen} parseo a 0 entradas: sospecha de un ']' prematuro ` +
+      `(p.ej. dentro de un comentario) cortando el bloque antes de tiempo — no es una lista vacia legitima`
+    )
+  }
+  return items
+}
+
+/**
+ * Saca el bloque `NOMBRE = [ ... ]` de robot.launch.py.
  *
  * ⚠️ El anclaje lleva `\s*` antes del nombre: en `robot.launch.py` las tres
  * constantes (LEER, ESCRIBIR, SERVICIOS) estan dentro de la funcion del
@@ -36,13 +65,13 @@ const contrato = readFileSync(join(raizProyecto, 'frontend/src/lib/rosbridge/con
 function bloquePython(fuente, nombre) {
   const m = fuente.match(new RegExp(`^[ \\t]*${nombre}\\s*=\\s*\\[([\\s\\S]*?)\\]`, 'm'))
   if (!m) throw new Error(`no encuentro el bloque ${nombre} en robot.launch.py`)
-  return [...m[1].matchAll(/'(\/[^']+)'/g)].map((x) => x[1]).sort()
+  return extraerItems(m[1], 'robot.launch.py', nombre)
 }
 
 function bloqueTs(fuente, nombre) {
   const m = fuente.match(new RegExp(`export const ${nombre}\\s*=\\s*\\[([\\s\\S]*?)\\]`, 'm'))
   if (!m) throw new Error(`no encuentro ${nombre} en contrato.ts`)
-  return [...m[1].matchAll(/'(\/[^']+)'/g)].map((x) => x[1]).sort()
+  return extraerItems(m[1], 'contrato.ts', nombre)
 }
 
 const pares = [
