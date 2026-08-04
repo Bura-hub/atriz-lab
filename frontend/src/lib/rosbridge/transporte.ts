@@ -20,7 +20,7 @@ export function esperaReconexion(intento: number, aleatorio: () => number = Math
 type Manejador = (msg: unknown) => void
 type FabricaWS = (url: string) => WebSocket
 
-/** Lo que rosbridge cuenta por su canal `status`, y lo que no se pudo leer. */
+/** Un aviso local del cliente. Ver el docstring de `alAviso()`. */
 export interface Aviso {
   nivel: string
   mensaje: string
@@ -62,9 +62,16 @@ export class Transporte {
   }
 
   /**
-   * Avisos de rosbridge y mensajes ilegibles. rosbridge DENIEGA EN SILENCIO,
-   * asi que su canal `status` es lo unico que cuenta lo que rechazo: tirarlo
-   * era quedarse sin la unica pista que da.
+   * Avisos LOCALES del cliente. Hoy solo uno: un mensaje entrante ilegible.
+   *
+   * ⚠️ NO llega por aqui ninguna denegacion de rosbridge, aunque seria el sitio
+   *    natural. Verificado en el fuente de rosbridge 2.7.0: `Protocol.log()`
+   *    escribe en el logger DEL NODO y ahi acaba —`"status"` tiene 0
+   *    apariciones en `protocol.py` y en `rosbridge_server`—, asi que el aviso
+   *    se queda en el journal del robot y NO sale por el socket.
+   * → No hay red de seguridad si la lista blanca del robot se separa de
+   *   `contrato.ts`. Lo unico que avisa es el plazo de 5 s de `llamar()`, y por
+   *   eso existe `comprobar_contrato.mjs`.
    */
   alAviso(cb: (a: Aviso) => void): () => void {
     this.oyentesAviso.add(cb)
@@ -162,8 +169,7 @@ export class Transporte {
   }
 
   private entrante(m: {
-    op: string; topic?: string; msg?: unknown; id?: string; values?: unknown
-    level?: string; msg_text?: string
+    op: string; topic?: string; msg?: unknown; id?: string; values?: unknown; result?: boolean
   }): void {
     // Un mensaje que llega SI prueba que el enlace sirve. Ver `onopen`.
     this.intentos = 0
@@ -174,11 +180,18 @@ export class Transporte {
       return
     }
     if (m.op === 'service_response' && m.id) {
+      // 🔴 rosbridge manda `result: false` cuando el servicio FALLA, con el
+      //    motivo REAL en `values` (call_service.py). Resolverlo como exito
+      //    tiraba ese motivo y lo sustituia por una conjetura ocho segundos
+      //    despues —«no llego ningun /scan, puede que el LIDAR no haya
+      //    arrancado»—, apuntando al sitio equivocado. Es «mide antes de
+      //    atribuir» al reves, y escrito en el mensaje que lee el alumno.
+      if (m.result === false) {
+        this.pendientes.rechazar(m.id, `el servicio fallo: ${String(m.values)}`)
+        return
+      }
       this.pendientes.resolver(m.id, m.values)
       return
-    }
-    if (m.op === 'status') {
-      this.avisar({ nivel: String(m.level ?? 'info'), mensaje: String(m.msg ?? m.msg_text ?? '') })
     }
   }
 

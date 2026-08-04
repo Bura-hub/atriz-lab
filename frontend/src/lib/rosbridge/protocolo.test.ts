@@ -36,6 +36,16 @@ describe('llamadas pendientes', () => {
     await expect(p).resolves.toEqual({ values: true })
   })
 
+  // Simetrico de la prueba anterior. Arreglo transversal: rosbridge manda
+  // `result: false` cuando el servicio FALLA (call_service.py), y antes de
+  // este metodo el cliente resolvia pase lo que pase, tirando el motivo real.
+  it('rechazar() rechaza la promesa con el motivo, sin esperar al plazo', async () => {
+    const r = new RegistroPendientes()
+    const p = r.registrar('x', 5000)
+    r.rechazar('x', 'el servicio fallo: el YDLIDAR no respondio')
+    await expect(p).rejects.toThrow(/el YDLIDAR no respondio/)
+  })
+
   // El mensaje NO debe elegir entre «denegado» y «robot caido»: no se pueden distinguir.
   it('al vencer el plazo dice las dos posibilidades y no elige', async () => {
     vi.useFakeTimers()

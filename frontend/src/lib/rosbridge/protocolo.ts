@@ -84,6 +84,15 @@ export class RegistroPendientes {
     p.resolver(valor)
   }
 
+  /** Simetrico de `resolver`: para cuando rosbridge dice que el servicio FALLO. */
+  rechazar(id: string, motivo: string): void {
+    const p = this.pendientes.get(id)
+    if (!p) return
+    clearTimeout(p.plazo)
+    this.pendientes.delete(id)
+    p.rechazar(new Error(motivo))
+  }
+
   cancelarTodas(motivo: string): void {
     for (const [id, p] of this.pendientes) {
       clearTimeout(p.plazo)

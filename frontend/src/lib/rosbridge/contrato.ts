@@ -37,9 +37,11 @@ export const TIPOS: Readonly<Record<string, string>> = {
   '/map': 'nav_msgs/msg/OccupancyGrid',
   '/tf': 'tf2_msgs/msg/TFMessage',
   '/tf_static': 'tf2_msgs/msg/TFMessage',
-  // ⚠️ NO VERIFICADO: lo publica Nav2, que no esta clonado en ningun sitio, asi
-  //    que el nombre del paquete es una suposicion. Se cierra con el robot:
-  //    `ros2 topic type /collision_monitor_state`.
+  // ✅ VERIFICADO en el robot (2026-08-03): existe
+  //    /opt/ros/jazzy/share/nav2_msgs/msg/CollisionMonitorState.msg
+  //    (uint8 action_type, string polygon_name), y collision_monitor.yaml usa
+  //    `state_topic: "collision_monitor_state"` con namespace vacio, asi que el
+  //    absoluto es el correcto.
   '/collision_monitor_state': 'nav2_msgs/msg/CollisionMonitorState',
   '/amcl_pose': 'geometry_msgs/msg/PoseWithCovarianceStamped',
   '/cmd_vel_raw': 'geometry_msgs/msg/Twist',

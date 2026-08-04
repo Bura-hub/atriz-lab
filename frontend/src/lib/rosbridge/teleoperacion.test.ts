@@ -101,6 +101,33 @@ describe('Teleoperacion.arrancarBarrido()', () => {
     const tel = new Teleoperacion(t)
     await expect(tel.arrancarBarrido()).rejects.toThrow(/start_scan/)
   })
+
+  // Arreglo transversal, y es la prueba que mas importa de las cuatro del
+  // encargo: de extremo a extremo. Antes de este arreglo, un
+  // service_response con result:false se RESOLVIA igual que un exito, asi
+  // que este catch() nunca se disparaba: el alumno esperaba los 8 s enteros
+  // del plazo y leia la CONJETURA generica ("puede que el LIDAR no haya
+  // arrancado") en vez del motivo real que el robot ya habia mandado. Esta
+  // prueba fija que /start_scan que falla de VERDAD (result:false) rechaza
+  // YA -sin avanzar ningun temporizador ni esperar el plazo- con el motivo
+  // real, y que ese motivo NO es la conjetura generica.
+  it('si /start_scan responde result:false, RECHAZA con el motivo real, sin esperar el plazo y sin la conjetura del LIDAR', async () => {
+    const { t, ws } = transporteConectado()
+    const tel = new Teleoperacion(t)
+
+    const p = tel.arrancarBarrido()   // plazo por defecto: 8 s. No debe hacer falta.
+    const llamada = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    ws.recibir({
+      op: 'service_response', id: llamada.id, result: false,
+      values: 'el servicio start_scan lanzo una excepcion: puerto serie /dev/ydlidar no disponible',
+    })
+
+    // Rechaza YA (sin vi.advanceTimersByTime ni fake timers en este describe)
+    // con el motivo real del robot.
+    await expect(p).rejects.toThrow(/puerto serie \/dev\/ydlidar no disponible/)
+    // Y NO con la conjetura generica que antes sustituia al motivo real.
+    await expect(p).rejects.not.toThrow(/no tiene por que estar averiado|puede que el LIDAR/i)
+  })
 })
 
 describe('Teleoperacion.arrancarBarrido() — plazo cuando /scan nunca llega', () => {

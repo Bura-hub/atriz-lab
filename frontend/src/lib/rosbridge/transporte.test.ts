@@ -245,10 +245,15 @@ describe('Transporte — arreglos criticos', () => {
     expect(esperas[3]).toBe(esperas[0])   // se reinicio: misma espera que el primer intento
   })
 
-  // Importante 6: un `status` de rosbridge se tiraba sin dejar rastro, y
-  // rosbridge DENIEGA EN SILENCIO — su canal `status` es la unica pista de
-  // lo que rechazo. Y JSON.parse sin try/catch podia tumbar el manejador.
-  it('un status de rosbridge llega a alAviso, y un JSON invalido no lanza y avisa', () => {
+  // 🔴 Importante 6, CORREGIDO en el arreglo transversal: esta prueba
+  // inyectaba por WSFalso un `{op:'status', ...}` que rosbridge 2.7.0 NO
+  // MANDA NUNCA — verificado en el fuente (`Protocol.log()` escribe en el
+  // logger del NODO y ahi acaba; "status" tiene 0 apariciones en
+  // `protocol.py` ni en `rosbridge_server`). Era una prueba verde sobre una
+  // ficcion. Se borro la rama `status` de `entrante()` (codigo muerto que
+  // prometia algo falso) y esta prueba se redujo al unico aviso que SI es
+  // real: el JSON ilegible, que es local al cliente.
+  it('un JSON invalido no lanza, y llega a alAviso()', () => {
     const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
     t.conectar()
     WSFalso.ultimo.abrir()
@@ -256,12 +261,9 @@ describe('Transporte — arreglos criticos', () => {
     const avisos: { nivel: string; mensaje: string }[] = []
     t.alAviso((a) => avisos.push(a))
 
-    WSFalso.ultimo.recibir({ op: 'status', level: 'error', msg: 'topic no autorizado' })
-    expect(avisos).toEqual([{ nivel: 'error', mensaje: 'topic no autorizado' }])
-
     expect(() => WSFalso.ultimo.onmessage?.({ data: '{ esto no es json' })).not.toThrow()
-    expect(avisos).toHaveLength(2)
-    expect(avisos[1].nivel).toBe('error')
+    expect(avisos).toHaveLength(1)
+    expect(avisos[0].nivel).toBe('error')
   })
 })
 
@@ -317,5 +319,48 @@ describe('Transporte — ronda de arreglo 2', () => {
 
     const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
     expect(ops.some((o) => o.op === 'advertise' && o.topic === '/emergency_stop')).toBe(true)
+  })
+})
+
+// Arreglo transversal: revision contra el fuente real de rosbridge en la
+// Raspberry Pi, confirmada despues contra el upstream de
+// RobotWebTools/rosbridge_suite rama ros2. `call_service.py` tiene
+// exactamente dos apariciones de "result" (True y False) y en el fallo
+// manda `{op:'service_response', values: str(exc), result: false}`.
+// Resolverlo pase-lo-que-pase tiraba el motivo real (ver arreglo-transversal-report.md).
+describe('Transporte — result:false de un service_response', () => {
+  it('un service_response con result:false RECHAZA la llamada con el motivo real (no un mensaje generico)', async () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    const p = t.llamar('/start_scan')
+    const llamada = WSFalso.ultimo.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    WSFalso.ultimo.recibir({
+      op: 'service_response', id: llamada.id, result: false,
+      values: 'el YDLIDAR no respondio en el puerto serie',
+    })
+
+    await expect(p).rejects.toThrow(/YDLIDAR no respondio en el puerto serie/)
+  })
+
+  // Camino bueno: el arreglo no debe romper nada que ya funcionaba. Cubre
+  // las dos formas en que llega un exito real: sin `result` (como mandaban
+  // las pruebas anteriores a este arreglo) y con `result:true` explicito.
+  it('un service_response normal (sin result, o con result:true) sigue resolviendo', async () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    const p1 = t.llamar('/start_scan')
+    const llamada1 = WSFalso.ultimo.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    WSFalso.ultimo.recibir({ op: 'service_response', id: llamada1.id, values: { ok: true } })   // sin result
+    await expect(p1).resolves.toEqual({ ok: true })
+
+    const p2 = t.llamar('/stop_scan')
+    const llamadas = WSFalso.ultimo.enviados.map((s) => JSON.parse(s)).filter((o) => o.op === 'call_service')
+    const llamada2 = llamadas[llamadas.length - 1]
+    WSFalso.ultimo.recibir({ op: 'service_response', id: llamada2.id, values: { ok: true }, result: true })
+    await expect(p2).resolves.toEqual({ ok: true })
   })
 })
