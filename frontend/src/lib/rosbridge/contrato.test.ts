@@ -36,6 +36,20 @@ describe('lista blanca', () => {
     expect(tipoDe('/cmd_vel_raw')).toBe('geometry_msgs/msg/Twist')
   })
 
+  // Los tipos del paquete PROPIO del proyecto (atriz_rvr_msgs) son los unicos
+  // que pueden derivar de verdad, porque son los unicos que vive el codigo de
+  // este repositorio de web. `/encoders` fue justo el caso real: decia
+  // 'atriz_rvr_msgs/msg/Encoders' (PLURAL) cuando el .msg y el import del
+  // driver dicen 'Encoder' (singular) — ni este comprobador ni
+  // `comprobar_contrato.mjs` (que solo compara NOMBRES contra
+  // robot.launch.py) lo cazaban, porque ninguno de los dos miraba el tipo de
+  // este topic en concreto.
+  it('conoce el tipo exacto de los topics propios (atriz_rvr_msgs)', () => {
+    expect(tipoDe('/color')).toBe('atriz_rvr_msgs/msg/Color')
+    expect(tipoDe('/motor_status')).toBe('atriz_rvr_msgs/msg/MotorStatus')
+    expect(tipoDe('/encoders')).toBe('atriz_rvr_msgs/msg/Encoder')
+  })
+
   // SetLeds.srv tiene la respuesta VACIA: es la unica operacion de la
   // superficie web que no puede fallar visiblemente. La UI no debe prometer
   // confirmacion de un cambio de color.

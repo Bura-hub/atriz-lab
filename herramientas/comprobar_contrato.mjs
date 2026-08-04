@@ -84,6 +84,30 @@ function bloqueTs(fuente, nombre) {
   return extraerItems(m[1], 'contrato.ts', nombre)
 }
 
+/** Saca el contenido del objeto `export const TIPOS: ... = { ... }` de contrato.ts. */
+function bloqueTipos(fuente) {
+  const m = fuente.match(/export const TIPOS[^=]*=\s*\{([\s\S]*?)\}/m)
+  if (!m) throw new Error('no encuentro TIPOS en contrato.ts')
+  return m[1]
+}
+
+/**
+ * Saca pares [topic, tipo] de '/topic': 'paquete/msg/Tipo' dentro del bloque
+ * de TIPOS. Misma guarda que `extraerItems`: contrato.ts declara quince
+ * tipos, asi que 0 pares es un fallo de parseo (p.ej. un '}' prematuro
+ * dentro de un comentario), no una tabla vacia legitima.
+ */
+function extraerParesTipo(contenidoBloque) {
+  const pares = [...contenidoBloque.matchAll(/'(\/[^']+)':\s*'([^']+)'/g)].map((x) => [x[1], x[2]])
+  if (pares.length === 0) {
+    throw new Error(
+      `TIPOS en contrato.ts parseo a 0 pares: sospecha de un '}' prematuro ` +
+      `(p.ej. dentro de un comentario) cortando el bloque antes de tiempo`
+    )
+  }
+  return pares
+}
+
 const pares = [
   ['LEER', 'TOPICS_LECTURA'],
   ['ESCRIBIR', 'TOPICS_ESCRITURA'],
@@ -105,4 +129,44 @@ for (const [enPython, enTs] of pares) {
     console.log(`✅ ${enPython}: ${a.length} entradas, coinciden`)
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// CUARTA COMPROBACION: los TIPOS propios (atriz_rvr_msgs) existen de verdad
+// ═══════════════════════════════════════════════════════════════════════
+// Las tres comprobaciones de arriba comparan NOMBRES de topics/servicios
+// contra robot.launch.py, pero los TIPOS de contrato.ts no estan en ese
+// fichero: viven en los .msg del paquete atriz_rvr_msgs. Un tipo mal escrito
+// (p.ej. 'Encoders' en vez de 'Encoder', el fallo real que motivo esta
+// comprobacion) NO lo detectaba nada de lo anterior, ni las pruebas de
+// vitest si no apuntaban justo a ese topic: rosbridge falla con
+// `InvalidClassException: Unable to import msg class ...` y el sintoma se
+// confunde con «ese topic no llega», que se busca en el sitio equivocado.
+// Solo se verifican los tipos del paquete PROPIO del proyecto (atriz_rvr_msgs)
+// -son los unicos que pueden derivar, porque son los unicos que viven en este
+// repositorio-: los estandar (nav_msgs, sensor_msgs, geometry_msgs, std_msgs,
+// tf2_msgs, nav2_msgs) no estan clonados en ningun sitio y quedan FUERA de
+// esta comprobacion. Se dice explicitamente en el mensaje de salida para que
+// nadie lea el ✅ como «los quince tipos verificados».
+const paresTipo = extraerParesTipo(bloqueTipos(contrato))
+const propios = paresTipo.filter(([, tipo]) => tipo.startsWith('atriz_rvr_msgs/'))
+const faltantes = []
+for (const [topic, tipo] of propios) {
+  const nombreMsg = tipo.split('/').pop()   // 'atriz_rvr_msgs/msg/Encoder' -> 'Encoder'
+  const rutaMsg = join(raizRvr, 'atriz_rvr_msgs/msg', `${nombreMsg}.msg`)
+  if (!existsSync(rutaMsg)) faltantes.push({ topic, tipo, rutaMsg })
+}
+if (faltantes.length) {
+  fallos++
+  console.error(`🔴 TIPOS (atriz_rvr_msgs) diverge: hay tipos que no existen como .msg real`)
+  for (const { topic, tipo, rutaMsg } of faltantes) {
+    console.error(`   ${topic} -> '${tipo}': no existe ${rutaMsg}`)
+  }
+} else {
+  console.log(
+    `✅ TIPOS (atriz_rvr_msgs): ${propios.length} de ${propios.length} existen como .msg real ` +
+    '(paquetes estandar -nav_msgs/sensor_msgs/geometry_msgs/std_msgs/tf2_msgs/nav2_msgs- ' +
+    'no viven en este repositorio y quedan FUERA de esta comprobacion)'
+  )
+}
+
 process.exit(fallos ? 1 : 0)
