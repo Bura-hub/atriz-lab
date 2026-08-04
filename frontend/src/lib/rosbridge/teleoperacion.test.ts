@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { PERIODO_MS, RITMO_HZ, Teleoperacion, twist } from './teleoperacion'
+import { PERIODO_MS, PLAZO_ARRANQUE_SCAN_MS, RITMO_HZ, Teleoperacion, twist } from './teleoperacion'
 import { Transporte } from './transporte'
 
 /**
@@ -103,6 +103,71 @@ describe('Teleoperacion.arrancarBarrido()', () => {
   })
 })
 
+describe('Teleoperacion.arrancarBarrido() — plazo cuando /scan nunca llega', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('usa PLAZO_ARRANQUE_SCAN_MS por defecto (8 s, como atriz.py)', () => {
+    expect(PLAZO_ARRANQUE_SCAN_MS).toBe(8000)
+  })
+
+  // Ronda de arreglo 1: la revision midio una fuga real. Si /start_scan
+  // responde bien pero el /scan real nunca llega, y quien llamo deja de
+  // esperar la promesa (lo que hara la interfaz en produccion), la
+  // suscripcion a /scan -83 % del trafico de un robot- quedaba registrada
+  // para siempre, sin unsubscribe y sin ningun metodo publico para
+  // cancelarla. Las DOS mitades se comprueban por separado, siguiendo el
+  // patron ya usado en protocolo.test.ts para plazos con temporizadores
+  // falsos: las aserciones de rechazo se preparan ANTES de avanzar el
+  // reloj, enganchadas a la misma promesa.
+  it('al vencer el plazo, RECHAZA con un mensaje util Y se da de baja de /scan', async () => {
+    const { t, ws } = transporteConectado()
+    const tel = new Teleoperacion(t)
+
+    const p = tel.arrancarBarrido(50)   // plazo corto y parametrizable, para la prueba
+    const esperaMenciona_startScan = expect(p).rejects.toThrow(/start_scan/)
+    const esperaMenciona_collisionMonitor = expect(p).rejects.toThrow(/collision_monitor/i)
+
+    // /start_scan responde BIEN. El /scan real nunca llega.
+    const llamada = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+
+    vi.advanceTimersByTime(50)
+    await esperaMenciona_startScan
+    await esperaMenciona_collisionMonitor
+
+    // Mitad 2, la que se olvida sola: unsubscribe de /scan por el socket.
+    const ops = ws.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'unsubscribe' && o.topic === '/scan')).toBe(true)
+  })
+
+  it('el mensaje deja claro que el robot no tiene por que estar averiado', async () => {
+    const { t, ws } = transporteConectado()
+    const tel = new Teleoperacion(t)
+
+    const p = tel.arrancarBarrido(50)
+    const espera = expect(p).rejects.toThrow(/no tiene por que estar averiado|LIDAR/i)
+    const llamada = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+    vi.advanceTimersByTime(50)
+    await espera
+  })
+
+  it('si el /scan real llega ANTES del plazo, resuelve y no queda un temporizador pendiente', async () => {
+    const { t, ws } = transporteConectado()
+    const tel = new Teleoperacion(t)
+
+    const p = tel.arrancarBarrido(50)
+    const llamada = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+    ws.recibir({ op: 'publish', topic: '/scan', msg: {} })
+    await p   // resuelve sin necesidad de avanzar el reloj
+
+    // Avanzar mucho mas alla del plazo no debe lanzar ni volver a tocar nada.
+    expect(() => vi.advanceTimersByTime(10000)).not.toThrow()
+  })
+})
+
 describe('Teleoperacion — bucle de mando a 10 Hz', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
@@ -165,6 +230,15 @@ describe('Teleoperacion.parar()', () => {
 
     vi.advanceTimersByTime(1000)   // mucho mas que un periodo
     expect(publicaciones(ws, '/cmd_vel_raw').length).toBe(trasParar.length)   // nada nuevo
+  })
+
+  // Menor de la ronda de arreglo 1: parar() sigue la misma regla que
+  // paradaEmergencia() (propagar, no capturar) por lectura del codigo, pero
+  // el punto 9 del encargo solo cubria paradaEmergencia(). Prueba simetrica.
+  it('sin conexion PROPAGA la excepcion al llamante (misma regla que paradaEmergencia())', () => {
+    const t = new Transporte('ws://x:9090', fabrica)   // nunca conectado
+    const tel = new Teleoperacion(t)
+    expect(() => tel.parar()).toThrowError(/cmd_vel_raw/)
   })
 })
 

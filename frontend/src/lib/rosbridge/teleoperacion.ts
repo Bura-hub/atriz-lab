@@ -10,6 +10,16 @@ import { Transporte } from './transporte'
 export const RITMO_HZ = 10
 export const PERIODO_MS = 1000 / RITMO_HZ
 
+/**
+ * Plazo por defecto para el /scan real de `arrancarBarrido()`, igual que en
+ * `atriz.py` (la biblioteca del lado robot, que ya resolvio este mismo
+ * problema con un tope de ~8 s). Sin plazo, un LIDAR que nunca arranca deja
+ * la promesa pendiente para siempre Y la suscripcion a /scan -el 83 % del
+ * trafico de un robot- registrada de por vida en el `Transporte`, porque
+ * nadie la cancela si quien llamo deja de esperar esa promesa.
+ */
+export const PLAZO_ARRANQUE_SCAN_MS = 8000
+
 /** geometry_msgs/Twist. Los seis campos, aunque solo se use v y w (robot diferencial). */
 export interface Twist {
   linear: { x: number; y: number; z: number }
@@ -50,6 +60,15 @@ export function twist(v: number, w: number): Twist {
  *     envio, para poder decirselo a quien esta en el aula. `parar()` sigue la
  *     misma regla que (b) por el mismo motivo: es una llamada directa de un
  *     humano, no un tick automatico.
+ *
+ * ⚠️ Pestaña en segundo plano: los navegadores limitan `setInterval` a ~1 Hz
+ * cuando la pestaña no esta visible. Con el watchdog del driver a 0,3 s, eso
+ * DETIENE el robot por inanicion de `/cmd_vel_raw` -no hace falta que nadie
+ * llame a `parar()`. El efecto es SEGURO (el robot para solo), pero puede
+ * sorprender a quien esta teleoperando y cambia de pestaña: no es un fallo
+ * de esta clase, es el navegador. No se implementa nada para evitarlo -no
+ * se puede ejercitar con temporizadores falsos, y el efecto ya es el lado
+ * seguro-, pero quien construya la interfaz tiene que saberlo.
  */
 export class Teleoperacion {
   // Campos privados de verdad (#), no `private` de TypeScript: asi no
@@ -76,27 +95,49 @@ export class Teleoperacion {
    * el collision_monitor bloquea el movimiento: 0,0 cm medidos contra 9,9 del
    * control, y el robot parece averiado sin estarlo.
    *
-   * NO VERIFICADO / limitacion conocida: no hay plazo propio para el /scan.
-   * Si el LIDAR nunca arranca, la promesa queda pendiente para siempre en vez
-   * de resolver en falso — no se implementa un timeout aqui porque no esta en
-   * el encargo de esta tarea y anadiria una superficie sin prueba. Si /scan
-   * nunca llega, el fallo es visible (la promesa nunca resuelve, la UI no
-   * puede decir "listo"), no silencioso.
+   * Lleva un PLAZO (por defecto `PLAZO_ARRANQUE_SCAN_MS`, parametrizable):
+   * si /start_scan responde pero el /scan real nunca llega, la promesa
+   * RECHAZA en vez de quedar pendiente para siempre -mismo tope que
+   * `atriz.py`, la biblioteca del lado robot, ya usa para este problema.
+   *
+   * 🔴 Al vencer el plazo (o si /start_scan falla) se da de baja de /scan.
+   * Es la mitad que se olvida: si solo se rechaza la promesa sin cancelar la
+   * suscripcion, /scan -el 83 % del trafico de un robot- queda pidiendose
+   * para siempre en el `Transporte`, aunque nadie vaya a leerlo mas. Lo
+   * mismo en el camino de exito: la suscripcion solo existia para esperar
+   * la primera muestra.
    */
-  arrancarBarrido(): Promise<void> {
+  arrancarBarrido(plazoMs: number = PLAZO_ARRANQUE_SCAN_MS): Promise<void> {
     return new Promise((resolver, rechazar) => {
       let resuelto = false
+
+      // `terminar` referencia `cancelarSuscripcion` y `plazo`, declaradas
+      // MAS ABAJO: es seguro porque `terminar` solo se invoca desde
+      // callbacks asincronos (mensaje, plazo, fallo de /start_scan), nunca
+      // durante este bloque sincrono -para cuando cualquiera de esos
+      // callbacks pueda disparar, las tres ya estan inicializadas.
+      const terminar = (fn: () => void): void => {
+        if (resuelto) return
+        resuelto = true
+        clearTimeout(plazo)
+        cancelarSuscripcion()
+        fn()
+      }
+
       const cancelarSuscripcion = this.#transporte.suscribir('/scan', () => {
-        if (resuelto) return
-        resuelto = true
-        cancelarSuscripcion()
-        resolver()
+        terminar(resolver)
       })
+
+      const plazo = setTimeout(() => {
+        terminar(() => rechazar(new Error(
+          `«/start_scan» respondio pero no llego ningun /scan real en ${plazoMs / 1000} s. ` +
+            'Sin /scan el collision_monitor bloquea el movimiento: el robot no tiene por que ' +
+            'estar averiado -puede que el LIDAR no haya arrancado.',
+        )))
+      }, plazoMs)
+
       this.#transporte.llamar('/start_scan').catch((error: unknown) => {
-        if (resuelto) return
-        resuelto = true
-        cancelarSuscripcion()
-        rechazar(error instanceof Error ? error : new Error(String(error)))
+        terminar(() => rechazar(error instanceof Error ? error : new Error(String(error))))
       })
     })
   }
