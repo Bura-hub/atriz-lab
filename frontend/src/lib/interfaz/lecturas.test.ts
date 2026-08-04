@@ -135,7 +135,69 @@ describe('entradaDeBaldosa', () => {
       antiguedadTermicoS: 12.0,
       atascado: false,
       msDesdeUltimoLatido: 900,
+      // Sin `/estado_robot` la entrada lo dice: `null`, que NO es «todo bien».
+      estadoRobot: null,
     })
+  })
+
+  it('recoge /estado_robot cuando llega, con la lectura anterior del latido', () => {
+    const e = entradaDeBaldosa({
+      id: 7,
+      conectado: true,
+      bateria: { voltage: 8.29 },
+      motores: motoresSanos(),
+      msDesdeUltimoMotorStatus: 900,
+      estado: {
+        latido: 2181,
+        parada_emergencia: true,
+        rvr_responde: true,
+        antiguedad_muestra_s: 0.05,
+        antiguedad_odom_s: 0.06,
+        reanudaciones_fallidas: 0,
+      },
+      latidoPrevio: 2180,
+    })
+    expect(e.estadoRobot).toEqual({
+      latido: 2181,
+      latidoPrevio: 2180,
+      paradaEmergencia: true,
+      rvrResponde: true,
+      antiguedadMuestraS: 0.05,
+      antiguedadOdomS: 0.06,
+      reanudacionesFallidas: 0,
+    })
+  })
+
+  it('🔴 un mensaje al que le falta lo esencial da null, no medio dato', () => {
+    // `useTopic` hace una ASERCION de tipo, no una validacion: si el robot manda
+    // otra cosa —un driver mas viejo, un campo renombrado— nada lo detiene, y un
+    // `undefined` comparado con un umbral produce decisiones inventadas.
+    const e = entradaDeBaldosa({
+      id: 7,
+      conectado: true,
+      bateria: null,
+      motores: null,
+      msDesdeUltimoMotorStatus: null,
+      estado: { latido: 5 },          // sin parada_emergencia ni rvr_responde
+      latidoPrevio: 4,
+    })
+    expect(e.estadoRobot).toBeNull()
+  })
+
+  it('y las antiguedades que faltan caen a -1, la convencion de «no se sabe»', () => {
+    const e = entradaDeBaldosa({
+      id: 7,
+      conectado: true,
+      bateria: null,
+      motores: null,
+      msDesdeUltimoMotorStatus: null,
+      estado: { latido: 5, parada_emergencia: false, rvr_responde: true },
+      latidoPrevio: null,
+    })
+    // 🔴 -1 y no 0: un 0 significaria «acaba de llegar una muestra», que es la
+    //    direccion insegura del error.
+    expect(e.estadoRobot?.antiguedadOdomS).toBe(-1)
+    expect(e.estadoRobot?.antiguedadMuestraS).toBe(-1)
   })
 
   it('un robot sin ningun mensaje todavia no afirma nada de nada', () => {

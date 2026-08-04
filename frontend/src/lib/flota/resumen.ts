@@ -54,6 +54,48 @@ export const UMBRAL_TERMICO_RANCIO_S = 35
 /** El texto exacto que pide el encargo. La baldosa NUNCA dice «averiado» por esto. */
 export const TEXTO_SIN_SENAL = 'sin señal de vida'
 
+/**
+ * Lo que trae `/estado_robot`, el topic que el robot publica desde el
+ * 2026-08-04. `null` en `EntradaBaldosa` = **no llega**, que NO es «todo bien»:
+ * puede ser un driver anterior a esa fecha.
+ */
+export interface EntradaEstadoRobot {
+  /** Contador MONOTONO. Vale por si solo para nada: lo que dice algo es que AVANCE. */
+  latido: number
+  /**
+   * 🔴 La lectura ANTERIOR, y por eso hace falta. El topic va
+   * `TRANSIENT_LOCAL`, asi que un suscriptor nuevo puede recibir el ULTIMO
+   * valor latcheado de un nodo que ya esta muerto: «llego un mensaje» no prueba
+   * que haya nadie detras. Lo unico que lo prueba es que el contador se mueva.
+   * `null` = solo hay una lectura todavia, o sea «aun no se sabe».
+   */
+  latidoPrevio: number | null
+  paradaEmergencia: boolean
+  /** `false` = la Pi va bien y el RVR no contesta: cargando, dormido, o caido. */
+  rvrResponde: boolean
+  /** Segundos desde la ultima muestra DEL RVR. -1 = no se sabe. */
+  antiguedadMuestraS: number
+  /** Segundos desde el ultimo `/odom` COMPLETO. -1 = no se sabe. */
+  antiguedadOdomS: number
+  /** Reanudaciones seguidas sin recuperar dato. ⚠️ Umbrales sin calibrar. */
+  reanudacionesFallidas: number
+}
+
+/**
+ * 🔴 EL TERCER ESTADO: `/odom` muerto con el enlace VIVO.
+ *
+ * Si llegan muestras del RVR pero `/odom` no se completa —faltan componentes—,
+ * el latido avanza, `rvr_responde` dice `true`, y **la odometria esta muerta**.
+ * Sin este umbral el muro pinta ese robot en verde.
+ *
+ * 3 s sobre un topic de 16,5 Hz son ~50 mensajes perdidos, el mismo criterio
+ * que `UMBRAL_SILENCIO_MS`. Aqui SI se puede reutilizar el numero, y no
+ * contradice la regla de al lado: alli el problema era aplicar un umbral de
+ * `/odom` a un topic de 1 Hz; esto sigue midiendo `/odom`, solo que el dato
+ * llega envuelto en otro mensaje.
+ */
+export const UMBRAL_ODOM_MUERTA_S = 3
+
 export interface EntradaBaldosa {
   id: number
   conectado: boolean
@@ -65,6 +107,8 @@ export interface EntradaBaldosa {
   atascado: boolean | null
   /** ms desde el ultimo `/motor_status`. `null` = no ha llegado ninguno. */
   msDesdeUltimoLatido: number | null
+  /** `/estado_robot`. `null` = no llega, que NO es «todo bien». */
+  estadoRobot: EntradaEstadoRobot | null
 }
 
 /**
@@ -105,6 +149,19 @@ export interface Baldosa {
   termicoRancio: boolean
   /** 🔴 `null` = no se sabe. Se propaga tal cual: no se colapsa a `false`. */
   atascado: boolean | null
+  /**
+   * 🔴 `true` = el robot NO aceptara ordenes de movimiento. El profesor tiene
+   * que verlo: un alumno con la parada puesta dice «no funciona», y desde fuera
+   * es indistinguible de una averia. `null` = no se sabe.
+   */
+  paradaEmergencia: boolean | null
+  /**
+   * 🔴 EL TERCER ESTADO: llegan datos del RVR pero `/odom` no se completa.
+   * Sin esto la baldosa saldria VERDE con la odometria muerta.
+   */
+  odometriaMuerta: boolean
+  /** `false` = la Pi va y el RVR no contesta. `null` = no se sabe. */
+  rvrResponde: boolean | null
 }
 
 const enVoltios = (v: number): string => `${v.toFixed(2).replace('.', ',')} V`
@@ -140,6 +197,22 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
     e.antiguedadTermicoS === null ? { conocido: false } : interpretarAntiguedad(e.antiguedadTermicoS)
   const termicoRancio = frescuraTermico.conocido && frescuraTermico.antiguedadS > UMBRAL_TERMICO_RANCIO_S
 
+  // ── Lo que trae `/estado_robot` ─────────────────────────────────────────
+  const er = e.estadoRobot
+  const paradaEmergencia: boolean | null = er === null ? null : er.paradaEmergencia
+  const rvrResponde: boolean | null = er === null ? null : er.rvrResponde
+
+  // 🔴 EL TERCER ESTADO. Llegan muestras del RVR (`antiguedadMuestraS` fresca)
+  //    pero `/odom` no se completa (`antiguedadOdomS` envejecida). El latido
+  //    avanza y `rvrResponde` dice true, asi que sin esto la baldosa sale VERDE
+  //    con la odometria muerta.
+  // ⚠️ Las dos tienen que ser >= 0: `-1.0` es «no se sabe», y comparar un -1
+  //    contra un umbral daria «fresco» sobre un dato que no existe.
+  const odometriaMuerta =
+    er !== null
+    && er.antiguedadMuestraS >= 0 && er.antiguedadMuestraS <= UMBRAL_ODOM_MUERTA_S
+    && er.antiguedadOdomS >= 0 && er.antiguedadOdomS > UMBRAL_ODOM_MUERTA_S
+
   // ── Los motivos, en orden fijo ──────────────────────────────────────────
   // Sin latido la baldosa NO afirma nada sobre atasco, bateria ni temperatura:
   // esos campos siguen ahi como «lo ultimo que se supo» (`datosVigentes:
@@ -157,6 +230,26 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
   } else {
     // 🔴 `atascado: null` no genera frase: que no se sepa no es que no lo haya,
     //    y tampoco es un atasco. Solo `true` afirma algo.
+    // 🔴 La parada va PRIMERA de los motivos: explica por si sola que el robot
+    //    no obedezca, y sin ella el profesor busca una averia que no existe.
+    if (paradaEmergencia === true) {
+      motivos.push(
+        'la parada de emergencia esta puesta: el robot no acepta ordenes de movimiento hasta ' +
+        'que alguien la libere con el robot delante. NO es una averia',
+      )
+    }
+    if (odometriaMuerta) {
+      motivos.push(
+        'llegan datos del RVR pero /odom no se completa: la odometria esta muerta aunque el ' +
+        'enlace vaya bien. Reiniciar el streaming NO lo arregla, es otro fallo',
+      )
+    }
+    if (rvrResponde === false) {
+      motivos.push(
+        'la Raspberry Pi va bien y el RVR no contesta: puede estar cargando (apagado con la Pi ' +
+        'encendida, que es lo cotidiano), dormido, o desconectado',
+      )
+    }
     if (e.atascado === true) {
       motivos.push('atasco confirmado por el firmware del RVR: un motor recibe corriente y no gira')
     }
@@ -194,10 +287,18 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
   //    baldosas en ambar por el estado mas cotidiano del laboratorio. La bandera
   //    existe para que la interfaz no pinte una temperatura plana como
   //    «estable», no para pedir que alguien vaya.
+  // 🔴 `odometriaMuerta` sube a IR, y es el unico de los tres que lo hace: es un
+  //    HECHO POSITIVO y actual —el robot afirma que /odom no se completa—, y un
+  //    robot con la odometria muerta parece sano por todos los demas caminos.
+  // ⚠️ La parada puesta y el RVR sin contestar son MIRAR, no IR: los dos son
+  //    estados NORMALES del laboratorio -alguien pulso la parada, alguien puso
+  //    el robot a cargar- y mandar a cruzar el aula por ellos gastaria la
+  //    credibilidad del aviso que si importa.
   const atencion: AtencionBaldosa =
-    datosVigentes && (e.atascado === true || bateria === 'CRITICA')
+    datosVigentes && (e.atascado === true || bateria === 'CRITICA' || odometriaMuerta)
       ? 'IR'
       : !datosVigentes || bateria === 'BAJA'
+        || paradaEmergencia === true || rvrResponde === false
         ? 'MIRAR'
         : 'NINGUNA'
 
@@ -212,5 +313,8 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
     frescuraTermico,
     termicoRancio,
     atascado: e.atascado,
+    paradaEmergencia,
+    odometriaMuerta,
+    rvrResponde,
   }
 }

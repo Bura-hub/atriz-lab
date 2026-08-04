@@ -22,7 +22,7 @@
  */
 
 import { interpretarAntiguedad } from '../rosbridge/contrato'
-import { EntradaBaldosa } from '../flota/resumen'
+import { EntradaBaldosa, EntradaEstadoRobot } from '../flota/resumen'
 
 /**
  * Lo que la interfaz lee de `sensor_msgs/msg/BatteryState`. PARCIAL a proposito
@@ -121,6 +121,12 @@ export function entradaDeBaldosa(datos: {
   bateria: LecturaBateria | null
   motores: LecturaMotores | null
   msDesdeUltimoMotorStatus: number | null
+  /**
+   * `/estado_robot`, y la lectura ANTERIOR de su latido. `null` = no llega —un
+   * driver anterior al 2026-08-04—, que **no es «todo bien»**.
+   */
+  estado?: LecturaEstadoRobot | null
+  latidoPrevio?: number | null
 }): EntradaBaldosa {
   return {
     id: datos.id,
@@ -129,6 +135,49 @@ export function entradaDeBaldosa(datos: {
     antiguedadTermicoS: numeroValido(datos.motores?.antiguedad_termico_s),
     atascado: atascoDe(datos.motores),
     msDesdeUltimoLatido: datos.msDesdeUltimoMotorStatus,
+    estadoRobot: estadoRobotDe(datos.estado ?? null, datos.latidoPrevio ?? null),
+  }
+}
+
+/** Lo que `entradaDeBaldosa` acepta de `/estado_robot`, con todo opcional. */
+export interface LecturaEstadoRobot {
+  latido?: number
+  parada_emergencia?: boolean
+  rvr_responde?: boolean
+  antiguedad_muestra_s?: number
+  antiguedad_odom_s?: number
+  reanudaciones_fallidas?: number
+}
+
+/**
+ * Valida `/estado_robot` campo a campo. Devuelve `null` si falta lo esencial.
+ *
+ * 🔴 No se da por buena la forma del mensaje. `useTopic` hace una ASERCION de
+ * tipo, no una validacion: si el robot manda otra cosa —un driver mas viejo, un
+ * campo renombrado— nada lo detiene, y un `undefined` comparado con un umbral
+ * da resultados que parecen decisiones. Aqui se comprueba, y lo que no cuadra
+ * se convierte en «no se sabe».
+ */
+export function estadoRobotDe(
+  m: LecturaEstadoRobot | null | undefined,
+  latidoPrevio: number | null,
+): EntradaEstadoRobot | null {
+  if (m === null || m === undefined) return null
+  const latido = numeroValido(m.latido)
+  const parada = booleanoValido(m.parada_emergencia)
+  const responde = booleanoValido(m.rvr_responde)
+  // Sin estos tres no hay nada que decidir: mejor «no se sabe» que medio dato.
+  if (latido === null || parada === null || responde === null) return null
+  return {
+    latido,
+    latidoPrevio,
+    paradaEmergencia: parada,
+    rvrResponde: responde,
+    // -1 es la convencion del proyecto para «no se sabe», y `resumirBaldosa` ya
+    // la respeta: se propaga tal cual en vez de inventar un 0.
+    antiguedadMuestraS: numeroValido(m.antiguedad_muestra_s) ?? -1,
+    antiguedadOdomS: numeroValido(m.antiguedad_odom_s) ?? -1,
+    reanudacionesFallidas: numeroValido(m.reanudaciones_fallidas) ?? 0,
   }
 }
 

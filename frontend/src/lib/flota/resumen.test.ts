@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  EntradaBaldosa, TEXTO_SIN_SENAL, UMBRAL_LATIDO_MURO_MS, UMBRAL_TERMICO_RANCIO_S, resumirBaldosa,
+  EntradaBaldosa,
+  EntradaEstadoRobot, TEXTO_SIN_SENAL, UMBRAL_LATIDO_MURO_MS, UMBRAL_TERMICO_RANCIO_S, resumirBaldosa,
 } from './resumen'
 import { UMBRAL_SILENCIO_MS } from '../rosbridge/salud'
 
@@ -9,12 +10,24 @@ import { UMBRAL_SILENCIO_MS } from '../rosbridge/salud'
  * (8,29 V medidos), temperatura recien sondeada y sin atasco. Cada prueba
  * cambia SOLO lo que esta probando, para que un fallo señale una causa.
  */
+const estadoSano = (cambios: Partial<EntradaEstadoRobot> = {}): EntradaEstadoRobot => ({
+  latido: 100,
+  latidoPrevio: 99,
+  paradaEmergencia: false,
+  rvrResponde: true,
+  antiguedadMuestraS: 0.06,
+  antiguedadOdomS: 0.06,
+  reanudacionesFallidas: 0,
+  ...cambios,
+})
+
 const sana = (cambios: Partial<EntradaBaldosa> = {}): EntradaBaldosa => ({
   id: 1,
   conectado: true,
   voltios: 8.29,
   antiguedadTermicoS: 5,
   atascado: false,
+  estadoRobot: estadoSano(),
   msDesdeUltimoLatido: 900,
   ...cambios,
 })
@@ -227,5 +240,95 @@ describe('resumirBaldosa — regla 5: no saber si hay atasco no es que no lo hay
   it('un false explicito y un null dan la misma atencion pero NO el mismo dato', () => {
     expect(resumirBaldosa(sana({ atascado: false })).atascado).toBe(false)
     expect(resumirBaldosa(sana({ atascado: null })).atascado).toBeNull()
+  })
+})
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// `/estado_robot`: las tres cosas que el muro no podia saber
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('resumirBaldosa — el tercer estado: /odom muerto con el enlace vivo', () => {
+  // 🔴 ES EL CASO QUE PINTABA VERDE. Llegan muestras del RVR, el latido avanza y
+  //    rvr_responde dice true, pero /odom no se completa. Por todos los demas
+  //    caminos el robot parece sano.
+  const muerta = resumirBaldosa(sana({
+    estadoRobot: estadoSano({ antiguedadMuestraS: 0.05, antiguedadOdomS: 12 }),
+  }))
+
+  it('lo detecta', () => {
+    expect(muerta.odometriaMuerta).toBe(true)
+  })
+
+  it('🔴 y manda IR: es un hecho positivo y actual, y nada mas lo delata', () => {
+    expect(muerta.atencion).toBe('IR')
+  })
+
+  it('dice que reiniciar el streaming NO lo arregla', () => {
+    // Sin esa frase, quien lo lea intentara justo lo que no funciona.
+    expect(muerta.motivos.some((m) => m.includes('NO lo arregla'))).toBe(true)
+  })
+
+  it('un robot sano NO lo dispara', () => {
+    expect(resumirBaldosa(sana()).odometriaMuerta).toBe(false)
+    expect(resumirBaldosa(sana()).atencion).toBe('NINGUNA')
+  })
+
+  it('🔴 y -1 («no se sabe») tampoco: no es una antiguedad pequeña', () => {
+    // Comparar -1 contra el umbral daria «fresco» sobre un dato que no existe.
+    expect(resumirBaldosa(sana({
+      estadoRobot: estadoSano({ antiguedadMuestraS: -1, antiguedadOdomS: -1 }),
+    })).odometriaMuerta).toBe(false)
+  })
+})
+
+describe('resumirBaldosa — la parada de emergencia en el muro', () => {
+  const parado = resumirBaldosa(sana({ estadoRobot: estadoSano({ paradaEmergencia: true }) }))
+
+  it('se propaga, para que el profesor no busque una averia que no existe', () => {
+    expect(parado.paradaEmergencia).toBe(true)
+    expect(parado.motivos.some((m) => m.includes('parada de emergencia esta puesta'))).toBe(true)
+  })
+
+  it('dice que NO es una averia', () => {
+    expect(parado.motivos.some((m) => m.includes('NO es una averia'))).toBe(true)
+  })
+
+  it('⚠️ pide MIRAR, no IR: alguien la pulso, es un estado normal', () => {
+    expect(parado.atencion).toBe('MIRAR')
+  })
+})
+
+describe('resumirBaldosa — el RVR sin contestar (cargando o dormido)', () => {
+  const cargando = resumirBaldosa(sana({ estadoRobot: estadoSano({ rvrResponde: false }) }))
+
+  it('lo distingue de «no llego nada»', () => {
+    expect(cargando.rvrResponde).toBe(false)
+    expect(cargando.estado).toBe('EN_LINEA')   // la Pi SI contesta
+  })
+
+  it('nombra las tres causas sin elegir, y dice que cargando es lo cotidiano', () => {
+    const m = cargando.motivos.find((x) => x.includes('RVR no contesta'))
+    expect(m).toBeDefined()
+    expect(m).toContain('cargando')
+    expect(m).toContain('dormido')
+    expect(m).toContain('cotidiano')
+  })
+
+  it('⚠️ MIRAR, no IR: un robot en el cargador no justifica cruzar el aula', () => {
+    expect(cargando.atencion).toBe('MIRAR')
+  })
+})
+
+describe('resumirBaldosa — sin /estado_robot', () => {
+  it('🔴 «no llega» da null, NUNCA false: un driver viejo no es un robot sin parada', () => {
+    const b = resumirBaldosa(sana({ estadoRobot: null }))
+    expect(b.paradaEmergencia).toBeNull()
+    expect(b.rvrResponde).toBeNull()
+    expect(b.odometriaMuerta).toBe(false)
+  })
+
+  it('y no cambia la atencion: no se sabe, no se inventa', () => {
+    expect(resumirBaldosa(sana({ estadoRobot: null })).atencion).toBe('NINGUNA')
   })
 })

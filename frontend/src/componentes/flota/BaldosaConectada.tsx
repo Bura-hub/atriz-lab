@@ -27,6 +27,7 @@
  * las 16 baldosas a la vez. Hay una prueba en `resumen.ts` que impide unificarlos.
  */
 
+import { useRef } from 'react'
 import { ProveedorRobot, useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
 import { useLatido } from '@/hooks/useTransporte'
@@ -41,9 +42,24 @@ function Contenido({ id }: { id: number }) {
   const { transporte, conectado } = useRobot()
   const bateria = useTopic(transporte, '/battery_state')
   const motores = useTopic(transporte, TOPIC_LATIDO_MURO)
+  // 🔴 `/estado_robot`, 1 Hz, ~0,03 kB/s. Es lo que le da al muro TRES cosas que
+  //    antes no podia saber: si la parada esta puesta, si el RVR contesta, y
+  //    —la que mas— si `/odom` esta muerto con el enlace vivo, que es el caso en
+  //    el que la baldosa saldria VERDE con la odometria parada.
+  const estado = useTopic(transporte, '/estado_robot')
   // La antiguedad envejece sin que llegue nada: sin este muestreo, una baldosa
   // muda se quedaria en «en linea» para siempre.
   useLatido()
+
+  // 🔴 La lectura ANTERIOR del contador. `/estado_robot` va `TRANSIENT_LOCAL`,
+  //    asi que un suscriptor nuevo puede recibir el ultimo valor latcheado de un
+  //    nodo ya muerto: «llego un mensaje» no prueba que haya nadie detras. Lo
+  //    unico que lo prueba es que el numero se mueva, y para eso hacen falta dos.
+  const latidoPrevio = useRef<number | null>(null)
+  const latidoAnterior = latidoPrevio.current
+  if (estado !== null && estado.latido !== latidoPrevio.current) {
+    latidoPrevio.current = estado.latido
+  }
 
   const baldosa = resumirBaldosa(
     entradaDeBaldosa({
@@ -52,6 +68,8 @@ function Contenido({ id }: { id: number }) {
       bateria,
       motores,
       msDesdeUltimoMotorStatus: transporte.msDesdeUltimo(TOPIC_LATIDO_MURO),
+      estado,
+      latidoPrevio: latidoAnterior,
     }),
   )
 
