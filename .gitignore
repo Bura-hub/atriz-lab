@@ -16,6 +16,14 @@ eggs/
 .eggs/
 lib/
 lib64/
+
+# La regla `lib/` de arriba viene de la seccion de Python y NO esta anclada, asi
+# que tambien atrapaba `frontend/src/lib/`, donde vive el nucleo del cliente de
+# rosbridge. Sin esta excepcion, un `git add -A` deja ficheros nuevos fuera del
+# commit EN SILENCIO.
+!frontend/src/lib/
+!frontend/src/lib/**
+
 parts/
 sdist/
 var/
