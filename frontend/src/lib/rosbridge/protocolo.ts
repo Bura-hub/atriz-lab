@@ -28,6 +28,8 @@ export function opSubscribe(topic: string): OpSalida {
   return { op: 'subscribe', topic, type: tipoDe(topic)! }
 }
 
+// `unsubscribe` no crea estado ni espera respuesta: no hay «denegado vs caido»
+// que resolver, asi que no valida contra la lista blanca como las demas.
 export const opUnsubscribe = (topic: string): OpSalida => ({ op: 'unsubscribe', topic })
 
 export function opAdvertise(topic: string): OpSalida {
@@ -53,6 +55,14 @@ export class RegistroPendientes {
   >()
 
   registrar(id: string, ms: number): Promise<unknown> {
+    // 🔴 Un id repetido pisaba la entrada anterior EN SILENCIO y dejaba su
+    //    temporizador huerfano: la PRIMERA llamada acababa rechazada con «sin
+    //    respuesta» aunque el robot SI hubiera contestado —bajo la segunda
+    //    entrada—, mandando a diagnosticar lo que no es. Es un error de
+    //    programacion del llamante, asi que se dice en el acto y no despues.
+    if (this.pendientes.has(id)) {
+      throw new Error(`ya hay una llamada pendiente con el id «${id}»: no se reutilizan`)
+    }
     return new Promise((resolver, rechazar) => {
       const plazo = setTimeout(() => {
         this.pendientes.delete(id)

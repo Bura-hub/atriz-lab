@@ -41,10 +41,25 @@ describe('llamadas pendientes', () => {
     vi.useFakeTimers()
     const r = new RegistroPendientes()
     const p = r.registrar('y', 5000)
-    const capturado = expect(p).rejects.toThrowError(/denegad[ao].*|.*ca[ií]d/)
+    // 🔴 Exige LAS DOS posibilidades en el mismo mensaje. Un regex con
+    //    alternancia sin agrupar —`/denegad[ao].*|.*ca[ií]d/`— es en realidad
+    //    `(denegad[ao].*)|(.*ca[ií]d)` y PASA mencionando solo una: la
+    //    salvaguarda seria mas debil de lo que aparenta.
+    const capturado = expect(p).rejects.toThrowError(/denegad[ao][\s\S]*ca[ií]d/)
     vi.advanceTimersByTime(5001)
     await capturado
     vi.useRealTimers()
+  })
+
+  // Un id repetido pisaba la entrada anterior en silencio y dejaba huerfano
+  // el temporizador de la primera: acababa rechazada con «sin respuesta»
+  // aunque el robot SI hubiera contestado. Ahora se dice en el acto.
+  it('un id repetido lanza en el acto, y la primera promesa sigue viva', async () => {
+    const r = new RegistroPendientes()
+    const p = r.registrar('dup', 5000)
+    expect(() => r.registrar('dup', 5000)).toThrowError(/dup/)
+    r.resolver('dup', { ok: true })
+    await expect(p).resolves.toEqual({ ok: true })
   })
 
   it('cancelar todas rechaza las pendientes al caerse el enlace', async () => {
