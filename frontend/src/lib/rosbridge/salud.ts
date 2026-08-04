@@ -32,7 +32,12 @@ export interface Salud {
   esAveria: boolean
 }
 
-const fresco = (ms: number | null) => ms !== null && ms <= UMBRAL_SILENCIO_MS
+// 🔴 M1: `ms >= 0` ademas de `ms <= UMBRAL_SILENCIO_MS`. `Date.now()` no es
+// monotono: un salto de NTP hacia atras hace que `msDesdeUltimo()` (el
+// productor, en transporte.ts) de un numero NEGATIVO, y sin este limite
+// "-50 <= 3000" es verdad -EN_LINEA sobre un robot mudo, la direccion
+// insegura.
+const fresco = (ms: number | null) => ms !== null && ms >= 0 && ms <= UMBRAL_SILENCIO_MS
 
 export function evaluarSalud(e: EntradaSalud): Salud {
   if (!e.conectado) {

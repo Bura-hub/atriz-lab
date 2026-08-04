@@ -57,27 +57,53 @@ export const permitidoLlamar = (servicio: string) => enLista(SERVICIOS, servicio
 export const tipoDe = (topic: string): string | undefined => TIPOS[topic]
 
 /**
- * SetLeds.srv tiene la respuesta del servicio VACIA: no hay ningun campo debajo
- * del `---`. Es la unica operacion de la superficie web sin deteccion de fallo,
- * y en este firmware hay comandos de LED que se aceptan en silencio sin hacer
- * nada. La UI NO puede prometer que el color cambio.
+ * 🔴 CORREGIDO: NO es solo `/set_leds`. Cuatro de los ocho servicios tienen la
+ * respuesta VACIA (`std_srvs/srv/Empty`, sin ningun campo debajo del `---`),
+ * medido contra el repositorio del robot:
+ *
+ *   /start_scan, /stop_scan, /release_emergency_stop  -> std_srvs/srv/Empty
+ *   /set_leds                                          -> SetLeds.srv, VACIA
+ *
+ * `/release_emergency_stop` es la operacion que devuelve el control del robot
+ * a un aula con estudiantes: antes `confirmaEfecto()` decia `true` para los
+ * tres primeros, que es exactamente la mentira que este proyecto ya paga con
+ * la parada de emergencia. La UI NO puede prometer un efecto que la respuesta
+ * no contiene ni un bit para confirmar.
  */
-export const SERVICIOS_SIN_CONFIRMACION = ['/set_leds'] as const
+export const SERVICIOS_SIN_CONFIRMACION = [
+  '/start_scan', '/stop_scan', '/release_emergency_stop', '/set_leds',
+] as const
 export const confirmaEfecto = (servicio: string) => !enLista(SERVICIOS_SIN_CONFIRMACION, servicio)
 
 /**
  * /battery_state.percentage es una FRACCION 0-1, no un porcentaje: lo manda
  * sensor_msgs/BatteryState y el driver lo respeta.
+ *
+ * `null` cuando la fraccion no es un numero finito: NaN o Infinity no son un
+ * porcentaje legible, y `Math.round(NaN * 100)` da NaN en silencio -misma
+ * familia de bug que `nivelBateria(NaN)`.
  */
-export const porcentajeLegible = (fraccion: number) => Math.round(fraccion * 100)
+export const porcentajeLegible = (fraccion: number): number | null =>
+  Number.isFinite(fraccion) ? Math.round(fraccion * 100) : null
 
-export type NivelBateria = 'OK' | 'BAJA' | 'CRITICA'
+export type NivelBateria = 'OK' | 'BAJA' | 'CRITICA' | 'DESCONOCIDO'
 
 /** Umbrales del propio firmware del RVR. El PORCENTAJE no sirve para decidir carga. */
 export const V_BAJA = 7.0
 export const V_CRITICA = 6.5
 
+/**
+ * 🔴 CORREGIDO: `nivelBateria(NaN)` devolvia `'OK'`. `NaN < V_CRITICA` y
+ * `NaN < V_BAJA` son los dos `false`, asi que caia en la rama «segura» por la
+ * puerta equivocada -el mismo patron que `limitar(nan)` devolviendo el tope
+ * en `atriz.py`. En el robot, `rvr_driver_node.py:958` publica exactamente
+ * `voltage = NaN` cuando la lectura falla (RVR cargando con la Pi viva, o
+ * dormido): con el bug, la vista de flota pintaba ese robot en OK.
+ * `interpretarAntiguedad()` ya distinguia «no se sabe» de «todo bien»; esta
+ * funcion no lo hacia, y es la senal que decide si alguien cruza el edificio.
+ */
 export function nivelBateria(voltios: number): NivelBateria {
+  if (!Number.isFinite(voltios)) return 'DESCONOCIDO'
   if (voltios < V_CRITICA) return 'CRITICA'
   if (voltios < V_BAJA) return 'BAJA'
   return 'OK'
@@ -85,7 +111,12 @@ export function nivelBateria(voltios: number): NivelBateria {
 
 export type Frescura = { conocido: false } | { conocido: true; antiguedadS: number }
 
-/** -1.0 en antiguedad_atasco_s / _fallo_s / _termico_s es «no se sabe», no «todo bien». */
+/**
+ * -1.0 en antiguedad_atasco_s / _fallo_s / _termico_s es «no se sabe», no
+ * «todo bien». Misma familia que `nivelBateria`: antes `NaN < 0` era `false`,
+ * asi que un valor NO FINITO caia en la rama `conocido: true` con
+ * `antiguedadS: NaN` en vez de en «no se sabe».
+ */
 export function interpretarAntiguedad(s: number): Frescura {
-  return s < 0 ? { conocido: false } : { conocido: true, antiguedadS: s }
+  return Number.isFinite(s) && s >= 0 ? { conocido: true, antiguedadS: s } : { conocido: false }
 }

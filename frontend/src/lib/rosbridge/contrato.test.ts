@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   permitidoPublicar, permitidoSuscribir, permitidoLlamar, tipoDe, confirmaEfecto,
-  porcentajeLegible, nivelBateria, interpretarAntiguedad,
+  porcentajeLegible, nivelBateria, interpretarAntiguedad, SERVICIOS,
 } from './contrato'
 
 describe('lista blanca', () => {
@@ -50,12 +50,35 @@ describe('lista blanca', () => {
     expect(tipoDe('/encoders')).toBe('atriz_rvr_msgs/msg/Encoder')
   })
 
-  // SetLeds.srv tiene la respuesta VACIA: es la unica operacion de la
-  // superficie web que no puede fallar visiblemente. La UI no debe prometer
-  // confirmacion de un cambio de color.
-  it('sabe que /set_leds no puede confirmar su efecto', () => {
+  // 🔴 C1: cuatro de los ocho servicios tienen respuesta VACIA
+  // (std_srvs/srv/Empty o SetLeds.srv), no solo /set_leds. Antes
+  // `confirmaEfecto('/release_emergency_stop')` daba `true` -la operacion que
+  // devuelve el control del robot a un aula con estudiantes- sobre una
+  // respuesta que no contiene ni un bit para confirmar. Se comprueban los
+  // OCHO, no solo dos: la primera version de esta prueba solo miraba
+  // /set_leds y /start_scan y dejaba pasar el error en los otros seis.
+  it('sabe cuales de los OCHO servicios no pueden confirmar su efecto (respuesta vacia)', () => {
+    expect(confirmaEfecto('/start_scan')).toBe(false)
+    expect(confirmaEfecto('/stop_scan')).toBe(false)
+    expect(confirmaEfecto('/release_emergency_stop')).toBe(false)
     expect(confirmaEfecto('/set_leds')).toBe(false)
-    expect(confirmaEfecto('/start_scan')).toBe(true)
+  })
+
+  it('sabe cuales de los OCHO servicios SI confirman su efecto (bool success)', () => {
+    expect(confirmaEfecto('/set_pos_and_yaw')).toBe(true)
+    expect(confirmaEfecto('/set_led_rgb')).toBe(true)
+    expect(confirmaEfecto('/set_multiple_leds')).toBe(true)
+    expect(confirmaEfecto('/trigger_led_event')).toBe(true)
+  })
+
+  // Los OCHO de SERVICIOS estan cubiertos entre las dos pruebas de arriba:
+  // ninguno se queda sin comprobar.
+  it('las dos listas cubren los ocho servicios sin solapar', () => {
+    const cubiertos = [
+      '/start_scan', '/stop_scan', '/release_emergency_stop', '/set_leds',
+      '/set_pos_and_yaw', '/set_led_rgb', '/set_multiple_leds', '/trigger_led_event',
+    ]
+    expect(cubiertos.sort()).toEqual([...SERVICIOS].sort())
   })
 })
 
@@ -74,6 +97,24 @@ describe('bateria', () => {
     expect(nivelBateria(6.99)).toBe('BAJA')
     expect(nivelBateria(6.49)).toBe('CRITICA')
   })
+
+  // 🔴 C4: `nivelBateria(NaN)` devolvia 'OK' -el tope de seguridad, por la
+  // puerta equivocada, igual que `limitar(nan)` en atriz.py. En el robot,
+  // rvr_driver_node.py:958 publica `voltage = NaN` cuando la lectura falla
+  // (RVR cargando con la Pi viva, o dormido): con el bug la vista de flota
+  // pintaba ese robot en OK.
+  it('un voltaje NO FINITO (NaN, Infinity) es DESCONOCIDO, no OK', () => {
+    expect(nivelBateria(NaN)).toBe('DESCONOCIDO')
+    expect(nivelBateria(Infinity)).toBe('DESCONOCIDO')
+    expect(nivelBateria(-Infinity)).toBe('DESCONOCIDO')
+  })
+
+  // Misma familia que nivelBateria(NaN): Math.round(NaN * 100) da NaN en
+  // silencio y una UI lo pintaria como "NaN%".
+  it('porcentajeLegible(NaN) es null, no NaN', () => {
+    expect(porcentajeLegible(NaN)).toBeNull()
+    expect(porcentajeLegible(Infinity)).toBeNull()
+  })
 })
 
 describe('frescura de /motor_status', () => {
@@ -82,5 +123,11 @@ describe('frescura de /motor_status', () => {
     expect(interpretarAntiguedad(-1)).toEqual({ conocido: false })
     expect(interpretarAntiguedad(0)).toEqual({ conocido: true, antiguedadS: 0 })
     expect(interpretarAntiguedad(30.5)).toEqual({ conocido: true, antiguedadS: 30.5 })
+  })
+
+  // Misma familia: antes `NaN < 0` era `false`, asi que un valor NO FINITO
+  // caia en la rama `conocido: true` con `antiguedadS: NaN`.
+  it('trata NaN como desconocido, no como un numero valido', () => {
+    expect(interpretarAntiguedad(NaN)).toEqual({ conocido: false })
   })
 })

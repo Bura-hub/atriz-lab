@@ -1,4 +1,4 @@
-import { Transporte } from './transporte'
+import { Aviso, Transporte } from './transporte'
 
 /**
  * El watchdog del driver corta a los 0,3 s SIN `cmd_vel_raw` (medido: para en
@@ -79,6 +79,7 @@ export class Teleoperacion {
   #actual: Twist | null = null
   #temporizador: ReturnType<typeof setInterval> | null = null
   #bajaCierre: () => void
+  #oyentesAviso = new Set<(a: Aviso) => void>()
 
   constructor(transporte: Transporte) {
     this.#transporte = transporte
@@ -88,6 +89,23 @@ export class Teleoperacion {
     // cascada). Reconectar es responsabilidad de quien orqueste la conexion,
     // no de la teleoperacion.
     this.#bajaCierre = transporte.alCerrarse(() => this.detener())
+  }
+
+  /**
+   * Avisos LOCALES de la teleoperacion. Hoy solo uno: el tick del bucle de
+   * mando fallo y se corto -mismo patron que `Transporte.alAviso()`, que
+   * existe exactamente para esto: I2. `console.error` es MUDO para quien
+   * teleopera: el alumno seguiria empujando el joystick contra un robot que
+   * ya no recibe nada, y el sintoma seria «robot averiado» sobre un robot
+   * sano.
+   */
+  alAviso(cb: (a: Aviso) => void): () => void {
+    this.#oyentesAviso.add(cb)
+    return () => this.#oyentesAviso.delete(cb)
+  }
+
+  #avisar(a: Aviso): void {
+    for (const cb of this.#oyentesAviso) cb(a)
   }
 
   /**
@@ -170,10 +188,14 @@ export class Teleoperacion {
     } catch (error) {
       // Regla (a): se atrapa, se corta el bucle y se deja constancia.
       this.detener()
-      console.error(
+      const mensaje =
         `teleoperacion: se corto el bucle de mando — publicar() fallo: ` +
-          `${error instanceof Error ? error.message : String(error)}`,
-      )
+        `${error instanceof Error ? error.message : String(error)}`
+      // 🔴 I2: `console.error` es mudo para quien teleopera -el alumno no
+      //    mira la consola del navegador. `alAviso()` es la via que SI puede
+      //    llegar a la interfaz.
+      console.error(mensaje)
+      this.#avisar({ nivel: 'error', mensaje })
     }
   }
 

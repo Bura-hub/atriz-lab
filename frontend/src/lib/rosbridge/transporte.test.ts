@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { esperaReconexion, urlDeRobot, Transporte } from './transporte'
+import { RegistroPendientes } from './protocolo'
 
 describe('espera de reconexion', () => {
   // El driver tiene el ANTIPATRON medido: 123 reintentos, uno cada 4 s, sin
@@ -37,11 +38,25 @@ class WSFalso {
   onopen?: () => void
   onmessage?: (e: { data: string }) => void
   onclose?: () => void
-  readyState = 1
+  // 🔴 C3: arranca en CONNECTING (0), como un WebSocket real -antes arrancaba
+  //    directamente en OPEN (1), una deriva de este doble respecto al real.
+  readyState = 0
   constructor(public url: string) { WSFalso.ultimo = this }
   send(d: string) { this.enviados.push(d) }
-  close() { this.onclose?.() }
-  abrir() { this.onopen?.() }
+  // 🔴 C3: ASINCRONO, como el `close()` de un WebSocket real. Antes disparaba
+  //    `onclose` en el MISMO tick, y con eso ninguna prueba podia distinguir
+  //    el arreglo de C3 (el onclose de un socket VIEJO anulando el NUEVO):
+  //    `cerrar(); conectar()` nunca dejaba una ventana en la que el viejo
+  //    pudiera pisar al nuevo, porque el viejo ya habia terminado de cerrarse
+  //    antes de que `conectar()` volviera a ejecutarse.
+  close() {
+    this.readyState = 2   // CLOSING
+    queueMicrotask(() => {
+      this.readyState = 3   // CLOSED
+      this.onclose?.()
+    })
+  }
+  abrir() { this.readyState = 1; this.onopen?.() }
   recibir(obj: unknown) { this.onmessage?.({ data: JSON.stringify(obj) }) }
 }
 
@@ -362,5 +377,197 @@ describe('Transporte — result:false de un service_response', () => {
     const llamada2 = llamadas[llamadas.length - 1]
     WSFalso.ultimo.recibir({ op: 'service_response', id: llamada2.id, values: { ok: true }, result: true })
     await expect(p2).resolves.toEqual({ ok: true })
+  })
+})
+
+// Revision final de rama: los cuatro criticos que cruzan modulos, y por eso
+// sobrevivieron a siete revisiones por tarea. Ninguno tenia consumidor
+// todavia: son trampas armadas, no fallos ya observados.
+describe('Transporte — I1: llamar() a un servicio no autorizado', () => {
+  it('lanza EN EL ACTO sin registrar una promesa pendiente (antes quedaba huerfana 5 s)', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    // Antes, `registrar()` se llamaba ANTES de construir la op: si
+    // `opCallService` lanzaba, la promesa ya creada (con su temporizador de
+    // 5 s ya vivo) quedaba huerfana -nadie la recibe, porque el throw corta
+    // `llamar()` antes de `return p`- y rechazaba SOLA mas tarde con un «sin
+    // respuesta» generico que culpaba al robot. La propiedad que importa:
+    // `RegistroPendientes.registrar()` no debe siquiera haberse llamado.
+    const registrar = vi.spyOn(RegistroPendientes.prototype, 'registrar')
+    expect(() => t.llamar('/raw_motors')).toThrowError(/lista blanca/)
+    expect(registrar).not.toHaveBeenCalled()
+    registrar.mockRestore()
+
+    // Y, por supuesto, no se manda nada al robot.
+    const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'call_service')).toBe(false)
+  })
+})
+
+describe('Transporte — C2: suscribir() a un topic no autorizado', () => {
+  it('lanza en el acto SIN CONEXION (antes no lanzaba aqui: el fallo aparecia mas tarde, dentro de onopen)', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    // Ni conectado siquiera: antes esto no lanzaba, y la suscripcion mala
+    // quedaba en el Map esperando a envenenar el primer onopen.
+    expect(() => t.suscribir('/ambient_light', () => {})).toThrowError(/lista blanca/)
+
+    // Y no deja un zombie: conectar despues no debe intentar suscribirse al
+    // topic malo, y una suscripcion valida debe funcionar con normalidad.
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    t.suscribir('/odom', () => {})
+    const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'subscribe' && o.topic === '/ambient_light')).toBe(false)
+    expect(ops.some((o) => o.op === 'subscribe' && o.topic === '/odom')).toBe(true)
+  })
+
+  it('lanza en el acto ESTANDO CONECTADO, sin dejar una entrada zombie que corte la resuscripcion de los demas al reconectar', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    t.suscribir('/odom', () => {})
+
+    // Antes: lanzaba, pero DESPUES de mutar el Map y ANTES de devolver la
+    // funcion de baja -la entrada quedaba dentro sin ninguna forma publica
+    // de quitarla.
+    expect(() => t.suscribir('/ambient_light', () => {})).toThrowError(/lista blanca/)
+
+    // Si hubiera quedado zombie, el bucle de resuscripcion de onopen se
+    // habria cortado a medias al reconectar (sin el arreglo del bucle
+    // envuelto) y /odom no se habria vuelto a pedir.
+    WSFalso.ultimo.onclose?.()
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'subscribe' && o.topic === '/odom')).toBe(true)
+  })
+
+  // Defensa en profundidad del bucle de onopen: la via publica ya impide que
+  // entre un topic invalido en el Map desde el arreglo de arriba, pero el
+  // encargo pide ademas envolver los DOS bucles para que un topic malo (por
+  // la razon que sea) no arrastre a los demas. Se pone a prueba tocando el
+  // Map privado directamente, simulando el escenario que el arreglo defiende
+  // aunque hoy ya no sea alcanzable por la API publica.
+  it('un topic invalido en suscripciones no corta el reanuncio de /emergency_stop tras reconectar (defensa del bucle de onopen)', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    t.publicar('/emergency_stop', {})   // queda anunciado
+
+    ;(t as unknown as { suscripciones: Map<string, Set<() => void>> }).suscripciones
+      .set('/topic-invalido', new Set([() => {}]))
+
+    WSFalso.ultimo.onclose?.()
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    // El bucle de suscripcion lanza en la entrada invalida, pero SIN el
+    // arreglo eso corta tambien el bucle de reanuncio de mas abajo -este es
+    // el efecto que de verdad importa: /emergency_stop reanunciado.
+    expect(ops.some((o) => o.op === 'advertise' && o.topic === '/emergency_stop')).toBe(true)
+  })
+})
+
+// C3, el critico mas grave de la ronda: el `close()` de un WebSocket real es
+// ASINCRONO, y `ws.onclose` no comprobaba que el socket que se cerro fuera el
+// vigente. Solo se puede reproducir con un doble que se comporte como el
+// real -por eso hubo que arreglar WSFalso primero (arriba).
+describe('Transporte — C3: cerrar() seguido de conectar() (el boton "Reconectar")', () => {
+  it('el onclose asincrono del socket VIEJO no anula el socket NUEVO: conectado sigue en true y publicar() funciona', async () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    const viejo = WSFalso.ultimo
+
+    // Patron tipico de un boton "Reconectar": cerrar() y conectar() en el
+    // acto. close() es asincrono: el onclose del viejo NO ha disparado
+    // todavia en este punto.
+    t.cerrar()
+    t.conectar()
+    const nuevo = WSFalso.ultimo
+    expect(nuevo).not.toBe(viejo)
+    nuevo.abrir()
+    expect(t.conectado).toBe(true)
+
+    // Ahora, mas tarde (microtask), dispara el onclose diferido del VIEJO.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Medido en el brief SIN el arreglo: conectado pasaba a false con el
+    // socket nuevo en OPEN, y publicar('/emergency_stop') lanzaba para
+    // siempre. Con el arreglo, el onclose del viejo es un no-op.
+    expect(t.conectado).toBe(true)
+    expect(() => t.publicar('/emergency_stop', {})).not.toThrow()
+    const ops = nuevo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'publish' && o.topic === '/emergency_stop')).toBe(true)
+  })
+
+  it('la re-suscripcion y el reanuncio ocurren en el socket NUEVO, y el onclose tardio del viejo no los deshace', async () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    t.suscribir('/odom', () => {})
+    t.publicar('/emergency_stop', {})
+
+    t.cerrar()
+    t.conectar()
+    const nuevo = WSFalso.ultimo
+    nuevo.abrir()
+
+    await Promise.resolve()
+    await Promise.resolve()   // el onclose diferido del viejo llega aqui
+
+    const ops = nuevo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'subscribe' && o.topic === '/odom')).toBe(true)
+    expect(ops.some((o) => o.op === 'advertise' && o.topic === '/emergency_stop')).toBe(true)
+    expect(t.conectado).toBe(true)
+  })
+
+  it('con reconectar:true, el onclose tardio del viejo (tras cerrar()+conectar() manual) no programa una reconexion extra', async () => {
+    vi.useFakeTimers()
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket, {
+      reconectar: true, aleatorio: () => 0.5,
+    })
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    t.cerrar()
+    t.conectar()
+    const nuevo = WSFalso.ultimo
+    nuevo.abrir()
+
+    await Promise.resolve()
+    await Promise.resolve()   // el onclose tardio del viejo llega aqui
+
+    vi.advanceTimersByTime(60000)   // muy por encima de cualquier espera pendiente
+    expect(WSFalso.ultimo).toBe(nuevo)   // ningun socket extra
+    vi.useRealTimers()
+  })
+
+  it('un mensaje entregado tarde por el socket VIEJO no se procesa: no alimenta entrante() con datos obsoletos', async () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    const viejo = WSFalso.ultimo
+
+    t.suscribir('/odom', () => {})
+
+    t.cerrar()
+    t.conectar()
+    const nuevo = WSFalso.ultimo
+    nuevo.abrir()
+
+    // El socket viejo, todavia con referencias validas a sus handlers,
+    // entrega un mensaje tardio -no deberia tocar el ultimaLlegada ni
+    // resetear `intentos` del transporte vigente de forma incorrecta, pero
+    // sobre todo: no debe lanzar ni comportarse como si viniera del actual.
+    expect(() => viejo.recibir({ op: 'publish', topic: '/odom', msg: { n: 99 } })).not.toThrow()
+
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(t.conectado).toBe(true)
   })
 })

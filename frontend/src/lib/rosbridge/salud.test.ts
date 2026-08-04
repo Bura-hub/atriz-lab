@@ -45,4 +45,12 @@ describe('estado del robot', () => {
     expect(s.estado).toBe('EN_LINEA')
     expect(s.frenando).toBe(true)
   })
+
+  // 🔴 M1: Date.now() no es monotono. Un salto de NTP hacia atras hace que
+  // msDesdeUltimo() de negativo, y sin el arreglo "-50 <= UMBRAL" es verdad:
+  // EN_LINEA sobre un robot mudo, la direccion insegura.
+  it('msDesdeUltimoOdom NEGATIVO (reloj no monotono) no es EN_LINEA', () => {
+    const s = evaluarSalud({ ...base, msDesdeUltimoOdom: -1, msDesdeUltimoScan: null })
+    expect(s.estado).toBe('SIN_DATOS')
+  })
 })

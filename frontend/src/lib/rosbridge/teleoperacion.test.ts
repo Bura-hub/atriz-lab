@@ -22,7 +22,13 @@ class WSFalso {
   readyState = 0
   constructor(public url: string) { WSFalso.ultimo = this }
   send(d: string) { this.enviados.push(d) }
-  close() { this.onclose?.() }
+  // 🔴 C3: ASINCRONO, como el `close()` de un WebSocket real -si no, la
+  //    prueba no puede distinguir el arreglo de C3 (el onclose de un socket
+  //    VIEJO anulando el NUEVO tras cerrar()+conectar()).
+  close() {
+    this.readyState = 2
+    queueMicrotask(() => { this.readyState = 3; this.onclose?.() })
+  }
   abrir() { this.readyState = 1; this.onopen?.() }
   cerrando() { this.readyState = 2 }
   recibir(obj: unknown) { this.onmessage?.({ data: JSON.stringify(obj) }) }
@@ -298,8 +304,10 @@ describe('Teleoperacion.paradaEmergencia()', () => {
     const metodos = Object.getOwnPropertyNames(Teleoperacion.prototype)
       .filter((m) => m !== 'constructor')
       .sort()
+    // I2 añadio `alAviso` (mismo patron que Transporte.alAviso()) a la
+    // superficie publica exacta: se actualiza la lista, no se relaja la prueba.
     expect(metodos).toEqual(
-      ['arrancarBarrido', 'desmontar', 'detener', 'mover', 'parar', 'paradaEmergencia'].sort(),
+      ['alAviso', 'arrancarBarrido', 'desmontar', 'detener', 'mover', 'parar', 'paradaEmergencia'].sort(),
     )
     expect(metodos.some((m) => /liberar/i.test(m))).toBe(false)
   })
@@ -356,6 +364,11 @@ describe('Teleoperacion — el tick captura el fallo de publicar()', () => {
     const tel = new Teleoperacion(t)
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
 
+    // I2: console.error es mudo para quien teleopera. alAviso() es la via
+    // que SI puede llegar a la interfaz.
+    const avisos: { nivel: string; mensaje: string }[] = []
+    tel.alAviso((a) => avisos.push(a))
+
     tel.mover(0.2, 0)
     const antes = publicaciones(ws, '/cmd_vel_raw').length
     expect(antes).toBe(1)
@@ -369,6 +382,11 @@ describe('Teleoperacion — el tick captura el fallo de publicar()', () => {
     // Y queda constancia: no se traga en silencio.
     expect(error).toHaveBeenCalledTimes(1)
     expect(error.mock.calls[0][0]).toMatch(/cmd_vel_raw|conexion/i)
+
+    // Y AHORA TAMBIEN por alAviso(), no solo por la consola.
+    expect(avisos).toHaveLength(1)
+    expect(avisos[0].nivel).toBe('error')
+    expect(avisos[0].mensaje).toMatch(/cmd_vel_raw|conexion/i)
 
     // Y el bucle quedo cortado: nada mas se publica aunque siga avanzando el reloj.
     vi.advanceTimersByTime(1000)
@@ -394,5 +412,43 @@ describe('Teleoperacion.desmontar()', () => {
     // (no hay forma de observar una excepcion aqui, pero al menos no lanza).
     expect(() => ws.onclose?.()).not.toThrow()
     vi.useRealTimers()
+  })
+})
+
+// C3 desde el lado de Teleoperacion: es la consecuencia concreta que el
+// encargo pide comprobar. `Teleoperacion` corta su bucle cuando `Transporte`
+// avisa por `alCerrarse()`. Antes del arreglo de C3, el `onclose` asincrono
+// de un socket VIEJO (tras un patron "Reconectar" = cerrar()+conectar())
+// disparaba `oyentesCierre` igualmente, aunque el socket NUEVO siguiera vivo
+// y sano -asi que `alCerrarse` cortaba el bucle de mando sobre un enlace que
+// funcionaba. "Telemetria viva mas parada muerta" con los papeles invertidos.
+describe('Teleoperacion — C3: no se corta por un onclose diferido del socket VIEJO tras cerrar()+conectar()', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('el bucle sigue publicando sobre el socket NUEVO aunque el onclose asincrono del viejo llegue despues', async () => {
+    const { t } = transporteConectado()
+    const tel = new Teleoperacion(t)
+    tel.mover(0.2, 0)   // arranca el temporizador de 10 Hz (publica una vez, en el socket VIEJO)
+
+    // Patron "Reconectar": cerrar() + conectar() en el acto.
+    t.cerrar()
+    t.conectar()
+    const nuevo = WSFalso.ultimo
+    nuevo.abrir()
+
+    // Aqui, mas tarde, llega el onclose asincrono del socket VIEJO. Sin el
+    // arreglo de C3, esto dispara `oyentesCierre` -> `Teleoperacion.detener()`
+    // -> `clearInterval()`, y el temporizador de 10 Hz muere para siempre.
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // La propiedad central: el temporizador SIGUE vivo. mover() no reinicia
+    // el timer si ya existe, asi que la unica forma de ver mas publicaciones
+    // es que el setInterval original (creado ANTES de cerrar()+conectar())
+    // siga corriendo y publique sobre el socket vigente (nuevo).
+    vi.advanceTimersByTime(300)
+    const pubs = publicaciones(nuevo, '/cmd_vel_raw')
+    expect(pubs.length).toBeGreaterThan(0)
   })
 })

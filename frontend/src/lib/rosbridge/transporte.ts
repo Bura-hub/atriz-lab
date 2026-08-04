@@ -102,6 +102,9 @@ export class Transporte {
     this.ws = ws
 
     ws.onopen = () => {
+      // 🔴 C3: si mientras tanto YA hay un socket mas nuevo (`this.ws` cambio),
+      //    este `onopen` es de un socket VIEJO/obsoleto: salir sin tocar nada.
+      if (this.ws !== ws) return
       // 🔴 `intentos` NO se reinicia aqui. Que el socket ABRA no prueba que el
       //    enlace sirva: con rosbridge reiniciandose, cada ciclo pasaba por
       //    `onopen` antes que por `onclose` y la espera se quedaba clavada en
@@ -109,14 +112,42 @@ export class Transporte {
       //    Se reinicia cuando llega un MENSAJE, que si lo prueba.
       // Al reconectar se resuscribe a TODO: rosbridge infiere el QoS mirando
       // los publicadores al suscribirse y no se reajusta despues.
-      for (const topic of this.suscripciones.keys()) this.enviar(opSubscribe(topic))
+      // 🔴 C2: cada topic en su propio try/catch. `suscribir()` ya impide que
+      //    entre un topic invalido por la via publica, pero un solo topic que
+      //    lance aqui (por la razon que sea) no debe arrastrar a los demas ni
+      //    cortar el bucle de reanuncio de abajo -que es donde vive
+      //    /emergency_stop.
+      for (const topic of this.suscripciones.keys()) {
+        try {
+          this.enviar(opSubscribe(topic))
+        } catch (error) {
+          this.avisar({
+            nivel: 'error',
+            mensaje: `no se pudo re-suscribir a «${topic}»: ${error instanceof Error ? error.message : String(error)}`,
+          })
+        }
+      }
       // Se reanuncia TODO lo que estaba anunciado. No se limpia `anunciados` al
       // cerrar a proposito: asi /emergency_stop vuelve anunciado desde el primer
       // instante y pulsar la parada es UN mensaje, no un advertise + un publish.
-      for (const topic of this.anunciados) this.enviar(opAdvertise(topic))
+      for (const topic of this.anunciados) {
+        try {
+          this.enviar(opAdvertise(topic))
+        } catch (error) {
+          this.avisar({
+            nivel: 'error',
+            mensaje: `no se pudo re-anunciar «${topic}»: ${error instanceof Error ? error.message : String(error)}`,
+          })
+        }
+      }
     }
 
     ws.onmessage = (e: MessageEvent) => {
+      // 🔴 C3: mensaje de un socket VIEJO despues de que `this.ws` ya apunte
+      //    a otro (una reconexion rapida puede dejar el viejo entregando
+      //    mensajes un rato). No debe alimentar `entrante()` con datos de un
+      //    socket que ya no es el vigente.
+      if (this.ws !== ws) return
       let m: unknown
       try {
         m = JSON.parse(String(e.data))
@@ -129,6 +160,20 @@ export class Transporte {
     }
 
     ws.onclose = () => {
+      // 🔴🔴 C3, EL CRITICO: el `close()` de un WebSocket real es ASINCRONO.
+      //    `cerrar()` anula `this.ws` de inmediato (sincrono, deliberado) y un
+      //    `conectar()` justo despues (el boton "Reconectar" tipico:
+      //    `cerrar(); conectar()`) ya deja `this.ws` apuntando al socket
+      //    NUEVO antes de que este `onclose` DEL VIEJO llegue a disparar. Sin
+      //    esta guarda, `this.ws = null` de aqui abajo anulaba el socket
+      //    NUEVO y VIVO: medido, `conectado` pasaba a `false` con el socket
+      //    nuevo en OPEN y `/odom` seguiendo entrando -telemetria viva mas
+      //    parada muerta (`publicar('/emergency_stop')` lanzando para
+      //    siempre), la cancelacion de las llamadas en vuelo del socket sano
+      //    (`pendientes.cancelarTodas`), y el corte del bucle de
+      //    teleoperacion via `oyentesCierre`. Un `onclose` que no es el del
+      //    socket vigente no debe tocar NADA de este estado.
+      if (this.ws !== ws) return
       this.ws = null
       // 🔴 NO se limpia `anunciados` aqui: ver el comentario del bucle de
       //    reanuncio en `onopen`. Limpiarlo dejaba ese bucle recorriendo
@@ -197,9 +242,20 @@ export class Transporte {
 
   suscribir(topic: string, cb: Manejador): () => void {
     const nueva = !this.suscripciones.has(topic)
+    // 🔴 C2: validar ANTES de tocar el Map, este conectado o no.
+    //    `opSubscribe(topic)` lanza aqui, en el sitio del error, con el Map
+    //    todavia intacto -antes solo se validaba `if (nueva && this.conectado)`,
+    //    asi que:
+    //    - Desconectado: no lanzaba nada aqui. El fallo aparecia MAS TARDE,
+    //      dentro de `onopen`, y ahi la excepcion escapaba del manejador sin
+    //      procesar el resto de topics ni el reanuncio.
+    //    - Conectado: lanzaba, pero DESPUES de mutar el Map y ANTES de
+    //      devolver la funcion de baja: la entrada quedaba dentro sin
+    //      ninguna forma publica de quitarla -zombie para siempre.
+    const op = nueva ? opSubscribe(topic) : null
     if (nueva) this.suscripciones.set(topic, new Set())
     this.suscripciones.get(topic)!.add(cb)
-    if (nueva && this.conectado) this.enviar(opSubscribe(topic))
+    if (op && this.conectado) this.enviar(op)
     return () => {
       const oyentes = this.suscripciones.get(topic)
       if (!oyentes) return
@@ -237,8 +293,17 @@ export class Transporte {
       return Promise.reject(new Error(`sin conexion con el robot: «${servicio}» NO se ha llamado`))
     }
     const id = `atriz-${++this.contador}`
+    // 🔴 I1: construir la op ANTES de registrar. `opCallService()` lanza en
+    //    el acto si el servicio no esta en la lista blanca -y antes eso
+    //    pasaba DESPUES de `registrar()`, que ya habia creado la promesa y su
+    //    temporizador. La promesa quedaba huerfana (nadie la recibe: el throw
+    //    corta `llamar()` antes de `return p`) y 5 s despues rechazaba sola,
+    //    sin que nadie la escuchara, con el «sin respuesta... puede estar
+    //    denegado o el robot puede estar caido» generico -el cliente se
+    //    autorrechazo la llamada y mando a diagnosticar el robot.
+    const op = opCallService(servicio, args, id)
     const p = this.pendientes.registrar(id, ms)
-    this.enviar(opCallService(servicio, args, id))
+    this.enviar(op)
     return p
   }
 
