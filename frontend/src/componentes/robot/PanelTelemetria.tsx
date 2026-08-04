@@ -46,7 +46,7 @@ function Odometria() {
           etiqueta="Rumbo (yaw)"
           valor={yawRad === null ? SIN_DATO : grados(aGrados(yawRad))}
           crudo={yawRad === null ? undefined : aGrados(yawRad)}
-          nota="Positivo = antihorario (REP-103), verificado contra el LIDAR."
+
         />
         <Dato
           etiqueta="Velocidad lineal"
@@ -54,8 +54,15 @@ function Odometria() {
           crudo={numeroValido(lineal?.x) ?? undefined}
           referencia="meseta real 0,199 m/s pidiendo 0,20"
         />
-        <Dato etiqueta="Velocidad angular" valor={radianesPorSegundo(numeroValido(angular?.z))}
-          crudo={numeroValido(angular?.z) ?? undefined} />
+        {/*
+          🔴 `col-span-2`: son CINCO datos en una malla de dos columnas, asi que
+             el sexto hueco salia como una celda gris vacia — una casilla que no
+             significa nada en una pantalla donde todo significa algo.
+        */}
+        <div className="sm:col-span-2">
+          <Dato etiqueta="Velocidad angular" valor={radianesPorSegundo(numeroValido(angular?.z))}
+            crudo={numeroValido(angular?.z) ?? undefined} />
+        </div>
       </div>
 
       <Contexto>

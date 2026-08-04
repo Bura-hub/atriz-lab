@@ -80,7 +80,9 @@ export function Dato({
     : `font-mono tracking-tight ${grande === true ? 'text-3xl font-semibold' : 'text-lg'}`
 
   return (
-    <div className="px-3 py-2">
+    // Ritmo: apretado DENTRO del dato (etiqueta pegada al valor), generoso
+    // ENTRE datos. `craft-floor`: «tight groups, generous separation».
+    <div className="px-4 py-3">
       {/*
         La microetiqueta sobre el valor. `craft-floor.md:26` de la skill
         `impeccable` prohibe esto sin excepciones -«This one is a ban, not a
@@ -90,7 +92,7 @@ export function Dato({
       */}
       <div className="text-[11px] leading-tight text-muted-foreground">{etiqueta}</div>
 
-      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         {desconocido || crudo === undefined || !Number.isFinite(crudo) ? (
           // Una raya, no la frase. `title` deja la frase a un paso para quien la
           // necesite, sin que ocupe la pantalla de quien no.
@@ -105,16 +107,34 @@ export function Dato({
              si el VALOR es un hueco, la antiguedad DE ESE VALOR tampoco existe.
              Se pinta solo cuando hay algo que fechar.
         */}
-        {antiguedad !== undefined && !desconocido && antiguedad !== SIN_DATO && (
-          <span className="text-xs text-muted-foreground">· dato de {antiguedad}</span>
-        )}
-        {referencia !== undefined && !desconocido && (
-          <span className="text-xs text-muted-foreground">· medido en el robot: {referencia}</span>
-        )}
       </div>
 
+      {/*
+        🔴 La antiguedad y la referencia BAJAN DE LINEA. Compartiendo linea base
+           con el valor competian con el: el ojo leia «8,23 V · dato de hace
+           8,5 s» como una sola cosa de dos partes iguales. Son subordinadas del
+           valor, y ahora se ven asi.
+      */}
+      {((antiguedad !== undefined && !desconocido && antiguedad !== SIN_DATO)
+        || (referencia !== undefined && !desconocido)) && (
+        <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] leading-tight text-muted-foreground">
+          {/*
+            🔴 Sin prefijos. Los llamantes YA traen la palabra —`hace 7,9 s`,
+               `27,5 °C en reposo`— y añadirla aqui producia «hace hace 7,9 s» y
+               «en reposo: 27,5 °C en reposo». Se vio en la captura, no en las
+               pruebas: ninguna comprueba texto renderizado.
+          */}
+          {antiguedad !== undefined && !desconocido && antiguedad !== SIN_DATO && (
+            <span>{antiguedad}</span>
+          )}
+          {referencia !== undefined && !desconocido && (
+            <span>{referencia}</span>
+          )}
+        </div>
+      )}
+
       {nota !== undefined && (
-        <p className="mt-0.5 max-w-prose text-xs text-muted-foreground">{nota}</p>
+        <p className="mt-2 max-w-prose text-[11px] leading-snug text-muted-foreground/80">{nota}</p>
       )}
     </div>
   )

@@ -21,18 +21,18 @@ export interface PropsTarjeta {
 export function Tarjeta({ titulo, subtitulo, extremo, children }: PropsTarjeta) {
   return (
     <section className="border border-border bg-card text-card-foreground">
-      <header className="flex items-start justify-between gap-3 border-b border-border px-3 py-2">
+      <header className="flex items-start justify-between gap-3 px-4 pb-3 pt-4">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
             {titulo}
           </h2>
           {subtitulo !== undefined && (
-            <p className="text-xs text-muted-foreground mt-1 max-w-prose">{subtitulo}</p>
+            <p className="mt-1 max-w-prose text-xs leading-snug text-muted-foreground">{subtitulo}</p>
           )}
         </div>
         {extremo}
       </header>
-      <div className="p-1">{children}</div>
+      <div className="border-t border-border">{children}</div>
     </section>
   )
 }

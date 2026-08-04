@@ -95,12 +95,12 @@ export function EstadoMotores() {
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Atasco</span>
           {insigniaDeHecho(atascado, 'oruga trabada', 'sin atasco')}
-          <span className="text-xs text-muted-foreground">· {antiguedad(fAtasco)}</span>
+          <span className="text-[11px] text-muted-foreground">{antiguedad(fAtasco)}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Fallo eléctrico</span>
           {insigniaDeHecho(fallo, 'hay fallo', 'sin fallo')}
-          <span className="text-xs text-muted-foreground">· {antiguedad(fFallo)}</span>
+          <span className="text-[11px] text-muted-foreground">{antiguedad(fFallo)}</span>
         </div>
       </div>
 
