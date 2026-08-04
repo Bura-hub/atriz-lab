@@ -51,6 +51,11 @@ function pestanas(segmento: string): Pestana[] {
     { href: base, texto: 'Terminal', bloqueada: true },
     { href: `${base}/telemetria`, texto: 'Telemetría' },
     { href: `${base}/conducir`, texto: 'Conducir' },
+    // 🔴 El LIDAR va en su PROPIA pestaña, y eso no es organizacion: es coste.
+    //    `/scan` es el 83 % del trafico de un robot (~67 kB/s), asi que su
+    //    suscripcion tiene que morir al salir. Metido dentro de Telemetria se
+    //    pagaria siempre, y con 16 pestañas serian ~8,6 Mbit/s sobre la unica AP.
+    { href: `${base}/lidar`, texto: 'LIDAR' },
     { href: `${base}/diagnostico`, texto: 'Diagnóstico' },
   ]
 }

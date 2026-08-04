@@ -101,18 +101,122 @@ export interface MensajeEncoder {
 }
 
 /**
+ * `sensor_msgs/msg/LaserScan`. El YDLIDAR X2.
+ *
+ * 🔴 **ES EL 83 % DEL TRAFICO DE UN ROBOT** (~67 kB/s de los 80,7 navegando).
+ * Suscribirse a `/scan` no es como suscribirse a los demas: solo se hace
+ * mientras se esta MIRANDO, y la baja al desmontar tiene que llegar al robot.
+ * Con 16 robots, dejarlo puesto por descuido son ~8,6 Mbit/s.
+ *
+ * 🔴 **`ranges` trae huecos, y no son ceros.** Medido contra el robot desde el
+ * navegador el 2026-08-04: **260 puntos por barrido**, de los que el **83-89 %
+ * son validos**; el resto llegan como `Infinity` o `NaN`. Pintarlos como 0
+ * dibujaria obstaculos pegados al robot que no existen. Hay que filtrar con
+ * `Number.isFinite` **y** contra `range_min`/`range_max`.
+ * ⚠️ El porcentaje **depende de la habitacion**, no es una constante del sensor.
+ *
+ * ⚠️ El barrido puede estar APAGADO, que es el estado de REPOSO NORMAL de los 16
+ * robots: entonces este topic no llega y **eso no es una averia**. Se enciende
+ * con `Teleoperacion.arrancarBarrido()`, que espera un `/scan` de verdad.
+ *
+ * 📝 **No des por fijo el tamaño**, aunque hoy salgan 260 en las 35 tomas: con
+ * `fixed_resolution: false` el X2 alternaba 254/255, y `slam_toolbox` descartaba
+ * barridos enteros por registrar el sensor con el tamaño del PRIMERO. Se recorre
+ * `ranges.length` y punto.
+ */
+export interface MensajeScan {
+  header: Cabecera
+  angle_min: number
+  angle_max: number
+  angle_increment: number
+  time_increment: number
+  scan_time: number
+  range_min: number
+  range_max: number
+  ranges: number[]
+  intensities: number[]
+}
+
+/**
+ * `atriz_rvr_msgs/msg/EstadoRobot`. Añadido al robot el 2026-08-04.
+ *
+ * Trae lo que la interfaz no podia saber de ninguna otra forma:
+ *
+ * 🔴 `latido` — contador MONOTONO, la señal de vida **del nodo**. Un topic que
+ *    existe no prueba que haya nadie detras: `ros2 topic list` conserva topics
+ *    de nodos muertos. **Hay que comparar DOS lecturas separadas en el tiempo**;
+ *    una sola no dice nada, y menos aun porque el topic va `TRANSIENT_LOCAL` y
+ *    un suscriptor nuevo puede recibir el ultimo valor latcheado.
+ * 🔴 `parada_emergencia` — la bandera del driver. Es lo UNICO que permite decir
+ *    «parada activa» en vez de «parada enviada». ✅ Verificado contra el robot:
+ *    hace un flanco false->true real al publicar en `/emergency_stop`.
+ * 🔴 `antiguedad_muestra_s` y `antiguedad_odom_s` — **las dos, y por separado**.
+ *    Si la primera se queda en ~0 y la segunda CRECE, llegan datos del RVR pero
+ *    `/odom` no se completa (faltan componentes): un estado que no detecta ni el
+ *    vigilante de silencio ni `rvr_responde`, y en el que el robot se pintaria
+ *    verde con la odometria muerta. `-1.0` es «no se sabe», nunca «cero».
+ * ⚠️ `reanudaciones_fallidas` distingue CARGANDO de DORMIDO, pero sus umbrales
+ *    (1-2 / >2) **NO estan calibrados**: son orientacion, no criterio.
+ */
+export interface MensajeEstadoRobot {
+  header: Cabecera
+  latido: number
+  parada_emergencia: boolean
+  rvr_responde: boolean
+  antiguedad_muestra_s: number
+  antiguedad_odom_s: number
+  reanudaciones_fallidas: number
+}
+
+/**
+ * `nav2_msgs/msg/CollisionMonitorState`. La capa de seguridad, vista desde fuera.
+ *
+ * El enum sale del `.msg` REAL del robot
+ * (`/opt/ros/jazzy/share/nav2_msgs/msg/CollisionMonitorState.msg`, leido el
+ * 2026-08-04), **no de una suposicion**: solo se habia observado el valor 1.
+ *
+ * 🔴 **NO publica periodicamente: publica al CAMBIAR**, y solo cuando el monitor
+ * procesa, que es cuando le llega `cmd_vel_raw`. Medido (evidencia 72): 0
+ * mensajes en 12 s con el robot en reposo, y UNO en 5 s de ticar a 10 Hz.
+ * → Suscribirse cuesta ~0. Se puede tener siempre puesto.
+ * → Y la otra cara: **con el robot quieto no llega nada**, asi que «sin mensaje»
+ *   NO significa «todo bien». Significa «no se sabe».
+ *
+ * 🔴 **`polygon_name` NO siempre trae un poligono: a veces trae un MOTIVO.**
+ * Medido con el barrido apagado: `{action_type: 1, polygon_name: 'invalid
+ * source'}` — o sea STOP porque no le llega `/scan`. Es el mecanismo ya
+ * documentado («sin /scan el collision_monitor bloquea el movimiento») pero que
+ * hasta ahora **no se podia VER desde fuera**.
+ */
+export const ACCION_MONITOR = {
+  NO_HACER_NADA: 0,
+  PARAR: 1,
+  RALENTIZAR: 2,
+  APROXIMACION: 3,
+  LIMITAR: 4,
+} as const
+
+export interface MensajeEstadoMonitor {
+  action_type: number
+  /** Un poligono (`Precaucion`, `Emergencia`…) **o un motivo** (`invalid source`). */
+  polygon_name: string
+}
+
+/**
  * Los topics que esta web MODELA. Es a proposito un subconjunto de
  * `TOPICS_LECTURA`: modelar un topic significa haber leido su `.msg` y saber
- * que campos trae. Los que faltan (`/scan`, `/map`, `/tf`, `/color`,
- * `/amcl_pose`, `/collision_monitor_state`, `/imu`) estan permitidos por el
- * robot pero **no tienen tipo aqui todavia**, y añadirlos exige leer su
- * definicion, no adivinarla.
+ * que campos trae. Los que faltan (`/map`, `/tf`, `/color`, `/amcl_pose`,
+ * `/imu`) estan permitidos por el robot pero **no tienen tipo aqui todavia**, y
+ * añadirlos exige leer su definicion, no adivinarla.
  */
 export interface MensajesPorTopic {
   '/battery_state': MensajeBateria
   '/motor_status': MensajeEstadoMotor
   '/odom': MensajeOdometria
   '/encoders': MensajeEncoder
+  '/scan': MensajeScan
+  '/estado_robot': MensajeEstadoRobot
+  '/collision_monitor_state': MensajeEstadoMonitor
 }
 
 export type TopicModelado = keyof MensajesPorTopic
