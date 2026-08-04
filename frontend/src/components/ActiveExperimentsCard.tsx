@@ -181,13 +181,14 @@ export default function ActiveExperimentsCard() {
 
               {/* Botones de acción compactos */}
               <div className="flex items-center space-x-2">
-                <button 
+                <button
+                  disabled
                   className={`px-3 py-1 rounded-lg text-xs font-medium transition-all duration-200 ${
-                    experiment.status === 'running' 
-                      ? 'bg-warning text-warning-foreground hover:bg-warning/90' 
+                    experiment.status === 'running'
+                      ? 'bg-warning text-warning-foreground hover:bg-warning/90'
                       : 'bg-success text-success-foreground hover:bg-success/90'
                   }`}
-                  title={experiment.status === 'running' ? 'Pausar' : 'Reanudar'}
+                  title="Sin cablear todavía: no hay capa de datos."
                 >
                   {experiment.status === 'running' ? (
                     <>
@@ -201,9 +202,10 @@ export default function ActiveExperimentsCard() {
                     </>
                   )}
                 </button>
-                <button 
+                <button
+                  disabled
                   className="px-3 py-1 bg-destructive text-destructive-foreground rounded-lg text-xs font-medium hover:bg-destructive/90 transition-all duration-200"
-                  title="Detener experimento"
+                  title="Sin cablear todavía: no hay capa de datos."
                 >
                   <Square className="h-3 w-3 inline mr-1" />
                   Detener
