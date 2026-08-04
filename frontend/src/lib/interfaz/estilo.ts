@@ -29,7 +29,7 @@
  * una persona mirandolo.
  */
 
-import { readFileSync, readdirSync } from 'node:fs'
+import { readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 /** Una clase o patron prohibido, con el motivo que lo prohibe. */
