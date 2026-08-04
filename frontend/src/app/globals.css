@@ -75,6 +75,27 @@
    *    acto deliberado y se vea en el diff.
    */
   --radio: 0px;
+
+  /*
+   * ── LAS CURVAS ───────────────────────────────────────────────────────────
+   * De `emil-design-eng`, literales: «the built-in CSS easings are too weak.
+   * They lack the punch that makes animations feel intentional.»
+   *
+   * ⚠️ Y NUNCA `ease-in` en interfaz: empieza lento justo en el instante que el
+   *    usuario mira, asi que 300 ms con `ease-in` SE SIENTEN mas lentos que
+   *    300 ms con `ease-out`.
+   */
+  --curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
+  --curva-mov: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /*
+   * ── DURACIONES ───────────────────────────────────────────────────────────
+   * La tabla de Emil. Un instrumento profesional es «crisp and fast»: nos
+   * quedamos en el extremo corto de cada banda.
+   */
+  --t-pulsacion: 140ms;   /* 100-160 */
+  --t-estado: 200ms;      /* cambio de color legible sin parpadeo */
+  --t-entrada: 180ms;     /* algo que aparece */
 }
 
 /*
@@ -97,36 +118,50 @@
  * aula necesita, porque el proyector manda más que el sistema operativo— es un
  * paso APARTE; hasta que exista, esto ya funciona.
  */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: 12 10 9;
-    --foreground: 231 229 228;
-    --card: 28 25 23;
-    --card-foreground: 231 229 228;
-    --muted: 41 37 36;
-    --muted-foreground: 168 162 158;
-    --border: 68 64 60;
-    --input: 28 25 23;
-    --secondary: 41 37 36;
-    --secondary-foreground: 231 229 228;
-    --accent: 41 37 36;
-    --accent-foreground: 231 229 228;
+/*
+ * 🔴 EL TEMA SE ELIGE DESDE LA ESCENA, NO DESDE EL SISTEMA OPERATIVO.
+ *
+ * `craft-floor.md` de `impeccable`: «Light or dark picked by category. Pick it
+ * from the use scene: who, where, under what ambient light.» Esto estaba en
+ * `prefers-color-scheme` a secas — o sea elegido por la máquina de quien mire, y
+ * el resultado era un instrumento sombrío en un aula iluminada.
+ *
+ * La escena real es doble y las dos piden CLARO:
+ *   · el alumno, en un portátil, en un aula con luz, con el robot delante
+ *   · el profesor, proyectando el muro — y un proyector lava los negros: un
+ *     fondo claro con tinta oscura se lee a tres metros, uno oscuro no
+ *
+ * Así que el claro es el mundo comprometido. El oscuro existe para el caso real
+ * de persianas bajadas, y se pide con `[data-tema="oscuro"]`, no se hereda.
+ */
+:root[data-tema='oscuro'] {
+  --background: 12 10 9;
+  --foreground: 231 229 228;
+  --card: 28 25 23;
+  --card-foreground: 231 229 228;
+  --muted: 41 37 36;
+  --muted-foreground: 168 162 158;
+  --border: 68 64 60;
+  --input: 28 25 23;
+  --secondary: 41 37 36;
+  --secondary-foreground: 231 229 228;
+  --accent: 41 37 36;
+  --accent-foreground: 231 229 228;
 
-    --estado-neutro: 168 162 158;
-    --estado-vivo: 74 222 128;
-    --estado-mirar: 251 191 36;
-    --estado-ir: 244 114 182;
-    --estado-frenando: 96 165 250;
+  --estado-neutro: 168 162 158;
+  --estado-vivo: 74 222 128;
+  --estado-mirar: 251 191 36;
+  --estado-ir: 244 114 182;
+  --estado-frenando: 96 165 250;
 
-    --primary: 231 229 228;
-    --primary-foreground: 12 10 9;
-    --destructive: 225 29 72;
-    --destructive-foreground: 255 255 255;
-    --warning: 217 119 6;
-    --warning-foreground: 255 255 255;
-    --success: 22 163 74;
-    --success-foreground: 255 255 255;
-  }
+  --primary: 231 229 228;
+  --primary-foreground: 12 10 9;
+  --destructive: 225 29 72;
+  --destructive-foreground: 255 255 255;
+  --warning: 217 119 6;
+  --warning-foreground: 255 255 255;
+  --success: 22 163 74;
+  --success-foreground: 255 255 255;
 }
 
 @layer base {
@@ -170,6 +205,33 @@
    * El foco, visible siempre. Quien navega con teclado tiene que ver dónde
    * está, y en un instrumento eso no es una preferencia.
    */
+  /*
+   * ── EL DATO Y SU AUSENCIA ────────────────────────────────────────────────
+   * 🔴 «no se sabe» en monoespaciada y del mismo tamaño que un valor hace que la
+   *    AUSENCIA parezca un DATO. Y repetido quince veces en una pantalla, el
+   *    hueco se convierte en el contenido.
+   *
+   * La ausencia se pinta con una raya, pequeña y apagada: se distingue de un
+   * cero al instante, no compite con lo que sí hay, y deja que el ojo salte
+   * directo a lo que sí llegó. La explicacion va UNA vez por tarjeta, no una
+   * vez por campo.
+   */
+  .hueco {
+    color: rgb(var(--muted-foreground) / 0.55);
+    font-variant-numeric: normal;
+  }
+
+  /* Realimentacion de pulsacion. Emil: 0.95-0.98, y 100-160 ms. */
+  .pulsable {
+    transition: transform var(--t-pulsacion) var(--curva-salida),
+                background-color var(--t-estado) ease,
+                border-color var(--t-estado) ease;
+  }
+
+  .pulsable:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
   .focus-ring:focus-visible {
     outline: 2px solid rgb(var(--foreground));
     outline-offset: 2px;
@@ -186,12 +248,17 @@
    * texto que alguien está leyendo. 150 ms, una vez, y nunca más.
    */
   .aparece {
-    animation: aparecer 150ms cubic-bezier(0.2, 0, 0, 1);
+    animation: aparecer var(--t-entrada) var(--curva-salida);
   }
 }
 
+/*
+ * 🔴 Arranca desde `scale(0.98)`, NUNCA desde `scale(0)`. Emil: «nothing in the
+ *    real world disappears and reappears completely». Un elemento que sale de
+ *    la nada se lee como un fallo de pintado, no como algo que llega.
+ */
 @keyframes aparecer {
-  from { opacity: 0; transform: translateY(2px); }
+  from { opacity: 0; transform: translateY(3px) scale(0.98); }
   to   { opacity: 1; transform: none; }
 }
 

@@ -65,11 +65,43 @@ export interface PropsBaldosaRobot {
 }
 
 export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
+  /*
+   * 🔴 «NO LLEGO AL ROBOT» NO SE PINTA IGUAL QUE «LLEGO Y ESTA EN APUROS».
+   *
+   * Se veia en la primera captura del muro: con ningun robot conectado, las
+   * DIECISEIS baldosas salian con franja ambar y la palabra MIRAR, y cada una
+   * repetia cinco veces la misma no-informacion. Ochenta lineas diciendo lo
+   * mismo — que es exactamente el falso positivo contra el que este componente
+   * lleva un parrafo escrito en su cabecera, cometido en su propio render.
+   *
+   * La logica NO cambia: `atencion` sigue siendo MIRAR, porque alguien tiene que
+   * mirar. Lo que cambia es el PESO VISUAL: una baldosa inalcanzable se dibuja
+   * apagada y en una linea, sin franja. Asi, cuando UNO de los dieciseis se cae,
+   * salta a la vista; y cuando se caen los dieciseis, se lee como lo que es —un
+   * problema de red— en vez de como dieciseis robots en apuros.
+   */
+  if (baldosa.estado === 'SIN_CONEXION') {
+    return (
+      <Link
+        href={href}
+        className="pulsable focus-ring block bg-card p-3 opacity-55 hover:opacity-100 hover:bg-muted/40"
+      >
+        <span
+          className="block font-semibold leading-none tracking-tight"
+          style={{ fontSize: 'clamp(1.5rem, 3.8vw, 2.5rem)' }}
+        >
+          {etiqueta}
+        </span>
+        <span className="mt-1 block text-xs text-muted-foreground">no llego</span>
+      </Link>
+    )
+  }
+
   return (
     <Link
       href={href}
       className={
-        'block bg-card p-3 transition-colors hover:bg-muted/40 focus-ring '
+        'pulsable focus-ring block bg-card p-3 hover:bg-muted/40 '
         + FRANJA[baldosa.atencion]
       }
     >
@@ -81,7 +113,10 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
       */}
       <div className="flex items-baseline justify-between gap-2">
         <span
-          className="font-mono font-bold leading-none tracking-tight"
+          // 🔴 NO monoespaciado. `craft-floor.md`: «Monospace as a costume for
+          //    "technical" rather than for code, data, o measurement». Esto es un
+          //    NOMBRE, no una medida — y en la captura se leia como un disfraz.
+          className="font-bold leading-none tracking-tight"
           style={{ fontSize: 'clamp(1.75rem, 4.5vw, 3rem)' }}
         >
           {etiqueta}
@@ -137,8 +172,13 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
         </ul>
       )}
 
-      {!baldosa.datosVigentes && (
-        <p className="mt-1 text-xs text-muted-foreground italic">
+      {/*
+        ⚠️ Solo si de verdad HAY algo arriba. Antes salia siempre que faltaba el
+           latido — incluso con todos los campos vacios, donde «lo de arriba» no
+           existe y la frase no significaba nada.
+      */}
+      {!baldosa.datosVigentes && baldosa.voltios !== null && (
+        <p className="mt-1 text-xs italic text-muted-foreground">
           Lo de arriba es lo último que se supo, de antigüedad desconocida.
         </p>
       )}

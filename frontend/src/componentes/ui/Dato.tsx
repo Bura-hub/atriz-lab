@@ -63,11 +63,21 @@ export function Dato({
   etiqueta, valor, crudo, antiguedad, referencia, nota, grande,
 }: PropsDato) {
   const desconocido = valor === SIN_DATO
-  const clases = [
-    'font-mono',
-    grande === true ? 'text-2xl font-semibold' : 'text-base',
-    desconocido ? 'italic text-muted-foreground font-normal' : 'text-foreground',
-  ].join(' ')
+  /*
+   * 🔴 LA AUSENCIA NO SE PINTA COMO UN DATO.
+   *
+   * Antes «no se sabe» salia en monoespaciada y del MISMO tamaño que un valor.
+   * Quince veces en la pantalla de telemetria, el hueco se convertia en el
+   * contenido: lo primero que veia el ojo era una columna de ausencias.
+   *
+   * Ahora la ausencia es una raya, mas pequeña y apagada. Se distingue de un
+   * cero al instante —que es la regla— pero deja el peso visual para lo que SI
+   * llego. La explicacion de POR QUE no se sabe va una vez por tarjeta, no una
+   * vez por campo.
+   */
+  const clases = desconocido
+    ? 'hueco text-lg leading-none'
+    : `font-mono tracking-tight ${grande === true ? 'text-3xl font-semibold' : 'text-lg'}`
 
   return (
     <div className="px-3 py-2">
@@ -78,11 +88,15 @@ export function Dato({
         (CLAUDE.md): en un instrumento la microetiqueta ES la unidad y el
         contexto del numero, no un adorno de marketing.
       */}
-      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{etiqueta}</div>
+      <div className="text-[11px] leading-tight text-muted-foreground">{etiqueta}</div>
 
       <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         {desconocido || crudo === undefined || !Number.isFinite(crudo) ? (
-          <span className={clases}>{valor}</span>
+          // Una raya, no la frase. `title` deja la frase a un paso para quien la
+          // necesite, sin que ocupe la pantalla de quien no.
+          <span className={clases} title={desconocido ? 'no se sabe' : undefined}>
+            {desconocido ? '—' : valor}
+          </span>
         ) : (
           <data value={String(crudo)} className={clases}>{valor}</data>
         )}
