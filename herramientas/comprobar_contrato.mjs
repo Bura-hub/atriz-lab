@@ -9,6 +9,7 @@
  * (falta `robot.launch.py`; NO es un aprobado, sigue la convencion del
  * proyecto: probar_lista_blanca.py, verificar_robot.sh, compilar.sh, etc.)
  */
+import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -30,6 +31,45 @@ if (!existsSync(rutaLaunch)) {
   console.error(`🔴 NO SE COMPARÓ NADA: no encuentro ${rutaLaunch}. Esto no es un aprobado.`)
   console.error('   Uso: node herramientas/comprobar_contrato.mjs ../Atriz_rvr')
   process.exit(2)
+}
+
+/**
+ * 🔴 QUE RAMA DE `Atriz_rvr` SE ESTA COMPARANDO. No es decoracion.
+ *
+ * Este comprobador lee el ARBOL DE TRABAJO del repositorio hermano, asi que su
+ * veredicto depende de en que rama esta ESE repositorio — y eso no aparecia por
+ * ningun lado. El 2026-08-04 alguien dejo `Atriz_rvr` en `feat/estado-robot`
+ * (una rama sin fusionar, con un topic de mas) y el comprobador dio ROJO
+ * diciendo «solo en el ROBOT: /estado_robot», sin mencionar la rama. Costo una
+ * investigacion entera, y la salida natural —añadir el topic a `contrato.ts`—
+ * habria sido el arreglo EQUIVOCADO: la web habria prometido un topic que `ros2`
+ * no publica.
+ *
+ * → Un comprobador que da un veredicto correcto sobre un arbol equivocado es
+ *   peor que uno que falla: parece que sabe lo que compara. Ahora lo dice.
+ *
+ * `git` puede no estar (un tarball, un CI sin `.git`): eso no es motivo para
+ * abortar, se dice «desconocida» y se sigue.
+ */
+const RAMA_ESPERADA = 'ros2'
+let rama = null
+try {
+  rama = execFileSync('git', ['-C', raizRvr, 'rev-parse', '--abbrev-ref', 'HEAD'], {
+    encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+  }).trim()
+} catch {
+  rama = null
+}
+if (rama === null) {
+  console.log('📌 comparando contra Atriz_rvr, rama DESCONOCIDA (no hay git aquí)')
+} else if (rama === RAMA_ESPERADA) {
+  console.log(`📌 comparando contra Atriz_rvr, rama ${rama}`)
+} else {
+  console.log(
+    `⚠️  comparando contra Atriz_rvr en la rama «${rama}», NO «${RAMA_ESPERADA}» — que es la que\n` +
+    '   corre el robot. Si algo sale divergente, MIRA ESTO ANTES de tocar contrato.ts: la web no\n' +
+    `   puede prometer lo que ${RAMA_ESPERADA} no publica. Volver con:  git -C ${process.argv[2] ?? '../Atriz_rvr'} checkout ${RAMA_ESPERADA}`,
+  )
 }
 
 const launch = readFileSync(rutaLaunch, 'utf8')
