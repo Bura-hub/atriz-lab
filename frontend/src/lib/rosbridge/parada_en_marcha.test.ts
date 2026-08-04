@@ -157,10 +157,26 @@ ${URL}
       // 🔴 Se captura y SE DICE. `paradaEmergencia()` propaga a proposito
       //    (regla (b)): si no hay enlace, la parada NO se envio, y eso es el
       //    resultado del experimento, no un detalle que tragarse.
+      // 🔴 EL INSTANTE, con milisegundos y a los DOS lados del publish.
+      //
+      // La corrida 4 (2026-08-04) no lo tenia y no se pudo cruzar con el
+      // `11:46:13.890` del log del driver: hubo que RECONSTRUIRLO sumando el
+      // barrido y el avance a la hora de conexion, lo que dejaba +-0,3 s de
+      // incertidumbre sobre un hueco aparente de 0,4-0,7 s. O sea: la
+      // reconstruccion no podia distinguir un retardo real del ruido.
+      //
+      // ⚠️ Y AUN ASI NO BASTA PARA HABLAR DE LATENCIA: falta el desfase entre
+      // el reloj del PC y el de la Pi, que **no esta medido**. La Pi no tiene
+      // RTC (`/dev/rtc*` no existe) y depende de NTP. Sin ese desfase, comparar
+      // dos marcas de maquinas distintas mide la deriva de los relojes tanto
+      // como el retardo del sistema. Este par de marcas acota el publish; NO
+      // cierra la latencia extremo a extremo, que sigue SIN MEDIR.
+      const tAntes = new Date()
       let seEnvio = false
       try {
         teleop.paradaEmergencia()
         seEnvio = true
+        anota(`publish de /emergency_stop entre ${tAntes.toISOString()} y ${new Date().toISOString()} (reloj del PC)`)
         anota('parada ENVIADA por /emergency_stop')
       } catch (e) {
         anota(`🔴 LA PARADA NO SE ENVIO: ${e instanceof Error ? e.message : String(e)}`)
