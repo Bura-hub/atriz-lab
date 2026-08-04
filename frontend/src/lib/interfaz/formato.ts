@@ -1,0 +1,120 @@
+/**
+ * Como se escribe un numero en esta interfaz. PURO: sin React y sin red.
+ *
+ * 🔴 LA REGLA QUE MANDA AQUI: **la ausencia de un dato tiene su propio texto**,
+ * y ese texto NO es «0», ni «--», ni una casilla vacia. Un cero es una medida;
+ * un hueco no lo es. Este proyecto ya pago la diferencia dos veces -`percentage`
+ * leido como 0-100 hizo que un robot al 34 % pareciera estar al 0 %, y
+ * `nivelBateria(NaN)` devolvia `OK`-, asi que aqui «no se sabe» se escribe con
+ * todas las letras.
+ *
+ * ⚠️ Y por que TODAS las funciones aceptan `undefined`: el `as` de `useTopic` es
+ * una ASERCION, no una validacion. Un mensaje del robot con otra forma no lo
+ * detiene nada, asi que cualquier campo puede llegar `undefined` en ejecucion
+ * aunque su tipo diga que es un `number`. Formatear eso sin comprobarlo daria
+ * «undefined V» en la pantalla.
+ */
+
+import { Frescura } from '../rosbridge/contrato'
+
+/** El texto exacto de «no hay dato». Uno solo, para que se lea igual en todas partes. */
+export const SIN_DATO = 'no se sabe'
+
+/** Coma decimal: es una interfaz en español. */
+export function numero(n: number | null | undefined, decimales: number): string {
+  if (n === null || n === undefined || !Number.isFinite(n)) return SIN_DATO
+  return n.toFixed(decimales).replace('.', ',')
+}
+
+/**
+ * 🔴 VOLTIOS, que es la señal autoritativa de la bateria. El `percentage` del
+ * firmware marco **100 % con la bateria a 8,29 V**, a 1,29 V del umbral de
+ * «baja». Nunca se pinta un porcentaje como dato principal.
+ */
+export function voltios(v: number | null | undefined): string {
+  const t = numero(v, 2)
+  return t === SIN_DATO ? SIN_DATO : `${t} V`
+}
+
+export function celsius(c: number | null | undefined): string {
+  const t = numero(c, 1)
+  return t === SIN_DATO ? SIN_DATO : `${t} °C`
+}
+
+export function metros(m: number | null | undefined): string {
+  const t = numero(m, 3)
+  return t === SIN_DATO ? SIN_DATO : `${t} m`
+}
+
+export function metrosPorSegundo(v: number | null | undefined): string {
+  const t = numero(v, 3)
+  return t === SIN_DATO ? SIN_DATO : `${t} m/s`
+}
+
+export function radianesPorSegundo(w: number | null | undefined): string {
+  const t = numero(w, 3)
+  return t === SIN_DATO ? SIN_DATO : `${t} rad/s`
+}
+
+export function grados(g: number | null | undefined): string {
+  const t = numero(g, 1)
+  return t === SIN_DATO ? SIN_DATO : `${t}°`
+}
+
+export function segundos(s: number | null | undefined): string {
+  const t = numero(s, 1)
+  return t === SIN_DATO ? SIN_DATO : `${t} s`
+}
+
+/**
+ * Milisegundos como texto legible. Por encima del segundo pasa a segundos: un
+ * «43128 ms» no se lee de un vistazo, y el muro del profesor se mira de lejos.
+ */
+export function milisegundos(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined || !Number.isFinite(ms)) return SIN_DATO
+  if (ms < 1000) return `${Math.round(ms)} ms`
+  return segundos(ms / 1000)
+}
+
+/**
+ * La antiguedad de un dato, con «no se sabe» cuando `Frescura` dice que no se
+ * sabe.
+ *
+ * 🔴 `interpretarAntiguedad(-1)` da `{ conocido: false }`, y eso NO es «hace
+ * cero segundos»: es «nunca se ha sabido nada de eso». En `/motor_status` el
+ * -1.0 aparece mientras no haya habido ningun atasco desde que arranco el
+ * driver. Pintarlo como 0 s seria afirmar una comprobacion que no se hizo.
+ */
+export function antiguedad(f: Frescura): string {
+  return f.conocido ? `hace ${segundos(f.antiguedadS)}` : SIN_DATO
+}
+
+/**
+ * El yaw (rumbo) de un cuaternion, en radianes.
+ *
+ * ⚠️ Solo vale para un robot que se mueve en el plano, que es este caso: el
+ * driver publica la orientacion PLANA a proposito (`publicar_inclinacion:
+ * false`), porque los 6,9° de inclinacion que reporta el RVR son un artefacto
+ * de su acelerometro descalibrado -suelo plano medido con nivel y error fijo en
+ * el marco del robot-, no una inclinacion real.
+ */
+export function yawDeCuaternion(q: {
+  x?: number; y?: number; z?: number; w?: number
+} | null | undefined): number | null {
+  if (q === null || q === undefined) return null
+  const { x, y, z, w } = q
+  if (![x, y, z, w].every((c) => typeof c === 'number' && Number.isFinite(c))) return null
+  // Repetido con `as number` no: se estrecha con una guarda explicita para no
+  // usar `!` ni `any`. Los cuatro ya estan comprobados justo arriba.
+  const qx = x ?? 0, qy = y ?? 0, qz = z ?? 0, qw = w ?? 0
+  return Math.atan2(2 * (qw * qz + qx * qy), 1 - 2 * (qy * qy + qz * qz))
+}
+
+export const aGrados = (rad: number): number => (rad * 180) / Math.PI
+
+/** La hora local, para poner al lado de «orden enviada» y que se sepa CUANDO. */
+export function horaCorta(t: number): string {
+  const d = new Date(t)
+  const dd = (n: number) => String(n).padStart(2, '0')
+  return `${dd(d.getHours())}:${dd(d.getMinutes())}:${dd(d.getSeconds())}`
+}

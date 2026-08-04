@@ -4,6 +4,12 @@ const config: Config = {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    // 🔴 `componentes/` (en español) es donde vive la interfaz nueva, y SIN esta
+    //    línea Tailwind no genera ni una de sus clases: los componentes compilan,
+    //    se montan y salen SIN NINGÚN ESTILO. Es un fallo silencioso de la misma
+    //    familia que los que este proyecto documenta —nada da error, y el efecto
+    //    no ocurre—, así que se comprueba mirando la página, no el build.
+    "./src/componentes/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {

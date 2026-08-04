@@ -1,0 +1,101 @@
+'use client'
+
+/**
+ * La bateria del RVR, en VOLTIOS.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 POR QUE NO HAY UN PORCENTAJE GRANDE EN ESTA TARJETA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Medido el 2026-08-01: el porcentaje del firmware decia **100 % con la bateria
+ * a 8,29 V**, a 1,29 V del umbral de «baja» del propio firmware (7,0 V; critica
+ * 6,5 V, histeresis 0,2). Es una estimacion gruesa, y decidir con ella manda a
+ * cargar tarde.
+ *
+ * Y hay una segunda trampa encima: `sensor_msgs/BatteryState.percentage` es una
+ * **fraccion 0-1**, no un porcentaje. Leerlo como 0-100 hizo que un robot al
+ * 34 % pareciera estar al 0 % y provoco una falsa alarma de bateria agotada. Se
+ * enseña, pequeño y explicado, para que nadie lo busque en otro sitio; no decide
+ * nada.
+ *
+ * ⚠️ `/battery_state` llega **cada 30,0 s exactos** -es el latido del keepalive
+ * del driver-, asi que su antiguedad va SIEMPRE al lado del voltaje: un valor de
+ * hace 28 s no es un valor de ahora.
+ */
+
+import { useRobot } from '@/hooks/ContextoRobot'
+import { useTopic } from '@/hooks/useTopic'
+import { useLatido } from '@/hooks/useTransporte'
+import { NivelBateria, V_BAJA, V_CRITICA, nivelBateria } from '@/lib/rosbridge/contrato'
+import { SIN_DATO, milisegundos, numero, voltios } from '@/lib/interfaz/formato'
+import { porcentajeDe, voltajeDe } from '@/lib/interfaz/lecturas'
+import { Dato } from '@/componentes/ui/Dato'
+import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
+import { Tarjeta } from '@/componentes/ui/Tarjeta'
+
+const TONO: Readonly<Record<NivelBateria, TonoInsignia>> = {
+  OK: 'BIEN',
+  BAJA: 'ATENCION',
+  CRITICA: 'GRAVE',
+  // 🔴 DESCONOCIDO NO se pinta como OK. Son cosas distintas, y colapsarlas es lo
+  //    que hacia `nivelBateria(NaN)` antes de arreglarse.
+  DESCONOCIDO: 'NEUTRO',
+}
+
+const TEXTO: Readonly<Record<NivelBateria, string>> = {
+  OK: 'por encima del umbral',
+  BAJA: 'toca cargar',
+  CRITICA: 'el RVR se va a apagar',
+  DESCONOCIDO: SIN_DATO,
+}
+
+export function Bateria() {
+  const { transporte } = useRobot()
+  const mensaje = useTopic(transporte, '/battery_state')
+  // El muestreo del latido: la antiguedad envejece sin que llegue nada nuevo, y
+  // sin un re-render periodico se quedaria congelada en la pantalla.
+  useLatido()
+
+  const v = voltajeDe(mensaje)
+  const nivel: NivelBateria = v === null ? 'DESCONOCIDO' : nivelBateria(v)
+  const pct = porcentajeDe(mensaje)
+  const desde = transporte.msDesdeUltimo('/battery_state')
+
+  return (
+    <Tarjeta
+      titulo="Batería"
+      subtitulo="Se decide por voltios. El porcentaje del firmware dijo 100 % con la batería a 8,29 V."
+      extremo={<Insignia tono={TONO[nivel]}>{nivel === 'DESCONOCIDO' ? 'no se sabe' : nivel}</Insignia>}
+    >
+      <Dato
+        etiqueta="Voltaje"
+        valor={voltios(v)}
+        antiguedad={desde === null ? SIN_DATO : `hace ${milisegundos(desde)}`}
+        grande
+        nota={
+          <>
+            Umbrales del firmware: baja por debajo de {voltios(V_BAJA)}, crítica por debajo de{' '}
+            {voltios(V_CRITICA)}. {TEXTO[nivel]}.
+          </>
+        }
+      />
+      <Dato
+        etiqueta="Porcentaje que reporta el firmware (no decide nada)"
+        valor={pct === null ? SIN_DATO : `${numero(pct, 0)} %`}
+        nota="El mensaje lo trae como fracción 0-1; aquí ya va multiplicado por 100. Es una estimación gruesa: no sirve para decidir si hay que cargar."
+      />
+      {v === null && mensaje !== null && (
+        <p className="text-xs text-muted-foreground mt-2 max-w-prose">
+          Ha llegado un <code>/battery_state</code> sin un voltaje válido. El driver publica{' '}
+          <code>NaN</code> a propósito cuando la lectura falla —con el RVR apagado y la Raspberry Pi
+          viva, por ejemplo— porque 0,00 V sería un dato y esto es un hueco.
+        </p>
+      )}
+      {mensaje === null && (
+        <p className="text-xs text-muted-foreground mt-2 max-w-prose">
+          Todavía no ha llegado ningún <code>/battery_state</code>. Llega cada 30,0 s, así que puede
+          tardar medio minuto en aparecer aunque el robot esté perfectamente.
+        </p>
+      )}
+    </Tarjeta>
+  )
+}
