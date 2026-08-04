@@ -19,9 +19,11 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * LO QUE NO SE DIBUJA, Y POR QUE
  * ═══════════════════════════════════════════════════════════════════════════
- * De 255 puntos por barrido, **226 son validos (89 %)**; el resto llegan como
- * `Infinity` o `NaN`. `puntosDelBarrido()` los descarta, y el recuento se enseña
- * para que ese 89 % se lea como NORMAL y no como averia. Pintar un hueco como 0
+ * De **260 puntos por barrido** (medido contra el robot el 2026-08-04), el
+ * **83-89 % son validos**; el resto llegan como `Infinity` o `NaN`.
+ * `puntosDelBarrido()` los descarta, y el recuento se enseña para que ese
+ * porcentaje se lea como NORMAL y no como averia. ⚠️ Depende de la habitacion:
+ * un rayo que no vuelve es un rayo que no encontro nada en 8 m. Pintar un hueco como 0
  * dibujaria un obstaculo pegado al robot que no existe — sobre una pantalla que
  * se usa para decidir si conducir, eso es peor que no dibujar nada.
  */
@@ -42,8 +44,48 @@ import { Tarjeta } from '@/componentes/ui/Tarjeta'
 const LADO = 420          // px del lienzo, cuadrado
 const RADIO_M = 2.5       // metros que caben del centro al borde
 
+/**
+ * Los colores del lienzo, LEIDOS DEL TEMA. No se eligen aqui.
+ *
+ * 🔴 Antes este componente preguntaba a `window.matchMedia('(prefers-color-
+ *    scheme: dark)')`, que es una fuente DISTINTA de la que gobierna el resto de
+ *    la interfaz. Con el sistema operativo en oscuro y la aplicacion en claro,
+ *    el lienzo pintaba trazos de modo oscuro sobre fondo claro — en la pantalla
+ *    que se usa para decidir si el paso esta libre.
+ *    Ahora hay una sola fuente de verdad: los tokens ya calculados.
+ */
+export interface ColoresLienzo {
+  linea: string
+  texto: string
+  punto: string
+  robot: string
+}
+
+/**
+ * ⚠️ Se lee UNA vez y se cachea. `/scan` llega a ~10 Hz y
+ * `getComputedStyle()` fuerza calculo de estilo: hacerlo en cada barrido seria
+ * pagar un reflow diez veces por segundo para releer cuatro colores que no
+ * cambian.
+ */
+export function coloresDelTema(): ColoresLienzo {
+  const raiz = getComputedStyle(document.documentElement)
+  const t = (nombre: string, alfa = 1) => {
+    const v = raiz.getPropertyValue(nombre).trim()
+    // Los tokens se guardan como «R G B» para que Tailwind pueda componerles
+    // alfa. Si falta uno, se cae a un gris legible en los dos temas en vez de
+    // devolver una cadena vacia, que pintaria transparente sin dar error.
+    return v === '' ? `rgb(128 128 128 / ${alfa})` : `rgb(${v} / ${alfa})`
+  }
+  return {
+    linea: t('--border'),
+    texto: t('--muted-foreground'),
+    punto: t('--foreground'),
+    robot: t('--muted-foreground'),
+  }
+}
+
 /** Dibuja el barrido. Toda la geometria viene ya resuelta de `barrido.ts`. */
-function pintar(cv: HTMLCanvasElement, puntos: Punto[], oscuro: boolean): void {
+function pintar(cv: HTMLCanvasElement, puntos: Punto[], col: ColoresLienzo): void {
   const ctx = cv.getContext('2d')
   if (ctx === null) return
   const k = escala(LADO, RADIO_M)
@@ -52,8 +94,8 @@ function pintar(cv: HTMLCanvasElement, puntos: Punto[], oscuro: boolean): void {
   ctx.clearRect(0, 0, LADO, LADO)
 
   // Anillos de referencia cada medio metro, con su etiqueta.
-  ctx.strokeStyle = oscuro ? 'rgba(255,255,255,0.13)' : 'rgba(0,0,0,0.10)'
-  ctx.fillStyle = oscuro ? 'rgba(255,255,255,0.40)' : 'rgba(0,0,0,0.40)'
+  ctx.strokeStyle = col.linea
+  ctx.fillStyle = col.texto
   ctx.font = '10px system-ui, sans-serif'
   ctx.lineWidth = 1
   for (let m = 0.5; m <= RADIO_M; m += 0.5) {
@@ -66,7 +108,7 @@ function pintar(cv: HTMLCanvasElement, puntos: Punto[], oscuro: boolean): void {
   // Los puntos. 🔴 x del robot va hacia ARRIBA en pantalla, e y hacia la
   // IZQUIERDA: es REP-103 (x adelante, y a la izquierda) girado para que
   // «adelante» se vea arriba, que es como lo mira una persona.
-  ctx.fillStyle = oscuro ? 'rgb(125,211,252)' : 'rgb(2,132,199)'
+  ctx.fillStyle = col.punto
   for (const p of puntos) {
     ctx.fillRect(c - p.y * k - 1.5, c - p.x * k - 1.5, 3, 3)
   }
@@ -74,7 +116,7 @@ function pintar(cv: HTMLCanvasElement, puntos: Punto[], oscuro: boolean): void {
   // El robot: 21,7 cm de ancho x 19,0 de largo, MEDIDO con cinta (con orugas).
   // La ficha de Sphero decia 0.218 x 0.185 y las dos estaban mal, ademas de
   // cruzadas. Se dibuja a escala para que el barrido tenga referencia real.
-  ctx.strokeStyle = oscuro ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)'
+  ctx.strokeStyle = col.robot
   ctx.lineWidth = 1.5
   ctx.strokeRect(c - (0.217 / 2) * k, c - (0.190 / 2) * k, 0.217 * k, 0.190 * k)
   // La proa, para que se vea hacia donde mira.
@@ -93,13 +135,21 @@ export function PanelLidar() {
   const [encendiendo, setEncendiendo] = useState(false)
   const [fallo, setFallo] = useState<string | null>(null)
 
-  const oscuro = typeof window !== 'undefined'
-    && window.matchMedia?.('(prefers-color-scheme: dark)').matches
+  // Los colores se leen una vez y se refrescan solo si el tema cambia de
+  // verdad. Ver `coloresDelTema()`.
+  const [colores, setColores] = useState<ColoresLienzo | null>(null)
+  useEffect(() => {
+    const leer = () => setColores(coloresDelTema())
+    leer()
+    const mq = window.matchMedia('(prefers-color-scheme: dark)')
+    mq.addEventListener('change', leer)
+    return () => mq.removeEventListener('change', leer)
+  }, [])
 
   useEffect(() => {
-    if (lienzo.current === null || scan === null) return
-    pintar(lienzo.current, puntosDelBarrido(scan), oscuro === true)
-  }, [scan, oscuro])
+    if (lienzo.current === null || scan === null || colores === null) return
+    pintar(lienzo.current, puntosDelBarrido(scan), colores)
+  }, [scan, colores])
 
   const seguridad = interpretarSeguridad(monitor)
   const cuenta = scan === null ? null : contarValidos(scan)

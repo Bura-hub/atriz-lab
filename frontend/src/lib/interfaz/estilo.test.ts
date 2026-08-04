@@ -89,6 +89,25 @@ describe('la guardia visual sobre el codigo real', () => {
     expect(ficherosDeEstilo(join(SRC, 'componentes')).length).toBeGreaterThan(10)
   })
 
+  /**
+   * 🔴 LA GUARDIA SE ENCUENTRA A SI MISMA, Y HAY QUE EXCLUIRLA EXPLICITAMENTE.
+   *
+   * `estilo.ts` contiene las expresiones regulares —o sea, las cadenas
+   * prohibidas literalmente— y este fichero contiene los casos de prueba, que
+   * son esas mismas cadenas otra vez. Sin esta exclusion la prueba falla SIEMPRE
+   * y señala como culpable al codigo escrito para vigilar.
+   *
+   * Es la misma forma que el `pkill -f` que este proyecto documenta dos veces:
+   * **el patron se encuentra a si mismo**. Alli la solucion fue el corchete;
+   * aqui es nombrar los dos ficheros, porque saltarse los comentarios no basta
+   * -las cadenas viven en codigo, no en comentarios-.
+   *
+   * ⚠️ Y por eso la exclusion es por NOMBRE EXACTO y no por directorio: dejar
+   *    fuera `lib/interfaz/` entero silenciaria de paso cualquier violacion
+   *    futura de sus otros nueve ficheros.
+   */
+  const PROPIOS = ['estilo.ts', 'estilo.test.ts']
+
   it('🔴 ningun fichero de la interfaz usa lo prohibido', () => {
     // ⚠️ `src/components/` (con C, en ingles) queda FUERA a proposito: son 1125
     //    lineas de maqueta huerfana que nadie importa y que se borran en la
@@ -97,11 +116,19 @@ describe('la guardia visual sobre el codigo real', () => {
     const culpables: string[] = []
     for (const dir of [join(SRC, 'componentes'), join(SRC, 'app'), join(SRC, 'lib')]) {
       for (const f of ficherosDeEstilo(dir)) {
+        if (PROPIOS.some((n) => f.endsWith(n))) continue
         const malas = buscarProhibiciones(readFileSync(f, 'utf8'))
         if (malas.length > 0) culpables.push(`${f}: ${malas.join(', ')}`)
       }
     }
     expect(culpables).toEqual([])
+  })
+
+  it('🔴 y la exclusion es minima: solo esos dos ficheros', () => {
+    // Si alguien la amplia a un directorio, esta prueba lo delata. Una
+    // exclusion que crece en silencio convierte la guardia en decoracion.
+    expect(PROPIOS).toHaveLength(2)
+    expect(ficherosDeEstilo(join(SRC, 'lib', 'interfaz')).length).toBeGreaterThan(8)
   })
 
   it('🔴 la tipografia no se descarga de la red', () => {

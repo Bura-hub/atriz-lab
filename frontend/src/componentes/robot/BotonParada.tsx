@@ -108,7 +108,15 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
       <button
         type="button"
         onClick={pulsar}
-        className="w-full rounded-lg bg-destructive px-6 py-6 text-2xl font-bold uppercase tracking-wide text-destructive-foreground shadow-lg transition-transform focus-ring active:scale-[0.99] hover:brightness-110"
+        // 🔴 Un borde de 4 px en vez de `shadow-lg`. La sombra sugería relieve
+        //    —profundidad que no es información— y este botón no necesita
+        //    parecer que sobresale: necesita ser el elemento más inequívoco de
+        //    la pantalla, y eso lo dan el tamaño, el color reservado y el marco.
+        className={
+          'w-full border-4 border-destructive bg-destructive px-6 py-6 text-2xl font-bold '
+          + 'uppercase tracking-wide text-destructive-foreground transition-transform focus-ring '
+          + 'active:scale-[0.99] hover:brightness-110'
+        }
       >
         Parada de emergencia
       </button>

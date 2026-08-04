@@ -1,582 +1,209 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * EL SUSTRATO VISUAL DE UN INSTRUMENTO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Esto era el CSS de la maqueta que se borró de la portada: 582 líneas con
+ * gradientes, cinco niveles de sombra, radios de 1,5 rem, un acento púrpura, un
+ * `translateY(-2px)` al pasar por encima y dos animaciones INFINITAS. La
+ * aplicación entera se construyó encima sin que nadie cambiara la piel.
+ *
+ * 🔴 Los nombres de Tailwind (`--card`, `--muted-foreground`, …) SE CONSERVAN a
+ *    propósito, aunque el resto del proyecto escriba en español: son las ranuras
+ *    semánticas del framework y las consumen todos los componentes vía
+ *    `bg-card`, `border-border`, `text-muted-foreground`. Renombrarlas obligaría
+ *    a tocar cada componente **sin una sola prueba de render que lo respalde**
+ *    —las pruebas corren en Node y ninguna monta un componente—, que es
+ *    justamente el tipo de cambio que aquí no se puede verificar. Lo que cambia
+ *    es lo que hay DETRÁS.
+ *    Los tokens NUEVOS —el vocabulario de estados— sí van en español: son
+ *    nuestros, no del framework.
+ *
+ * 🔴 NADA DE TIPOGRAFÍA REMOTA. Esto importaba Inter y JetBrains Mono de
+ *    `fonts.googleapis.com`. El experimento que hoy BLOQUEA el producto (la F0)
+ *    es si el punto de acceso del aula deja pasar el tráfico entre clientes: una
+ *    interfaz de laboratorio que necesita dos peticiones a Google para tener
+ *    letra **cae en silencio justo donde va a usarse**, y sin dar ningún error.
+ *    Hay una prueba que lo impide (`estilo.test.ts`).
+ */
+
 :root {
-  /* === COLORES BASE === */
-  --background: 255 255 255;
-  --foreground: 15 23 42;
-  --border: 226 232 240;
-  --input: 248 250 252;
-  
-  /* === COLORES PRIMARIOS === */
-  --primary: 59 130 246;  /* #3b82f6 - Azul moderno */
-  --primary-foreground: 255 255 255;
-  --primary-hover: 37 99 235;
-  
-  /* === COLORES SECUNDARIOS === */
-  --secondary: 241 245 249;
-  --secondary-foreground: 51 65 85;
-  
-  /* === COLORES MUTED === */
-  --muted: 248 250 252;
-  --muted-foreground: 100 116 139;
-  
-  /* === COLORES DE ÉXITO === */
-  --success: 34 197 94;  /* #22c55e - Verde moderno */
-  --success-foreground: 255 255 255;
-  --success-light: 220 252 231;
-  
-  /* === COLORES DE ACENTO === */
-  --accent: 139 92 246;  /* #8b5cf6 - Púrpura moderno */
-  --accent-foreground: 255 255 255;
-  
-  /* === COLORES DESTRUCTIVOS === */
-  --destructive: 239 68 68;  /* #ef4444 - Rojo alerta */
-  --destructive-foreground: 255 255 255;
-  --destructive-light: 254 226 226;
-  
-  /* === COLORES DE ADVERTENCIA === */
-  --warning: 245 158 11;  /* #f59e0b - Naranja moderno */
-  --warning-foreground: 15 23 42;
-  --warning-light: 254 243 199;
-  
-  /* === COLORES DE CARDS === */
+  /* ── Sustrato ──────────────────────────────────────────────────────────── */
+  --background: 250 250 249;      /* piedra muy clara, no blanco puro */
+  --foreground: 28 25 23;
   --card: 255 255 255;
-  --card-foreground: 15 23 42;
-  --card-hover: 248 250 252;
-  
-  /* === COLORES DE SIDEBAR === */
-  --sidebar: 248 250 252;
-  --sidebar-foreground: 51 65 85;
-  --sidebar-primary: 59 130 246;
-  --sidebar-primary-foreground: 255 255 255;
-  --sidebar-hover: 241 245 249;
-  
-  /* === COLORES DE GRADIENTES === */
-  --gradient-primary: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  --gradient-success: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-  --gradient-destructive: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  
-  /* === SOMBRAS === */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
-  
-  /* === RADIOS === */
-  --radius-sm: 0.375rem;
-  --radius: 0.5rem;
-  --radius-md: 0.75rem;
-  --radius-lg: 1rem;
-  --radius-xl: 1.5rem;
+  --card-foreground: 28 25 23;
+  --muted: 245 245 244;
+  --muted-foreground: 87 83 78;
+  --border: 214 211 209;
+  --input: 255 255 255;
+  --secondary: 245 245 244;
+  --secondary-foreground: 41 37 36;
+  --accent: 240 240 238;          /* ya NO es púrpura: es el realce al pasar */
+  --accent-foreground: 28 25 23;
+
+  /*
+   * ── EL VOCABULARIO DE ESTADOS ────────────────────────────────────────────
+   * 🔴 No es una paleta de acento: es un vocabulario. Cuatro de las skills
+   *    instaladas exigen «máximo un color de acento», y aquí eso es incompatible
+   *    con tener que distinguir «no se sabe» de «vivo» de «mirar» de «ir».
+   * 🔴 Y el color NUNCA es el único código: cada estado lleva además su texto y,
+   *    en el muro, grosor de franja. Un proyector desaturado y una persona
+   *    daltónica tienen que poder leerlo igual.
+   */
+  --estado-neutro: 120 113 108;   /* NO SE SABE. Ni bueno ni malo */
+  --estado-vivo: 21 128 61;       /* solo desde un dato RECIENTE y concreto */
+  --estado-mirar: 180 83 9;
+  --estado-ir: 190 24 93;         /* reservado a un hecho confirmado */
+  --estado-frenando: 29 78 216;   /* ⚠️ DECLARADO Y SIN USAR: ver abajo */
+
+  /* Lo que consumen las utilidades que ya usan los componentes. */
+  --primary: 28 25 23;
+  --primary-foreground: 250 250 249;
+  --destructive: 190 24 93;
+  --destructive-foreground: 255 255 255;
+  --warning: 180 83 9;
+  --warning-foreground: 255 255 255;
+  --success: 21 128 61;
+  --success-foreground: 255 255 255;
+
+  /*
+   * 🔴 CERO. En un token y no como literal repetido, para que cambiarlo sea un
+   *    acto deliberado y se vea en el diff.
+   */
+  --radio: 0px;
 }
 
-[data-theme="dark"] {
-  --background: 15 23 42;
-  --foreground: 248 250 252;
-  --border: 51 65 85;
-  --input: 30 41 59;
-  --primary: 96 165 250;
-  --primary-foreground: 15 23 42;
-  --primary-hover: 59 130 246;
-  --secondary: 30 41 59;
-  --secondary-foreground: 203 213 225;
-  --muted: 30 41 59;
-  --muted-foreground: 148 163 184;
-  --success: 34 197 94;
-  --success-foreground: 15 23 42;
-  --success-light: 22 78 99;
-  --accent: 139 92 246;
-  --accent-foreground: 15 23 42;
-  --destructive: 239 68 68;
-  --destructive-foreground: 248 250 252;
-  --destructive-light: 69 10 10;
-  --warning: 245 158 11;
-  --warning-foreground: 15 23 42;
-  --warning-light: 69 26 3;
-  --card: 30 41 59;
-  --card-foreground: 248 250 252;
-  --card-hover: 51 65 85;
-  --sidebar: 15 23 42;
-  --sidebar-foreground: 203 213 225;
-  --sidebar-primary: 96 165 250;
-  --sidebar-primary-foreground: 15 23 42;
-  --sidebar-hover: 30 41 59;
-}
+/*
+ * ⚠️ `--estado-frenando` está declarado y NO se usa en ningún sitio, y es
+ *    deliberado. El estado FRENANDO saldría de `/collision_monitor_state`, cuyo
+ *    `action_type` está medido en UN solo valor observado (1 = STOP, con
+ *    «invalid source» cuando falta `/scan`). El resto del enum se leyó del
+ *    `.msg` real del robot, pero nadie ha visto llegar los demás valores.
+ *    El hueco se declara; no se rellena con una suposición.
+ */
 
-/* === BASE STYLES === */
-* {
-  box-sizing: border-box;
-}
+/*
+ * ── MODO OSCURO ──────────────────────────────────────────────────────────────
+ * 🔴 Hasta hoy era INALCANZABLE. Las variables existían y lo único que ponía
+ *    `[data-theme="dark"]` era `DashboardLayout.tsx`, un fichero huérfano que no
+ *    importa nadie: la aplicación era permanentemente clara.
+ *
+ * Se hace con `prefers-color-scheme` y nada más: cero JavaScript, cero parpadeo
+ * y cero riesgo de discrepancia de hidratación. El conmutador manual —que el
+ * aula necesita, porque el proyector manda más que el sistema operativo— es un
+ * paso APARTE; hasta que exista, esto ya funciona.
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: 12 10 9;
+    --foreground: 231 229 228;
+    --card: 28 25 23;
+    --card-foreground: 231 229 228;
+    --muted: 41 37 36;
+    --muted-foreground: 168 162 158;
+    --border: 68 64 60;
+    --input: 28 25 23;
+    --secondary: 41 37 36;
+    --secondary-foreground: 231 229 228;
+    --accent: 41 37 36;
+    --accent-foreground: 231 229 228;
 
-html {
-  scroll-behavior: smooth;
-}
+    --estado-neutro: 168 162 158;
+    --estado-vivo: 74 222 128;
+    --estado-mirar: 251 191 36;
+    --estado-ir: 244 114 182;
+    --estado-frenando: 96 165 250;
 
-body {
-  background: rgb(var(--background));
-  color: rgb(var(--foreground));
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  margin: 0;
-  padding: 0;
-  line-height: 1.6;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-/* Asegurar que todos los elementos usen Inter */
-*, *::before, *::after {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-}
-
-/* Forzar Inter en todos los elementos HTML */
-html, body, div, span, applet, object, iframe,
-h1, h2, h3, h4, h5, h6, p, blockquote, pre,
-a, abbr, acronym, address, big, cite, code,
-del, dfn, em, img, ins, kbd, q, s, samp,
-small, strike, strong, sub, sup, tt, var,
-b, u, i, center,
-dl, dt, dd, ol, ul, li,
-fieldset, form, label, legend,
-table, caption, tbody, tfoot, thead, tr, th, td,
-article, aside, canvas, details, embed, 
-figure, figcaption, footer, header, hgroup, 
-menu, nav, output, ruby, section, summary,
-time, mark, audio, video, button, input, textarea, select {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-}
-
-/* Fuentes específicas para elementos de código */
-code, pre, kbd, samp {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace !important;
-}
-
-/* Sobrescribir fuentes de librerías externas */
-.lucide, .lucide-react, [data-lucide] {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-}
-
-/* Asegurar que todos los componentes de React usen Inter */
-[class*="react-"], [class*="next-"], [class*="tailwind-"] {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-}
-
-/* === DASHBOARD LAYOUT === */
-.dashboard-container {
-  min-height: 100vh;
-  background: rgb(var(--background));
-  position: relative;
-}
-
-.sidebar {
-  background: rgb(var(--sidebar));
-  border-right: 1px solid rgb(var(--border));
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.card {
-  background: rgb(var(--card));
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  border: 1px solid rgb(var(--border));
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-  background: rgb(var(--card-hover));
-  border-color: rgb(var(--primary) / 0.2);
-}
-
-.card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgb(var(--primary) / 0.3), transparent);
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.card:hover::before {
-  opacity: 1;
-}
-
-.header {
-  background: rgb(var(--card));
-  border-bottom: 1px solid rgb(var(--border));
-  height: 64px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  position: sticky;
-  top: 0;
-  z-index: 30;
-}
-
-/* === SCROLLBAR === */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgb(var(--muted));
-  border-radius: var(--radius);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgb(var(--muted-foreground) / 0.3);
-  border-radius: var(--radius);
-  transition: background 0.2s ease;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--muted-foreground) / 0.5);
-}
-
-/* === ANIMATIONS === */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    --primary: 231 229 228;
+    --primary-foreground: 12 10 9;
+    --destructive: 225 29 72;
+    --destructive-foreground: 255 255 255;
+    --warning: 217 119 6;
+    --warning-foreground: 255 255 255;
+    --success: 22 163 74;
+    --success-foreground: 255 255 255;
   }
 }
 
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
+@layer base {
+  body {
+    background: rgb(var(--background));
+    color: rgb(var(--foreground));
+    /*
+     * `tabular-nums` global porque **casi todo número de esta interfaz es una
+     * medida**: unas cifras que bailan de ancho al actualizarse se leen peor y
+     * sugieren un cambio donde no lo hay.
+     */
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
   }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
 
-@keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
+  /* Un instrumento no redondea. */
+  .rounded, .rounded-md, .rounded-lg, .rounded-xl, .rounded-sm {
+    border-radius: var(--radio);
   }
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
+@layer components {
+  /*
+   * ── LA REJILLA DE 1 PX ───────────────────────────────────────────────────
+   * La compartimentación visible de `industrial-brutalist-ui` §8, y la única
+   * forma barata de separar celdas **sin bordes dobles**: el fondo del
+   * contenedor asoma por el hueco de 1 px, así que cada línea es una sola.
+   */
+  .rejilla {
+    display: grid;
+    gap: 1px;
+    background: rgb(var(--border));
+    border: 1px solid rgb(var(--border));
   }
-  50% {
-    opacity: 0.5;
+
+  .rejilla > * {
+    background: rgb(var(--card));
+  }
+
+  /*
+   * El foco, visible siempre. Quien navega con teclado tiene que ver dónde
+   * está, y en un instrumento eso no es una preferencia.
+   */
+  .focus-ring:focus-visible {
+    outline: 2px solid rgb(var(--foreground));
+    outline-offset: 2px;
+  }
+
+  /*
+   * ── MOVIMIENTO ───────────────────────────────────────────────────────────
+   * 🔴 NINGUNA animación de este fichero se repite. Antes había `.pulse` y
+   *    `.bounce` INFINITAS —exactamente lo que tres skills instaladas exigen— y
+   *    es lo que esta interfaz no puede permitirse: un pulso perpetuo en un
+   *    indicador de estado es indistinguible de un latido real.
+   *
+   * Lo único que queda evita un cambio brusco cuando aparece un aviso sobre
+   * texto que alguien está leyendo. 150 ms, una vez, y nunca más.
+   */
+  .aparece {
+    animation: aparecer 150ms cubic-bezier(0.2, 0, 0, 1);
   }
 }
 
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+@keyframes aparecer {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: none; }
 }
 
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-4px);
-  }
-}
-
-/* === UTILITY CLASSES === */
-.fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.slide-in {
-  animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.scale-in {
-  animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.bounce {
-  animation: bounce 1s infinite;
-}
-
-/* === LOADING STATES === */
-.spinner {
-  border: 2px solid rgb(var(--muted));
-  border-top: 2px solid rgb(var(--primary));
-  border-radius: 50%;
-  width: 20px;
-  height: 20px;
-  animation: spin 1s linear infinite;
-}
-
-.spinner-sm {
-  width: 16px;
-  height: 16px;
-  border-width: 1.5px;
-}
-
-.spinner-lg {
-  width: 32px;
-  height: 32px;
-  border-width: 3px;
-}
-
-/* === GRADIENT BACKGROUNDS === */
-.gradient-primary {
-  background: var(--gradient-primary);
-}
-
-.gradient-success {
-  background: var(--gradient-success);
-}
-
-.gradient-warning {
-  background: var(--gradient-warning);
-}
-
-.gradient-destructive {
-  background: var(--gradient-destructive);
-}
-
-/* === FOCUS STATES === */
-.focus-ring {
-  outline: 2px solid transparent;
-  outline-offset: 2px;
-}
-
-.focus-ring:focus {
-  outline: 2px solid rgb(var(--primary));
-  outline-offset: 2px;
-}
-
-/* === FONT UTILITIES === */
-.font-inter {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-}
-
-.font-mono {
-  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
-}
-
-/* === ROBOT CARD MINIMALISTA === */
-.robot-card-minimal {
-  background: rgb(var(--card));
-  border: 1px solid rgb(var(--border) / 0.2);
-  border-radius: 0.75rem; /* rounded-xl */
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-sm);
-  min-height: 120px;
-}
-
-.robot-card-minimal:hover {
-  background: rgb(var(--card));
-  border-color: rgb(var(--primary) / 0.3);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.robot-card-minimal:hover::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgb(var(--primary) / 0.3), transparent);
-  opacity: 1;
-}
-
-/* === STATUS BADGE MINIMALISTA === */
-.status-badge-minimal {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid;
-  transition: all 0.2s ease;
-}
-
-.status-badge-minimal.connected {
-  background-color: rgb(var(--success));
-  color: white;
-  border-color: rgb(var(--success));
-}
-
-.status-badge-minimal.busy {
-  background-color: rgb(var(--warning));
-  color: white;
-  border-color: rgb(var(--warning));
-}
-
-.status-badge-minimal.disconnected {
-  background-color: rgb(var(--destructive));
-  color: white;
-  border-color: rgb(var(--destructive));
-}
-
-/* === STATUS BADGE IMPROVEMENTS === */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid;
-  transition: all 0.2s ease;
-}
-
-.status-badge.connected {
-  background-color: rgb(var(--success) / 0.1);
-  color: rgb(var(--success));
-  border-color: rgb(var(--success) / 0.2);
-}
-
-.status-badge.busy {
-  background-color: rgb(var(--warning) / 0.1);
-  color: rgb(var(--warning));
-  border-color: rgb(var(--warning) / 0.2);
-}
-
-.status-badge.disconnected {
-  background-color: rgb(var(--destructive) / 0.1);
-  color: rgb(var(--destructive));
-  border-color: rgb(var(--destructive) / 0.2);
-}
-
-/* === GRID CARD IMPROVEMENTS === */
-.grid-card {
-  background: rgb(var(--muted) / 0.3);
-  border: 1px solid rgb(var(--border) / 0.3);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-
-.grid-card:hover {
-  background: rgb(var(--muted) / 0.6);
-  border-color: rgb(var(--primary) / 0.3);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.grid-card:hover::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgb(var(--primary) / 0.4), transparent);
-  opacity: 1;
-}
-
-/* === EXPERIMENT CARD COMPACTO === */
-.experiment-card-compact {
-  background: rgb(var(--card));
-  border: 1px solid rgb(var(--border) / 0.2);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  box-shadow: var(--shadow-sm);
-  min-height: 60px;
-}
-
-.experiment-card-compact:hover {
-  background: rgb(var(--card));
-  border-color: rgb(var(--primary) / 0.3);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-.experiment-card-compact:hover::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, rgb(var(--primary) / 0.3), transparent);
-  opacity: 1;
-}
-
-/* === EXPERIMENT CARD IMPROVEMENTS === */
-.experiment-card {
-  background: rgb(var(--muted) / 0.4);
-  border: 1px solid rgb(var(--border) / 0.2);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-}
-
-.experiment-card:hover {
-  background: rgb(var(--muted) / 0.7);
-  border-color: rgb(var(--primary) / 0.4);
-  box-shadow: var(--shadow-md);
-  transform: translateY(-1px);
-}
-
-/* === METRIC CARD IMPROVEMENTS === */
-.metric-card {
-  background: rgb(var(--muted) / 0.2);
-  border: 1px solid rgb(var(--border) / 0.1);
-  border-radius: var(--radius-lg);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.metric-card:hover {
-  background: rgb(var(--muted) / 0.4);
-  border-color: rgb(var(--primary) / 0.2);
-  box-shadow: var(--shadow-sm);
-}
-
-/* === RESPONSIVE UTILITIES === */
-@media (max-width: 768px) {
-  .card {
-    border-radius: var(--radius-md);
-  }
-  
-  .sidebar {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-  
-  .grid-card:hover {
-    transform: none;
-  }
-  
-  .experiment-card:hover {
-    transform: none;
+/*
+ * `apple-design` §14. Hasta hoy no había ni una línea: quien tiene activada la
+ * reducción de movimiento veía exactamente lo mismo que todos.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
