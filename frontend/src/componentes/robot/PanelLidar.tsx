@@ -41,7 +41,20 @@ import { Aviso } from '@/componentes/ui/Aviso'
 import { Insignia } from '@/componentes/ui/Insignia'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
-const LADO = 420          // px del lienzo, cuadrado
+/*
+ * 🔴 EL LIENZO ES EL CONTENIDO DE ESTA PANTALLA, Y MEDIA 420 px EN UN PANEL DE
+ *    1104. Visto en una captura a 1440 px de ancho: el dibujo ocupaba el 38 %
+ *    del ancho disponible y el resto era blanco.
+ *
+ * Importa mas de lo que parece porque aqui la resolucion ES la informacion: el
+ * X2 tira un rayo cada 1,7 cm a 0,68 m, asi que un objeto de 5 cm son 2-3
+ * puntos. Con 420 px y 5 m de diametro, cada pixel vale 1,2 cm y esos 2-3
+ * puntos caen casi encima. A 560 px son 0,9 cm por pixel y se separan.
+ *
+ * ⚠️ No se sube mas: el lienzo es cuadrado y tiene que caber en la mitad de la
+ *    pantalla de un portatil de 1366 sin obligar a desplazar.
+ */
+const LADO = 560          // px del lienzo, cuadrado
 const RADIO_M = 2.5       // metros que caben del centro al borde
 
 /**

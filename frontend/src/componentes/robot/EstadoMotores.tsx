@@ -29,7 +29,7 @@
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
 import { useLatido } from '@/hooks/useTransporte'
-import { interpretarAntiguedad } from '@/lib/rosbridge/contrato'
+import { Frescura, interpretarAntiguedad } from '@/lib/rosbridge/contrato'
 import { SIN_DATO, antiguedad, celsius, milisegundos, numero } from '@/lib/interfaz/formato'
 import { atascoDe, falloDe } from '@/lib/interfaz/lecturas'
 import { Dato } from '@/componentes/ui/Dato'
@@ -41,6 +41,42 @@ import { Tarjeta } from '@/componentes/ui/Tarjeta'
 function insigniaDeHecho(v: boolean | null, siHay: string, siNo: string) {
   const tono: TonoInsignia = v === true ? 'GRAVE' : v === false ? 'BIEN' : 'NEUTRO'
   return <Insignia tono={tono}>{v === true ? siHay : v === false ? siNo : SIN_DATO}</Insignia>
+}
+
+/**
+ * Un hecho con su insignia y, SOLO SI SE SABE, su antiguedad.
+ *
+ * 🔴 Sin esta condicion la pantalla decia la misma frase dos veces seguidas:
+ *
+ *      Atasco  [no se sabe]  no se sabe
+ *
+ * porque la insignia pinta «no se sabe» cuando el hecho es `null` y
+ * `antiguedad()` pinta «no se sabe» cuando la antiguedad vale -1 — y en el
+ * atasco **las dos cosas son ciertas a la vez y siempre**, porque -1 es su
+ * valor normal.
+ *
+ * Es la regla que `Dato.tsx` ya aplicaba y que aqui no se aplico: **si el valor
+ * es un hueco, la antiguedad DE ESE VALOR tampoco existe**. Se vio en una
+ * captura de pantalla; ninguna de las 337 pruebas la miraba, porque el texto
+ * duplicado esta repartido entre DOS elementos y los detectores de
+ * `repeticion.ts` trabajan sobre el texto de uno solo.
+ */
+function hechoConAntiguedad(
+  etiqueta: string,
+  v: boolean | null,
+  siHay: string,
+  siNo: string,
+  f: Frescura,
+) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground">{etiqueta}</span>
+      {insigniaDeHecho(v, siHay, siNo)}
+      {v !== null && f.conocido && (
+        <span className="text-[11px] text-muted-foreground">{antiguedad(f)}</span>
+      )}
+    </div>
+  )
 }
 
 export function EstadoMotores() {
@@ -92,16 +128,8 @@ export function EstadoMotores() {
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Atasco</span>
-          {insigniaDeHecho(atascado, 'oruga trabada', 'sin atasco')}
-          <span className="text-[11px] text-muted-foreground">{antiguedad(fAtasco)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">Fallo eléctrico</span>
-          {insigniaDeHecho(fallo, 'hay fallo', 'sin fallo')}
-          <span className="text-[11px] text-muted-foreground">{antiguedad(fFallo)}</span>
-        </div>
+        {hechoConAntiguedad('Atasco', atascado, 'oruga trabada', 'sin atasco', fAtasco)}
+        {hechoConAntiguedad('Fallo eléctrico', fallo, 'hay fallo', 'sin fallo', fFallo)}
       </div>
 
       {atascado === true && (

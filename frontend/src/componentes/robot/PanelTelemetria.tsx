@@ -117,11 +117,11 @@ function Encoders() {
 export function PanelTelemetria() {
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <Bateria />
         <EstadoMotores />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <Odometria />
         <Encoders />
       </div>

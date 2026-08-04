@@ -142,6 +142,34 @@ renderiza un componente**, y `vitest.config.ts` documenta que `jsdom` no se inst
   Reutilízalo, no lo reinventes.
 → Y para el muro del profesor, el criterio de aceptación es **una persona a tres metros**.
 
+### El texto pintado sí se comprueba ya — `lib/interfaz/repeticion.ts`
+
+Existe porque el 2026-08-04 la telemetría pintó **«hace hace 7,9 s»** y **«en reposo: 27,5 °C en
+reposo»**, y **las 321 pruebas pasaron**. Lo encontró una captura de pantalla.
+
+Son **dos detectores y no uno**, y esa es la parte que importa: `hace hace` es una palabra
+pegada a sí misma, `en reposo … en reposo` es una frase repetida **a distancia**. El primer
+detector que se escribió solo veía lo primero, o sea la mitad de lo que ya había ocurrido.
+
+**🔴 Y sus dos parámetros salieron de fallos del propio detector, no de teoría:**
+
+- **`\b` en JavaScript es ASCII aunque lleve el flag `u`.** Se define contra `[A-Za-z0-9_]`, así
+  que una letra acentuada abre una **frontera de palabra falsa** a su lado. En español eso
+  dispara sin parar: `batería a 8,29 V, a 1,29 V` casaba como «a a», y gritó en **tres
+  pantallas** sobre texto correcto. Se arregló con `(?<!\p{L})` y `(?!\p{L})`, que sí son
+  Unicode.
+- **El corte «etiqueta contra prosa» se mide en PALABRAS, no en caracteres.** Con el tope en 90
+  caracteres, esta línea real del diagnóstico —72 caracteres— gritaba: *«Un hueco declarado es
+  honesto; un hueco callado se lee como todo bien»*. Es una oración con dos mitades **paralelas
+  a propósito**; repetir «un hueco» es la figura, no un fallo. Trece palabras la dejan fuera.
+
+→ **La lección, que es la de siempre aquí: un verificador con falsos positivos se acaba
+  ignorando, y eso es peor que no tenerlo.** Los dos fallos se encontraron **pasándolo por las
+  pantallas de verdad**, no razonando sobre él.
+→ ⚠️ **Y lo que NO ve, dicho para que nadie lo descubra tarde:** trabaja sobre el texto de **un
+  solo elemento**. `Atasco [no se sabe] no se sabe` —la misma frase repartida entre la insignia y
+  la antigüedad— pasó por delante sin que lo detectara. Eso lo vio una captura.
+
 ### Dos trampas de este repositorio en concreto
 
 **🔴 `npm run build` con `npm run dev` corriendo rompe el servidor.** Los dos escriben en

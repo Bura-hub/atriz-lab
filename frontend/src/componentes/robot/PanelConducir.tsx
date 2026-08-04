@@ -259,11 +259,24 @@ export function PanelConducir() {
         </Aviso>
       )}
 
-      <Tarjeta titulo="Enlace">
-        <PanelEnlace />
-      </Tarjeta>
+      {/*
+        🔴 DOS COLUMNAS A PARTIR DE `lg`, Y NO ES ESTETICA.
+        En una sola columna cada panel medía 1104 px con el texto capado a
+        `max-w-prose` (~600), así que la mitad derecha de la pantalla quedaba
+        vacía y todo el contenido pegado a la izquierda. Medido en una captura
+        a 1440 px de ancho.
 
-      <Barrido teleoperacion={teleoperacion} />
+        Los controles van a la izquierda —es lo que se toca— y las notas a la
+        derecha. `items-start` impide que un panel se estire hasta la altura de
+        su vecino dejando un hueco muerto abajo.
+      */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <Tarjeta titulo="Enlace">
+            <PanelEnlace />
+          </Tarjeta>
+
+          <Barrido teleoperacion={teleoperacion} />
 
       <Tarjeta
         titulo="Mando"
@@ -305,6 +318,7 @@ export function PanelConducir() {
           </p>
         )}
       </Tarjeta>
+        </div>
 
       <Tarjeta titulo="Lo que va a pasar y no es un fallo">
         <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-2 max-w-prose">
@@ -330,6 +344,7 @@ export function PanelConducir() {
           </li>
         </ul>
       </Tarjeta>
+      </div>
     </div>
   )
 }
