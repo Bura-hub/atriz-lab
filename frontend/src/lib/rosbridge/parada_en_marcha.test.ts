@@ -47,9 +47,30 @@
  * patron que ya costo caro en este proyecto.
  */
 
+import { appendFileSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { Teleoperacion } from './teleoperacion'
 import { Transporte, urlDeRobot } from './transporte'
+
+/**
+ * 🔴 EL INFORME VA A UN FICHERO, NO SOLO A `console.log`.
+ *
+ * La primera corrida contra el robot (2026-08-04) **pasó y no dejó ni un
+ * numero**: vitest intercepta la salida de consola y su reportero por defecto
+ * no la imprime, asi que quedo el verde y se perdio la medida. En este proyecto
+ * el numero ES el resultado —un `PASSED` sin cifras no distingue «freno en 8 cm»
+ * de «freno en 19,9»—, y ademas el unico testigo que no falla la prueba (la
+ * bandera del driver) solo se veia por ahi.
+ *
+ * Y el robot queda con la parada puesta, asi que **repetir la corrida no es
+ * gratis**: hay que liberarla presencialmente. Una medida perdida cuesta una
+ * sesion entera con el robot.
+ *
+ * 📝 Es la misma familia que «canalizar la salida de `ros2 topic hz` la
+ * esconde»: el instrumento estaba bien y **el canal de salida se comio el
+ * dato**.
+ */
+const INFORME = 'parada_en_marcha.txt'
 
 const CON_ROBOT = process.env.ATRIZ_ROBOT === '1'
 const URL = process.env.ATRIZ_URL ?? urlDeRobot(1)
@@ -104,8 +125,11 @@ describe.skipIf(!CON_ROBOT)('🔴 la parada de emergencia por WebSocket, con el 
       if (typeof e?.latido === 'number') latido = e.latido
     })
 
-    const informe: string[] = []
-    const anota = (s: string) => { informe.push(s); console.log(s) }
+    writeFileSync(INFORME, `parada de emergencia por WebSocket · ${new Date().toISOString()}
+${URL}
+
+`)
+    const anota = (s: string) => { appendFileSync(INFORME, `${s}\n`); console.log(s) }
 
     try {
       // ── 1 · esperar a que el robot este de verdad ahi ───────────────────
