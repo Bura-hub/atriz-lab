@@ -22,12 +22,15 @@
 
 import { TOPICS_MURO, caudalDeFlota } from '@/lib/flota/presupuesto'
 import { ROBOTS, TOTAL_ROBOTS } from '@/lib/interfaz/identidad'
+import { destinoDe } from '@/lib/interfaz/direcciones'
 import { numero } from '@/lib/interfaz/formato'
 import { BaldosaConectada } from './BaldosaConectada'
+import { DondeBuscar, useDirecciones } from './DondeBuscar'
 
 export function MuroFlota() {
   const porRobot = caudalDeFlota(TOPICS_MURO, 1)
   const total = caudalDeFlota(TOPICS_MURO, TOTAL_ROBOTS)
+  const { direcciones, poner } = useDirecciones()
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -54,9 +57,20 @@ export function MuroFlota() {
              porque un teléfono no puede con cuatro, pero dejan de ser el caso
              que manda.
         */}
+        {/*
+          🔴 El cuadro de direcciones va ANTES de la losa y CERRADO. Es
+             configuracion, no estado: no cambia con lo que hace el robot, asi
+             que se pliega. Los motivos de una baldosa NO se pliegan nunca —esa
+             es la regla— pero esto no es un motivo, es un ajuste de red de
+             ESTE navegador.
+        */}
+        <div className="mb-4">
+          <DondeBuscar direcciones={direcciones} poner={poner} />
+        </div>
+
         <div className="rejilla grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {ROBOTS.map((id) => (
-            <BaldosaConectada key={id} id={id} />
+            <BaldosaConectada key={id} id={id} destino={destinoDe(id, direcciones)} />
           ))}
         </div>
 

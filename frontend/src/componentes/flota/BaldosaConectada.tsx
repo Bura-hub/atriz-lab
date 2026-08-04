@@ -82,9 +82,18 @@ function Contenido({ id }: { id: number }) {
   )
 }
 
-export function BaldosaConectada({ id }: { id: number }) {
+export function BaldosaConectada({ id, destino }: { id: number; destino?: number | string }) {
+  /*
+   * 🔴 `destino` es A DONDE se conecta; `id` sigue siendo QUIEN es. No se
+   *    mezclan: la baldosa se sigue llamando rvr-NN y enlazando a /robot/NN
+   *    aunque se conecte por IP, porque el numero es la identidad del robot en
+   *    el laboratorio y la direccion es un detalle de red de ESTE navegador.
+   *
+   * Sin override vale `id`, y entonces `urlDeRobot()` arma `rvr-NN.local`:
+   * exactamente lo de siempre.
+   */
   return (
-    <ProveedorRobot robot={id}>
+    <ProveedorRobot robot={destino ?? id}>
       <Contenido id={id} />
     </ProveedorRobot>
   )

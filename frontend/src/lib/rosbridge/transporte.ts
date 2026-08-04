@@ -43,10 +43,26 @@ export interface Aviso {
   mensaje: string
 }
 
+/**
+ * Cuanto se espera a que un socket ABRA antes de darlo por colgado.
+ *
+ * 5 s con holgura: por IP el navegador abrio en 2,4-2,8 s con el muro entero
+ * intentandolo a la vez (medido; a solas son decenas de ms). Bajarlo mucho
+ * convertiria una red lenta en un falso «no llego».
+ *
+ * ⚠️ Este plazo es del CLIENTE y no tiene nada que ver con el de `llamar()`
+ *    (ver `MARGEN_PLAZO_LOCAL_MS`): aquel arbitra contra el plazo de rosbridge,
+ *    y este existe porque el navegador **no da error nunca** ante un socket que
+ *    no abre. Son dos problemas distintos y no se pueden unificar.
+ */
+export const PLAZO_CONEXION_MS = 5000
+
 interface OpcionesTransporte {
   reconectar?: boolean
   aleatorio?: () => number
   programar?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
+  /** 0 lo desactiva. Ver `PLAZO_CONEXION_MS`. */
+  plazoConexion?: number
 }
 
 export class Transporte {
@@ -60,6 +76,7 @@ export class Transporte {
   private contador = 0
   private intentos = 0
   private reconexionProgramada: ReturnType<typeof setTimeout> | null = null
+  private plazoProgramado: ReturnType<typeof setTimeout> | null = null
 
   constructor(
     private url: string,
@@ -98,6 +115,19 @@ export class Transporte {
     for (const cb of this.oyentesAviso) cb(a)
   }
 
+  /**
+   * Desarma el plazo de conexion. Se llama en `onopen`, en `onclose` y en
+   * `cerrar()`: si se olvidara en alguno, un temporizador huerfano cerraria
+   * mas tarde un socket sano — el mismo fallo que ya tuvo `reconexionProgramada`
+   * y que costo 3 sockets contra 1 en el control.
+   */
+  private cancelarPlazo(): void {
+    if (this.plazoProgramado !== null) {
+      clearTimeout(this.plazoProgramado)
+      this.plazoProgramado = null
+    }
+  }
+
   conectar(): void {
     // 🔴 Cancela una reconexion ya programada ANTES de nada: si no, un
     //    `conectar()` manual mientras hay un temporizador pendiente lo deja
@@ -116,10 +146,57 @@ export class Transporte {
     const ws = this.fabrica(this.url)
     this.ws = ws
 
+    /*
+     * ═════════════════════════════════════════════════════════════════════
+     * 🔴🔴 PLAZO DE CONEXION. UN SOCKET COLGADO NO DA ERROR **NUNCA**.
+     * ═════════════════════════════════════════════════════════════════════
+     * Medido en el navegador el 2026-08-04, con el robot encendido y sano:
+     *
+     *   ws://rvr-01.local:9090   🔴 12 s sin onopen, sin onerror, sin onclose
+     *   ws://10.14.7.7:9090      🔴 12 s igual — MISMA FIRMA
+     *   ws://192.168.1.58:9090   ✅ abre
+     *   ws://192.168.1.200:9090  ✅ abre
+     *
+     * `rvr-NN.local` resuelve a CUATRO direcciones y el sistema las devuelve
+     * en este orden: `fe80::…` (IPv6 link-local **sin zona**, que el navegador
+     * no puede usar), `10.14.7.7` (la estatica del laboratorio, inalcanzable
+     * desde casa), y despues las dos que si sirven. Las dos primeras no
+     * FALLAN: se cuelgan, y un SYN sin respuesta tarda ~21 s en rendirse, asi
+     * que el navegador nunca llega a las buenas.
+     *
+     * 🔴 Sin este plazo el muro dejaba **16 conexiones colgadas para siempre**
+     *    y ninguna llamaba a `onclose`, o sea que la reconexion con espera
+     *    creciente —que existe justo para esto— no llegaba a arrancar.
+     *
+     * Cerrar un socket en CONNECTING dispara su `onclose`, y con el sale por
+     * el camino normal: aviso, cancelacion de pendientes y reintento.
+     *
+     * ⚠️ Esto NO arregla la direccion mala: la interfaz tiene que dejar apuntar
+     *    a una IP concreta. Lo que arregla es que colgarse deje de ser
+     *    invisible — que es la familia de fallo que este proyecto persigue.
+     */
+    const plazo = this.opciones.plazoConexion ?? PLAZO_CONEXION_MS
+    if (plazo > 0) {
+      const programar = this.opciones.programar ?? setTimeout
+      this.plazoProgramado = programar(() => {
+        this.plazoProgramado = null
+        // Si ya no es el socket vigente, o ya abrio, no hay nada que cortar.
+        if (this.ws !== ws || ws.readyState !== 0) return
+        this.avisar({
+          nivel: 'error',
+          mensaje: `no se abrio el WebSocket a ${this.url} en ${plazo} ms. `
+            + 'Un socket colgado no da error: puede ser que el nombre resuelva a una '
+            + 'direccion inalcanzable desde esta red.',
+        })
+        ws.close()
+      }, plazo)
+    }
+
     ws.onopen = () => {
       // 🔴 C3: si mientras tanto YA hay un socket mas nuevo (`this.ws` cambio),
       //    este `onopen` es de un socket VIEJO/obsoleto: salir sin tocar nada.
       if (this.ws !== ws) return
+      this.cancelarPlazo()
       // 🔴 `intentos` NO se reinicia aqui. Que el socket ABRA no prueba que el
       //    enlace sirva: con rosbridge reiniciandose, cada ciclo pasaba por
       //    `onopen` antes que por `onclose` y la espera se quedaba clavada en
@@ -189,6 +266,7 @@ export class Transporte {
       //    teleoperacion via `oyentesCierre`. Un `onclose` que no es el del
       //    socket vigente no debe tocar NADA de este estado.
       if (this.ws !== ws) return
+      this.cancelarPlazo()
       this.ws = null
       // 🔴 NO se limpia `anunciados` aqui: ver el comentario del bucle de
       //    reanuncio en `onopen`. Limpiarlo dejaba ese bucle recorriendo
@@ -225,6 +303,10 @@ export class Transporte {
       clearTimeout(this.reconexionProgramada)
       this.reconexionProgramada = null
     }
+    // Sin esto, cerrar un transporte que estaba CONNECTING dejaba vivo su
+    // plazo: disparaba despues, sobre `this.ws` ya en `null`, y aunque la
+    // guarda lo descarta, avisaba de un fallo de algo que el usuario cerro.
+    this.cancelarPlazo()
     // 🔴 R1: el `close()` de un WebSocket real es ASINCRONO (ver el comentario
     //    de C3 en `ws.onclose`, mas abajo), asi que su `onclose` diferido no
     //    ha disparado todavia en este punto. La guarda de C3 (`this.ws !== ws`)

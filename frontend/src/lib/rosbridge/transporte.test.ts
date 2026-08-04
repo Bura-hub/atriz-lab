@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { esperaReconexion, urlDeRobot, Transporte, MARGEN_PLAZO_LOCAL_MS } from './transporte'
+import {
+  esperaReconexion, urlDeRobot, Transporte, MARGEN_PLAZO_LOCAL_MS, PLAZO_CONEXION_MS,
+} from './transporte'
 import { RegistroPendientes } from './protocolo'
 
 describe('espera de reconexion', () => {
@@ -240,7 +242,15 @@ describe('Transporte — arreglos criticos', () => {
       return 0 as unknown as ReturnType<typeof setTimeout>
     }
     const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket, {
-      reconectar: true, aleatorio: () => 0.5, programar: programarFalso,
+      reconectar: true,
+      aleatorio: () => 0.5,
+      programar: programarFalso,
+      // 🔴 El plazo de conexion usa el MISMO `programar`, asi que sin esto sus
+      //    5000 ms se cuelan en `esperas` y la mezcla queda
+      //    [5000, 1000, 5000, 2000, 5000, 4000]. Esta prueba mide el
+      //    crecimiento de la espera de RECONEXION; el plazo es otra cosa y
+      //    tiene sus propias pruebas al final del fichero.
+      plazoConexion: 0,
     })
 
     t.conectar(); WSFalso.ultimo.abrir(); WSFalso.ultimo.onclose?.()   // ciclo 1: sin mensaje
@@ -722,5 +732,87 @@ describe('Transporte — llamar(): dos paredes de plazo, y el local va POR ENCIM
     await expect(p).rejects.toThrow(/YDLIDAR no respondio/)
     await expect(p).rejects.not.toThrow(/denegado|robot puede estar caido/)
     vi.useRealTimers()
+  })
+})
+
+describe('🔴 plazo de conexion — un socket colgado NO da error nunca', () => {
+  /*
+   * Medido en el navegador el 2026-08-04, con el robot encendido y sano:
+   *
+   *   ws://rvr-01.local:9090   🔴 12 s sin onopen, sin onerror, sin onclose
+   *   ws://10.14.7.7:9090      🔴 12 s igual — MISMA FIRMA
+   *   ws://192.168.1.58:9090   ✅ abre
+   *
+   * `rvr-NN.local` resuelve a cuatro direcciones y las dos primeras que el
+   * sistema devuelve son inservibles desde esta red. No fallan: se cuelgan.
+   *
+   * Sin plazo, el muro dejaba 16 conexiones colgadas para siempre Y la
+   * reconexion con espera creciente no llegaba a arrancar, porque `onclose`
+   * nunca disparaba.
+   */
+  const conPlazo = (opciones = {}) => {
+    const disparos: (() => void)[] = []
+    const t = new Transporte(
+      'ws://rvr-01.local:9090',
+      (u) => new WSFalso(u) as unknown as WebSocket,
+      { programar: ((fn: () => void) => { disparos.push(fn); return 0 as never }), ...opciones },
+    )
+    const avisos: string[] = []
+    t.alAviso((a) => avisos.push(a.mensaje))
+    return { t, disparos, avisos }
+  }
+
+  it('si el socket sigue en CONNECTING al vencer, lo cierra y AVISA', () => {
+    const { t, disparos, avisos } = conPlazo()
+    t.conectar()
+    expect(WSFalso.ultimo.readyState).toBe(0)   // CONNECTING
+
+    disparos[0]()                                // vence el plazo
+
+    expect(WSFalso.ultimo.readyState).toBe(2)   // CLOSING: se le mando cerrar
+    expect(avisos).toHaveLength(1)
+    expect(avisos[0]).toMatch(/no se abrio el WebSocket/)
+    // 🔴 El aviso tiene que nombrar la causa REAL y no culpar al robot: la
+    //    direccion puede ser inalcanzable desde esta red.
+    expect(avisos[0]).toMatch(/inalcanzable desde esta red/)
+    expect(avisos[0]).not.toMatch(/robot.*(caido|apagado|averiad)/i)
+  })
+
+  it('si ya abrio, el plazo NO cierra nada ni avisa', () => {
+    const { t, disparos, avisos } = conPlazo()
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    expect(t.conectado).toBe(true)
+
+    disparos[0]()   // el temporizador existe pero llega tarde
+
+    expect(t.conectado).toBe(true)
+    expect(WSFalso.ultimo.readyState).toBe(1)
+    expect(avisos).toEqual([])
+  })
+
+  it('🔴 `cerrar()` desarma el plazo: no avisa de lo que el usuario cerro', () => {
+    // Un temporizador huerfano ya costo «3 sockets contra 1» en este fichero
+    // con `reconexionProgramada`. No se repite.
+    const { t, disparos, avisos } = conPlazo()
+    t.conectar()
+    t.cerrar()
+
+    if (disparos[0] !== undefined) disparos[0]()
+
+    expect(avisos).toEqual([])
+  })
+
+  it('`plazoConexion: 0` lo desactiva: no llega a programarse', () => {
+    const { t, disparos } = conPlazo({ plazoConexion: 0 })
+    t.conectar()
+    expect(disparos).toHaveLength(0)
+  })
+
+  it('el plazo por defecto deja holgura sobre lo medido en el navegador', () => {
+    // Por IP el navegador abrio en 2,4-2,8 s CON el muro entero intentandolo a
+    // la vez. Un plazo por debajo de eso convertiria una red lenta en un falso
+    // «no llego», que es justo el diagnostico equivocado que hay que evitar.
+    expect(PLAZO_CONEXION_MS).toBeGreaterThanOrEqual(4000)
   })
 })
