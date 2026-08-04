@@ -108,21 +108,38 @@ export interface MensajeEncoder {
  * mientras se esta MIRANDO, y la baja al desmontar tiene que llegar al robot.
  * Con 16 robots, dejarlo puesto por descuido son ~8,6 Mbit/s.
  *
- * 🔴 **`ranges` trae huecos, y no son ceros.** Medido contra el robot desde el
- * navegador el 2026-08-04: **260 puntos por barrido**, de los que el **83-89 %
- * son validos**; el resto llegan como `Infinity` o `NaN`. Pintarlos como 0
- * dibujaria obstaculos pegados al robot que no existen. Hay que filtrar con
+ * 🔴 **`ranges` trae huecos, y no son ceros.** Entre el 83 y el 89 % de las
+ * lecturas son validas; el resto llegan como `Infinity` o `NaN`. Pintarlos como
+ * 0 dibujaria obstaculos pegados al robot que no existen. Hay que filtrar con
  * `Number.isFinite` **y** contra `range_min`/`range_max`.
  * ⚠️ El porcentaje **depende de la habitacion**, no es una constante del sensor.
+ *
+ * 🔴 **EL TAMAÑO CAMBIA ENTRE SESIONES DE BARRIDO, Y NO ES 260.** Medido desde
+ * el robot el 2026-08-04, encendiendo y apagando el barrido cuatro veces con la
+ * misma configuracion: **250 · 250 · 270 · 250**, y el journal del mismo dia
+ * registro ademas 253, 254 y 255.
+ *
+ * Dentro de UNA sesion el tamaño es constante —por eso una medida de 35 barridos
+ * seguidos vio «260, y solo 260», y era una observacion correcta— pero **la
+ * conclusion de que 260 fuera el valor era falsa**. La causa esta en el propio
+ * `fixed_resolution: true`: el driver fija el tamaño con el PRIMER barrido de
+ * cada sesion, y ese primero depende de a que velocidad este girando el X2 en
+ * ese instante — y el motor va libre, porque el `frequency: 10.0` esta
+ * documentado como decorativo.
+ *
+ * → **Nada puede depender del numero.** `ranges.length` y `angle_increment`
+ *   vienen en CADA mensaje: se leen de ahi y no se dan por sabidos. Un cliente
+ *   que asuma un tamaño se rompera en la sesion que arranque a 250 o a 270, o
+ *   sea **una de cada tres** — la peor frecuencia posible para depurar.
+ *
+ * 📝 Y la leccion de metodo, que ya estaba escrita en este proyecto: **una
+ *    conclusion de una sola tanda puede ser coherente y falsa.**
  *
  * ⚠️ El barrido puede estar APAGADO, que es el estado de REPOSO NORMAL de los 16
  * robots: entonces este topic no llega y **eso no es una averia**. Se enciende
  * con `Teleoperacion.arrancarBarrido()`, que espera un `/scan` de verdad.
  *
- * 📝 **No des por fijo el tamaño**, aunque hoy salgan 260 en las 35 tomas: con
- * `fixed_resolution: false` el X2 alternaba 254/255, y `slam_toolbox` descartaba
- * barridos enteros por registrar el sensor con el tamaño del PRIMERO. Se recorre
- * `ranges.length` y punto.
+ * 📝 Se recorre `ranges.length` y punto.
  */
 export interface MensajeScan {
   header: Cabecera

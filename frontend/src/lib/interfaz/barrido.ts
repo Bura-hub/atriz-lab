@@ -28,16 +28,31 @@ export const LASER_Y = 0
  * Convierte un `LaserScan` en puntos del marco del robot, **descartando los
  * invalidos**.
  *
- * 🔴 Los huecos NO son ceros. Medido contra el robot el 2026-08-04: **260 puntos
- * por barrido**, de los que el **83-89 % son validos**; el resto llegan como
- * `Infinity` o `NaN`. Pintar un hueco como 0 dibuja un obstaculo pegado al robot
- * que no existe — y sobre una pantalla de seguridad eso es peor que no dibujar
- * nada.
+ * 🔴 Los huecos NO son ceros: una parte de las lecturas llega como `Infinity` o
+ * `NaN` —entre el 83 y el 89 % son validas, y depende de la habitacion—. Pintar
+ * un hueco como 0 dibuja un obstaculo pegado al robot que no existe, y sobre una
+ * pantalla de seguridad eso es peor que no dibujar nada.
  *
- * 📝 Se recorre `ranges.length`, NO un tamaño supuesto. Hoy salen 260 en las 35
- * tomas, pero con `fixed_resolution: false` el X2 alternaba 254/255 y
- * `slam_toolbox` descartaba barridos enteros por haber registrado el sensor con
- * el tamaño del PRIMERO.
+ * 🔴 **EL TAMAÑO CAMBIA ENTRE SESIONES DE BARRIDO, Y NO ES 260.** Medido desde
+ * el robot el 2026-08-04, encendiendo y apagando el barrido cuatro veces con la
+ * misma configuracion: **250 · 250 · 270 · 250**, y el journal del mismo dia
+ * registro ademas 253, 254 y 255.
+ *
+ * Dentro de UNA sesion el tamaño es constante —por eso una medida de 35 barridos
+ * seguidos vio «260, y solo 260», y era una observacion correcta— pero **la
+ * conclusion de que 260 fuera el valor era falsa**. La causa esta en el propio
+ * `fixed_resolution: true`: el driver fija el tamaño con el PRIMER barrido de
+ * cada sesion, y ese primero depende de a que velocidad este girando el X2 en
+ * ese instante — y el motor va libre, porque el `frequency: 10.0` esta
+ * documentado como decorativo.
+ *
+ * → **Nada puede depender del numero.** `ranges.length` y `angle_increment`
+ *   vienen en CADA mensaje: se leen de ahi y no se dan por sabidos. Un cliente
+ *   que asuma un tamaño se rompera en la sesion que arranque a 250 o a 270, o
+ *   sea **una de cada tres** — la peor frecuencia posible para depurar.
+ *
+ * 📝 Y la leccion de metodo, que ya estaba escrita en este proyecto: **una
+ *    conclusion de una sola tanda puede ser coherente y falsa.**
  */
 export function puntosDelBarrido(s: MensajeScan): Punto[] {
   const puntos: Punto[] = []

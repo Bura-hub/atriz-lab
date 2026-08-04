@@ -55,9 +55,35 @@ describe('puntosDelBarrido — la geometria', () => {
     expect(izq.x).toBeCloseTo(LASER_X, 6)
   })
 
-  it('recorre ranges.length, no un tamaño supuesto (el X2 alterna 254/255)', () => {
-    expect(contarValidos(barrido(new Array(254).fill(1.0))).total).toBe(254)
-    expect(contarValidos(barrido(new Array(255).fill(1.0))).total).toBe(255)
+  it('🔴 funciona con CUALQUIER tamaño: el del X2 cambia entre sesiones', () => {
+    // Medido desde el robot el 2026-08-04, encendiendo y apagando el barrido
+    // cuatro veces con la misma configuracion: 250 · 250 · 270 · 250. Y el
+    // journal del mismo dia registro ademas 253, 254 y 255.
+    //
+    // Dentro de UNA sesion el tamaño es constante —por eso una medida de 35
+    // barridos seguidos vio «260, y solo 260»— pero la conclusion de que 260
+    // fuera EL valor era falsa. `fixed_resolution: true` lo fija con el primer
+    // barrido de cada sesion, y ese depende de a que velocidad gire el motor,
+    // que va libre.
+    //
+    // Un cliente que asuma un tamaño se rompe UNA DE CADA TRES sesiones, que es
+    // la peor frecuencia posible para depurar. Esta prueba existe para que
+    // nadie vuelva a fijarlo.
+    for (const n of [250, 253, 254, 255, 260, 270]) {
+      expect(contarValidos(barrido(new Array(n).fill(1.0))).total, `${n} puntos`).toBe(n)
+      expect(puntosDelBarrido(barrido(new Array(n).fill(1.0)))).toHaveLength(n)
+    }
+  })
+
+  it('🔴 y el ANGULO sale de angle_increment del mensaje, no de una constante', () => {
+    // La resolucion angular cambia con el tamaño: 360/250 = 1,44° y
+    // 360/270 = 1,33°. Si alguien la fijara, los puntos saldrian girados en
+    // cuanto la sesion arrancara con otro tamaño.
+    const s = barrido([1.0, 1.0])
+    s.angle_min = 0
+    s.angle_increment = Math.PI / 2          // 90° a mano
+    const [p0, p1] = puntosDelBarrido(s)
+    expect(p1.y - p0.y).toBeCloseTo(1.0, 6)  // el segundo cayo 90° a la izquierda
   })
 })
 
