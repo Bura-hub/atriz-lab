@@ -103,7 +103,7 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
           type="button"
           disabled={!conectado || estado.clase === 'ARRANCANDO'}
           onClick={() => void arrancar()}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus-ring hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus-ring hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
         >
           {estado.clase === 'ARRANCANDO' ? 'Esperando un /scan real…' : 'Arrancar barrido'}
         </button>
@@ -111,7 +111,7 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
           type="button"
           disabled={!conectado}
           onClick={() => void parar()}
-          className="rounded-md border border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+          className="border border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
         >
           Parar barrido
         </button>

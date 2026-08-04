@@ -128,7 +128,7 @@ export function PanelLeds() {
             type="button"
             disabled={!conectado || enviando}
             onClick={() => void enviar(o)}
-            className="inline-flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed"
+            className="inline-flex items-center gap-2 border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
           >
             <span
               className={`h-3.5 w-3.5 rounded-full border border-border ${o.muestra}`}

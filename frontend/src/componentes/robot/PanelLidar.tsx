@@ -214,7 +214,7 @@ export function PanelLidar() {
               type="button"
               onClick={encender}
               disabled={encendiendo}
-              className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+              className="border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 focus-ring transition-transform duration-150 active:scale-[0.97]"
             >
               {encendiendo ? 'esperando un barrido real…' : 'Encender el barrido'}
             </button>
