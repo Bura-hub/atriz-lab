@@ -196,14 +196,33 @@
 }
 
 /*
- * `apple-design` §14. Hasta hoy no había ni una línea: quien tiene activada la
- * reducción de movimiento veía exactamente lo mismo que todos.
+ * ── REDUCIR EL MOVIMIENTO NO ES ELIMINAR LA INFORMACIÓN ──────────────────────
+ *
+ * 🔴 Aquí había el bloque de siempre: `*` a `0.01ms !important` para todo. Lo
+ *    señaló `impeccable audit`, que manda marcar «a global 0.01ms kill that
+ *    destroys useful feedback», y al comprobarlo tenía razón por un motivo
+ *    concreto:
+ *
+ *    **la transición de color de las baldosas es ANTI-PARPADEO.** Cuando un
+ *    robot entra en «sin datos» por un hipo de WiFi y vuelve, el color cambia
+ *    dos veces; sin transición, un muro de 16 hace estroboscopio. Matarla para
+ *    quien pidió MENOS movimiento le devuelve exactamente el parpadeo — y el
+ *    destello es, además, un riesgo de accesibilidad por sí mismo.
+ *
+ * → Se conservan las transiciones de COLOR, suavizadas. Se anulan las de
+ *   `transform` y las animaciones de entrada, que sí son puro movimiento.
+ *
+ * 📝 Y lo que NO se pierde con esto: la realimentación de pulsación
+ *    (`active:scale`) es un ESTADO, no una animación — se aplica igual, solo
+ *    que instantáneo. Se comprobó antes de tocar nada.
  */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
+    /* Nada de movimiento: ni desplazamientos ni escalas animadas. */
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property: color, background-color, border-color, fill, stroke !important;
+    transition-duration: 200ms !important;
     scroll-behavior: auto !important;
   }
 }

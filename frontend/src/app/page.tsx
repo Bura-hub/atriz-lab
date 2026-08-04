@@ -69,7 +69,7 @@ export default function Portada() {
            maqueta optimista. Si algo se desbloquea, se quita de aqui — y si
            algo se rompe, se añade.
       */}
-      <section className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-5">
+      <section className="border border-warning/40 bg-warning/10 p-5">
         <h2 className="text-base font-semibold">Lo que todavía no funciona</h2>
         <ul className="mt-2 space-y-2 text-sm text-muted-foreground">
           <li>
