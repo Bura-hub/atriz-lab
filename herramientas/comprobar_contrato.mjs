@@ -4,6 +4,10 @@
  * Si divergen, GANA EL ROBOT: la web no puede ampliar su propia autorizacion.
  *
  *   node herramientas/comprobar_contrato.mjs ../Atriz_rvr
+ *
+ * Codigo de salida: 0 = coinciden · 1 = divergen · 2 = no se pudo comparar
+ * (falta `robot.launch.py`; NO es un aprobado, sigue la convencion del
+ * proyecto: probar_lista_blanca.py, verificar_robot.sh, compilar.sh, etc.)
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -17,9 +21,15 @@ const raizRvr = resolve(raizProyecto, process.argv[2] ?? '../Atriz_rvr')
 
 const rutaLaunch = join(raizRvr, 'atriz_rvr_bringup/launch/robot.launch.py')
 if (!existsSync(rutaLaunch)) {
-  console.log(`AVISO: no encuentro ${rutaLaunch}, no se puede comparar. Uso:`)
-  console.log('  node herramientas/comprobar_contrato.mjs ../Atriz_rvr')
-  process.exit(0)   // aviso, no fallo: en un clon suelto puede no estar
+  // 🔴 CODIGO 2, no 0. En este proyecto el 2 significa «no concluye», y esto es
+  // exactamente eso: no se comparo nada. Salir con 0 seria una comprobacion
+  // muerta que cuenta como aprobada — el patron que ya costo caro aqui.
+  // Convencion: probar_lista_blanca.py:169 (return 2 cuando el control no
+  // responde), verificar_robot.sh:1423, atriz-escaneo.sh:135, compilar.sh:44.
+  // Un CI bloquea con != 0 por defecto, asi que no hace falta ninguna bandera.
+  console.error(`🔴 NO SE COMPARÓ NADA: no encuentro ${rutaLaunch}. Esto no es un aprobado.`)
+  console.error('   Uso: node herramientas/comprobar_contrato.mjs ../Atriz_rvr')
+  process.exit(2)
 }
 
 const launch = readFileSync(rutaLaunch, 'utf8')
