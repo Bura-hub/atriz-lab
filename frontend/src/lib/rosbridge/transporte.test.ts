@@ -264,3 +264,58 @@ describe('Transporte — arreglos criticos', () => {
     expect(avisos[1].nivel).toBe('error')
   })
 })
+
+// Ronda de arreglo 2: lo que la re-revision encontro al buscar que pudiera
+// haber roto el arreglo de la ronda 1. Cada prueba se rompio contra su
+// arreglo y se comprobo que fallaba (ver task-6-report.md).
+describe('Transporte — ronda de arreglo 2', () => {
+  // Importante: `conectar()` no cancelaba ni adoptaba una reconexion YA
+  // programada. Si algo llama a conectar() a mano mientras hay un
+  // temporizador de reconexion pendiente, ese temporizador queda huerfano
+  // —solo se sobrescribia la referencia— y dispara mas tarde, incluso
+  // DESPUES de un cerrar(). Medido por el revisor: 3 sockets contra 1 en
+  // el control.
+  it('conectar() manual durante una reconexion programada no deja un temporizador huerfano que sobreviva a cerrar()', () => {
+    vi.useFakeTimers()
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket, {
+      reconectar: true, aleatorio: () => 0.5,
+    })
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    const primero = WSFalso.ultimo
+
+    primero.onclose?.()          // se cae: queda programada una reconexion (1000 ms)
+    t.conectar()                 // alguien llama a mano ANTES de que dispare
+    const segundo = WSFalso.ultimo
+    expect(segundo).not.toBe(primero)
+
+    segundo.abrir()
+    segundo.onclose?.()          // se cae otra vez: se programa OTRA reconexion (2000 ms)
+
+    t.cerrar()
+    vi.advanceTimersByTime(60000)   // muy por encima de cualquier espera pendiente
+    expect(WSFalso.ultimo).toBe(segundo)   // ningun socket extra: el temporizador
+                                            // huerfano de la primera caida no disparo
+    vi.useRealTimers()
+  })
+
+  // Menor-que-resultaba-real: `onclose` limpiaba `anunciados`, asi que el
+  // bucle de reanuncio de `onopen` siempre recorria un conjunto vacio.
+  // Funcionaba igual porque publicar() reanuncia perezosamente, pero se
+  // perdia el reanuncio ANTICIPADO: con /emergency_stop ya anunciado tras
+  // reconectar, pulsar la parada es UN mensaje en vez de un advertise + un
+  // publish.
+  it('al reconectar se reanuncia lo que ya estaba anunciado, sin volver a llamar a publicar()', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    t.publicar('/emergency_stop', {})   // anuncia y publica en el primer socket
+
+    WSFalso.ultimo.onclose?.()
+    t.conectar()
+    WSFalso.ultimo.abrir()   // aqui debe salir el advertise, SIN llamar a publicar() de nuevo
+
+    const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'advertise' && o.topic === '/emergency_stop')).toBe(true)
+  })
+})

@@ -76,6 +76,15 @@ export class Transporte {
   }
 
   conectar(): void {
+    // 🔴 Cancela una reconexion ya programada ANTES de nada: si no, un
+    //    `conectar()` manual mientras hay un temporizador pendiente lo deja
+    //    huerfano —solo se sobrescribia la referencia— y ese temporizador
+    //    dispara mas tarde, incluso DESPUES de un `cerrar()`. Medido: 3 sockets
+    //    contra 1 en el control.
+    if (this.reconexionProgramada !== null) {
+      clearTimeout(this.reconexionProgramada)
+      this.reconexionProgramada = null
+    }
     // 🔴 IDEMPOTENTE. Sin esta guarda, dos llamadas dejaban DOS sockets vivos:
     //    cada mensaje se entregaba dos veces, y el `onclose` del viejo cancelaba
     //    las llamadas pendientes del nuevo, que estaba sano.
@@ -91,9 +100,12 @@ export class Transporte {
       //    `onopen` antes que por `onclose` y la espera se quedaba clavada en
       //    ~1 s para siempre — el antipatron del driver que esto evita.
       //    Se reinicia cuando llega un MENSAJE, que si lo prueba.
-      // Al reconectar se resuscribe a TODO y se reanuncia: rosbridge infiere el
-      // QoS mirando los publicadores al suscribirse y no se reajusta despues.
+      // Al reconectar se resuscribe a TODO: rosbridge infiere el QoS mirando
+      // los publicadores al suscribirse y no se reajusta despues.
       for (const topic of this.suscripciones.keys()) this.enviar(opSubscribe(topic))
+      // Se reanuncia TODO lo que estaba anunciado. No se limpia `anunciados` al
+      // cerrar a proposito: asi /emergency_stop vuelve anunciado desde el primer
+      // instante y pulsar la parada es UN mensaje, no un advertise + un publish.
       for (const topic of this.anunciados) this.enviar(opAdvertise(topic))
     }
 
@@ -111,7 +123,10 @@ export class Transporte {
 
     ws.onclose = () => {
       this.ws = null
-      this.anunciados.clear()   // el socket nuevo tendra que reanunciar
+      // 🔴 NO se limpia `anunciados` aqui: ver el comentario del bucle de
+      //    reanuncio en `onopen`. Limpiarlo dejaba ese bucle recorriendo
+      //    siempre un conjunto vacio -codigo muerto- y perdia el reanuncio
+      //    anticipado justo donde mas importa, /emergency_stop.
       this.pendientes.cancelarTodas('se cerro el WebSocket')
       for (const cb of this.oyentesCierre) cb()
       // 🔴 NO se libera la parada de emergencia al reconectar: liberarla es
