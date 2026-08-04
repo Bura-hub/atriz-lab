@@ -6,12 +6,27 @@ export interface OpSalida {
 }
 
 /**
- * ⚠️ NO VERIFICADO: que campos de QoS acepta rosbridge 2.7.0 en `advertise` y
- * `subscribe`. Su fuente no esta en ningun repositorio del proyecto, asi que
- * todo lo que creemos saber de su protocolo es de SEGUNDA MANO.
- * Hasta medirlo (herramientas/medir_qos_rosbridge.mjs) NO se manda campo `qos`:
- * rosbridge se suscribe con qos_profile_sensor_data (BEST_EFFORT), que empareja
- * con publicadores BEST_EFFORT y RELIABLE por igual.
+ * 🔴🔴 YA MEDIDO (evidencia 68, robot real): el campo `qos` en `subscribe` SI
+ * toma efecto en rosbridge 2.7.0, y por eso NO se manda -a proposito, y no
+ * como un simple "no verificado" pendiente de medir.
+ *
+ * - Pedir `reliability: reliable` sobre `/odom` -que el driver publica
+ *   BEST_EFFORT- da **0,00 Hz** entre dos controles a 16,5 Hz: el campo NO es
+ *   cosmetico, silencia el topic de verdad si se pide el QoS que no toca.
+ * - 🔴 Y lo mas importante para 16 robots con varias pestañas abiertas:
+ *   rosbridge crea UNA sola suscripcion ROS por topic y la COMPARTE entre
+ *   todos los clientes WebSocket conectados. El QoS del PRIMER cliente que se
+ *   suscribe **gobierna a todos los que llegan despues**, sin ningun aviso:
+ *   si el primero pide un QoS incompatible, los que llegan despues nacen
+ *   MUDOS; si el primero es sano (o no manda `qos`, como aqui), el segundo
+ *   hereda ese QoS sano y el suyo propio se ignora en silencio.
+ * - Consecuencia: una sola pestaña con un `qos` mal pensado puede dejar
+ *   ciegas a las demas -incluidas las de otros alumnos mirando el mismo
+ *   robot. `opSubscribe` NO ACEPTA un parametro `qos` EN ABSOLUTO (no es un
+ *   argumento opcional sin usar: no existe en la firma), para que mandarlo
+ *   por descuido sea imposible. Si algun dia hace falta, tiene que ser una
+ *   decision explicita -tocar esta funcion y este comentario- no un default
+ *   que nadie revisa.
  */
 
 const exigir = (permitido: boolean, que: string, donde: string) => {
@@ -23,9 +38,29 @@ const exigir = (permitido: boolean, que: string, donde: string) => {
   }
 }
 
+/**
+ * 🔴 El `tipoDe(topic)!` que habia aqui tapaba un `undefined` con un `!`: si
+ * alguien añade un topic a TOPICS_LECTURA/TOPICS_ESCRITURA y olvida su
+ * entrada en TIPOS, `JSON.stringify` con `type: undefined` hace DESAPARECER
+ * la clave entera (`{"op":"subscribe","topic":"/x"}`, sin "type"), y el
+ * sintoma es «ese topic no llega» -el mismo que costo el bug de `Encoders`.
+ * Lanza en el sitio del error, con el topic nombrado, en vez de mandar al
+ * robot un `subscribe`/`advertise` mudo.
+ */
+const tipoObligatorio = (topic: string): string => {
+  const tipo = tipoDe(topic)
+  if (tipo === undefined) {
+    throw new Error(
+      `«${topic}» esta en la lista blanca pero no tiene entrada en TIPOS (contrato.ts): ` +
+        `sin tipo, la clave "type" desaparece al serializar y rosbridge recibe un subscribe/advertise mudo.`,
+    )
+  }
+  return tipo
+}
+
 export function opSubscribe(topic: string): OpSalida {
   exigir(permitidoSuscribir(topic), topic, 'lectura')
-  return { op: 'subscribe', topic, type: tipoDe(topic)! }
+  return { op: 'subscribe', topic, type: tipoObligatorio(topic) }
 }
 
 // `unsubscribe` no crea estado ni espera respuesta: no hay «denegado vs caido»
@@ -34,7 +69,7 @@ export const opUnsubscribe = (topic: string): OpSalida => ({ op: 'unsubscribe', 
 
 export function opAdvertise(topic: string): OpSalida {
   exigir(permitidoPublicar(topic), topic, 'escritura')
-  return { op: 'advertise', topic, type: tipoDe(topic)! }
+  return { op: 'advertise', topic, type: tipoObligatorio(topic) }
 }
 
 export function opPublish(topic: string, msg: unknown): OpSalida {
@@ -42,9 +77,23 @@ export function opPublish(topic: string, msg: unknown): OpSalida {
   return { op: 'publish', topic, msg }
 }
 
-export function opCallService(service: string, args: unknown, id: string): OpSalida {
+/**
+ * 🔴 `timeoutS`, en SEGUNDOS -no ms-, es lo que rosbridge espera en el `op`.
+ * Verificado en el fuente de `call_service.py`:
+ *
+ *   :61   default_call_service_timeout: float = 5.0
+ *   :92   timeout = message.get("timeout", self.default_call_service_timeout)
+ *   :127  -> se pasa al ServiceCaller
+ *
+ * El plazo del servicio lo fija el CLIENTE, en el propio mensaje. Antes esta
+ * funcion no mandaba el campo, asi que rosbridge usaba SU default (5.0 s) sin
+ * que `Transporte.llamar()` lo supiera, y su temporizador LOCAL corria en
+ * paralelo, a ciegas. Ver el comentario de `Transporte.llamar()` para la
+ * consecuencia medida (el generico ganaba la carrera al motivo real).
+ */
+export function opCallService(service: string, args: unknown, id: string, timeoutS: number): OpSalida {
   exigir(permitidoLlamar(service), service, 'servicios')
-  return { op: 'call_service', service, args, id }
+  return { op: 'call_service', service, args, id, timeout: timeoutS }
 }
 
 /** Empareja respuestas con llamadas, y pone el plazo que rosbridge no pone. */

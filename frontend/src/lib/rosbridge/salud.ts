@@ -49,6 +49,29 @@ export function evaluarSalud(e: EntradaSalud): Salud {
 
   // 🔴 SIN_DATOS no es averia. Con 16 robots, «el RVR apagado y la Pi viva» es
   //    el estado COTIDIANO de carga: pintarlo rojo saca la flota entera en rojo.
+  //
+  // ⚠️ Punto 5 del encargo: la rama de UNA sola causa de abajo -la que
+  //    distingue "excepcion en un manejador" de "el RVR se durmio"- esta
+  //    PRACTICAMENTE MUERTA en produccion, y no es un fallo de este modulo:
+  //    es un ACOPLAMIENTO con teleoperacion.ts que quien construya la
+  //    interfaz TIENE que conocer.
+  //
+  //    `Teleoperacion.arrancarBarrido()` se da de baja de /scan en cuanto
+  //    llega la PRIMERA muestra -correcto alli: es el 83 % del trafico de un
+  //    robot, y esa suscripcion solo existia para confirmar que el barrido
+  //    arranco-. Sin otro suscriptor a /scan, `msDesdeUltimoScan` (lo que
+  //    alimenta `fresco()` aqui) queda CONGELADO en el instante de esa
+  //    primera muestra y envejece para siempre: nunca vuelve a estar
+  //    "fresco", asi que en la practica esta funcion casi SIEMPRE cae en las
+  //    TRES causas genericas de abajo, nunca en la especifica de una sola.
+  //
+  //    → Si la interfaz QUIERE el diagnostico fino (saber que es "una
+  //      excepcion en un manejador de telemetria" y no "el robot esta
+  //      cargando o durmiendo"), tiene que mantener SU PROPIA suscripcion a
+  //      /scan -ademas de la que usa `arrancarBarrido()` mientras arranca el
+  //      barrido- y pagar ese trafico (83 % de lo que manda un robot) de
+  //      forma PERMANENTE, no solo durante el arranque. Es una decision de
+  //      coste que le toca a quien construya la interfaz, no a este modulo.
   const causasPosibles = fresco(e.msDesdeUltimoScan)
     ? ['una excepcion dentro de un manejador de telemetria del driver: /scan llega y /odom no']
     : [

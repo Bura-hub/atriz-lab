@@ -17,6 +17,23 @@ export function esperaReconexion(intento: number, aleatorio: () => number = Math
   return Math.round(base * (0.8 + 0.4 * aleatorio()))
 }
 
+/**
+ * 🔴 Punto 7 del encargo: hay DOS paredes de plazo para una `llamar()`, y
+ * antes solo se movia una. rosbridge tiene la SUYA (el `timeout` del propio
+ * `op`, ver `opCallService`); `Transporte.llamar()` arma ademas un
+ * temporizador LOCAL, en JS, que antes corria a ciegas del de rosbridge.
+ *
+ * Medido: ante un servicio que FALLA de verdad, rosbridge contesta con el
+ * motivo REAL a los ~6 s (su propio default de 5,0 s mas el redondeo de red).
+ * Con un local de exactamente el mismo valor, el local gana la carrera casi
+ * siempre y sustituye el motivo real por el generico "denegado o el robot
+ * esta caido" -justo la conjetura que este proyecto ya paga caro en otros
+ * sitios. Este margen pone el muro LOCAL por ENCIMA del que se le pide a
+ * rosbridge: el generico solo puede aparecer si rosbridge no contesta NADA,
+ * que es el unico caso en que es cierto.
+ */
+export const MARGEN_PLAZO_LOCAL_MS = 2000
+
 type Manejador = (msg: unknown) => void
 type FabricaWS = (url: string) => WebSocket
 
@@ -307,6 +324,13 @@ export class Transporte {
     this.enviar(opPublish(topic, msg))
   }
 
+  /**
+   * `ms` es el plazo que se le pide a ROSBRIDGE (se manda como `timeout`, en
+   * segundos: ver `opCallService`). El temporizador LOCAL de verdad es mayor
+   * -`ms + MARGEN_PLAZO_LOCAL_MS`-, a proposito: ver el comentario de
+   * `MARGEN_PLAZO_LOCAL_MS`, arriba. Asi rosbridge tiene sitio para contestar
+   * con el motivo REAL antes de que el generico local lo sustituya.
+   */
   llamar(servicio: string, args: unknown = {}, ms = 5000): Promise<unknown> {
     // Mismo motivo que `publicar`: sin enlace se dice en el acto, no se espera
     // cinco segundos a un plazo que ya se sabe que va a vencer.
@@ -322,8 +346,8 @@ export class Transporte {
     //    sin que nadie la escuchara, con el «sin respuesta... puede estar
     //    denegado o el robot puede estar caido» generico -el cliente se
     //    autorrechazo la llamada y mando a diagnosticar el robot.
-    const op = opCallService(servicio, args, id)
-    const p = this.pendientes.registrar(id, ms)
+    const op = opCallService(servicio, args, id, ms / 1000)
+    const p = this.pendientes.registrar(id, ms + MARGEN_PLAZO_LOCAL_MS)
     this.enviar(op)
     return p
   }

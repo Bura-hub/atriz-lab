@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { opAdvertise, opPublish, opSubscribe, opCallService, RegistroPendientes } from './protocolo'
+import { TIPOS, TOPICS_LECTURA, TOPICS_ESCRITURA, tipoDe } from './contrato'
 
 describe('construccion de ops', () => {
   it('subscribe lleva el tipo del contrato', () => {
@@ -21,10 +22,47 @@ describe('construccion de ops', () => {
     expect(() => opSubscribe('/ambient_light')).toThrowError(/lista blanca/)
   })
 
-  it('call_service lleva id para poder emparejar la respuesta', () => {
-    expect(opCallService('/start_scan', {}, 'abc')).toEqual({
-      op: 'call_service', service: '/start_scan', args: {}, id: 'abc',
+  // Punto 7 del encargo: opCallService manda el timeout en SEGUNDOS -lo que
+  // rosbridge espera en el propio op (call_service.py)-, no solo el id.
+  it('call_service lleva id y timeout (en segundos) para poder emparejar la respuesta y avisar a rosbridge', () => {
+    expect(opCallService('/start_scan', {}, 'abc', 5)).toEqual({
+      op: 'call_service', service: '/start_scan', args: {}, id: 'abc', timeout: 5,
     })
+  })
+})
+
+// Punto 3 del encargo: el `tipoDe(topic)!` tapaba un `undefined` con un `!`.
+// Si TOPICS_LECTURA/TOPICS_ESCRITURA y TIPOS se desincronizan (el mismo bug
+// real que costo `Encoders` vs `Encoder`), opSubscribe/opAdvertise deben
+// LANZAR nombrando el topic, no mandar un subscribe/advertise mudo.
+describe('opSubscribe / opAdvertise — el tipo es obligatorio', () => {
+  it('lanza si un topic de la lista blanca no tiene entrada en TIPOS (contrato.ts desincronizado)', () => {
+    // Se desincroniza TIPOS a proposito, sobre el objeto real -no un doble-,
+    // para probar la ruta exacta que falla en produccion. Restaurado en el
+    // finally: es el unico test que toca este estado compartido.
+    // '/odom' es de LECTURA y '/emergency_stop' de ESCRITURA: cada uno tiene
+    // que pasar su propia comprobacion de lista blanca antes de llegar al
+    // tipo, para que el fallo que se observe sea el del TIPO y no el de la
+    // lista blanca.
+    const tipos = TIPOS as Record<string, string | undefined>
+    const odomOriginal = tipos['/odom']
+    const paradaOriginal = tipos['/emergency_stop']
+    delete tipos['/odom']
+    delete tipos['/emergency_stop']
+    try {
+      expect(() => opSubscribe('/odom')).toThrowError(/«\/odom».*TIPOS/)
+      expect(() => opAdvertise('/emergency_stop')).toThrowError(/«\/emergency_stop».*TIPOS/)
+    } finally {
+      tipos['/odom'] = odomOriginal
+      tipos['/emergency_stop'] = paradaOriginal
+    }
+  })
+
+  // Cobertura de la familia entera: todo topic de lectura o escritura tiene
+  // que tener tipo, SIEMPRE -no solo el caso puntual de arriba-. Tres lineas,
+  // y cierra la puerta para cualquier topic futuro, no solo /odom.
+  it('todos los topics de TOPICS_LECTURA y TOPICS_ESCRITURA tienen tipo', () => {
+    for (const t of [...TOPICS_LECTURA, ...TOPICS_ESCRITURA]) expect(tipoDe(t)).toBeDefined()
   })
 })
 

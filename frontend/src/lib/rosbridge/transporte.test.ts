@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { esperaReconexion, urlDeRobot, Transporte } from './transporte'
+import { esperaReconexion, urlDeRobot, Transporte, MARGEN_PLAZO_LOCAL_MS } from './transporte'
 import { RegistroPendientes } from './protocolo'
 
 describe('espera de reconexion', () => {
@@ -659,5 +659,68 @@ describe('Transporte — R1: cerrar() hace su desmontaje sin esperar el onclose 
     WSFalso.ultimo.onclose?.()   // se cae de verdad, nadie llamo a cerrar()
 
     expect(caidas).toBe(1)
+  })
+})
+
+// Punto 7 del encargo: HAY DOS PAREDES DE PLAZO y antes solo se movia una.
+// rosbridge fija la suya con el `timeout` del propio op (call_service.py);
+// `llamar()` arma ademas una LOCAL en JS. Medido: un servicio que falla de
+// verdad responde con el motivo real a los ~6 s, y un local de exactamente
+// 5 s ganaba la carrera y lo sustituia por el generico "denegado o caido".
+describe('Transporte — llamar(): dos paredes de plazo, y el local va POR ENCIMA', () => {
+  it('manda el timeout en SEGUNDOS a rosbridge, calculado a partir de ms', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    t.llamar('/start_scan', {}, 5000)
+    const llamada = WSFalso.ultimo.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    expect(llamada.timeout).toBe(5)   // segundos, no milisegundos
+  })
+
+  it('el temporizador LOCAL es mayor que el que se le pide a rosbridge: a los 5 s (su plazo) todavia no rechaza', async () => {
+    vi.useFakeTimers()
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    const p = t.llamar('/start_scan')   // ms por defecto: 5000 -> timeout a rosbridge: 5 s
+    let rechazado = false
+    p.catch(() => { rechazado = true })
+
+    vi.advanceTimersByTime(5000)   // exactamente el plazo que le pedimos a rosbridge
+    await Promise.resolve()
+    await Promise.resolve()
+    // Si el local venciera aqui, ganaria la carrera casi siempre al motivo
+    // real que rosbridge manda alrededor de este mismo instante -medido.
+    expect(rechazado).toBe(false)
+
+    vi.advanceTimersByTime(MARGEN_PLAZO_LOCAL_MS)   // el margen: rosbridge nunca contesto nada
+    await Promise.resolve()
+    expect(rechazado).toBe(true)
+
+    vi.useRealTimers()
+  })
+
+  // Camino bueno: si rosbridge SI contesta dentro del margen (con el motivo
+  // real, `result:false`), esa respuesta gana y el generico local nunca
+  // aparece -es justo lo que el margen existe para permitir.
+  it('si rosbridge contesta con el motivo real DENTRO del margen, ese motivo gana (no el generico)', async () => {
+    vi.useFakeTimers()
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    const p = t.llamar('/start_scan')
+    const llamada = WSFalso.ultimo.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+
+    vi.advanceTimersByTime(6000)   // el "~6 s" medido: dentro de 5000 + MARGEN (2000)
+    WSFalso.ultimo.recibir({
+      op: 'service_response', id: llamada.id, result: false, values: 'el YDLIDAR no respondio',
+    })
+
+    await expect(p).rejects.toThrow(/YDLIDAR no respondio/)
+    await expect(p).rejects.not.toThrow(/denegado|robot puede estar caido/)
+    vi.useRealTimers()
   })
 })

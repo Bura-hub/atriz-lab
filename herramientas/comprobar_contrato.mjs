@@ -131,6 +131,34 @@ for (const [enPython, enTs] of pares) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
+// ACCIONES: FUERA de esta comparacion, y se dice explicitamente por que
+// ═══════════════════════════════════════════════════════════════════════
+// Punto 4 del encargo. En robot.launch.py el glob de acciones va INLINE
+// dentro de la funcion del launch (`_glob(['/navigate_to_pose'])`), no como
+// una constante nombrada `NOMBRE = [...]` en columna propia -al contrario que
+// LEER/ESCRIBIR/SERVICIOS-, asi que `bloquePython()` no tiene un bloque que
+// extraer de ese lado. Comparar aqui daria un falso "coincide" (contra una
+// lista vacia) o un error de parseo que no es el problema real -la misma
+// clase de fallo silencioso que la guarda de `extraerItems()` ya evita para
+// las otras tres listas.
+// Es la misma forma que el `opUnsubscribe` que ya se caso en la revision de
+// codigo: no rompe nada porque la web todavia no tiene soporte de acciones,
+// pero un ✅ que no diga esto se leeria como "los CUATRO globs verificados"
+// cuando solo se comparan TRES.
+try {
+  const accionesWeb = bloqueTs(contrato, 'ACCIONES')
+  console.log(
+    `⚠️  ACCIONES (${accionesWeb.length} en contrato.ts: ${accionesWeb.join(', ')}) NO se compara ` +
+    'contra robot.launch.py: alli el glob de acciones va inline en el launch, sin una constante ' +
+    'NOMBRE = [...] que extraer con este mismo patron. Sin soporte de acciones en la web hoy, esto ' +
+    'no bloquea nada -pero el ✅ de arriba es de TRES globs (LEER/ESCRIBIR/SERVICIOS), no cuatro.'
+  )
+} catch (e) {
+  fallos++
+  console.error(`🔴 no se pudo ni siquiera leer ACCIONES de contrato.ts: ${e.message}`)
+}
+
+// ═══════════════════════════════════════════════════════════════════════
 // CUARTA COMPROBACION: los TIPOS propios (atriz_rvr_msgs) existen de verdad
 // ═══════════════════════════════════════════════════════════════════════
 // Las tres comprobaciones de arriba comparan NOMBRES de topics/servicios

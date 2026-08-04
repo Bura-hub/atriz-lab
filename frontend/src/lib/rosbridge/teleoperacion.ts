@@ -17,6 +17,19 @@ export const PERIODO_MS = 1000 / RITMO_HZ
  * la promesa pendiente para siempre Y la suscripcion a /scan -el 83 % del
  * trafico de un robot- registrada de por vida en el `Transporte`, porque
  * nadie la cancela si quien llamo deja de esperar esa promesa.
+ *
+ * ⚠️ Acoplamiento con el punto 7 del encargo (`MARGEN_PLAZO_LOCAL_MS` en
+ * transporte.ts): `arrancarBarrido()` llama a `llamar('/start_scan')` SIN
+ * pasar un `ms` propio, asi que usa el default de `Transporte.llamar()`
+ * (5000) -y su temporizador LOCAL real es `5000 + MARGEN_PLAZO_LOCAL_MS`
+ * (hoy 7000 ms). Ese plazo de LA LLAMADA tiene que quedar POR DEBAJO de este
+ * `PLAZO_ARRANQUE_SCAN_MS` (8000 ms): si algun dia se sube el margen o se
+ * baja este plazo hasta que se toquen, el genérico de `llamar()` («sin
+ * respuesta... denegado o caido») puede ganarle la carrera al mensaje
+ * especifico de aqui abajo («no llego ningun /scan real»), y quien lo lea se
+ * lleva la conjetura equivocada en vez de la buena. No hay una comprobacion
+ * automatica de este orden: si tocas cualquiera de los dos valores, vuelve a
+ * leer este comentario.
  */
 export const PLAZO_ARRANQUE_SCAN_MS = 8000
 
@@ -124,26 +137,53 @@ export class Teleoperacion {
    * para siempre en el `Transporte`, aunque nadie vaya a leerlo mas. Lo
    * mismo en el camino de exito: la suscripcion solo existia para esperar
    * la primera muestra.
+   *
+   * 🔴🔴 Punto 1 del encargo, la TERCERA puerta por la que se acusaba al
+   * LIDAR de un fallo que era del enlace. Si el WebSocket se cae MIENTRAS se
+   * espera el primer /scan y justo `llamar('/start_scan')` YA HABIA
+   * resuelto (el `.catch` de mas abajo no llega a correr), `onclose` cancela
+   * las llamadas PENDIENTES (ya no queda ninguna: ya se resolvio) y avisa a
+   * `oyentesCierre` -pero esta promesa no era oyente, asi que nadie se lo
+   * decia. Vencia su plazo de 8 s entero y el alumno leia la conjetura del
+   * LIDAR sobre un enlace que llevaba segundos caido. Es la misma atribucion
+   * falsa que ya se cerro dos veces (I1 y el arreglo transversal de
+   * `result:false`), por una tercera puerta.
+   * Este oyente de `alCerrarse` cierra esa puerta: rechaza EN EL ACTO, con
+   * un mensaje que dice lo que paso de verdad -se perdio la conexion-, no
+   * una conjetura sobre el hardware.
    */
   arrancarBarrido(plazoMs: number = PLAZO_ARRANQUE_SCAN_MS): Promise<void> {
     return new Promise((resolver, rechazar) => {
       let resuelto = false
 
-      // `terminar` referencia `cancelarSuscripcion` y `plazo`, declaradas
-      // MAS ABAJO: es seguro porque `terminar` solo se invoca desde
-      // callbacks asincronos (mensaje, plazo, fallo de /start_scan), nunca
-      // durante este bloque sincrono -para cuando cualquiera de esos
-      // callbacks pueda disparar, las tres ya estan inicializadas.
+      // `terminar` referencia `cancelarSuscripcion`, `plazo` y `bajaCierre`,
+      // declaradas MAS ABAJO: es seguro porque `terminar` solo se invoca
+      // desde callbacks asincronos (mensaje, plazo, fallo de /start_scan,
+      // caida del enlace), nunca durante este bloque sincrono -para cuando
+      // cualquiera de esos callbacks pueda disparar, las cuatro ya estan
+      // inicializadas.
       const terminar = (fn: () => void): void => {
         if (resuelto) return
         resuelto = true
         clearTimeout(plazo)
         cancelarSuscripcion()
+        bajaCierre()
         fn()
       }
 
       const cancelarSuscripcion = this.#transporte.suscribir('/scan', () => {
         terminar(resolver)
+      })
+
+      // Los TRES caminos de salida de abajo (scan real, plazo vencido, fallo
+      // de /start_scan) se dan de baja de este oyente a traves de `terminar`
+      // -y este mismo callback tambien se da de baja a si mismo, para no
+      // dejar NADA colgando en ningun camino.
+      const bajaCierre = this.#transporte.alCerrarse(() => {
+        terminar(() => rechazar(new Error(
+          'se perdio la conexion con el robot mientras se esperaba a que arrancara el barrido: ' +
+            'no se sabe si arranco o no. Es el enlace el que se cayo, no una conjetura sobre el hardware.',
+        )))
       })
 
       const plazo = setTimeout(() => {

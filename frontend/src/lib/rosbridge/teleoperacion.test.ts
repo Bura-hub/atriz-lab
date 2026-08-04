@@ -136,6 +136,54 @@ describe('Teleoperacion.arrancarBarrido()', () => {
   })
 })
 
+// Punto 1 del encargo: la TERCERA puerta por la que se acusaba al LIDAR de
+// un fallo del enlace. Reproduce EXACTAMENTE la carrera del brief: /start_scan
+// ya resolvio (su .catch no puede correr) y DESPUES se cae el socket.
+describe('Teleoperacion.arrancarBarrido() — se cae el enlace mientras espera /scan', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  it('rechaza EN EL ACTO al caerse el enlace (no espera el plazo de 8 s) y el mensaje NO menciona el LIDAR', async () => {
+    const { t, ws } = transporteConectado()
+    const tel = new Teleoperacion(t)
+
+    const p = tel.arrancarBarrido()   // plazo por defecto: 8 s. No debe hacer falta.
+    const llamada = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+    // /start_scan YA RESOLVIO: el .catch() de arrancarBarrido no va a correr.
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    const espera = expect(p).rejects.toThrow(/conexion/i)
+    ws.onclose?.()   // se cae el enlace de verdad. El /scan real nunca llego.
+
+    // En el acto: sin avanzar ni un milisegundo del plazo de 8 s.
+    await espera
+    await expect(p).rejects.not.toThrow(/LIDAR/i)
+
+    // Y no queda el temporizador de 8 s vivo por ahi: avanzar mucho mas alla
+    // no debe volver a tocar la promesa ni lanzar.
+    expect(() => vi.advanceTimersByTime(PLAZO_ARRANQUE_SCAN_MS * 2)).not.toThrow()
+  })
+
+  // Si el enlace se cae ANTES de que /start_scan responda, el .catch() de
+  // Transporte.llamar() (via pendientes.cancelarTodas()) ya lo cubria antes
+  // de este arreglo -esta prueba fija que sigue funcionando con el oyente
+  // nuevo tambien enganchado: las dos vias no deben pisarse ni duplicar el
+  // rechazo (terminar() es idempotente).
+  it('si el enlace se cae ANTES de que /start_scan responda, tambien rechaza en el acto', async () => {
+    const { t, ws } = transporteConectado()
+    const tel = new Teleoperacion(t)
+
+    const p = tel.arrancarBarrido()
+    const espera = expect(p).rejects.toBeTruthy()
+    ws.onclose?.()
+
+    await espera
+    expect(() => vi.advanceTimersByTime(PLAZO_ARRANQUE_SCAN_MS * 2)).not.toThrow()
+  })
+})
+
 describe('Teleoperacion.arrancarBarrido() — plazo cuando /scan nunca llega', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())

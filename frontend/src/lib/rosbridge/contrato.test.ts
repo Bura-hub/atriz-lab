@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
-  permitidoPublicar, permitidoSuscribir, permitidoLlamar, tipoDe, confirmaEfecto,
+  permitidoPublicar, permitidoSuscribir, permitidoLlamar, permitidoAccion, tipoDe, confirmaEfecto,
   porcentajeLegible, nivelBateria, interpretarAntiguedad, SERVICIOS,
+  SERVICIOS_SIN_CONFIRMACION, SERVICIOS_SOLO_NO_LANZO,
 } from './contrato'
 
 describe('lista blanca', () => {
@@ -30,6 +31,14 @@ describe('lista blanca', () => {
     expect(permitidoLlamar('/move_timed')).toBe(false)
   })
 
+  // Punto 4 del encargo: ACCIONES estaba exportada y no la comprobaba nadie.
+  // Nadie llama a permitidoAccion() todavia (no hay soporte de acciones en
+  // teleoperacion.ts), pero ya existe y ya esta probada para cuando lo haya.
+  it('conoce la unica accion de la lista blanca, aunque todavia no la use nadie', () => {
+    expect(permitidoAccion('/navigate_to_pose')).toBe(true)
+    expect(permitidoAccion('/algo_no_permitido')).toBe(false)
+  })
+
   it('conoce el tipo de cada topic', () => {
     expect(tipoDe('/odom')).toBe('nav_msgs/msg/Odometry')
     expect(tipoDe('/emergency_stop')).toBe('std_msgs/msg/Empty')
@@ -50,35 +59,51 @@ describe('lista blanca', () => {
     expect(tipoDe('/encoders')).toBe('atriz_rvr_msgs/msg/Encoder')
   })
 
-  // 🔴 C1: cuatro de los ocho servicios tienen respuesta VACIA
+  // 🔴🔴 Punto 2 del encargo: `confirmaEfecto()` YA NO devuelve un booleano.
+  // Un booleano solo puede decir "confirma" / "no confirma", y NINGUNO de los
+  // ocho servicios confirma el efecto FISICO de verdad -ni los cuatro con
+  // `bool success`, que solo dicen que la corrutina del SDK no lanzo.
+  // 🔴 C1 (se mantiene): cuatro de los ocho servicios tienen respuesta VACIA
   // (std_srvs/srv/Empty o SetLeds.srv), no solo /set_leds. Antes
   // `confirmaEfecto('/release_emergency_stop')` daba `true` -la operacion que
   // devuelve el control del robot a un aula con estudiantes- sobre una
   // respuesta que no contiene ni un bit para confirmar. Se comprueban los
   // OCHO, no solo dos: la primera version de esta prueba solo miraba
   // /set_leds y /start_scan y dejaba pasar el error en los otros seis.
-  it('sabe cuales de los OCHO servicios no pueden confirmar su efecto (respuesta vacia)', () => {
-    expect(confirmaEfecto('/start_scan')).toBe(false)
-    expect(confirmaEfecto('/stop_scan')).toBe(false)
-    expect(confirmaEfecto('/release_emergency_stop')).toBe(false)
-    expect(confirmaEfecto('/set_leds')).toBe(false)
+  it('sabe cuales de los OCHO servicios no tienen NADA que mirar (respuesta vacia)', () => {
+    expect(confirmaEfecto('/start_scan')).toBe('NINGUNA')
+    expect(confirmaEfecto('/stop_scan')).toBe('NINGUNA')
+    expect(confirmaEfecto('/release_emergency_stop')).toBe('NINGUNA')
+    expect(confirmaEfecto('/set_leds')).toBe('NINGUNA')
   })
 
-  it('sabe cuales de los OCHO servicios SI confirman su efecto (bool success)', () => {
-    expect(confirmaEfecto('/set_pos_and_yaw')).toBe(true)
-    expect(confirmaEfecto('/set_led_rgb')).toBe(true)
-    expect(confirmaEfecto('/set_multiple_leds')).toBe(true)
-    expect(confirmaEfecto('/trigger_led_event')).toBe(true)
+  // El caso medido que motiva el arreglo: `success=true` en `/set_led_rgb`
+  // (`undercarriage_white`, led_id=10) NO prueba que el LED se encendiera
+  // -lo enciende `enable_color_detection`, un comando distinto-. Estos cuatro
+  // solo dicen "la corrutina del SDK no lanzo", nunca "confirmado".
+  it('sabe cuales de los OCHO servicios SOLO dicen que el SDK no lanzo (bool success, NO es el efecto fisico)', () => {
+    expect(confirmaEfecto('/set_pos_and_yaw')).toBe('SOLO_QUE_NO_LANZO')
+    expect(confirmaEfecto('/set_led_rgb')).toBe('SOLO_QUE_NO_LANZO')
+    expect(confirmaEfecto('/set_multiple_leds')).toBe('SOLO_QUE_NO_LANZO')
+    expect(confirmaEfecto('/trigger_led_event')).toBe('SOLO_QUE_NO_LANZO')
   })
 
   // Los OCHO de SERVICIOS estan cubiertos entre las dos pruebas de arriba:
-  // ninguno se queda sin comprobar.
+  // ninguno se queda sin comprobar, y las dos listas fuente no se solapan.
   it('las dos listas cubren los ocho servicios sin solapar', () => {
-    const cubiertos = [
-      '/start_scan', '/stop_scan', '/release_emergency_stop', '/set_leds',
-      '/set_pos_and_yaw', '/set_led_rgb', '/set_multiple_leds', '/trigger_led_event',
-    ]
+    const cubiertos = [...SERVICIOS_SIN_CONFIRMACION, ...SERVICIOS_SOLO_NO_LANZO]
     expect(cubiertos.sort()).toEqual([...SERVICIOS].sort())
+    expect(SERVICIOS_SIN_CONFIRMACION.some((s) => (SERVICIOS_SOLO_NO_LANZO as readonly string[]).includes(s)))
+      .toBe(false)
+  })
+
+  // La propiedad central del arreglo: el tipo no puede expresar "confirma el
+  // efecto" para NINGUN servicio -no es que las pruebas no lo comprueben, es
+  // que la union `ConfirmacionServicio` no tiene un tercer valor para eso.
+  it('ningun servicio de los ocho devuelve un valor distinto de NINGUNA/SOLO_QUE_NO_LANZO', () => {
+    for (const s of SERVICIOS) {
+      expect(['NINGUNA', 'SOLO_QUE_NO_LANZO']).toContain(confirmaEfecto(s))
+    }
   })
 })
 

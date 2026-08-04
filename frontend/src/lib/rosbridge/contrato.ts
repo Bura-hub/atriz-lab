@@ -19,6 +19,25 @@ export const SERVICIOS = [
   '/set_led_rgb', '/set_multiple_leds', '/set_leds', '/trigger_led_event',
 ] as const
 
+/**
+ * 🔴 Punto 4 del encargo: esta constante estaba exportada y no la usaba ni la
+ * comprobaba nadie -`grep ACCIONES` en todo el repositorio solo encontraba su
+ * propia declaracion-. Hoy `teleoperacion.ts` no tiene soporte de acciones
+ * (Nav2 / `/navigate_to_pose` se maneja fuera de este cliente por ahora), asi
+ * que no hay ningun `permitidoAccion()` que llamar todavia -pero dejarla muda
+ * es exactamente el "tope silencioso" que este proyecto ya ha pagado caro en
+ * otros sitios: quien lea `ACCIONES` sin este comentario asume que algo la
+ * usa. `permitidoAccion()`, justo debajo, existe para que el dia que se
+ * implemente el soporte de acciones YA HAYA una comprobacion contra la lista
+ * blanca -el mismo patron que `permitidoSuscribir`/`permitidoPublicar`/
+ * `permitidoLlamar`- en vez de tener que acordarse de añadirla.
+ *
+ * ⚠️ Y `comprobar_contrato.mjs` NO compara este glob contra robot.launch.py
+ * como hace con LEER/ESCRIBIR/SERVICIOS: en el launch, el glob de acciones va
+ * INLINE (`_glob(['/navigate_to_pose'])`), no como una constante nombrada que
+ * se pueda extraer con el mismo patron. El script lo dice explicitamente en
+ * su salida -no es un ✅ silencioso de "los cuatro globs verificados".
+ */
 export const ACCIONES = ['/navigate_to_pose'] as const
 
 export const TIPOS: Readonly<Record<string, string>> = {
@@ -54,12 +73,54 @@ const enLista = (lista: readonly string[], x: string) => lista.includes(x)
 export const permitidoSuscribir = (topic: string) => enLista(TOPICS_LECTURA, topic)
 export const permitidoPublicar = (topic: string) => enLista(TOPICS_ESCRITURA, topic)
 export const permitidoLlamar = (servicio: string) => enLista(SERVICIOS, servicio)
+/** Ver el comentario de ACCIONES: nadie la llama todavia, es para cuando exista soporte de acciones. */
+export const permitidoAccion = (accion: string) => enLista(ACCIONES, accion)
 export const tipoDe = (topic: string): string | undefined => TIPOS[topic]
 
 /**
- * 🔴 CORREGIDO: NO es solo `/set_leds`. Cuatro de los ocho servicios tienen la
- * respuesta VACIA (`std_srvs/srv/Empty`, sin ningun campo debajo del `---`),
- * medido contra el repositorio del robot:
+ * 🔴🔴 Punto 2 del encargo: `confirmaEfecto()` prometia un EFECTO que este
+ * proyecto midio que NO ocurre. El arreglo anterior (CORREGIDO, abajo) se
+ * quedo en la forma del `.srv`: distinguio los cuatro con respuesta VACIA de
+ * los otros cuatro, y a esos otros cuatro los llamo "SI confirman". Pero
+ * "confirmar" era la palabra equivocada. Los cuatro que devuelven
+ * `bool success` lo hacen asi, en el driver (rvr_driver_node.py):
+ *
+ *   ok, _, msg = self._pedir(...)   # _pedir: «Devuelve (ok, resultado,
+ *                                   #   mensaje). Nunca lanza»
+ *   resp.success = ok               # ok = la CORRUTINA no lanzo en 5 s
+ *
+ * `success = true` dice UNA cosa: que la llamada al SDK no lanzo una
+ * excepcion. NO dice que el efecto FISICO ocurriera -y hay un caso medido y
+ * alcanzable donde las dos cosas se separan:
+ *
+ *   🔴 `undercarriage_white` NO ENCIENDE EL LED DE LOS BAJOS, y devuelve
+ *   `success=True`. Lo enciende `enable_color_detection` -un comando
+ *   DISTINTO-. Medido con el sensor de luz como testigo.
+ *
+ * `LEDS[10] = 'undercarriage_white'` (`/set_led_rgb(led_id=10)`) es una
+ * llamada perfectamente legitima por esta lista blanca: la interfaz puede
+ * alcanzar este caso sin hacer nada raro. Si `confirmaEfecto()` dijera
+ * `true` para `/set_led_rgb`, estaria prometiendo un LED encendido que no se
+ * encendio -la misma mentira, en otro sitio, que ya le costo caro a este
+ * proyecto con la parada de emergencia.
+ *
+ * Por eso la funcion ya NO devuelve un booleano: un booleano solo tiene
+ * espacio para "confirma" / "no confirma", y NINGUN servicio de los ocho
+ * confirma el efecto de verdad. `ConfirmacionServicio` no tiene un tercer
+ * valor tipo "CONFIRMA" -no existe en la union- para que sea IMPOSIBLE que
+ * el tipo prometa algo que ningun servicio da:
+ *
+ *   - `'NINGUNA'`          -> la respuesta esta VACIA: no hay ni un bit.
+ *   - `'SOLO_QUE_NO_LANZO'` -> hay un `bool success`, pero solo prueba que
+ *     la corrutina del SDK no lanzo -NO que el efecto fisico paso. Ver
+ *     `undercarriage_white` arriba: es el ejemplo real de por que esta
+ *     categoria no vale como confirmacion para la interfaz.
+ *
+ * Version anterior (CORREGIDO), conservada porque su hallazgo sigue en pie
+ * -solo la palabra "confirman" de la version vieja era el error-: NO es solo
+ * `/set_leds`. Cuatro de los ocho servicios tienen la respuesta VACIA
+ * (`std_srvs/srv/Empty`, sin ningun campo debajo del `---`), medido contra
+ * el repositorio del robot:
  *
  *   /start_scan, /stop_scan, /release_emergency_stop  -> std_srvs/srv/Empty
  *   /set_leds                                          -> SetLeds.srv, VACIA
@@ -67,13 +128,22 @@ export const tipoDe = (topic: string): string | undefined => TIPOS[topic]
  * `/release_emergency_stop` es la operacion que devuelve el control del robot
  * a un aula con estudiantes: antes `confirmaEfecto()` decia `true` para los
  * tres primeros, que es exactamente la mentira que este proyecto ya paga con
- * la parada de emergencia. La UI NO puede prometer un efecto que la respuesta
- * no contiene ni un bit para confirmar.
+ * la parada de emergencia.
  */
+export type ConfirmacionServicio = 'NINGUNA' | 'SOLO_QUE_NO_LANZO'
+
 export const SERVICIOS_SIN_CONFIRMACION = [
   '/start_scan', '/stop_scan', '/release_emergency_stop', '/set_leds',
 ] as const
-export const confirmaEfecto = (servicio: string) => !enLista(SERVICIOS_SIN_CONFIRMACION, servicio)
+
+/** El otro lado de SERVICIOS_SIN_CONFIRMACION: los cuatro con `bool success`. */
+export const SERVICIOS_SOLO_NO_LANZO = [
+  '/set_pos_and_yaw', '/set_led_rgb', '/set_multiple_leds', '/trigger_led_event',
+] as const
+
+export function confirmaEfecto(servicio: string): ConfirmacionServicio {
+  return enLista(SERVICIOS_SIN_CONFIRMACION, servicio) ? 'NINGUNA' : 'SOLO_QUE_NO_LANZO'
+}
 
 /**
  * /battery_state.percentage es una FRACCION 0-1, no un porcentaje: lo manda

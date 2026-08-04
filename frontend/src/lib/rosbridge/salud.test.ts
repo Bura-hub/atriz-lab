@@ -33,11 +33,28 @@ describe('estado del robot', () => {
     expect(s.esAveria).toBe(false)
   })
 
-  // La UNICA de las tres que se distingue, y es gratis.
+  // La UNICA de las tres que se distingue, y es gratis -PERO SOLO si /scan
+  // esta fresco. Ver el siguiente test: en produccion casi nunca lo esta.
   it('si /scan llega y /odom no, senala la excepcion en un manejador', () => {
     const s = evaluarSalud({ ...base, msDesdeUltimoOdom: null, msDesdeUltimoScan: 0 })
     expect(s.causasPosibles).toHaveLength(1)
     expect(s.causasPosibles[0]).toContain('manejador')
+  })
+
+  // Punto 5 del encargo: fija el comportamiento ACTUAL para que nadie lo
+  // "arregle" sin entender por que es asi. `Teleoperacion.arrancarBarrido()`
+  // se da de baja de /scan tras la primera muestra, asi que en produccion
+  // `msDesdeUltimoScan` queda CONGELADO ahi y envejece para siempre -nunca
+  // vuelve a estar "fresco" salvo que la interfaz mantenga su propia
+  // suscripcion aparte (ver el comentario junto a esta rama en salud.ts). Con
+  // un /scan viejo (no fresco), la funcion tiene que caer en las TRES causas
+  // genericas, NO en la especifica de una sola -aunque /odom siga sin llegar.
+  it('con /scan VIEJO (no fresco) -el estado real tras arrancarBarrido()- da las tres causas, no la especifica', () => {
+    const s = evaluarSalud({
+      ...base, msDesdeUltimoOdom: null, msDesdeUltimoScan: UMBRAL_SILENCIO_MS + 1,
+    })
+    expect(s.causasPosibles).toHaveLength(3)
+    expect(s.esAveria).toBe(false)
   })
 
   it('frenando es informativo y no cambia el estado', () => {
