@@ -139,10 +139,30 @@ function ficherosDe(dir: string): string[] {
 }
 
 const RAIZ = dirname(fileURLToPath(import.meta.url))
+/**
+ * 🔴 `app/` ENTERO, no dos subdirectorios elegidos a mano.
+ *
+ * Hasta el 2026-08-04 esta lista era `componentes/` + `app/robot/` +
+ * `app/flota/`, y ese recorte dejaba fuera **`app/layout.tsx` y `app/page.tsx`**
+ * — o sea la PUERTA DE ENTRADA. Y ahi es donde estaba la mentira:
+ *
+ *     title: "Atriz Lab - Dashboard"
+ *     description: "Laboratorio Remoto de Robotica - Panel de Control"
+ *
+ * Tres afirmaciones que el proyecto tiene explicitamente decididas al reves:
+ * NO es un laboratorio remoto —es un taller PRESENCIAL, decision 17—, no es un
+ * panel de control, y no es una consola de administracion. Llevaba ahi desde el
+ * primer dia, en la pestaña del navegador, mientras la guardia miraba a otro
+ * lado.
+ *
+ * 📝 La leccion, que es la de siempre en este proyecto: **el punto ciego de una
+ * comprobacion tiende a coincidir con donde vive el fallo**, porque los dos
+ * salen del mismo descuido. Se vigila el arbol entero y se acabo; `ficherosDe`
+ * ya es recursivo, asi que cubre cualquier ruta futura sin tocar nada.
+ */
 const DIRECTORIOS_VIGILADOS = [
   join(RAIZ, '..', '..', 'componentes'),
-  join(RAIZ, '..', '..', 'app', 'robot'),
-  join(RAIZ, '..', '..', 'app', 'flota'),
+  join(RAIZ, '..', '..', 'app'),
 ]
 
 describe('la guardia sobre los componentes y las rutas de verdad', () => {

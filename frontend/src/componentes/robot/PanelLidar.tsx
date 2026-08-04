@@ -120,10 +120,18 @@ export function PanelLidar() {
   return (
     <div className="space-y-4">
       {/* 🔴 El coste, en pantalla. Un tope silencioso se escribe. */}
+      {/* 🔴 Este aviso INFRADECLARABA: solo mencionaba `/scan`, y esta pantalla
+          abre DOS suscripciones. Un aviso de coste que se deja una fuera es
+          justo el tipo de tope silencioso que la regla del proyecto obliga a
+          escribir — y peor aún, porque suena a que ya lo ha contado todo. */}
       <Aviso nivel="NOTA" titulo="Esta pantalla consume ancho de banda">
-        <code>/scan</code> es el <strong>83 % del tráfico</strong> de un robot (~67 kB/s). La
-        suscripción se cierra sola al salir de esta pantalla. Todas las demás juntas cuestan
-        menos que esta.
+        <code>/scan</code> es el <strong>83 % del tráfico</strong> de un robot (~67 kB/s):
+        todas las demás pantallas juntas cuestan menos que esta. Y hay una segunda
+        suscripción, <code>/collision_monitor_state</code>, <strong>cuyo caudal no está
+        medido</strong> — publica al cambiar y no de forma periódica, así que en reposo
+        no cuesta nada, pero nadie ha medido cuánto cuesta conduciendo.
+        <br />
+        Las dos se cierran solas al salir de esta pantalla.
       </Aviso>
 
       {seguridad.efecto !== 'DESCONOCIDO' && (
