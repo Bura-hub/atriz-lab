@@ -115,3 +115,152 @@ describe('Transporte', () => {
     expect(caidas).toBe(1)
   })
 })
+
+// Ronda de arreglo 1: cuatro criticos medidos contra el codigo que el brief
+// original mandaba transcribir verbatim, y dos importantes que salieron con
+// ellos. Cada prueba se rompio contra su arreglo y se comprobo que fallaba
+// (ver task-6-report.md, seccion de la ronda de arreglo).
+describe('Transporte — arreglos criticos', () => {
+  // Critico 1: `onclose` no podia distinguir «lo pidio el usuario» de «se
+  // cayo el enlace», asi que cerrar() con reconectar:true levantaba OTRO
+  // socket un rato despues. Avanzamos mucho mas alla del tope de 30 s: si
+  // hay CUALQUIER reconexion pendiente, este avance la dispara.
+  it('cerrar() con reconectar:true no levanta otro socket', () => {
+    vi.useFakeTimers()
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket, {
+      reconectar: true, aleatorio: () => 0.5,
+    })
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    const unico = WSFalso.ultimo
+
+    t.cerrar()
+    vi.advanceTimersByTime(60000)   // muy por encima del tope de 30 s
+    expect(WSFalso.ultimo).toBe(unico)   // sigue siendo el mismo: no hay socket nuevo
+    vi.useRealTimers()
+  })
+
+  // Critico 2: sin guarda de reentrada, una segunda llamada a conectar()
+  // creaba un socket nuevo sin cerrar ni desenganchar el viejo. La igualdad
+  // de referencia ya delata el segundo socket; el publish confirma que,
+  // con un solo socket, un mensaje solo se entrega una vez.
+  it('conectar() dos veces seguidas deja un solo socket, y un publish se entrega una vez', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    const primero = WSFalso.ultimo
+    t.conectar()
+    expect(WSFalso.ultimo).toBe(primero)   // no se creo un segundo socket
+
+    primero.abrir()
+    const recibidos: unknown[] = []
+    t.suscribir('/odom', (m) => recibidos.push(m))
+    primero.recibir({ op: 'publish', topic: '/odom', msg: { n: 1 } })
+    expect(recibidos).toHaveLength(1)
+  })
+
+  // Critico 3: cancelar la suscripcion solo borraba el callback local.
+  // opUnsubscribe existia y no se llamaba nunca: /scan (83 % del trafico)
+  // seguia llegando para siempre, y la reconexion volvia a pedirlo.
+  it('cancelar el ultimo oyente de un topic manda unsubscribe, y no se resuscribe al reconectar', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    const cancelar = t.suscribir('/scan', () => {})
+
+    cancelar()
+    const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'unsubscribe' && o.topic === '/scan')).toBe(true)
+
+    // Reconectar: NO debe volver a pedir /scan, porque ya nadie lo escucha.
+    WSFalso.ultimo.onclose?.()
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    const opsTrasReconectar = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    expect(opsTrasReconectar.some((o) => o.op === 'subscribe' && o.topic === '/scan')).toBe(false)
+  })
+
+  it('cancelar uno de dos oyentes no manda unsubscribe, y el otro sigue escuchando', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    const recibidosA: unknown[] = []
+    const recibidosB: unknown[] = []
+    const cancelarA = t.suscribir('/odom', (m) => recibidosA.push(m))
+    t.suscribir('/odom', (m) => recibidosB.push(m))
+
+    cancelarA()
+    const ops = WSFalso.ultimo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'unsubscribe')).toBe(false)
+
+    WSFalso.ultimo.recibir({ op: 'publish', topic: '/odom', msg: { n: 1 } })
+    expect(recibidosA).toEqual([])
+    expect(recibidosB).toEqual([{ n: 1 }])
+  })
+
+  // Critico 4: `this.ws?.send()` no-opeaba en silencio sin conexion, y por
+  // publicar() pasa /emergency_stop. Una parada perdida sin aviso es el
+  // fallo mas caro y mas repetido de este proyecto.
+  it('publicar() sin conexion lanza, y el mensaje nombra el topic', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    expect(() => t.publicar('/emergency_stop', {})).toThrowError(/emergency_stop/)
+  })
+
+  it('llamar() sin conexion rechaza sin esperar al plazo', async () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    await expect(t.llamar('/stop_scan')).rejects.toThrow(/stop_scan/)
+  })
+
+  // Importante 5, y es la correccion de fondo: que el socket ABRA no prueba
+  // que el enlace SIRVA. `intentos` se reinicia al recibir un mensaje, no al
+  // abrir, asi que un socket que abre y cierra en bucle sin decir nada NO
+  // reinicia la espera creciente — y un mensaje real si la reinicia.
+  it('la espera crece en ciclos abrir-cerrar seguidos, y un mensaje recibido la reinicia', () => {
+    const esperas: number[] = []
+    // No ejecuta la reconexion: solo anota el ms pedido. Disparamos el
+    // siguiente ciclo a mano, como ya hacen las pruebas de reconexion de
+    // arriba, para poder inspeccionar cada espera por separado.
+    const programarFalso = (_fn: () => void, ms: number): ReturnType<typeof setTimeout> => {
+      esperas.push(ms)
+      return 0 as unknown as ReturnType<typeof setTimeout>
+    }
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket, {
+      reconectar: true, aleatorio: () => 0.5, programar: programarFalso,
+    })
+
+    t.conectar(); WSFalso.ultimo.abrir(); WSFalso.ultimo.onclose?.()   // ciclo 1: sin mensaje
+    t.conectar(); WSFalso.ultimo.abrir(); WSFalso.ultimo.onclose?.()   // ciclo 2: sin mensaje
+    t.conectar(); WSFalso.ultimo.abrir(); WSFalso.ultimo.onclose?.()   // ciclo 3: sin mensaje
+
+    expect(esperas).toHaveLength(3)
+    expect(esperas[2]).toBeGreaterThan(esperas[0])   // crecio: 1000 -> 2000 -> 4000
+
+    // Ciclo 4: esta vez SI llega un mensaje antes de cerrarse.
+    t.conectar()
+    WSFalso.ultimo.abrir()
+    WSFalso.ultimo.recibir({ op: 'publish', topic: '/odom', msg: {} })
+    WSFalso.ultimo.onclose?.()
+
+    expect(esperas).toHaveLength(4)
+    expect(esperas[3]).toBe(esperas[0])   // se reinicio: misma espera que el primer intento
+  })
+
+  // Importante 6: un `status` de rosbridge se tiraba sin dejar rastro, y
+  // rosbridge DENIEGA EN SILENCIO — su canal `status` es la unica pista de
+  // lo que rechazo. Y JSON.parse sin try/catch podia tumbar el manejador.
+  it('un status de rosbridge llega a alAviso, y un JSON invalido no lanza y avisa', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    const avisos: { nivel: string; mensaje: string }[] = []
+    t.alAviso((a) => avisos.push(a))
+
+    WSFalso.ultimo.recibir({ op: 'status', level: 'error', msg: 'topic no autorizado' })
+    expect(avisos).toEqual([{ nivel: 'error', mensaje: 'topic no autorizado' }])
+
+    expect(() => WSFalso.ultimo.onmessage?.({ data: '{ esto no es json' })).not.toThrow()
+    expect(avisos).toHaveLength(2)
+    expect(avisos[1].nivel).toBe('error')
+  })
+})
