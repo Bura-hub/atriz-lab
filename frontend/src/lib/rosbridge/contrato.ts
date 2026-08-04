@@ -8,7 +8,8 @@
 
 export const TOPICS_LECTURA = [
   '/odom', '/imu', '/scan', '/battery_state', '/motor_status', '/encoders',
-  '/color', '/map', '/tf', '/tf_static', '/collision_monitor_state', '/amcl_pose',
+  '/color', '/estado_robot', '/map', '/tf', '/tf_static', '/collision_monitor_state',
+  '/amcl_pose',
 ] as const
 
 /** 🔴 /cmd_vel NO esta y no debe estar: es la SALIDA del collision_monitor. */
@@ -53,6 +54,15 @@ export const TIPOS: Readonly<Record<string, string>> = {
   //    topic no llega», que se busca en el sitio equivocado.
   '/encoders': 'atriz_rvr_msgs/msg/Encoder',
   '/color': 'atriz_rvr_msgs/msg/Color',
+  // AÑADIDO 2026-08-04, cuando `feat/estado-robot` se fusiono en `ros2`. Trae lo
+  // que la interfaz no podia saber: el `latido` (senal de vida DEL NODO, no del
+  // topic), la bandera de parada -que el driver no publicaba-, y con que
+  // distinguir un robot CARGANDO de uno DORMIDO.
+  // 🔴 Y `antiguedad_odom_s`, que cubre un tercer estado que no veia nadie:
+  //    llegan 4 de los 5 componentes de /odom -> el latido avanza y
+  //    `rvr_responde` dice true con /odom a 0 Hz. Sin ese campo, el muro del
+  //    profesor pinta VERDE un robot con la odometria muerta.
+  '/estado_robot': 'atriz_rvr_msgs/msg/EstadoRobot',
   '/map': 'nav_msgs/msg/OccupancyGrid',
   '/tf': 'tf2_msgs/msg/TFMessage',
   '/tf_static': 'tf2_msgs/msg/TFMessage',
