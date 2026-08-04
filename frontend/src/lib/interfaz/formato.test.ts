@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   SIN_DATO, aGrados, antiguedad, celsius, grados, horaCorta, metros, metrosPorSegundo,
-  milisegundos, numero, radianesPorSegundo, segundos, voltios, yawDeCuaternion,
+  milisegundos, numero, partirUnidad, radianesPorSegundo, segundos, voltios, yawDeCuaternion,
 } from './formato'
 import { interpretarAntiguedad } from '../rosbridge/contrato'
 
@@ -112,5 +112,27 @@ describe('formato — horaCorta', () => {
   it('da hh:mm:ss con dos digitos siempre', () => {
     const t = new Date(2026, 7, 4, 9, 5, 3).getTime()
     expect(horaCorta(t)).toBe('09:05:03')
+  })
+})
+
+
+describe('partirUnidad — el numero manda, la unidad acompaña', () => {
+  it('separa los formatos que esta interfaz produce', () => {
+    expect(partirUnidad('8,23 V')).toEqual({ numero: '8,23', unidad: 'V' })
+    expect(partirUnidad('25,8 °C')).toEqual({ numero: '25,8', unidad: '°C' })
+    expect(partirUnidad('0,000 m/s')).toEqual({ numero: '0,000', unidad: 'm/s' })
+    expect(partirUnidad('3 ticks')).toEqual({ numero: '3', unidad: 'ticks' })
+  })
+
+  it('🔴 lo que no lleva junta se devuelve ENTERO, sin inventar una unidad', () => {
+    // Partir por donde no hay separacion produciria basura: «−0,5°» no tiene
+    // espacio, y «—» tampoco. Devolver `unidad: null` es la respuesta honesta.
+    expect(partirUnidad('−0,5°')).toEqual({ numero: '−0,5°', unidad: null })
+    expect(partirUnidad('—')).toEqual({ numero: '—', unidad: null })
+    expect(partirUnidad('')).toEqual({ numero: '', unidad: null })
+  })
+
+  it('y un espacio final no crea una unidad vacia', () => {
+    expect(partirUnidad('8,23 ')).toEqual({ numero: '8,23 ', unidad: null })
   })
 })

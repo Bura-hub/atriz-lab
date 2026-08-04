@@ -37,7 +37,7 @@
  */
 
 import { ReactNode } from 'react'
-import { SIN_DATO } from '@/lib/interfaz/formato'
+import { SIN_DATO, partirUnidad } from '@/lib/interfaz/formato'
 
 export interface PropsDato {
   etiqueta: string
@@ -77,7 +77,11 @@ export function Dato({
    */
   const clases = desconocido
     ? 'hueco text-lg leading-none'
-    : `font-mono tracking-tight ${grande === true ? 'text-3xl font-semibold' : 'text-lg'}`
+    : `font-mono tracking-tight ${grande === true ? 'text-3xl font-semibold' : 'text-xl'}`
+
+  // 🔴 El numero manda, la unidad acompaña. Ver `partirUnidad()`: es informacion,
+  //    no adorno — un multimetro no pinta «8,23» y «V» al mismo peso.
+  const { numero: cifra, unidad } = partirUnidad(valor)
 
   return (
     // Ritmo: apretado DENTRO del dato (etiqueta pegada al valor), generoso
@@ -100,7 +104,12 @@ export function Dato({
             {desconocido ? '—' : valor}
           </span>
         ) : (
-          <data value={String(crudo)} className={clases}>{valor}</data>
+          <data value={String(crudo)} className={clases}>
+            {cifra}
+            {unidad !== null && (
+              <span className="ml-1 text-[0.62em] font-normal text-muted-foreground">{unidad}</span>
+            )}
+          </data>
         )}
         {/*
           🔴 «· dato de no se sabe» era ilegible, y ademas no significaba nada:

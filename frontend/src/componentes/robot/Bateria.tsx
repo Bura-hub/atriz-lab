@@ -30,6 +30,7 @@ import { SIN_DATO, milisegundos, numero, voltios } from '@/lib/interfaz/formato'
 import { porcentajeDe, voltajeDe } from '@/lib/interfaz/lecturas'
 import { Dato } from '@/componentes/ui/Dato'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
+import { Contexto } from '@/componentes/ui/Contexto'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
 const TONO: Readonly<Record<NivelBateria, TonoInsignia>> = {
@@ -76,19 +77,31 @@ export function Bateria() {
         crudo={v ?? undefined}
         antiguedad={desde === null ? SIN_DATO : `hace ${milisegundos(desde)}`}
         grande
-        nota={
-          <>
-            Umbrales del firmware: baja por debajo de {voltios(V_BAJA)}, crítica por debajo de{' '}
-            {voltios(V_CRITICA)}. {TEXTO[nivel]}.
-          </>
-        }
+        // 🔴 Solo el VEREDICTO va pegado al valor: cambia con lo que llega y
+        //    por tanto es estado. Los umbrales del firmware son constantes y
+        //    bajan al desplegable — antes ocupaban dos lineas bajo cada numero
+        //    y el ojo iba valor, parrafo, valor, parrafo.
+        nota={TEXTO[nivel]}
       />
       <Dato
         etiqueta="Porcentaje que reporta el firmware (no decide nada)"
         valor={pct === null ? SIN_DATO : `${numero(pct, 0)} %`}
         crudo={pct ?? undefined}
-        nota="El mensaje lo trae como fracción 0-1; aquí ya va multiplicado por 100. Es una estimación gruesa: no sirve para decidir si hay que cargar."
+
       />
+      <Contexto>
+        <p>
+          Umbrales del firmware: <strong>baja</strong> por debajo de {voltios(V_BAJA)} y{' '}
+          <strong>crítica</strong> por debajo de {voltios(V_CRITICA)}, con 0,2 V de histéresis.
+        </p>
+        <p>
+          El porcentaje llega como fracción 0-1 y aquí ya va multiplicado por 100. Es una
+          estimación gruesa del firmware: marcó <strong>100 % con la batería a 8,29 V</strong>, a
+          1,29 V del umbral de «baja». Por eso esta pantalla decide por voltios y el porcentaje
+          se enseña sin que decida nada.
+        </p>
+      </Contexto>
+
       {v === null && mensaje !== null && (
         <p className="text-xs text-muted-foreground mt-2 max-w-prose">
           Ha llegado un <code>/battery_state</code> sin un voltaje válido. El driver publica{' '}

@@ -118,3 +118,26 @@ export function horaCorta(t: number): string {
   const dd = (n: number) => String(n).padStart(2, '0')
   return `${dd(d.getHours())}:${dd(d.getMinutes())}:${dd(d.getSeconds())}`
 }
+
+
+/**
+ * Parte «8,23 V» en el numero y su unidad.
+ *
+ * 🔴 POR QUE ESTO ES INFORMACION Y NO ADORNO: en un instrumento **el numero es
+ * el dato y la unidad es su contexto**. Pintados al mismo tamaño y peso compiten,
+ * y el ojo tiene que separar «8,23» de «V» cada vez que lee. Un multimetro, una
+ * bascula o un osciloscopio no lo hacen: el numero manda y la unidad acompaña.
+ *
+ * Es ademas la unica forma de que una columna de medidas se lea de un vistazo —
+ * los numeros alineados, las unidades fuera del camino.
+ *
+ * ⚠️ Separa por el ULTIMO espacio, asi que «0,000 m/s» da («0,000», «m/s») y
+ *    «3 ticks» da («3», «ticks»). Lo que no lleva espacio —«−0,5°», «100 %» sin
+ *    separar— se devuelve entero y sin unidad, que es lo correcto: partir por
+ *    donde no hay junta produciria basura.
+ */
+export function partirUnidad(valor: string): { numero: string; unidad: string | null } {
+  const i = valor.lastIndexOf(' ')
+  if (i <= 0 || i === valor.length - 1) return { numero: valor, unidad: null }
+  return { numero: valor.slice(0, i), unidad: valor.slice(i + 1) }
+}
