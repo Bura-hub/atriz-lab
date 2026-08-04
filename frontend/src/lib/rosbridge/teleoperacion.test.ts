@@ -415,40 +415,66 @@ describe('Teleoperacion.desmontar()', () => {
   })
 })
 
-// C3 desde el lado de Teleoperacion: es la consecuencia concreta que el
-// encargo pide comprobar. `Teleoperacion` corta su bucle cuando `Transporte`
-// avisa por `alCerrarse()`. Antes del arreglo de C3, el `onclose` asincrono
-// de un socket VIEJO (tras un patron "Reconectar" = cerrar()+conectar())
-// disparaba `oyentesCierre` igualmente, aunque el socket NUEVO siguiera vivo
-// y sano -asi que `alCerrarse` cortaba el bucle de mando sobre un enlace que
-// funcionaba. "Telemetria viva mas parada muerta" con los papeles invertidos.
-describe('Teleoperacion — C3: no se corta por un onclose diferido del socket VIEJO tras cerrar()+conectar()', () => {
+// C3 desde el lado de Teleoperacion, REESCRITA tras el arreglo de R1.
+//
+// 🔴 La version anterior de esta prueba afirmaba que el bucle de 10 Hz
+// SEGUIA publicando sobre el socket nuevo tras un `cerrar(); conectar()`
+// ("el boton Reconectar"). Era una FICCION: solo pasaba porque WSFalso (en
+// su version de entonces) abria el socket en el MISMO tick que `conectar()`.
+// Con una apertura realista (150 ms, un RTT) el resultado medido por la
+// revision era 0 publicaciones en el socket nuevo y un aviso de error.
+//
+// Y con el arreglo de R1 la ficcion ya ni siquiera puede compilar como
+// verdad: `cerrar()` ahora avisa a `oyentesCierre` de forma SINCRONA (ya no
+// depende del `onclose` asincrono, que la guarda de C3 iba a descartar de
+// todas formas). Eso significa que `Teleoperacion.detener()` -el oyente
+// registrado en el constructor- corta el temporizador de 10 Hz EN EL ACTO,
+// dentro del propio `cerrar()`, antes incluso de que `conectar()` cree el
+// socket nuevo. El bucle de mando NO sobrevive a un "Reconectar" real, y
+// fijarlo por prueba seria fijar algo que el navegador no da.
+//
+// Lo que SI sobrevive, y es lo que de verdad le importa a quien construya la
+// interfaz: el TRANSPORTE. Tras `cerrar(); conectar()`, sigue conectado,
+// vuelve a suscribirse, vuelve a anunciar, y la parada de emergencia -la
+// unica accion que este proyecto no se puede permitir perder- sigue
+// funcionando sobre el socket nuevo.
+describe('Teleoperacion — C3: el bucle de mando se corta al reconectar, pero el TRANSPORTE sobrevive', () => {
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 
-  it('el bucle sigue publicando sobre el socket NUEVO aunque el onclose asincrono del viejo llegue despues', async () => {
-    const { t } = transporteConectado()
+  it('tras cerrar()+conectar(), el bucle de 10 Hz se corta pero el transporte sigue conectado, resuscribe, reanuncia, y paradaEmergencia() sigue funcionando', async () => {
+    const { t, ws: viejo } = transporteConectado()
     const tel = new Teleoperacion(t)
-    tel.mover(0.2, 0)   // arranca el temporizador de 10 Hz (publica una vez, en el socket VIEJO)
+    t.suscribir('/odom', () => {})
+    tel.mover(0.2, 0)                     // arranca el bucle de 10 Hz sobre el socket VIEJO
+    t.publicar('/emergency_stop', {})     // queda anunciado en el socket VIEJO
 
     // Patron "Reconectar": cerrar() + conectar() en el acto.
     t.cerrar()
     t.conectar()
     const nuevo = WSFalso.ultimo
+    expect(nuevo).not.toBe(viejo)
     nuevo.abrir()
 
-    // Aqui, mas tarde, llega el onclose asincrono del socket VIEJO. Sin el
-    // arreglo de C3, esto dispara `oyentesCierre` -> `Teleoperacion.detener()`
-    // -> `clearInterval()`, y el temporizador de 10 Hz muere para siempre.
+    // El onclose asincrono del socket VIEJO llega mas tarde: no debe
+    // deshacer nada de lo que paso en el nuevo (guarda de C3, sin cambios).
     await Promise.resolve()
     await Promise.resolve()
 
-    // La propiedad central: el temporizador SIGUE vivo. mover() no reinicia
-    // el timer si ya existe, asi que la unica forma de ver mas publicaciones
-    // es que el setInterval original (creado ANTES de cerrar()+conectar())
-    // siga corriendo y publique sobre el socket vigente (nuevo).
+    // El bucle de mando SI se corto -es correcto, ver el comentario de
+    // arriba- porque `cerrar()` avisa a `oyentesCierre` en el acto.
     vi.advanceTimersByTime(300)
-    const pubs = publicaciones(nuevo, '/cmd_vel_raw')
-    expect(pubs.length).toBeGreaterThan(0)
+    expect(publicaciones(nuevo, '/cmd_vel_raw')).toHaveLength(0)
+
+    // Pero el transporte esta sano: conectado, resuscrito, reanunciado.
+    expect(t.conectado).toBe(true)
+    const ops = nuevo.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'subscribe' && o.topic === '/odom')).toBe(true)
+    expect(ops.some((o) => o.op === 'advertise' && o.topic === '/emergency_stop')).toBe(true)
+
+    // Y lo que mas importa: la parada de emergencia sigue funcionando sobre
+    // el socket nuevo.
+    expect(() => tel.paradaEmergencia()).not.toThrow()
+    expect(publicaciones(nuevo, '/emergency_stop')).toHaveLength(1)
   })
 })

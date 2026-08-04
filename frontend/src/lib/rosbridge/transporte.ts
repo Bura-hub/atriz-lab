@@ -42,7 +42,6 @@ export class Transporte {
   private oyentesAviso = new Set<(a: Aviso) => void>()
   private contador = 0
   private intentos = 0
-  private cierreDeliberado = false
   private reconexionProgramada: ReturnType<typeof setTimeout> | null = null
 
   constructor(
@@ -97,7 +96,6 @@ export class Transporte {
     //    las llamadas pendientes del nuevo, que estaba sano.
     if (this.ws !== null) return
 
-    this.cierreDeliberado = false
     const ws = this.fabrica(this.url)
     this.ws = ws
 
@@ -183,11 +181,18 @@ export class Transporte {
       for (const cb of this.oyentesCierre) cb()
       // 🔴 NO se libera la parada de emergencia al reconectar: liberarla es
       //    siempre un acto humano deliberado.
-      // 🔴 Y no se reconecta si el cierre lo pidio el usuario: `onclose` no
-      //    distingue los dos casos por si solo, y sin esta bandera un `cerrar()`
-      //    levantaba un socket nuevo que seguia recibiendo /scan —el 83 % del
-      //    trafico— sin que nadie supiera que existia.
-      if (this.opciones.reconectar && !this.cierreDeliberado) {
+      // 🔴 Y esto NUNCA se alcanza tras un `cerrar()` deliberado: `cerrar()`
+      //    ya dejo `this.ws` en `null` de forma SINCRONA (ver mas abajo), asi
+      //    que la guarda de arriba (`this.ws !== ws`) sale antes de llegar
+      //    aqui. Por eso ya no hace falta una bandera aparte para distinguir
+      //    «lo pidio el usuario» de «se cayo el enlace» -habia una
+      //    (`cierreDeliberado`) y quedo muerta tras el arreglo de R1:
+      //    medido quitandola, las 87 pruebas siguen en verde. Sin la guarda
+      //    de C3 esto SI haria falta -era su version anterior, cuando
+      //    `onclose` corria sin ella y un `cerrar()` levantaba un socket
+      //    nuevo que seguia recibiendo /scan —el 83 % del trafico— sin que
+      //    nadie supiera que existia.
+      if (this.opciones.reconectar) {
         const espera = esperaReconexion(this.intentos++, this.opciones.aleatorio)
         const programar = this.opciones.programar ?? setTimeout
         this.reconexionProgramada = programar(() => {
@@ -199,14 +204,30 @@ export class Transporte {
   }
 
   cerrar(): void {
-    // Se marca ANTES de cerrar, porque `onclose` se dispara dentro de `close()`.
-    this.cierreDeliberado = true
     if (this.reconexionProgramada !== null) {
       clearTimeout(this.reconexionProgramada)
       this.reconexionProgramada = null
     }
-    this.ws?.close()
-    this.ws = null
+    // 🔴 R1: el `close()` de un WebSocket real es ASINCRONO (ver el comentario
+    //    de C3 en `ws.onclose`, mas abajo), asi que su `onclose` diferido no
+    //    ha disparado todavia en este punto. La guarda de C3 (`this.ws !== ws`)
+    //    lo va a descartar en cuanto llegue, porque `this.ws` esta a punto de
+    //    quedar en `null` -y eso es CORRECTO para un socket viejo tras un
+    //    `cerrar(); conectar()`, pero significa que NO podemos confiar en que
+    //    ese `onclose` haga el desmontaje: hay que hacerlo aqui, explicito,
+    //    ANTES de anular `this.ws`. Sin esto, un `cerrar()` a secas ya no
+    //    cancelaba las llamadas pendientes ni avisaba a `oyentesCierre` -la
+    //    misma atribucion falsa de I1 (pendientes que vencen su plazo y
+    //    culpan al robot), reintroducida por otra puerta.
+    // Solo si habia algo que cerrar: si `this.ws` ya era `null` (nunca se
+    // conecto, o ya se habia caido y su propio `onclose` ya hizo este mismo
+    // desmontaje), no hay nada que cancelar ni que avisar dos veces.
+    if (this.ws !== null) {
+      this.ws.close()
+      this.pendientes.cancelarTodas('se cerro el WebSocket')
+      for (const cb of this.oyentesCierre) cb()
+      this.ws = null
+    }
   }
 
   private enviar(op: unknown): void {

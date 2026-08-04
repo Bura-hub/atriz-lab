@@ -547,13 +547,21 @@ describe('Transporte — C3: cerrar() seguido de conectar() (el boton "Reconecta
     vi.useRealTimers()
   })
 
-  it('un mensaje entregado tarde por el socket VIEJO no se procesa: no alimenta entrante() con datos obsoletos', async () => {
+  // 🔴 R3: esta prueba PASABA con la guarda de `onmessage` quitada -solo
+  // afirmaba `not.toThrow()` y `conectado === true`, y ninguna de las dos
+  // cambia si el mensaje tardio SI se procesa. Lo que de verdad importa:
+  // el suscriptor no tiene que recibir un mensaje FANTASMA (de un socket que
+  // ya no existe), y `ultimaLlegada` no se puede tocar con el, porque eso
+  // reinicia `intentos` (rompe la espera creciente) y puede poner
+  // `salud.ts` en EN_LINEA con datos de un socket muerto.
+  it('un mensaje entregado tarde por el socket VIEJO no se procesa: el suscriptor no recibe nada y ultimaLlegada no se toca', async () => {
     const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
     t.conectar()
     WSFalso.ultimo.abrir()
     const viejo = WSFalso.ultimo
 
-    t.suscribir('/odom', () => {})
+    const recibidos: unknown[] = []
+    t.suscribir('/odom', (m) => recibidos.push(m))
 
     t.cerrar()
     t.conectar()
@@ -561,13 +569,95 @@ describe('Transporte — C3: cerrar() seguido de conectar() (el boton "Reconecta
     nuevo.abrir()
 
     // El socket viejo, todavia con referencias validas a sus handlers,
-    // entrega un mensaje tardio -no deberia tocar el ultimaLlegada ni
-    // resetear `intentos` del transporte vigente de forma incorrecta, pero
-    // sobre todo: no debe lanzar ni comportarse como si viniera del actual.
+    // entrega un mensaje tardio -no debe lanzar, no debe llegar al
+    // suscriptor, y no debe marcar ultimaLlegada.
     expect(() => viejo.recibir({ op: 'publish', topic: '/odom', msg: { n: 99 } })).not.toThrow()
+
+    expect(recibidos).toEqual([])
+    expect(t.msDesdeUltimo('/odom')).toBeNull()
 
     await Promise.resolve()
     await Promise.resolve()
     expect(t.conectado).toBe(true)
+  })
+
+  // 🔴 R2: la guarda de `onopen` (misma familia que la de `onmessage` de
+  // arriba) tampoco la protegia ninguna prueba: romperla sola dejaba las 84
+  // pruebas en verde. `enviar()` usa SIEMPRE `this.ws` -el socket VIGENTE-,
+  // asi que un `onopen` tardio del socket VIEJO, sin guarda, reenviaria el
+  // bucle de resuscripcion/reanuncio y duplicaria trafico sobre el socket
+  // NUEVO, aunque quien disparo el evento fuera el viejo.
+  it('el onopen tardio de un socket VIEJO no reenvia suscripciones ni anuncios sobre el socket NUEVO', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    const viejo = WSFalso.ultimo
+    viejo.abrir()
+    t.suscribir('/odom', () => {})
+    t.publicar('/emergency_stop', {})   // queda anunciado
+
+    t.cerrar()
+    t.conectar()
+    const nuevo = WSFalso.ultimo
+    nuevo.abrir()
+    const enviadosTrasAbrirNuevo = nuevo.enviados.length
+
+    // onopen TARDIO del socket viejo: `this.ws` ya es `nuevo`.
+    viejo.abrir()
+
+    expect(nuevo.enviados.length).toBe(enviadosTrasAbrirNuevo)
+  })
+})
+
+// R1: la regresion que abrio la ronda anterior de arreglos. La guarda de C3
+// en `onclose` (`if (this.ws !== ws) return`) se evalua DESPUES de que
+// `cerrar()` haga `this.ws = null`, y con un `close()` ASINCRONO (como el de
+// WSFalso, que imita al real) ese `onclose` diferido SIEMPRE sale por la
+// guarda. Sin desmontaje explicito en `cerrar()`, un cierre a secas dejaba de
+// cancelar las llamadas en vuelo y de avisar a `oyentesCierre` -la misma
+// atribucion falsa de I1 (una llamada que vence su plazo y culpa al robot),
+// reintroducida por otra puerta. Medido contra el codigo anterior (c81072d)
+// en r1-r3-report.md.
+describe('Transporte — R1: cerrar() hace su desmontaje sin esperar el onclose asincrono', () => {
+  it('cerrar() a secas cancela YA una llamada en vuelo (con el motivo del cierre, no la conjetura del plazo) y avisa a oyentesCierre UNA sola vez, en el acto', async () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    let caidas = 0
+    t.alCerrarse(() => { caidas++ })
+
+    const p = t.llamar('/start_scan')   // llamada en vuelo, plazo por defecto 5 s
+
+    t.cerrar()
+
+    // En el ACTO, sin avanzar ni un microtask ni un timer: `oyentesCierre` ya
+    // disparo y la llamada ya esta rechazada con el motivo del cierre -no con
+    // la conjetura generica de "sin respuesta... denegado... o caido" que
+    // solo aparece si se deja vencer el plazo de 5 s.
+    expect(caidas).toBe(1)
+    await expect(p).rejects.toThrow(/se cerro el WebSocket/)
+    await expect(p).rejects.not.toThrow(/denegado|robot puede estar caido/)
+
+    // Y el onclose asincrono del socket que se acaba de cerrar, si llega,
+    // sale por la guarda de C3 (`this.ws` ya es `null`) y no vuelve a avisar.
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(caidas).toBe(1)
+  })
+
+  // La caida ESPONTANEA (el robot se apaga, se pierde el WiFi...) no debe
+  // cambiar: sigue siendo el `onclose` real el que hace el desmontaje, no
+  // `cerrar()` -que aqui nunca se llama.
+  it('una caida espontanea (sin cerrar()) sigue cancelando y avisando igual que antes', () => {
+    const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+    t.conectar()
+    WSFalso.ultimo.abrir()
+
+    let caidas = 0
+    t.alCerrarse(() => { caidas++ })
+
+    WSFalso.ultimo.onclose?.()   // se cae de verdad, nadie llamo a cerrar()
+
+    expect(caidas).toBe(1)
   })
 })
