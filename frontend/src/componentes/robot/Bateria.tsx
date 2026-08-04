@@ -69,6 +69,7 @@ export function Bateria() {
       <Dato
         etiqueta="Voltaje"
         valor={voltios(v)}
+        crudo={v ?? undefined}
         antiguedad={desde === null ? SIN_DATO : `hace ${milisegundos(desde)}`}
         grande
         nota={
@@ -81,6 +82,7 @@ export function Bateria() {
       <Dato
         etiqueta="Porcentaje que reporta el firmware (no decide nada)"
         valor={pct === null ? SIN_DATO : `${numero(pct, 0)} %`}
+        crudo={pct ?? undefined}
         nota="El mensaje lo trae como fracción 0-1; aquí ya va multiplicado por 100. Es una estimación gruesa: no sirve para decidir si hay que cargar."
       />
       {v === null && mensaje !== null && (

@@ -36,20 +36,25 @@ function Odometria() {
       titulo="Odometría"
       subtitulo="Del locator del RVR, ya llevada al marco de ROS por el driver: rotación de −90° en posición y velocidad, y el yaw del arranque restado."
     >
-      <div className="grid gap-x-6 sm:grid-cols-2">
-        <Dato etiqueta="Posición X" valor={metros(numeroValido(pos?.x))} />
-        <Dato etiqueta="Posición Y" valor={metros(numeroValido(pos?.y))} />
+      <div className="rejilla sm:grid-cols-2">
+        <Dato etiqueta="Posición X" valor={metros(numeroValido(pos?.x))}
+          crudo={numeroValido(pos?.x) ?? undefined} />
+        <Dato etiqueta="Posición Y" valor={metros(numeroValido(pos?.y))}
+          crudo={numeroValido(pos?.y) ?? undefined} />
         <Dato
           etiqueta="Rumbo (yaw)"
           valor={yawRad === null ? SIN_DATO : grados(aGrados(yawRad))}
+          crudo={yawRad === null ? undefined : aGrados(yawRad)}
           nota="Positivo = antihorario (REP-103), verificado contra el LIDAR."
         />
         <Dato
           etiqueta="Velocidad lineal"
           valor={metrosPorSegundo(numeroValido(lineal?.x))}
+          crudo={numeroValido(lineal?.x) ?? undefined}
           referencia="meseta real 0,199 m/s pidiendo 0,20"
         />
-        <Dato etiqueta="Velocidad angular" valor={radianesPorSegundo(numeroValido(angular?.z))} />
+        <Dato etiqueta="Velocidad angular" valor={radianesPorSegundo(numeroValido(angular?.z))}
+          crudo={numeroValido(angular?.z) ?? undefined} />
       </div>
 
       <p className="text-xs text-muted-foreground mt-3 max-w-prose">
@@ -79,7 +84,7 @@ function Encoders() {
       titulo="Encoders"
       subtitulo="La única fuente que no depende del marco de referencia. Calibrados contra cinta métrica: 7792 ticks/m."
     >
-      <div className="grid gap-x-6 sm:grid-cols-2">
+      <div className="rejilla sm:grid-cols-2">
         <Dato
           etiqueta="Rueda izquierda"
           valor={izq === null ? SIN_DATO : `${numero(izq, 0)} ticks`}

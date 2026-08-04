@@ -7,8 +7,33 @@
  * temperatura estable. Por eso `antiguedad` es una prop y no un adorno opcional
  * que se olvida.
  *
- * 🔴 Y cuando el valor es «no se sabe», se pinta ATENUADO y en cursiva: tiene
- * que distinguirse de un cero a un metro de distancia.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 «NO SE SABE» ES LA AUSENCIA DE `<data>`, NO UN `<data value="">`
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Esta es la parte que hace que este componente no sea cosmetica.
+ *
+ * Cuando hay valor se emite `<data value="7.42">`, el elemento que HTML define
+ * para «una representacion legible por una persona con su equivalente legible
+ * por una maquina». Cuando no lo hay, **no se emite el elemento**: se emite un
+ * `<span>` con el texto de «no se sabe».
+ *
+ * Con eso, la regla central del proyecto —la pantalla nunca afirma lo que no
+ * sabe— deja de ser un estilo en gris y cursiva y pasa a ser **estructura del
+ * DOM**:
+ *
+ *   · se puede comprobar por script sobre el HTML servido, sin renderizar nada
+ *   · un lector de pantalla distingue las dos cosas
+ *   · y es imposible romperlo por accidente retocando clases de Tailwind
+ *
+ * ⚠️ Un `<data value="">` seria lo PEOR de las dos opciones: afirma que hay un
+ *    valor legible por maquina, y no lo hay. Por eso el elemento desaparece
+ *    entero en vez de quedarse vacio.
+ *
+ * ⚠️ Y `crudo` es OPCIONAL a proposito. `Dato` recibe el valor ya formateado
+ *    («7,42 V»), asi que enhebrar el numero sin formatear hasta aqui cuesta
+ *    tocar todas las llamadas. Se hace donde hay numero -bateria, temperaturas,
+ *    odometria, encoders- y **no se inventa un `value` donde no lo hay solo para
+ *    que la estructura quede simetrica**.
  */
 
 import { ReactNode } from 'react'
@@ -16,8 +41,14 @@ import { SIN_DATO } from '@/lib/interfaz/formato'
 
 export interface PropsDato {
   etiqueta: string
-  /** Ya formateado. Si vale `SIN_DATO` se pinta atenuado. */
+  /** Ya formateado. Si vale `SIN_DATO` se pinta atenuado y SIN `<data>`. */
   valor: string
+  /**
+   * El numero sin formatear, para el atributo `value` de `<data>`. Opcional:
+   * ver la cabecera. **No lo rellenes con un 0 ni con una cadena vacia** — si no
+   * hay numero crudo, se omite y no pasa nada.
+   */
+  crudo?: number
   /** «hace 12,4 s» o «no se sabe». Se pinta pegado al valor, nunca lejos. */
   antiguedad?: string
   /** El valor MEDIDO en el robot con el que comparar, si lo hay. */
@@ -28,21 +59,33 @@ export interface PropsDato {
   grande?: boolean
 }
 
-export function Dato({ etiqueta, valor, antiguedad, referencia, nota, grande }: PropsDato) {
+export function Dato({
+  etiqueta, valor, crudo, antiguedad, referencia, nota, grande,
+}: PropsDato) {
   const desconocido = valor === SIN_DATO
+  const clases = [
+    'font-mono',
+    grande === true ? 'text-2xl font-semibold' : 'text-base',
+    desconocido ? 'italic text-muted-foreground font-normal' : 'text-foreground',
+  ].join(' ')
+
   return (
-    <div className="py-1.5">
-      <div className="text-xs text-muted-foreground">{etiqueta}</div>
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <span
-          className={[
-            'font-mono tabular-nums',
-            grande === true ? 'text-2xl font-semibold' : 'text-base',
-            desconocido ? 'italic text-muted-foreground font-normal' : 'text-foreground',
-          ].join(' ')}
-        >
-          {valor}
-        </span>
+    <div className="px-3 py-2">
+      {/*
+        La microetiqueta sobre el valor. `craft-floor.md:26` de la skill
+        `impeccable` prohibe esto sin excepciones -«This one is a ban, not a
+        default: no brief earns it back»-, y aqui tiene EXENCION ESCRITA
+        (CLAUDE.md): en un instrumento la microetiqueta ES la unidad y el
+        contexto del numero, no un adorno de marketing.
+      */}
+      <div className="text-[11px] uppercase tracking-wide text-muted-foreground">{etiqueta}</div>
+
+      <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+        {desconocido || crudo === undefined || !Number.isFinite(crudo) ? (
+          <span className={clases}>{valor}</span>
+        ) : (
+          <data value={String(crudo)} className={clases}>{valor}</data>
+        )}
         {antiguedad !== undefined && (
           <span className="text-xs text-muted-foreground">· dato de {antiguedad}</span>
         )}
@@ -50,7 +93,10 @@ export function Dato({ etiqueta, valor, antiguedad, referencia, nota, grande }: 
           <span className="text-xs text-muted-foreground">· medido en el robot: {referencia}</span>
         )}
       </div>
-      {nota !== undefined && <p className="text-xs text-muted-foreground mt-0.5 max-w-prose">{nota}</p>}
+
+      {nota !== undefined && (
+        <p className="mt-0.5 max-w-prose text-xs text-muted-foreground">{nota}</p>
+      )}
     </div>
   )
 }

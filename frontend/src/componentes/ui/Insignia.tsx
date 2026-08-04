@@ -22,16 +22,25 @@ const CLASES: Readonly<Record<TonoInsignia, string>> = {
 export interface PropsInsignia {
   tono: TonoInsignia
   children: ReactNode
-  /** Un punto delante, para que el estado se lea sin depender solo del color. */
+  /**
+   * Una marca delante, para que el estado NO dependa solo del color.
+   *
+   * 🔴 Y NO PARPADEA, ni parpadeara. Es exactamente el sitio donde tres de las
+   *    skills instaladas exigen un pulso infinito
+   *    (`stitch-design-taste:95` — «Pulse on status dots»). En una pantalla que
+   *    vigila 16 robots que pueden estar mudos, **un punto que late siempre es
+   *    indistinguible de un robot que vive siempre**. Hay una prueba que lo
+   *    impide (`estilo.test.ts`) y el motivo esta en `CLAUDE.md`.
+   */
   punto?: boolean
 }
 
 export function Insignia({ tono, children, punto = true }: PropsInsignia) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${CLASES[tono]}`}
+      className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-xs font-medium ${CLASES[tono]}`}
     >
-      {punto && <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />}
+      {punto && <span className="h-1.5 w-1.5 bg-current" aria-hidden="true" />}
       {children}
     </span>
   )

@@ -60,27 +60,31 @@ export function EstadoMotores() {
       subtitulo="Cada valor con la antigüedad de SU fuente: llegan por caminos distintos y refrescan a ritmos distintos."
       extremo={insigniaDeHecho(atascado, 'atasco', 'sin atasco')}
     >
-      <div className="grid gap-x-6 sm:grid-cols-2">
+      <div className="rejilla sm:grid-cols-2">
         <Dato
           etiqueta="Temperatura oruga izquierda"
           valor={celsius(m?.temperatura_izquierdo)}
+          crudo={m?.temperatura_izquierdo}
           antiguedad={antiguedad(fTermico)}
           referencia="27,5 °C en reposo"
         />
         <Dato
           etiqueta="Temperatura oruga derecha"
           valor={celsius(m?.temperatura_derecho)}
+          crudo={m?.temperatura_derecho}
           antiguedad={antiguedad(fTermico)}
           referencia="28,3 °C en reposo"
         />
         <Dato
           etiqueta="Estado térmico izquierdo (en crudo)"
           valor={numero(m?.estado_termico_izquierdo, 0)}
+          crudo={m?.estado_termico_izquierdo}
           nota="0 es normal. Los demás valores los define el RVR y este proyecto no los ha caracterizado: se enseñan sin traducir."
         />
         <Dato
           etiqueta="Estado térmico derecho (en crudo)"
           valor={numero(m?.estado_termico_derecho, 0)}
+          crudo={m?.estado_termico_derecho}
         />
       </div>
 

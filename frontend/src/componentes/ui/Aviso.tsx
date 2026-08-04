@@ -30,9 +30,15 @@ export interface PropsAviso {
   children: ReactNode
 }
 
+/**
+ * 📝 `.aparece` son 150 ms de opacidad y 2 px, UNA vez y nunca mas. No es
+ *    decoracion: los avisos llegan de forma asincrona sobre texto que alguien
+ *    esta leyendo, y un cambio brusco en mitad de una frase se lee peor que una
+ *    aparicion suave. Con `prefers-reduced-motion` cae a 0 ms.
+ */
 export function Aviso({ nivel, titulo, children }: PropsAviso) {
   return (
-    <div className={`rounded-md border px-3 py-2 text-sm ${CLASES[nivel]}`} role={nivel === 'ERROR' ? 'alert' : undefined}>
+    <div className={`aparece border px-3 py-2 text-sm ${CLASES[nivel]}`} role={nivel === 'ERROR' ? 'alert' : undefined}>
       <span className="font-semibold">{titulo ?? MARCA[nivel]}: </span>
       <span className="max-w-prose">{children}</span>
     </div>
