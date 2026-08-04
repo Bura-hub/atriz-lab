@@ -44,13 +44,23 @@ export function MuroFlota() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-5">
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+        {/*
+          🔴 UNA SOLA LOSA, no dieciséis tarjetas sueltas. `.rejilla` deja 1 px de
+             hueco y el fondo del contenedor asoma por él: cada línea entre
+             baldosas es UNA, no dos bordes pegados. La compartimentación se ve.
+
+          📌 `4x4` es la forma que pide el encargo —el profesor mira los dieciséis
+             a la vez, a veces proyectados—. Las columnas de móvil se conservan
+             porque un teléfono no puede con cuatro, pero dejan de ser el caso
+             que manda.
+        */}
+        <div className="rejilla grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {ROBOTS.map((id) => (
             <BaldosaConectada key={id} id={id} />
           ))}
         </div>
 
-        <section className="mt-6 rounded-lg border border-border bg-card p-4">
+        <section className="mt-6 border border-border bg-card p-4">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
             Cómo leer este muro
           </h2>

@@ -332,3 +332,62 @@ describe('resumirBaldosa — sin /estado_robot', () => {
     expect(resumirBaldosa(sana({ estadoRobot: null })).atencion).toBe('NINGUNA')
   })
 })
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Las etiquetas cortas: la MISMA informacion, a la distancia de lectura del muro
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('etiquetas — la version que cabe en una baldosa', () => {
+  /** El peor caso REAL, medido el 2026-08-04: seis motivos a la vez. */
+  const peor = resumirBaldosa(sana({
+    voltios: 6.4,
+    antiguedadTermicoS: 120,
+    atascado: true,
+    estadoRobot: estadoSano({
+      paradaEmergencia: true, rvrResponde: false,
+      antiguedadMuestraS: 0.05, antiguedadOdomS: 99, reanudacionesFallidas: 70,
+    }),
+  }))
+
+  it('🔴 hay UNA etiqueta por motivo, siempre', () => {
+    // Las dos listas se construyen juntas en `anota()`, asi que no pueden
+    // desincronizarse — pero si alguien añade un `motivos.push` suelto, esto lo
+    // caza. Una baldosa con mas frases que etiquetas se quedaria callada sobre
+    // algo que si sabe.
+    expect(peor.etiquetas).toHaveLength(peor.motivos.length)
+    expect(peor.motivos.length).toBe(6)
+  })
+
+  it('y ninguna baldosa las tiene descuadradas, sea cual sea su estado', () => {
+    for (const e of [
+      sana(),
+      sana({ conectado: false, estadoRobot: null }),
+      sana({ voltios: null }),
+      sana({ voltios: 6.9 }),
+      sana({ estadoRobot: null }),
+      peor === undefined ? sana() : sana({ atascado: true }),
+    ]) {
+      const b = resumirBaldosa(e)
+      expect(b.etiquetas.length, JSON.stringify(e)).toBe(b.motivos.length)
+    }
+  })
+
+  it('🔴 caben en una baldosa: ninguna pasa de 24 caracteres', () => {
+    // El motivo mas largo mide 155. Ese es el numero que hacia ilegible el muro
+    // y por el que existen las etiquetas.
+    for (const et of peor.etiquetas) {
+      expect(et.length, `«${et}» es demasiado larga para el muro`).toBeLessThanOrEqual(24)
+    }
+    expect(Math.max(...peor.motivos.map((m) => m.length))).toBeGreaterThan(100)
+  })
+
+  it('⚠️ y NO son un resumen que pierda casos: van las seis', () => {
+    // Esconder motivos tras un desplegable esta prohibido -«el motivo ES la
+    // accion»-. Esto no es esconder: es la misma lista, mas corta.
+    const junto = peor.etiquetas.join(' | ')
+    for (const clave of ['parada', 'odometría', 'RVR', 'atasco', 'batería', 'temperatura']) {
+      expect(junto, `falta «${clave}» en las etiquetas`).toContain(clave)
+    }
+  })
+})

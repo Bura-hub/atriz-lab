@@ -35,10 +35,20 @@ const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
   SIN_DATOS: 'sin telemetría',
 }
 
-const BORDE: Readonly<Record<Baldosa['atencion'], string>> = {
-  NINGUNA: 'border-border',
-  MIRAR: 'border-warning/50',
-  IR: 'border-destructive',
+/**
+ * 🔴 LA ATENCION NO DEPENDE SOLO DEL COLOR: depende del GROSOR.
+ *
+ * El muro se mira desde el otro lado del aula y a veces proyectado. Un proyector
+ * desatura, y una de cada doce personas no distingue rojo de ambar. Con la
+ * franja, «hay que ir» se lee **por su grosor** aunque el color no llegue.
+ *
+ * `critique.md:718` de `impeccable` lo lista como defecto de accesibilidad con
+ * estas palabras: «Meaning conveyed by color alone».
+ */
+const FRANJA: Readonly<Record<Baldosa['atencion'], string>> = {
+  NINGUNA: 'border-l-0',
+  MIRAR: 'border-l-4 border-l-warning',
+  IR: 'border-l-8 border-l-destructive',
 }
 
 const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
@@ -58,17 +68,39 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
   return (
     <Link
       href={href}
-      className={`block rounded-lg border-2 bg-card p-3 transition-colors hover:bg-muted/40 focus-ring ${BORDE[baldosa.atencion]}`}
+      className={
+        'block bg-card p-3 transition-colors hover:bg-muted/40 focus-ring '
+        + FRANJA[baldosa.atencion]
+      }
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-semibold">{etiqueta}</span>
-        <Insignia tono={TONO_ESTADO[baldosa.estado]}>{TEXTO_ESTADO[baldosa.estado]}</Insignia>
+      {/*
+        ── LA DISTANCIA LARGA ──────────────────────────────────────────────
+        Lo que tiene que leerse a tres metros: QUE robot y CUANTA bateria. El
+        `clamp()` es el unico de la aplicacion, y se gana el sitio aqui: esta
+        pantalla se proyecta.
+      */}
+      <div className="flex items-baseline justify-between gap-2">
+        <span
+          className="font-mono font-bold leading-none tracking-tight"
+          style={{ fontSize: 'clamp(1.75rem, 4.5vw, 3rem)' }}
+        >
+          {etiqueta}
+        </span>
+        {baldosa.atencion !== 'NINGUNA' && (
+          <span
+            className={`text-xs font-bold uppercase tracking-widest ${
+              baldosa.atencion === 'IR' ? 'text-destructive' : 'text-warning'
+            }`}
+          >
+            {TEXTO_ATENCION[baldosa.atencion]}
+          </span>
+        )}
       </div>
 
-      <div className="mt-2 flex items-baseline gap-2">
+      <div className="mt-1 flex items-baseline gap-2">
         <span
-          className={`font-mono tabular-nums text-xl ${
-            baldosa.voltios === null ? 'italic text-sm text-muted-foreground' : ''
+          className={`font-mono text-2xl leading-none ${
+            baldosa.voltios === null ? 'italic text-base text-muted-foreground' : ''
           } ${baldosa.datosVigentes ? '' : 'opacity-50'}`}
         >
           {voltios(baldosa.voltios)}
@@ -80,21 +112,26 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
         )}
       </div>
 
-      {baldosa.atencion !== 'NINGUNA' && (
-        <p
-          className={`mt-1 text-xs font-medium uppercase tracking-wide ${
-            baldosa.atencion === 'IR' ? 'text-destructive' : 'text-warning'
-          }`}
-        >
-          {TEXTO_ATENCION[baldosa.atencion]}
-        </p>
-      )}
+      {/*
+        ── LA DISTANCIA CORTA ──────────────────────────────────────────────
+        Pequeño, presente, y **nunca escondido**: `CLAUDE.md` prohibe tapar los
+        motivos tras un desplegable porque «el motivo ES la accion».
 
-      {baldosa.motivos.length > 0 && (
-        <ul className="mt-1 space-y-0.5">
-          {baldosa.motivos.map((m) => (
-            <li key={m} className="text-xs text-muted-foreground leading-snug">
-              {m}
+        🔴 Se pintan las ETIQUETAS, no las frases. Medido el 2026-08-04: el peor
+           caso real da SEIS motivos y el mas largo mide 155 caracteres — seis
+           frases asi en una casilla de un 4x4 la hacen ilegible y desigualan las
+           alturas de la rejilla. Estan TODAS; la frase entera vive un clic mas
+           alla, en la ficha del robot, que es a donde lleva esta baldosa.
+      */}
+      <div className="mt-1.5">
+        <Insignia tono={TONO_ESTADO[baldosa.estado]}>{TEXTO_ESTADO[baldosa.estado]}</Insignia>
+      </div>
+
+      {baldosa.etiquetas.length > 0 && (
+        <ul className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
+          {baldosa.etiquetas.map((e) => (
+            <li key={e} className="text-[11px] leading-snug text-muted-foreground">
+              · {e}
             </li>
           ))}
         </ul>

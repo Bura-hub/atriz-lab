@@ -134,6 +134,24 @@ export interface Baldosa {
   /** Frases listas para pintar, en orden fijo. Vacio = no hay nada que decir. */
   motivos: string[]
   /**
+   * La MISMA lista, en etiquetas de dos o tres palabras, y en el mismo orden.
+   *
+   * 🔴 No es un resumen opcional: es la unica forma de que una baldosa del muro
+   *    diga TODO lo que sabe sin reventar la rejilla. Medido el 2026-08-04: el
+   *    peor caso real da **6 motivos, el mas largo de 155 caracteres**, y seis
+   *    frases asi en una casilla de un 4x4 la hacen ilegible y desigualan las
+   *    alturas.
+   *
+   * ⚠️ Y NO es esconder. `CLAUDE.md` prohibe tapar los motivos tras un
+   *    desplegable porque «el motivo ES la accion»: aqui **estan todos**, solo
+   *    que a la distancia de lectura que toca. La frase entera vive un clic
+   *    mas alla, en la ficha del robot.
+   *
+   * 📌 Las dos listas se construyen SIEMPRE juntas (`anota()`), asi que no
+   *    pueden desincronizarse, y hay una prueba que lo fija.
+   */
+  etiquetas: string[]
+  /**
    * `false` = no hay latido, asi que TODO lo de abajo es «lo ultimo que se
    * supo», de antiguedad desconocida. La interfaz tiene que atenuarlo, no
    * pintarlo como si fuera de ahora.
@@ -219,9 +237,16 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
   // false`), pero convertirlos en frases seria presentar un dato de antiguedad
   // desconocida como si fuera de ahora.
   const motivos: string[] = []
+  const etiquetas: string[] = []
+  /** Las dos listas a la vez: es imposible añadir una frase sin su etiqueta. */
+  const anota = (corto: string, largo: string) => { etiquetas.push(corto); motivos.push(largo) }
   if (!datosVigentes) {
-    motivos.push(TEXTO_SIN_SENAL)
-    motivos.push(
+    // 🔴 «sin señal de vida» va en las DOS listas: ya es corta, y hay una prueba
+    //    que exige ese literal exacto en `motivos`. Es lo primero que se lee en
+    //    la baldosa y lo primero que se lee en la ficha.
+    anota(TEXTO_SIN_SENAL, TEXTO_SIN_SENAL)
+    anota(
+      estado === 'SIN_CONEXION' ? 'no llego al robot' : 'la Pi calla',
       estado === 'SIN_CONEXION'
         ? 'no hay WebSocket abierto con el robot, así que no se sabe nada de él. Eso NO es una avería'
         : 'el enlace está abierto y no llega /motor_status: puede estar cargando (RVR apagado con la ' +
@@ -233,41 +258,46 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
     // 🔴 La parada va PRIMERA de los motivos: explica por si sola que el robot
     //    no obedezca, y sin ella el profesor busca una averia que no existe.
     if (paradaEmergencia === true) {
-      motivos.push(
+      anota(
+        'parada puesta',
         'la parada de emergencia esta puesta: el robot no acepta ordenes de movimiento hasta ' +
         'que alguien la libere con el robot delante. NO es una averia',
       )
     }
     if (odometriaMuerta) {
-      motivos.push(
+      anota(
+        'odometría muerta',
         'llegan datos del RVR pero /odom no se completa: la odometria esta muerta aunque el ' +
         'enlace vaya bien. Reiniciar el streaming NO lo arregla, es otro fallo',
       )
     }
     if (rvrResponde === false) {
-      motivos.push(
+      anota(
+        'el RVR no contesta',
         'la Raspberry Pi va bien y el RVR no contesta: puede estar cargando (apagado con la Pi ' +
         'encendida, que es lo cotidiano), dormido, o desconectado',
       )
     }
     if (e.atascado === true) {
-      motivos.push('atasco confirmado por el firmware del RVR: un motor recibe corriente y no gira')
+      anota('atasco', 'atasco confirmado por el firmware del RVR: un motor recibe corriente y no gira')
     }
     if (voltios === null) {
       // 🔴 Rule 1 del encargo: la baldosa NO dice «OK» cuando no sabe. Decirlo
       //    en voz alta es mas seguro que callar: asi nadie lee el hueco como
       //    una bateria sana.
-      motivos.push(
+      anota(
+        'batería: no se sabe',
         'no se sabe la batería: /battery_state no ha traído un voltaje válido (el driver publica NaN ' +
           'cuando la lectura falla). La baldosa NO está diciendo que esté bien',
       )
     } else if (bateria === 'CRITICA') {
-      motivos.push(`batería CRÍTICA: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_CRITICA)}. El RVR se va a apagar`)
+      anota('batería CRÍTICA', `batería CRÍTICA: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_CRITICA)}. El RVR se va a apagar`)
     } else if (bateria === 'BAJA') {
-      motivos.push(`batería baja: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_BAJA)}: toca cargar`)
+      anota('batería baja', `batería baja: ${enVoltios(voltios)}, por debajo de ${enVoltios(V_BAJA)}: toca cargar`)
     }
     if (termicoRancio && frescuraTermico.conocido) {
-      motivos.push(
+      anota(
+        'temperatura rancia',
         `la temperatura de los motores tiene ${Math.round(frescuraTermico.antiguedadS)} s: el sondeo va ` +
           `cada 30 s, así que por encima de ${UMBRAL_TERMICO_RANCIO_S} s es el MISMO dato repetido, ` +
           'no una temperatura que se mantiene',
@@ -307,6 +337,7 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
     estado,
     atencion,
     motivos,
+    etiquetas,
     datosVigentes,
     bateria,
     voltios,
