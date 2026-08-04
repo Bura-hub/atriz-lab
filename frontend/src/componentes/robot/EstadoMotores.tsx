@@ -34,6 +34,7 @@ import { SIN_DATO, antiguedad, celsius, milisegundos, numero } from '@/lib/inter
 import { atascoDe, falloDe } from '@/lib/interfaz/lecturas'
 import { Dato } from '@/componentes/ui/Dato'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
+import { Contexto } from '@/componentes/ui/Contexto'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
 /** `true` -> hay un hecho positivo. `false` -> se comprobo. `null` -> no se sabe. */
@@ -58,7 +59,9 @@ export function EstadoMotores() {
     <Tarjeta
       titulo="Motores"
       subtitulo="Cada valor con la antigüedad de SU fuente: llegan por caminos distintos y refrescan a ritmos distintos."
-      extremo={insigniaDeHecho(atascado, 'atasco', 'sin atasco')}
+      // Misma regla que en Bateria: si no se sabe, los valores de dentro ya son
+      // rayas y la insignia no añade nada. `null` es «no se sabe».
+      extremo={atascado === null ? undefined : insigniaDeHecho(atascado, 'atasco', 'sin atasco')}
     >
       <div className="rejilla sm:grid-cols-2">
         <Dato
@@ -114,12 +117,12 @@ export function EstadoMotores() {
       )}
 
       {!fAtasco.conocido && (
-        <p className="text-xs text-muted-foreground mt-3 max-w-prose">
+        <Contexto><p>
           La antigüedad del atasco vale <code>-1.0</code>, que significa <em>nunca se ha sabido nada
           de eso</em>: no ha llegado ninguna notificación desde que arrancó el driver. Las banderas
           que hay debajo valen <code>false</code> porque es su valor inicial, no porque nadie haya
           comprobado nada — por eso aquí pone «{SIN_DATO}» y no «sin atasco».
-        </p>
+        </p></Contexto>
       )}
 
       {fTermico.conocido && fTermico.antiguedadS > 35 && (

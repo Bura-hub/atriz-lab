@@ -13,6 +13,7 @@ import { useRobot } from '@/hooks/ContextoRobot'
 import { SIN_DATO, aGrados, grados, metros, metrosPorSegundo, numero, radianesPorSegundo, yawDeCuaternion } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
 import { Dato } from '@/componentes/ui/Dato'
+import { Contexto } from '@/componentes/ui/Contexto'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { Bateria } from './Bateria'
 import { EstadoMotores } from './EstadoMotores'
@@ -57,13 +58,15 @@ function Odometria() {
           crudo={numeroValido(angular?.z) ?? undefined} />
       </div>
 
-      <p className="text-xs text-muted-foreground mt-3 max-w-prose">
+      <Contexto>
+      <p>
         La deriva del rumbo es ~1000 veces mayor los primeros minutos tras encender el RVR: se
         midieron 0,97 °/30 s con el robot recién encendido y 0,001 °/30 s siete minutos después.
         Sobre una práctica de 15 min eso son decenas de grados, y poner la odometría a cero no lo
         corrige: pone el origen a cero, no la deriva. Desaparece sola dejando el robot un rato en
         marcha.
       </p>
+      </Contexto>
       {ultimo === null && (
         <p className="text-xs text-muted-foreground mt-2">
           Todavía no ha llegado ningún <code>/odom</code>.
@@ -96,10 +99,10 @@ function Encoders() {
           nota={der === null ? undefined : `${metros(der / TICKS_POR_METRO)} recorridos`}
         />
       </div>
-      <p className="text-xs text-muted-foreground mt-3 max-w-prose">
+      <Contexto><p>
         Los ticks llegan CON signo: el driver ya convierte los 32 bits sin signo del RVR, donde un
         retroceso se veía como 4294965940 en vez de −1356.
-      </p>
+      </p></Contexto>
     </Tarjeta>
   )
 }

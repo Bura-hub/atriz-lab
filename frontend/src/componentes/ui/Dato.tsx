@@ -100,10 +100,15 @@ export function Dato({
         ) : (
           <data value={String(crudo)} className={clases}>{valor}</data>
         )}
-        {antiguedad !== undefined && (
+        {/*
+          🔴 «· dato de no se sabe» era ilegible, y ademas no significaba nada:
+             si el VALOR es un hueco, la antiguedad DE ESE VALOR tampoco existe.
+             Se pinta solo cuando hay algo que fechar.
+        */}
+        {antiguedad !== undefined && !desconocido && antiguedad !== SIN_DATO && (
           <span className="text-xs text-muted-foreground">· dato de {antiguedad}</span>
         )}
-        {referencia !== undefined && (
+        {referencia !== undefined && !desconocido && (
           <span className="text-xs text-muted-foreground">· medido en el robot: {referencia}</span>
         )}
       </div>

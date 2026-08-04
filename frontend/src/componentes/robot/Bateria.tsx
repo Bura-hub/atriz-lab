@@ -64,7 +64,11 @@ export function Bateria() {
     <Tarjeta
       titulo="Batería"
       subtitulo="Se decide por voltios. El porcentaje del firmware dijo 100 % con la batería a 8,29 V."
-      extremo={<Insignia tono={TONO[nivel]}>{nivel === 'DESCONOCIDO' ? 'no se sabe' : nivel}</Insignia>}
+      // 🔴 La insignia solo sale cuando DICE algo. Con la tarjeta sin datos, sus
+      //    valores ya son rayas: repetir «no se sabe» arriba a la derecha era
+      //    decir dos veces lo mismo, y en la captura del muro esa repeticion era
+      //    justo lo que convertia el hueco en el contenido de la pantalla.
+      extremo={nivel === 'DESCONOCIDO' ? undefined : <Insignia tono={TONO[nivel]}>{nivel}</Insignia>}
     >
       <Dato
         etiqueta="Voltaje"
