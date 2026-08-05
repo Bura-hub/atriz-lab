@@ -77,6 +77,20 @@ export default function Portada() {
            maqueta optimista. Si algo se desbloquea, se quita de aqui — y si
            algo se rompe, se añade.
       */}
+      <section className="vidrio rounded-ficha p-6">
+        <h2 className="text-lg font-semibold tracking-tight">Cuaderno de medidas</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Lo que dijo el robot al lado de lo que mediste con la cinta. Es lo único que funciona
+          con los robots apagados: se guarda en este navegador.
+        </p>
+        <Link
+          href="/cuaderno"
+          className="pulsable focus-ring mt-4 inline-flex items-center gap-2.5 rounded-full border border-[rgb(var(--filo)/0.16)] px-5 py-2.5 text-sm font-semibold"
+        >
+          Abrir el cuaderno
+        </Link>
+      </section>
+
       {/*
         🔴 EL BLOQUE AMBAR ES PERMANENTE, NO UN AVISO TEMPORAL.
         La portada dice lo que la aplicacion NO sabe hacer, porque la version
