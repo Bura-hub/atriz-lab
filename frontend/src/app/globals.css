@@ -4,65 +4,95 @@
 
 /*
  * ═══════════════════════════════════════════════════════════════════════════
- * EL SUSTRATO VISUAL DE UN INSTRUMENTO
+ * EL TABLERO DE OPERACIONES
  * ═══════════════════════════════════════════════════════════════════════════
- * Esto era el CSS de la maqueta que se borró de la portada: 582 líneas con
- * gradientes, cinco niveles de sombra, radios de 1,5 rem, un acento púrpura, un
- * `translateY(-2px)` al pasar por encima y dos animaciones INFINITAS. La
- * aplicación entera se construyó encima sin que nadie cambiara la piel.
+ * El mundo visual de esta aplicación es el **tablero de una sala de control**:
+ * un campo de color profundo que sostiene la pantalla, y sobre él fichas de
+ * papel —una por robot— con su pestaña de color arriba. La gramática de la
+ * capa de atención viene de la señalética industrial: galones, placas, cinta
+ * de suelo. Cosas hechas para leerse rápido y de lejos, en una nave con luz.
+ *
+ * 🔴 POR QUÉ NO ES UNA PANTALLA OSCURA DE TELEMETRÍA. Ese es el reflejo de la
+ *    categoría —fondo casi negro, un acento de neón, trazas de fósforo— y la
+ *    escena real lo desmiente: aula **con las luces encendidas**, portátiles, y
+ *    un proyector que lava los negros. Un tablero impreso se lee a tres metros
+ *    proyectado; una consola oscura, no.
+ *
+ * 🔴 Y TAMPOCO ES LO QUE HABÍA. La versión anterior era gris piedra, radio 0,
+ *    tipografía del sistema, sin profundidad ni color de marca. Eso no era
+ *    sobriedad: era el otro surco de la categoría, el minimalismo plano, y
+ *    dejaba la aplicación con aspecto de maqueta sin terminar.
  *
  * 🔴 Los nombres de Tailwind (`--card`, `--muted-foreground`, …) SE CONSERVAN a
- *    propósito, aunque el resto del proyecto escriba en español: son las ranuras
- *    semánticas del framework y las consumen todos los componentes vía
- *    `bg-card`, `border-border`, `text-muted-foreground`. Renombrarlas obligaría
- *    a tocar cada componente **sin una sola prueba de render que lo respalde**
- *    —las pruebas corren en Node y ninguna monta un componente—, que es
- *    justamente el tipo de cambio que aquí no se puede verificar. Lo que cambia
- *    es lo que hay DETRÁS.
- *    Los tokens NUEVOS —el vocabulario de estados— sí van en español: son
- *    nuestros, no del framework.
+ *    propósito: son las ranuras semánticas del framework y las consumen todos
+ *    los componentes. Lo que cambia es lo que hay DETRÁS. Los tokens NUEVOS
+ *    —el tablero y el vocabulario de estados— van en español: son nuestros.
  *
- * 🔴 NADA DE TIPOGRAFÍA REMOTA. Esto importaba Inter y JetBrains Mono de
- *    `fonts.googleapis.com`. El experimento que hoy BLOQUEA el producto (la F0)
- *    es si el punto de acceso del aula deja pasar el tráfico entre clientes: una
- *    interfaz de laboratorio que necesita dos peticiones a Google para tener
- *    letra **cae en silencio justo donde va a usarse**, y sin dar ningún error.
- *    Hay una prueba que lo impide (`estilo.test.ts`).
+ * 🔴 CERO PETICIONES EXTERNAS, y ahora CON tipografía propia. Antes esto
+ *    importaba Inter y JetBrains Mono de `fonts.googleapis.com`, y la respuesta
+ *    fue quitarlas y usar la del sistema. La premisa era buena —el punto de
+ *    acceso del aula puede bloquear el tráfico— pero la conclusión era falsa:
+ *    una fuente **se empaqueta**. Geist viaja en el bundle. Hay una prueba que
+ *    impide volver a las remotas (`estilo.test.ts`).
  */
 
 :root {
-  /* ── Sustrato ──────────────────────────────────────────────────────────── */
-  --background: 250 250 249;      /* piedra muy clara, no blanco puro */
-  --foreground: 28 25 23;
-  --card: 255 255 255;
-  --card-foreground: 28 25 23;
-  --muted: 245 245 244;
-  --muted-foreground: 87 83 78;
-  --border: 214 211 209;
-  --input: 255 255 255;
-  --secondary: 245 245 244;
-  --secondary-foreground: 41 37 36;
-  --accent: 240 240 238;          /* ya NO es púrpura: es el realce al pasar */
-  --accent-foreground: 28 25 23;
+  /*
+   * ── EL TABLERO ───────────────────────────────────────────────────────────
+   * Verde pino profundo. Ocupa la cabecera y el raíl de robots: **regiones
+   * enteras**, no un acento salpicado. Es lo que hace que la aplicación tenga
+   * una identidad reconocible con todo el contenido quitado.
+   */
+  --tablero: 14 61 58;
+  --tablero-claro: 22 84 80;
+  --tablero-foreground: 233 242 239;
+  --tablero-tenue: 141 176 170;
+
+  /*
+   * ── EL PAPEL ─────────────────────────────────────────────────────────────
+   * El fondo es el fieltro del tablero; las fichas son papel casi blanco. Esa
+   * diferencia es la que da profundidad sin necesidad de dibujarla.
+   */
+  --background: 240 238 231;
+  --foreground: 19 28 27;
+  --card: 255 254 251;
+  --card-foreground: 19 28 27;
+  --muted: 233 231 223;
+  /*
+   * 🔴 El texto secundario va TEÑIDO del tono del mundo, nunca gris neutro.
+   *    `craft-floor`: «On colored surfaces tint secondary text from that hue or
+   *    the foreground; never gray». Un gris puro sobre un fondo cálido-verdoso
+   *    se ve sucio.
+   */
+  --muted-foreground: 78 92 89;
+  --border: 213 210 199;
+  --input: 255 254 251;
+  --secondary: 233 231 223;
+  --secondary-foreground: 32 45 43;
+  --accent: 226 232 227;          /* el realce al pasar por encima */
+  --accent-foreground: 19 28 27;
+
+  /* La sombra va TEÑIDA del tablero. En negro puro parece suciedad. */
+  --sombra: 14 61 58;
 
   /*
    * ── EL VOCABULARIO DE ESTADOS ────────────────────────────────────────────
    * 🔴 No es una paleta de acento: es un vocabulario. Cuatro de las skills
    *    instaladas exigen «máximo un color de acento», y aquí eso es incompatible
    *    con tener que distinguir «no se sabe» de «vivo» de «mirar» de «ir».
-   * 🔴 Y el color NUNCA es el único código: cada estado lleva además su texto y,
-   *    en el muro, grosor de franja. Un proyector desaturado y una persona
-   *    daltónica tienen que poder leerlo igual.
+   * 🔴 Y el color NUNCA es el único código: cada estado lleva además su palabra
+   *    y, en el muro, una pestaña cuyo ancho cambia. Un proyector desaturado y
+   *    una persona daltónica tienen que poder leerlo igual.
    */
-  --estado-neutro: 120 113 108;   /* NO SE SABE. Ni bueno ni malo */
+  --estado-neutro: 106 118 115;   /* NO SE SABE. Ni bueno ni malo */
   --estado-vivo: 21 128 61;       /* solo desde un dato RECIENTE y concreto */
   --estado-mirar: 180 83 9;
   --estado-ir: 190 24 93;         /* reservado a un hecho confirmado */
   --estado-frenando: 29 78 216;   /* ⚠️ DECLARADO Y SIN USAR: ver abajo */
 
   /* Lo que consumen las utilidades que ya usan los componentes. */
-  --primary: 28 25 23;
-  --primary-foreground: 250 250 249;
+  --primary: 14 61 58;
+  --primary-foreground: 233 242 239;
   --destructive: 190 24 93;
   --destructive-foreground: 255 255 255;
   --warning: 180 83 9;
@@ -70,11 +100,8 @@
   --success: 21 128 61;
   --success-foreground: 255 255 255;
 
-  /*
-   * 🔴 CERO. En un token y no como literal repetido, para que cambiarlo sea un
-   *    acto deliberado y se vea en el diff.
-   */
-  --radio: 0px;
+  /* Queda por compatibilidad con el CSS que lo usaba; hoy manda Tailwind. */
+  --radio: 10px;
 
   /*
    * ── LAS CURVAS ───────────────────────────────────────────────────────────
@@ -135,33 +162,42 @@
  * de persianas bajadas, y se pide con `[data-tema="oscuro"]`, no se hereda.
  */
 :root[data-tema='oscuro'] {
-  --background: 12 10 9;
-  --foreground: 231 229 228;
-  --card: 28 25 23;
-  --card-foreground: 231 229 228;
-  --muted: 41 37 36;
-  --muted-foreground: 168 162 158;
-  --border: 68 64 60;
-  --input: 28 25 23;
-  --secondary: 41 37 36;
-  --secondary-foreground: 231 229 228;
-  --accent: 41 37 36;
-  --accent-foreground: 231 229 228;
+  /* El mismo tablero, con las luces bajadas: el verde se hace el fondo. */
+  --tablero: 8 32 31;
+  --tablero-claro: 16 52 50;
+  --tablero-foreground: 226 238 234;
+  --tablero-tenue: 126 158 153;
 
-  --estado-neutro: 168 162 158;
+  --background: 9 20 19;
+  --foreground: 229 238 235;
+  --card: 17 34 32;
+  --card-foreground: 229 238 235;
+  --muted: 26 46 44;
+  --muted-foreground: 152 176 171;
+  --border: 44 68 65;
+  --input: 17 34 32;
+  --secondary: 26 46 44;
+  --secondary-foreground: 229 238 235;
+  --accent: 26 46 44;
+  --accent-foreground: 229 238 235;
+
+  /* En oscuro la sombra no separa: lo hace el borde. Se deja casi negra. */
+  --sombra: 0 0 0;
+
+  --estado-neutro: 152 176 171;
   --estado-vivo: 74 222 128;
   --estado-mirar: 251 191 36;
   --estado-ir: 244 114 182;
   --estado-frenando: 96 165 250;
 
-  --primary: 231 229 228;
-  --primary-foreground: 12 10 9;
-  --destructive: 225 29 72;
-  --destructive-foreground: 255 255 255;
-  --warning: 217 119 6;
-  --warning-foreground: 255 255 255;
-  --success: 22 163 74;
-  --success-foreground: 255 255 255;
+  --primary: 122 214 200;
+  --primary-foreground: 9 20 19;
+  --destructive: 244 114 182;
+  --destructive-foreground: 9 20 19;
+  --warning: 251 191 36;
+  --warning-foreground: 9 20 19;
+  --success: 74 222 128;
+  --success-foreground: 9 20 19;
 }
 
 @layer base {
@@ -202,42 +238,41 @@
   }
 
   /*
-   * ── LA FRANJA DE ATENCIÓN DEL MURO ───────────────────────────────────────
-   * 🔴 POR QUÉ NO ES UN `border-left`, QUE ES LO QUE ERA.
+   * ── LA PESTAÑA DE ATENCIÓN DE UNA FICHA ──────────────────────────────────
+   * 🔴 ERA UN `border-left` DE COLOR DE 8 px, Y ESO ESTÁ PROHIBIDO.
    *
-   * La franja codifica la atención por GROSOR además de por color —un proyector
-   * desatura, y una de cada doce personas no distingue rojo de ámbar—. Con
-   * `border-l-0 / -4 / -8` eso tenía dos defectos que solo se ven en
-   * movimiento y en conjunto:
+   * `craft-floor` lo dice sin matices: «A colored `border-left` or
+   * `border-right` above 1px on cards, list items, callouts, or alerts». Es el
+   * tic de alerta que llevan todos los paneles genéricos, y yo lo tenía.
    *
-   *   1. cambiar de estado **desplazaba el contenido** 4 u 8 px;
-   *   2. y el identificador quedaba **desalineado entre baldosas**, porque su
-   *      margen izquierdo dependía del estado de cada una. En una losa 4×4 eso
-   *      se lee como un borde dentado.
+   * En un tablero de operaciones la pieza equivalente **existe y es mejor**: la
+   * pestaña de color en el canto superior de la ficha, que es como se marca una
+   * unidad en un tablero de verdad. Ocupa el ancho y su ANCHO codifica la
+   * urgencia además del color —un proyector desatura, y una de cada doce
+   * personas no distingue rojo de ámbar—.
    *
-   * Ahora la franja es una barra absoluta de 8 px que se escala en X. Con eso:
-   *   · el contenido **nunca se mueve** y todas las baldosas alinean igual;
-   *   · el cambio de grosor es `transform`, o sea sin recalcular maquetación
-   *     —la regla de Emil: solo `transform` y `opacity`—;
-   *   · y la transición de 200 ms es **anti-parpadeo**, no adorno: con 16
-   *     baldosas, un hipo de WiFi que cruce el umbral y vuelva daría un
-   *     estroboscopio.
+   * Se escala en X, así que:
+   *   · el contenido **nunca se mueve** y todas las fichas alinean igual;
+   *   · el cambio es `transform`, sin recalcular maquetación;
+   *   · y la transición de 200 ms es **anti-parpadeo**: con 16 fichas, un hipo
+   *     de WiFi que cruce el umbral y vuelva daría un estroboscopio.
    *
    * ⚠️ `scaleX(0)` es legítimo aquí: no es un elemento «apareciendo de la
-   *    nada» —lo que la regla de Emil prohíbe— sino la ausencia de franja, que
+   *    nada» —lo que la regla de Emil prohíbe— sino la ausencia de pestaña, que
    *    es un estado real y el más común.
    */
-  .franja {
+  .pestana {
     position: relative;
   }
 
-  .franja::before {
+  .pestana::before {
     content: '';
     position: absolute;
-    inset: 0 auto 0 0;
-    width: 8px;
-    background: var(--franja-color, transparent);
-    transform: scaleX(var(--franja-escala, 0));
+    inset: 0 0 auto 0;
+    height: 4px;
+    border-radius: 12px 12px 0 0;
+    background: var(--pestana-color, transparent);
+    transform: scaleX(var(--pestana-escala, 0));
     transform-origin: left center;
     transition: transform var(--t-estado) var(--curva-salida),
                 background-color var(--t-estado) ease;

@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import './globals.css'
 
 /**
@@ -44,8 +46,44 @@ export default function DisposicionRaiz({
   return (
     // `suppressHydrationWarning` se conserva: el tema puede fijarse antes de que
     // React hidrate, y sin esto React avisa de una discrepancia que es esperada.
-    <html lang="es" suppressHydrationWarning>
-      <body className="antialiased">{children}</body>
+    //
+    // 🔴 Las dos fuentes van EMPAQUETADAS por `next/font`: se sirven desde el
+    //    mismo origen, con `font-display: swap` y precarga. Cero peticiones a
+    //    terceros — que era la razón real por la que esta aplicación no tenía
+    //    tipografía propia, y que resulta que no obligaba a renunciar a ella.
+    <html
+      lang="es"
+      suppressHydrationWarning
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+    >
+      <body className="antialiased">
+        {/*
+          EL CONTRATO DE DIRECCIÓN. Sobrevive a la compilación de producción a
+          propósito: una decisión de diseño que solo vive en la conversación no
+          se puede auditar seis meses después.
+
+          THESIS: el tablero de operaciones de una sala de control, impreso y
+          con luz. Rechaza la consola oscura de telemetría con acento de neón,
+          que es el reflejo de esta categoría, y también el minimalismo gris
+          plano que esta misma aplicación tenía y que no era sobriedad sino el
+          otro surco.
+          OWN-WORLD: campo verde pino que ocupa cabecera y raíl; fichas de papel
+          casi blanco con sombra teñida del propio verde; pestaña de color en el
+          canto superior cuyo ANCHO codifica urgencia; Geist empaquetada, mono
+          solo para medidas.
+          STORY: quien entra ve el estado de dieciséis robots de un vistazo,
+          sabe cuál hay que ir a mirar, y entra en uno sin perder el sitio.
+          FIRST VIEWPORT: masthead verde a sangre con el nombre y el enlace al
+          muro; debajo, la losa 4×4 de fichas a tamaño de lectura larga.
+          FORM: tablero operativo (6.º de siete candidatos derivados; el 1.º y
+          el 4.º quedaron fuera por ser el surco propio y el de la categoría).
+          El sorteo externo devolvió vacío en este entorno y se dice así en el
+          CHANGELOG en vez de fingir una tirada.
+          FINISH: unreviewed and undocumented is unfinished; this build ends
+          with the finish review, the verdict, and DESIGN.md
+        */}
+        {children}
+      </body>
     </html>
   )
 }

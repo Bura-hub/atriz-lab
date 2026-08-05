@@ -19,6 +19,24 @@ const CLASES: Readonly<Record<TonoInsignia, string>> = {
   GRAVE: 'bg-destructive/10 text-destructive border-destructive/40',
 }
 
+/**
+ * 🔴 LA MISMA INSIGNIA SOBRE EL TABLERO NO SE LEE, Y ESO SE VIO EN LA CAPTURA.
+ *
+ * Los tonos de arriba están calculados sobre papel claro: verde oscuro sobre un
+ * lavado verde muy claro. Puestos en la cabecera —campo verde pino— el texto y
+ * el fondo quedan casi al mismo valor y la insignia desaparece.
+ *
+ * No se arregla bajando la opacidad: se arregla invirtiendo la relación. Sobre
+ * el tablero el color va en el TEXTO a plena luminosidad y el fondo es un velo
+ * del propio tablero.
+ */
+const CLASES_TABLERO: Readonly<Record<TonoInsignia, string>> = {
+  NEUTRO: 'bg-white/10 text-tablero-tenue border-white/20',
+  BIEN: 'bg-white/10 text-[rgb(134,239,172)] border-[rgb(134,239,172)]/40',
+  ATENCION: 'bg-white/10 text-[rgb(253,224,71)] border-[rgb(253,224,71)]/40',
+  GRAVE: 'bg-white/10 text-[rgb(249,168,212)] border-[rgb(249,168,212)]/50',
+}
+
 export interface PropsInsignia {
   tono: TonoInsignia
   children: ReactNode
@@ -33,6 +51,8 @@ export interface PropsInsignia {
    *    impide (`estilo.test.ts`) y el motivo esta en `CLAUDE.md`.
    */
   punto?: boolean
+  /** Para la cabecera, que es campo de color y no papel. Ver `CLASES_TABLERO`. */
+  sobreTablero?: boolean
 }
 
 /*
@@ -60,10 +80,14 @@ export interface PropsInsignia {
 const TRANSICION = 'transition-[color,background-color,border-color] '
   + 'duration-[var(--t-estado)] ease-[cubic-bezier(0.23,1,0.32,1)]'
 
-export function Insignia({ tono, children, punto = true }: PropsInsignia) {
+export function Insignia({
+  tono, children, punto = true, sobreTablero = false,
+}: PropsInsignia) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-xs font-medium ${TRANSICION} ${CLASES[tono]}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${TRANSICION} ${
+        sobreTablero ? CLASES_TABLERO[tono] : CLASES[tono]
+      }`}
     >
       {punto && (
         <span className={`h-1.5 w-1.5 bg-current ${TRANSICION}`} aria-hidden="true" />

@@ -67,27 +67,41 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
   const url = urlDeRobot(destinoParaTransporte(destino))
 
   return (
-    <header className="border-b border-border bg-card">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 py-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-baseline gap-3">
-            <h1 className="text-lg font-semibold">{etiquetaRobot(destino)}</h1>
+    /*
+      EL MISMO TABLERO QUE EL MURO. Un alumno que llega desde el muro tiene que
+      reconocer que sigue en el mismo sitio: el campo de color es lo que da esa
+      continuidad, y por eso ocupa la cabecera entera y no un filete.
+
+      Las pestañas van DENTRO del campo y montadas sobre el borde inferior, como
+      las lengüetas de una carpeta: la activa es papel —del mismo color que las
+      fichas de abajo— y las demás se quedan en el tablero.
+    */
+    <header className="bg-tablero text-tablero-foreground shadow-rail">
+      <div className="mx-auto max-w-6xl px-4 pt-5 sm:px-6">
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              {etiquetaRobot(destino)}
+            </h1>
             {/* La URL, siempre visible: es lo que distingue «me equivoqué de
                 robot» de «este robot no responde». */}
-            <code className="text-xs text-muted-foreground">{url}</code>
+            <code className="font-mono text-xs text-tablero-tenue">{url}</code>
           </div>
           <div className="flex items-center gap-3">
-            <InsigniaEnlace />
-            <span className="text-xs text-muted-foreground">
+            <InsigniaEnlace sobreTablero />
+            <span className="text-xs text-tablero-tenue">
               socket {conectado ? 'abierto' : 'cerrado'}
             </span>
-            <Link href="/flota" className="text-xs text-primary underline focus-ring">
+            <Link
+              href="/flota"
+              className="focus-ring rounded px-1 text-xs text-tablero-foreground underline decoration-tablero-tenue underline-offset-4 hover:decoration-tablero-foreground"
+            >
               ver los 16
             </Link>
           </div>
         </div>
 
-        <nav className="mt-3 flex flex-wrap gap-1" aria-label="Pestañas del robot">
+        <nav className="mt-4 flex flex-wrap gap-1" aria-label="Pestañas del robot">
           {pestanas(segmento).map((p) => {
             const activa = ruta === p.href
             return (
@@ -95,14 +109,16 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
                 key={p.href}
                 href={p.href}
                 aria-current={activa ? 'page' : undefined}
-                className={`rounded-md px-3 py-1.5 text-sm focus-ring ${
+                className={`focus-ring rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors duration-[var(--t-estado)] ${
                   activa
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                    ? 'bg-background text-foreground'
+                    : 'text-tablero-tenue hover:bg-tablero-claro hover:text-tablero-foreground'
                 }`}
               >
                 {p.texto}
-                {p.bloqueada === true && <span className="ml-1.5 text-xs opacity-70">(bloqueado)</span>}
+                {p.bloqueada === true && (
+                  <span className="ml-1.5 text-xs opacity-70">(bloqueado)</span>
+                )}
               </Link>
             )
           })}

@@ -46,16 +46,21 @@ const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
  * estas palabras: «Meaning conveyed by color alone».
  */
 /*
- * ⚠️ EL GROSOR VA POR `transform`, NO POR `border-width`. Ver `.franja` en
- *    `globals.css`: con un borde de verdad, cambiar de estado desplazaba el
- *    contenido 4 u 8 px y dejaba el identificador **desalineado entre
- *    baldosas** según el estado de cada una — en una losa 4×4 eso se lee como
- *    un borde dentado. Ahora ninguna baldosa mueve nada al cambiar.
+ * ⚠️ VA ARRIBA, NO A LA IZQUIERDA, Y EL ANCHO VA POR `transform`.
+ *
+ * Era un `border-left` de color de 8 px, que `craft-floor` prohíbe sin matices
+ * («A colored border-left … above 1px on cards, list items, callouts, or
+ * alerts»): es el tic de alerta de cualquier panel genérico. En un tablero de
+ * operaciones la pieza equivalente es la **pestaña del canto superior**, que es
+ * como se marca una unidad en un tablero de verdad.
+ *
+ * El ancho se escala con `transform`, así que cambiar de estado no desplaza
+ * nada ni recalcula maquetación. Ver `.pestana` en `globals.css`.
  */
-const FRANJA: Readonly<Record<Baldosa['atencion'], string>> = {
-  NINGUNA: 'franja [--franja-escala:0]',
-  MIRAR: 'franja [--franja-escala:0.5] [--franja-color:rgb(var(--warning))]',
-  IR: 'franja [--franja-escala:1] [--franja-color:rgb(var(--destructive))]',
+const PESTANA: Readonly<Record<Baldosa['atencion'], string>> = {
+  NINGUNA: 'pestana [--pestana-escala:0]',
+  MIRAR: 'pestana [--pestana-escala:0.45] [--pestana-color:rgb(var(--warning))]',
+  IR: 'pestana [--pestana-escala:1] [--pestana-color:rgb(var(--destructive))]',
 }
 
 const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
@@ -91,7 +96,7 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
     return (
       <Link
         href={href}
-        className="pulsable focus-ring block bg-card p-3 pl-4 opacity-55 hover:opacity-100 hover:bg-muted/40"
+        className="pulsable focus-ring flex h-full flex-col rounded-lg bg-card/60 p-4 opacity-70 shadow-ficha transition-[opacity,box-shadow] duration-200 hover:opacity-100 hover:shadow-ficha-alta"
       >
         <span
           className="block font-semibold leading-none tracking-tight"
@@ -108,10 +113,11 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
     <Link
       href={href}
       className={
-        // `pl-4` deja hueco para la franja de 8 px SIEMPRE, tenga o no tenga:
+        // `pt-5` deja sitio a la pestaña del canto SIEMPRE, la tenga o no:
         // es lo que mantiene alineadas las dieciséis.
-        'pulsable focus-ring block bg-card p-3 pl-4 hover:bg-muted/40 '
-        + FRANJA[baldosa.atencion]
+        'pulsable focus-ring flex h-full flex-col overflow-hidden rounded-lg bg-card p-4 pt-5 '
+        + 'shadow-ficha transition-shadow duration-200 hover:shadow-ficha-alta '
+        + PESTANA[baldosa.atencion]
       }
     >
       {/*

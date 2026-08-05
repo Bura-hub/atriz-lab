@@ -34,29 +34,55 @@ export function MuroFlota() {
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border bg-card">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3">
-          <h1 className="text-lg font-semibold">Flota · {TOTAL_ROBOTS} robots</h1>
-          <p className="text-xs text-muted-foreground mt-1 max-w-prose">
-            Cada baldosa abre su propio WebSocket y está suscrita a{' '}
-            <code>{TOPICS_MURO.join(' + ')}</code>: {numero(porRobot, 2)} kB/s por robot,{' '}
-            {numero(total, 2)} kB/s los {TOTAL_ROBOTS}. Con <code>/odom</code> dentro serían
-            1,7 Mbit/s, y con <code>/scan</code>, 10,3 — el WiFi entero del aula.
-          </p>
+      {/*
+        EL MASTHEAD DEL TABLERO. El campo de color ocupa una región entera —no
+        es un acento— y es lo que hace que esta pantalla se reconozca a tres
+        metros aunque no se lea una palabra. La cifra de caudal va en la barra
+        porque es la restricción que gobierna el diseño de este muro.
+      */}
+      <header className="bg-tablero text-tablero-foreground shadow-rail">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-x-8 gap-y-3 px-4 py-5 sm:px-6">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Flota
+              <span className="ml-3 font-mono text-base font-normal text-tablero-tenue">
+                {TOTAL_ROBOTS} robots
+              </span>
+            </h1>
+            <p className="mt-1.5 max-w-prose text-sm leading-snug text-tablero-tenue">
+              Cada ficha abre su propio WebSocket y está suscrita a{' '}
+              <code className="font-mono text-tablero-foreground/90">
+                {TOPICS_MURO.join(' + ')}
+              </code>
+              .
+            </p>
+          </div>
+
+          {/*
+            El presupuesto de red, en la barra. No es adorno: es el número que
+            decide a qué topics puede suscribirse este muro, y por eso vive
+            donde se ve siempre.
+          */}
+          <dl className="flex gap-6 text-tablero-tenue">
+            <div>
+              <dt className="text-[11px] uppercase tracking-wider">por robot</dt>
+              <dd className="font-mono text-lg text-tablero-foreground">
+                {numero(porRobot, 2)}
+                <span className="ml-1 text-xs text-tablero-tenue">kB/s</span>
+              </dd>
+            </div>
+            <div>
+              <dt className="text-[11px] uppercase tracking-wider">los {TOTAL_ROBOTS}</dt>
+              <dd className="font-mono text-lg text-tablero-foreground">
+                {numero(total, 2)}
+                <span className="ml-1 text-xs text-tablero-tenue">kB/s</span>
+              </dd>
+            </div>
+          </dl>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 py-5">
-        {/*
-          🔴 UNA SOLA LOSA, no dieciséis tarjetas sueltas. `.rejilla` deja 1 px de
-             hueco y el fondo del contenedor asoma por él: cada línea entre
-             baldosas es UNA, no dos bordes pegados. La compartimentación se ve.
-
-          📌 `4x4` es la forma que pide el encargo —el profesor mira los dieciséis
-             a la vez, a veces proyectados—. Las columnas de móvil se conservan
-             porque un teléfono no puede con cuatro, pero dejan de ser el caso
-             que manda.
-        */}
         {/*
           🔴 El cuadro de direcciones va ANTES de la losa y CERRADO. Es
              configuracion, no estado: no cambia con lo que hace el robot, asi
@@ -68,17 +94,43 @@ export function MuroFlota() {
           <DondeBuscar direcciones={direcciones} poner={poner} />
         </div>
 
-        <div className="rejilla grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-          {ROBOTS.map((id) => (
-            <BaldosaConectada key={id} id={id} destino={destinoDe(id, direcciones)} />
+        {/*
+          ── EL ÚNICO MOMENTO DE MOVIMIENTO ORQUESTADO DE LA APLICACIÓN ───────
+          Las dieciséis fichas se reparten sobre el tablero al entrar, con 28 ms
+          entre una y la siguiente. `craft-floor`: «one authored moment, not
+          scattered effects».
+
+          🔴 Y ES CSS, NO JAVASCRIPT, POR UNA RAZÓN QUE IMPORTA. Una entrada
+             escalonada hecha con estado de React se repetiría en cada
+             re-render, y aquí hay dieciséis WebSockets reconectándose por su
+             cuenta: el muro se pondría a barajar sus fichas cada vez que un
+             robot volviera. Una animación CSS corre **al montar y nunca más**,
+             que es exactamente la garantía que hace falta.
+
+          📌 `4x4` es la forma que pide el encargo: el profesor mira los
+             dieciséis a la vez, a veces proyectados. Las columnas de móvil se
+             conservan porque un teléfono no puede con cuatro.
+        */}
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {ROBOTS.map((id, i) => (
+            <div
+              key={id}
+              // `h-full` en el envoltorio Y en la ficha: si no, el envoltorio de
+              // la animacion no estira y las fichas de una misma fila quedan de
+              // alturas distintas, con hueco muerto debajo de las cortas.
+              className="animate-entrar h-full"
+              style={{ animationDelay: `${i * 28}ms` }}
+            >
+              <BaldosaConectada id={id} destino={destinoDe(id, direcciones)} />
+            </div>
           ))}
         </div>
 
-        <section className="mt-6 border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+        <section className="mt-8 rounded-lg bg-card p-6 shadow-ficha">
+          <h2 className="text-base font-semibold tracking-tight text-foreground">
             Cómo leer este muro
           </h2>
-          <ul className="mt-2 list-disc pl-5 text-sm text-muted-foreground space-y-1.5 max-w-prose">
+          <ul className="mt-3 max-w-prose list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
             <li>
               <strong>Rojo solo por un hecho</strong>: atasco confirmado por el firmware del RVR, o
               batería por debajo de 6,5 V, y además con señal reciente. Nunca por un hueco.

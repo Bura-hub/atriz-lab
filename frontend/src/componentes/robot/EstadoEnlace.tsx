@@ -47,10 +47,14 @@ const TITULO: Readonly<Record<Salud['estado'], string>> = {
 }
 
 /** La pastilla para la cabecera. Se lee de un vistazo y no explica nada. */
-export function InsigniaEnlace() {
+export function InsigniaEnlace({ sobreTablero = false }: { sobreTablero?: boolean } = {}) {
   const { transporte } = useRobot()
   const salud = useSalud(transporte)
-  return <Insignia tono={TONO[salud.estado]}>{TITULO[salud.estado]}</Insignia>
+  return (
+    <Insignia tono={TONO[salud.estado]} sobreTablero={sobreTablero}>
+      {TITULO[salud.estado]}
+    </Insignia>
+  )
 }
 
 /**

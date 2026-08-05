@@ -74,6 +74,33 @@ Solo se usa con `/estado_robot` en la mano; si no llega, la respuesta es «no se
 
 ---
 
+## 🔴🔴 LO QUE ESTA TABLA NO ES: UNA EXCUSA PARA NO DISEÑAR
+
+Corregido el 2026-08-04, después de que el usuario tuviera que pedirlo cinco veces.
+
+La tabla de abajo es correcta en lo que dice y **se usó para algo que no dice**. Sirvió de
+coartada para dejar la aplicación en gris piedra, radio 0, tipografía del sistema, sin
+profundidad, sin color de marca y con el movimiento reducido a tres reglas — y para contestar
+«las skills no aplican aquí» cada vez que se pedía un diseño mejor.
+
+**Las reglas de honestidad y las de artesanía son separables, y solo las primeras están
+ganadas:**
+
+| Se rechazaba | Veredicto |
+|---|---|
+| Pulso infinito en un indicador de estado | ✅ **Sigue prohibido.** Finge vida sobre robots que pueden estar mudos. Es la regla |
+| Datos «orgánicos» inventados, *skeletons*, barras de progreso | ✅ **Siguen prohibidos.** Es telemetría falsa |
+| Tipografía propia | 🔴 **Era falso.** El argumento —«el AP del aula puede bloquear la red»— es cierto, y la conclusión no: una fuente **se empaqueta**. Geist viaja en el bundle, **cero peticiones externas**, medido |
+| Radio 0 «porque un instrumento no redondea» | 🔴 **Era una pose** disfrazada de principio |
+| Sin sombras «porque sugieren relieve donde no lo hay» | 🔴 **Sobreaplicado.** La elevación separa papel de tablero; lo que `craft-floor` prohíbe es declararla **dos veces** (borde *y* sombra) |
+| Color como «vocabulario de estados, no acento» | ⚠️ **Cierto y usado al revés:** servía para no tener **ningún** color. El mundo ahora tiene un campo que ocupa regiones enteras, y el vocabulario de estados sigue intacto encima |
+| Movimiento casi nulo | 🔴 **Emil no dice eso.** Dice movimiento **con propósito**. Ahora hay un momento orquestado y ninguno se repite solo |
+
+→ **La regla que queda:** cuando una skill choque con esta tabla, comprueba primero **si el
+  choque es de honestidad o de gusto**. Si es de gusto, gana la skill.
+
+---
+
 ## 🔴 PRECEDENCIA: estas reglas ganan a las skills
 
 Hay **20 skills de diseño** instaladas en `.agents/skills/` del repositorio hermano. **Doce son
