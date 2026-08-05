@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
+import { Armazon } from '@/componentes/comun/Armazon'
 import './globals.css'
 
 /**
@@ -82,7 +83,12 @@ export default function DisposicionRaiz({
           FINISH: unreviewed and undocumented is unfinished; this build ends
           with the finish review, the verdict, and DESIGN.md
         */}
-        {children}
+        {/*
+          El raíl va aquí y no dentro de cada zona: es la ÚNICA navegación de la
+          aplicación, y antes de existir había tres agujeros —el cuaderno sin
+          salida, la portada inalcanzable, y el muro sin camino al cuaderno—.
+        */}
+        <Armazon>{children}</Armazon>
       </body>
     </html>
   )
