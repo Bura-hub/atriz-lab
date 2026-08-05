@@ -27,18 +27,18 @@
  * las 16 baldosas a la vez. Hay una prueba en `resumen.ts` que impide unificarlos.
  */
 
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { ProveedorRobot, useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
 import { useLatido } from '@/hooks/useTransporte'
-import { resumirBaldosa } from '@/lib/flota/resumen'
+import { Baldosa, resumirBaldosa } from '@/lib/flota/resumen'
 import { entradaDeBaldosa } from '@/lib/interfaz/lecturas'
 import { BaldosaRobot } from './BaldosaRobot'
 
 /** El topic del que sale `msDesdeUltimoLatido`. Ver la cabecera: no es intercambiable. */
 const TOPIC_LATIDO_MURO = '/motor_status'
 
-function Contenido({ id }: { id: number }) {
+function Contenido({ id, alResumir }: { id: number; alResumir?: AlResumir }) {
   const { transporte, conectado } = useRobot()
   const bateria = useTopic(transporte, '/battery_state')
   const motores = useTopic(transporte, TOPIC_LATIDO_MURO)
@@ -73,6 +73,16 @@ function Contenido({ id }: { id: number }) {
     }),
   )
 
+  /*
+   * 🔴 EL RESUMEN SUBE, LA FICHA NO SE MUEVE.
+   *
+   * El muro puede ordenar por atención, y reordenar el DOM desmontaría las
+   * fichas —y con ellas sus dieciséis WebSockets, que volverían a abrirse—. Por
+   * eso la ficha informa de su estado hacia arriba y el muro coloca con `order`
+   * de CSS, que cambia la posición VISUAL sin tocar el árbol.
+   */
+  useEffect(() => { alResumir?.(id, baldosa.atencion) }, [alResumir, id, baldosa.atencion])
+
   return (
     <BaldosaRobot
       baldosa={baldosa}
@@ -82,7 +92,12 @@ function Contenido({ id }: { id: number }) {
   )
 }
 
-export function BaldosaConectada({ id, destino }: { id: number; destino?: number | string }) {
+/** Lo unico que el muro necesita saber de una ficha para ordenarla. */
+export type AlResumir = (id: number, atencion: Baldosa['atencion']) => void
+
+export function BaldosaConectada(
+  { id, destino, alResumir }: { id: number; destino?: number | string; alResumir?: AlResumir },
+) {
   /*
    * 🔴 `destino` es A DONDE se conecta; `id` sigue siendo QUIEN es. No se
    *    mezclan: la baldosa se sigue llamando rvr-NN y enlazando a /robot/NN
@@ -94,7 +109,7 @@ export function BaldosaConectada({ id, destino }: { id: number; destino?: number
    */
   return (
     <ProveedorRobot robot={destino ?? id}>
-      <Contenido id={id} />
+      <Contenido id={id} alResumir={alResumir} />
     </ProveedorRobot>
   )
 }

@@ -20,20 +20,53 @@
  * la garantia es la republicacion a 1 Hz, no el QoS.
  */
 
+import { useCallback, useMemo, useState } from 'react'
 import { TOPICS_MURO, caudalDeFlota } from '@/lib/flota/presupuesto'
+import { Baldosa } from '@/lib/flota/resumen'
+import { OrdenMuro, ordenarBaldosas } from '@/lib/flota/orden'
+import { ControlesMuro } from './ControlesMuro'
 import { ROBOTS, TOTAL_ROBOTS } from '@/lib/interfaz/identidad'
 import { destinoDe } from '@/lib/interfaz/direcciones'
 import { numero } from '@/lib/interfaz/formato'
-import { BaldosaConectada } from './BaldosaConectada'
+import { AlResumir, BaldosaConectada } from './BaldosaConectada'
 import { DondeBuscar, useDirecciones } from './DondeBuscar'
 
 export function MuroFlota() {
   const porRobot = caudalDeFlota(TOPICS_MURO, 1)
   const total = caudalDeFlota(TOPICS_MURO, TOTAL_ROBOTS)
   const { direcciones, poner } = useDirecciones()
+  const [proyeccion, setProyeccion] = useState(false)
+  const [orden, setOrden] = useState<OrdenMuro>('NUMERO')
+
+  /*
+   * El estado de cada ficha, informado desde abajo. Solo se guarda la ATENCION:
+   * es lo unico que el orden necesita, y guardar la baldosa entera obligaria a
+   * re-renderizar el muro completo con cada mensaje de cada robot.
+   */
+  const [atenciones, setAtenciones] = useState<Record<number, Baldosa['atencion']>>({})
+  const alResumir = useCallback<AlResumir>((id, atencion) => {
+    setAtenciones((a) => (a[id] === atencion ? a : { ...a, [id]: atencion }))
+  }, [])
+
+  /*
+   * 🔴 EL ORDEN SE APLICA CON `order` DE CSS, NO REORDENANDO EL ARRAY.
+   *
+   * Mover las fichas en el DOM las desmontaria, y con ellas sus dieciseis
+   * WebSockets: el muro entero se reconectaria cada vez que un robot cruzara un
+   * umbral. Con `order` cambia la posicion VISUAL y el arbol se queda quieto.
+   */
+  const posicion = useMemo(() => {
+    const fichas = ROBOTS.map((id) => ({
+      id,
+      baldosa: { atencion: atenciones[id] ?? 'NINGUNA' } as Baldosa,
+    }))
+    const m: Record<number, number> = {}
+    ordenarBaldosas(fichas, orden).forEach((f, i) => { m[f.id] = i })
+    return m
+  }, [atenciones, orden])
 
   return (
-    <div className="relative min-h-screen bg-background text-foreground">
+    <div className={`relative min-h-screen bg-background text-foreground ${proyeccion ? 'proyeccion' : ''}`}>
       {/*
         LA LUZ AMBIENTE. Dos orbes desenfocados y FIJOS que tiñen la pantalla
         entera: es lo que impide que el pozo oscuro se lea como «apagado» en vez
@@ -48,11 +81,23 @@ export function MuroFlota() {
       */}
       <header className="relative z-10 mx-auto flex max-w-7xl flex-wrap items-end justify-between gap-x-8 gap-y-5 px-4 pb-7 pt-12 sm:px-6">
         <div>
+          {/*
+            A DOS LINEAS, como lo compuso Stitch. No es capricho: proyectado, un
+            titular de una sola linea se come el ancho que necesitan las cifras
+            de caudal, y partirlo deja la columna izquierda libre.
+
+            ⚠️ En proyeccion el degradado se apaga: sobre fondo claro un texto
+               con degradado pierde contraste justo donde mas hace falta.
+          */}
           <h1
-            className="bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text font-semibold leading-[0.96] tracking-[-0.048em] text-transparent"
+            className={`font-semibold leading-[0.92] tracking-[-0.05em] ${
+              proyeccion
+                ? 'text-foreground'
+                : 'bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text text-transparent'
+            }`}
             style={{ fontSize: 'clamp(2.5rem, 6.4vw, 4.875rem)' }}
           >
-            Flota Atriz
+            Flota<br />Atriz
           </h1>
           <p className="mt-3.5 max-w-[52ch] text-base leading-relaxed text-muted-foreground">
             {TOTAL_ROBOTS} Sphero RVR en el aula. Los que están en color piden algo; los de
@@ -65,6 +110,13 @@ export function MuroFlota() {
           El presupuesto de red, en pastillas de vidrio. No es adorno: es el
           número que decide a qué topics puede suscribirse este muro.
         */}
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+        <ControlesMuro
+          proyeccion={proyeccion}
+          alCambiarProyeccion={setProyeccion}
+          orden={orden}
+          alCambiarOrden={setOrden}
+        />
         <dl className="flex flex-wrap gap-2.5">
           <div className="vidrio rounded-md px-[18px] py-[13px]">
             <dt className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
@@ -85,6 +137,7 @@ export function MuroFlota() {
             </dd>
           </div>
         </dl>
+        </div>
       </header>
 
       <main className="relative z-10 mx-auto max-w-7xl px-4 pb-16 sm:px-6">
@@ -124,9 +177,13 @@ export function MuroFlota() {
               // la animacion no estira y las fichas de una misma fila quedan de
               // alturas distintas, con hueco muerto debajo de las cortas.
               className="animate-entrar h-full"
-              style={{ animationDelay: `${i * 60}ms` }}
+              style={{ animationDelay: `${i * 60}ms`, order: posicion[id] ?? id }}
             >
-              <BaldosaConectada id={id} destino={destinoDe(id, direcciones)} />
+              <BaldosaConectada
+                id={id}
+                destino={destinoDe(id, direcciones)}
+                alResumir={alResumir}
+              />
             </div>
           ))}
         </div>

@@ -196,6 +196,69 @@
   }
 
   /*
+   * ── MODO PROYECCIÓN ──────────────────────────────────────────────────────
+   * 🔴 SOLO PARA EL MURO, Y SOLO A PETICIÓN. No es un tema alternativo.
+   *
+   * El mundo oscuro está elegido desde la escena del ALUMNO: a 50 cm, dos horas
+   * seguidas. El muro del profesor tiene otra escena y otro criterio escrito
+   * —«una persona de pie a tres metros del muro proyectado»— y ahí el mundo
+   * oscuro juega en contra por dos motivos medidos:
+   *
+   *   · un proyector lava los negros, así que el pozo se vuelve gris sucio y el
+   *     contraste real cae muy por debajo del que se calculó en pantalla;
+   *   · y el vidrio, que a 50 cm da profundidad, a tres metros solo resta
+   *     contraste a la única pantalla que no puede permitírselo.
+   *
+   * Lo que NO cambia: los bloques de color. Son el idioma —«este robot pide
+   * algo»— y en claro siguen siendo los mismos tres, con las variantes oscuras
+   * de cada tono para que el texto blanco de encima siga contrastando.
+   */
+  .proyeccion {
+    --background: 246 245 243;
+    --foreground: 15 16 32;
+    --card: 255 255 255;
+    --card-foreground: 15 16 32;
+    --muted: 228 226 222;
+    --muted-foreground: 74 76 94;
+    --border: 202 199 194;
+    --vidrio: 15 16 32;   /* el «vidrio» pasa a ser tinta muy diluida */
+    --filo: 15 16 32;
+    --sombra: 15 16 32;
+
+    /* Los mismos tres bloques, en su version que aguanta luz ambiente. */
+    --bloque-vivo: 30 58 210;
+    --bloque-mirar: 132 163 12;
+    --bloque-ir: 214 62 30;
+
+    --estado-neutro: 90 92 108;
+    --estado-vivo: 21 122 61;
+    --estado-mirar: 158 92 8;
+    --estado-ir: 190 42 22;
+  }
+
+  /*
+   * En proyección el vidrio deja de ser vidrio: sin desenfoque, con borde de
+   * verdad y sobre blanco. Mantener el `backdrop-filter` aquí costaría GPU por
+   * dieciséis y restaría el contraste que este modo existe para ganar.
+   */
+  .proyeccion .vidrio {
+    background: rgb(var(--card));
+    border-color: rgb(var(--filo) / 0.14);
+    backdrop-filter: none;
+    box-shadow: 0 1px 2px -1px rgb(var(--sombra) / 0.18);
+  }
+
+  .proyeccion .vidrio:hover {
+    background: rgb(var(--card));
+    border-color: rgb(var(--filo) / 0.28);
+  }
+
+  /* Y la luz ambiente se apaga: sobre fondo claro solo ensucia. */
+  .proyeccion .luz-ambiente {
+    display: none;
+  }
+
+  /*
    * ── LA LUZ AMBIENTE ──────────────────────────────────────────────────────
    * Dos orbes desenfocados que tiñen la pantalla entera. Es lo que impide que
    * el fondo oscuro se lea como «apagado» en vez de como «profundo».
