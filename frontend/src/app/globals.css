@@ -202,6 +202,48 @@
   }
 
   /*
+   * ── LA FRANJA DE ATENCIÓN DEL MURO ───────────────────────────────────────
+   * 🔴 POR QUÉ NO ES UN `border-left`, QUE ES LO QUE ERA.
+   *
+   * La franja codifica la atención por GROSOR además de por color —un proyector
+   * desatura, y una de cada doce personas no distingue rojo de ámbar—. Con
+   * `border-l-0 / -4 / -8` eso tenía dos defectos que solo se ven en
+   * movimiento y en conjunto:
+   *
+   *   1. cambiar de estado **desplazaba el contenido** 4 u 8 px;
+   *   2. y el identificador quedaba **desalineado entre baldosas**, porque su
+   *      margen izquierdo dependía del estado de cada una. En una losa 4×4 eso
+   *      se lee como un borde dentado.
+   *
+   * Ahora la franja es una barra absoluta de 8 px que se escala en X. Con eso:
+   *   · el contenido **nunca se mueve** y todas las baldosas alinean igual;
+   *   · el cambio de grosor es `transform`, o sea sin recalcular maquetación
+   *     —la regla de Emil: solo `transform` y `opacity`—;
+   *   · y la transición de 200 ms es **anti-parpadeo**, no adorno: con 16
+   *     baldosas, un hipo de WiFi que cruce el umbral y vuelva daría un
+   *     estroboscopio.
+   *
+   * ⚠️ `scaleX(0)` es legítimo aquí: no es un elemento «apareciendo de la
+   *    nada» —lo que la regla de Emil prohíbe— sino la ausencia de franja, que
+   *    es un estado real y el más común.
+   */
+  .franja {
+    position: relative;
+  }
+
+  .franja::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 8px;
+    background: var(--franja-color, transparent);
+    transform: scaleX(var(--franja-escala, 0));
+    transform-origin: left center;
+    transition: transform var(--t-estado) var(--curva-salida),
+                background-color var(--t-estado) ease;
+  }
+
+  /*
    * El foco, visible siempre. Quien navega con teclado tiene que ver dónde
    * está, y en un instrumento eso no es una preferencia.
    */
@@ -232,9 +274,28 @@
     transform: scale(0.97);
   }
 
+  /*
+   * ── EL FOCO ──────────────────────────────────────────────────────────────
+   * 🔴 `z-index` NO ES DECORACIÓN AQUÍ: sin él el anillo se ve a medias.
+   *
+   * En `.rejilla` las baldosas se tocan con 1 px de hueco, así que un contorno
+   * con `outline-offset: 2px` invade a la vecina — y la vecina, que se pinta
+   * después, lo tapa por dos de sus cuatro lados. El resultado es un foco
+   * partido justo en un muro de dieciséis, que es donde alguien navegando con
+   * teclado más necesita saber dónde está.
+   *
+   * `position: relative` + `z-index` lo suben por encima de sus vecinas **solo
+   * mientras tienen el foco**: fuera de ese momento no cambia nada.
+   *
+   * ⚠️ `:focus-visible` y no `:focus`: el ratón no debe dejar anillos detrás.
+   * ⚠️ Y el color es `--foreground`, no un acento: tiene que verse igual sobre
+   *    una baldosa neutra, una ámbar y una roja.
+   */
   .focus-ring:focus-visible {
     outline: 2px solid rgb(var(--foreground));
     outline-offset: 2px;
+    position: relative;
+    z-index: 1;
   }
 
   /*

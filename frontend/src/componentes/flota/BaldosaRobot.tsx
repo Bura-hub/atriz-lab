@@ -45,10 +45,17 @@ const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
  * `critique.md:718` de `impeccable` lo lista como defecto de accesibilidad con
  * estas palabras: «Meaning conveyed by color alone».
  */
+/*
+ * ⚠️ EL GROSOR VA POR `transform`, NO POR `border-width`. Ver `.franja` en
+ *    `globals.css`: con un borde de verdad, cambiar de estado desplazaba el
+ *    contenido 4 u 8 px y dejaba el identificador **desalineado entre
+ *    baldosas** según el estado de cada una — en una losa 4×4 eso se lee como
+ *    un borde dentado. Ahora ninguna baldosa mueve nada al cambiar.
+ */
 const FRANJA: Readonly<Record<Baldosa['atencion'], string>> = {
-  NINGUNA: 'border-l-0',
-  MIRAR: 'border-l-4 border-l-warning',
-  IR: 'border-l-8 border-l-destructive',
+  NINGUNA: 'franja [--franja-escala:0]',
+  MIRAR: 'franja [--franja-escala:0.5] [--franja-color:rgb(var(--warning))]',
+  IR: 'franja [--franja-escala:1] [--franja-color:rgb(var(--destructive))]',
 }
 
 const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
@@ -84,7 +91,7 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
     return (
       <Link
         href={href}
-        className="pulsable focus-ring block bg-card p-3 opacity-55 hover:opacity-100 hover:bg-muted/40"
+        className="pulsable focus-ring block bg-card p-3 pl-4 opacity-55 hover:opacity-100 hover:bg-muted/40"
       >
         <span
           className="block font-semibold leading-none tracking-tight"
@@ -101,7 +108,9 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
     <Link
       href={href}
       className={
-        'pulsable focus-ring block bg-card p-3 hover:bg-muted/40 '
+        // `pl-4` deja hueco para la franja de 8 px SIEMPRE, tenga o no tenga:
+        // es lo que mantiene alineadas las dieciséis.
+        'pulsable focus-ring block bg-card p-3 pl-4 hover:bg-muted/40 '
         + FRANJA[baldosa.atencion]
       }
     >

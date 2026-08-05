@@ -35,12 +35,39 @@ export interface PropsInsignia {
   punto?: boolean
 }
 
+/*
+ * 🔴 LA TRANSICION DE COLOR ES ANTI-PARPADEO, NO ADORNO.
+ *
+ * Sin ella un cambio de tono es un salto instantaneo. Con 16 baldosas y un hipo
+ * de WiFi —que es lo que hace que `msDesdeUltimo` cruce el umbral y vuelva—, el
+ * muro entero da un estroboscopio: el sitio donde mas se nota es exactamente
+ * donde mas dueles.
+ *
+ * Los 200 ms de `--t-estado` suavizan ese cruce sin retrasar la lectura.
+ *
+ * ⚠️ Y transiciona SOLO color, borde y fondo. **Nada de `transform` ni de
+ *    opacidad**: el estado no debe moverse ni aparecer, solo cambiar de color.
+ *
+ * 🔴 Esto NO es «animar la llegada de un dato». `/odom` llega a 16,5 Hz y
+ *    animarlo seria un estroboscopio sobre las cifras que alguien esta leyendo
+ *    —la puerta de frecuencia de Emil lo prohibe sin matices: «100+ times/day →
+ *    No animation. Ever.»—. Un cambio de TONO es raro: pasa cuando el robot
+ *    cambia de estado, no cuando llega un mensaje.
+ *
+ * ⚠️ `prefers-reduced-motion` la CONSERVA a propósito (ver `globals.css`):
+ *    reducir movimiento no puede devolver el parpadeo a quien pidió menos.
+ */
+const TRANSICION = 'transition-[color,background-color,border-color] '
+  + 'duration-[var(--t-estado)] ease-[cubic-bezier(0.23,1,0.32,1)]'
+
 export function Insignia({ tono, children, punto = true }: PropsInsignia) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-xs font-medium ${CLASES[tono]}`}
+      className={`inline-flex items-center gap-1.5 border px-2 py-0.5 text-xs font-medium ${TRANSICION} ${CLASES[tono]}`}
     >
-      {punto && <span className="h-1.5 w-1.5 bg-current" aria-hidden="true" />}
+      {punto && (
+        <span className={`h-1.5 w-1.5 bg-current ${TRANSICION}`} aria-hidden="true" />
+      )}
       {children}
     </span>
   )
