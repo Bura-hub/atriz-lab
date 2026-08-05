@@ -1,66 +1,102 @@
 'use client'
 
 /**
- * EL TERMINAL DEL ALUMNO — el producto, y la mitad BLOQUEADA de la aplicacion.
+ * EL TALLER DEL ALUMNO. **NO CONSTRUIDO**, y esta pantalla lo dice dos veces.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴🔴 LA TRAMPA DE ESTA PANTALLA
+ * 🔴 EL CRITERIO DE REVISIÓN ES UNA SOLA PREGUNTA
  * ═══════════════════════════════════════════════════════════════════════════
- * Un terminal bonito con un editor de mentira y una salida con texto inventado
- * **es la maqueta de 1125 lineas renacida en miniatura**, y encima en la pestaña
- * principal. Seria fabricar exactamente el fallo que este proyecto entero
- * persigue, con la coartada del diseño.
+ *      ¿alguien podría creer que esto ya funciona?
  *
- * → **Regla de esta pantalla: CERO CONTENIDO FABRICADO.** Se dibuja el chasis,
- *   no una demostracion. El editor y la salida son contenedores vacios con su
- *   estado NOMBRADO, y ese nombre no es «cargando» ni «proximamente»: es **NO
- *   CONSTRUIDO**, el sexto tipo de estado vacio que ninguna guia de diseño
- *   contempla y que este proyecto necesita.
+ * Si la respuesta no es un no rotundo, la pantalla está mal. Por eso aquí no
+ * hay **ni una línea de código ni una de salida inventada**, ni cursor, ni
+ * prompt `$`, ni resaltado de sintaxis falso, ni «próximamente».
  *
- * ⚠️ El criterio para revisar esta pantalla es una sola pregunta: **¿alguien
- *    podria creer que esto ya funciona?** Si la respuesta no es un no rotundo,
- *    la pantalla esta mal.
+ * Es el 90 % del tiempo del alumno y el 0 % de lo que funciona, y esa
+ * desproporción se enseña en vez de disimularse: lo que ocupa la pantalla no es
+ * un decorado de terminal, es **la lista de requisitos medidos que el agente de
+ * sesión tendrá que cumplir**. Así el hueco es un encargo, no un adorno.
+ *
+ * ⚠️ Y lo único de esta pantalla que habla con el robot HOY es la parada de
+ *    emergencia — porque el alumno lanza sus guiones por SSH mientras esto no
+ *    exista, **y el robot se mueve de verdad mientras esta pantalla está
+ *    abierta**.
  */
 
+import { ReactNode } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useTeleoperacion } from '@/hooks/useTeleoperacion'
+import { AVISOS_ESPACIO, ESPACIO } from '@/lib/taller/espacio'
 import { BotonParada } from './BotonParada'
+import { Insignia } from '@/componentes/ui/Insignia'
+import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
-/** Un eslabon de la cadena de bloqueo, en orden. */
-interface Eslabon {
-  que: string
-  estado: string
-  porque: string
-}
-
-/**
- * 🔴 La cadena entera, y en orden. No es una lista de tareas: es la explicacion
- * de por que la pestaña principal de la aplicacion esta vacia, y quien la lea
- * tiene que poder seguir el hilo hasta el final sin preguntarle a nadie.
- */
-const CADENA: readonly Eslabon[] = [
+/** Los tres eslabones de la cadena, en orden. Ninguno se puede saltar. */
+const CADENA: readonly { paso: string; titulo: string; estado: string; porque: string }[] = [
   {
-    que: 'F0 · medir el punto de acceso del aula',
+    paso: '1',
+    titulo: 'F0 · medir el punto de acceso del aula',
     estado: 'sin medir',
     porque:
-      'si el AP aísla a sus clientes entre sí, el navegador no puede hablar con el robot y el '
-      + 'transporte entero se replantea. Necesita estar en el aula, con un portátil y un robot. '
-      + 'Diez minutos, y es el único experimento del proyecto que puede tirar un diseño completo.',
+      'Si el AP aísla a sus clientes entre sí, el navegador no puede hablar con el robot y el '
+      + 'transporte se replantea entero. Diez minutos en el aula, y es el único experimento que '
+      + 'puede tirar un diseño completo.',
   },
   {
-    que: 'Agente de sesión en el robot (puerto 9443)',
+    paso: '2',
+    titulo: 'Agente de sesión en el robot',
     estado: 'no escrito',
     porque:
-      'el código del alumno corre EN el robot, con rclpy nativo sobre atriz.py, no por rosbridge. '
-      + 'Hace falta algo que lo reciba, lo ejecute con una terminal de verdad y devuelva su salida. '
-      + 'Su diseño depende de lo anterior.',
+      'Tu código corre EN el robot, con rclpy nativo sobre atriz.py — no por rosbridge. Haría '
+      + 'falta un servicio propio, escuchando en el robot.',
   },
   {
-    que: 'Este terminal',
+    paso: '3',
+    titulo: 'Este terminal',
     estado: 'chasis dibujado, sin conectar',
-    porque: 'lo que ves es la forma que tendrá. No hay editor ni salida porque no hay nada detrás.',
+    porque: 'Lo que ves. La forma que tendrá, sin nada detrás.',
   },
 ]
+
+/**
+ * Lo que el agente de sesión tendrá que dar, **cada uno con la medida que lo
+ * obliga**. No es documentación interna: es lo que separa «no está hecho» de
+ * «no está hecho de cualquier manera».
+ */
+const REQUISITOS: readonly { titulo: string; porque: string }[] = [
+  {
+    titulo: 'PTY, no tubería',
+    porque:
+      '05_sensor_color.py imprime una fila cada 0,5 s y el seguidor de línea gira a 10 Hz. '
+      + 'Contra una tubería, print() escribe a bloques: pantalla congelada con el robot en marcha.',
+  },
+  {
+    titulo: 'stdin bidireccional',
+    porque:
+      'Cuatro input() en 04_giro_preciso.py (líneas 75, 103, 106 y 109) y un quinto en '
+      + '99_test_ctrl_c.py (línea 64). Sin él, dos prácticas de diez están muertas.',
+  },
+  {
+    titulo: 'Señales y PID a la vista',
+    porque:
+      'SIGINT repetido, SIGQUIT, SIGTERM y SIGHUP son el objeto de estudio de la práctica 99, y '
+      + 'su ejercicio 5 pide kill -9 <pid> desde otra terminal.',
+  },
+]
+
+/** Una caja vacía con su motivo dentro. **Nunca con contenido simulado.** */
+function Hueco({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+        {etiqueta}
+      </p>
+      <div className="flex min-h-[190px] items-center rounded-md border border-dashed border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)] p-5">
+        <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">{children}</p>
+      </div>
+    </div>
+  )
+}
 
 export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
   const { transporte } = useRobot()
@@ -72,156 +108,179 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
 
   return (
     <div className="space-y-4">
-      {/* ── EL CHASIS ───────────────────────────────────────────────────── */}
-      <section className="border border-border bg-card">
-        <header className="flex items-baseline justify-between gap-3 border-b border-border px-3 py-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Terminal · {etiqueta}
-          </h2>
-          <span className="border border-border px-2 py-0.5 text-[11px] uppercase tracking-widest text-muted-foreground">
-            no construido
-          </span>
-        </header>
+      <Tarjeta
+        titulo={`Terminal · ${etiqueta}`}
+        subtitulo="Aquí todavía no se puede escribir ni ejecutar código: esto es la forma que tendrá, sin nada detrás."
+        extremo={<Insignia tono="NEUTRO">no construido</Insignia>}
+      >
+        {/*
+          LA PARADA, ancho completo y sin compartir fila. Es lo ÚNICO de esta
+          pantalla que habla con el robot hoy, y hace falta precisamente porque
+          el alumno lanza sus guiones por SSH: el robot se mueve de verdad
+          mientras esto está abierto.
+        */}
+        <div className="px-5 py-5">
+          <BotonParada teleoperacion={teleoperacion} />
+          <p className="mt-3 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+            Para el robot <strong className="text-foreground/85">venga la orden de donde
+            venga</strong>, incluido un guion que hayas lanzado por SSH. No hay botón para
+            liberarla: soltarla es un acto presencial, junto al robot.
+          </p>
+        </div>
 
-        <div className="rejilla lg:grid-cols-2">
-          <div className="min-h-[13rem] p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Editor · el código del alumno
-            </p>
-            <p className="mt-3 max-w-prose font-mono text-sm text-muted-foreground">
-              Aquí irá el código, unas 30 líneas. <strong>No hay editor todavía</strong> — y no hay
-              tampoco un editor de mentira, porque una caja que se puede escribir y no ejecuta nada
-              es peor que una vacía.
-            </p>
+        {/* EL CHASIS. Dos columnas que se apilan en móvil. */}
+        <div className="grid gap-5 border-t border-[rgb(var(--filo)/0.09)] px-5 py-5 lg:grid-cols-5">
+          <div className="lg:col-span-3">
+            <Hueco etiqueta="Editor · tu código">
+              No hay editor. <strong className="text-foreground/85">Y tampoco hay uno de
+              mentira</strong>: ni resaltado de sintaxis, ni números de línea, ni cursor. Una caja
+              en la que se puede escribir y que no ejecuta nada es peor que una vacía.
+            </Hueco>
           </div>
-
-          <div className="min-h-[13rem] p-3">
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
-              Salida del programa
-            </p>
-            <p className="mt-3 max-w-prose font-mono text-sm text-muted-foreground">
-              Aquí saldrá lo que imprima el programa, mientras corre.{' '}
-              <strong>No hay nada que mostrar</strong>: no hay ningún programa ejecutándose, así que
-              esta caja está vacía a propósito y no con un ejemplo.
-            </p>
+          <div className="lg:col-span-2">
+            <Hueco etiqueta="Salida del programa">
+              Sin cursor, sin prompt y sin una sola línea de texto simulado. Lo que iría aquí es lo
+              que imprima tu guion, en vivo.
+            </Hueco>
           </div>
         </div>
 
-        {/*
-          🔴 LA LINEA DE ENTRADA SE VE, Y ESTA DESHABILITADA CON SU MOTIVO.
-             Que se vea es el argumento: sin entrada bidireccional **dos de las
-             diez prácticas están muertas**. `04_giro_preciso.py` tiene cuatro
-             `input()` —el alumno mide con transportador y pulsa Enter— y
-             `99_test_ctrl_c.py` un quinto. Esa consecuencia merece estar en
-             pantalla y no solo enterrada en un plan.
-        */}
-        <div className="border-t border-border p-3">
+        {/* LA LÍNEA DE ENTRADA: visible y desactivada, con el motivo debajo. */}
+        <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 py-5">
           <label
-            htmlFor="entrada-terminal"
-            className="text-[11px] uppercase tracking-wide text-muted-foreground"
+            htmlFor="stdin-taller"
+            className="mb-1.5 block text-[11px] uppercase tracking-wider text-muted-foreground"
           >
-            Entrada del programa
+            Lo que le contestas al programa
           </label>
           <input
-            id="entrada-terminal"
+            id="stdin-taller"
             type="text"
             disabled
-            placeholder="el programa pedirá que midas algo y pulses Enter"
-            className="mt-1 w-full border border-border bg-muted/40 px-2 py-1 font-mono text-sm text-muted-foreground disabled:cursor-not-allowed"
+            placeholder="el programa te pedirá que midas algo y pulses Enter"
+            className="w-full cursor-not-allowed rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.03)] px-3.5 py-2.5 font-mono text-sm text-muted-foreground placeholder:text-muted-foreground/50"
           />
-          <p className="mt-1 max-w-prose text-xs text-muted-foreground">
-            Sin esta línea, <strong>dos de las diez prácticas no se pueden hacer</strong>: piden al
-            alumno que mida con transportador y pulse Enter, cuatro y cinco veces. Por eso está
-            dibujada aunque no funcione — es un requisito, no un adorno.
+          <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+            Desactivada porque no hay nada al otro lado. Sin esta línea,{' '}
+            <strong className="text-foreground/85">dos prácticas de diez están muertas</strong>:
+            los cuatro <code className="font-mono">input()</code> de{' '}
+            <code className="font-mono">04_giro_preciso.py</code> y el de{' '}
+            <code className="font-mono">99_test_ctrl_c.py</code>.
           </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-2 border-t border-border p-3">
-          <button
-            type="button"
-            disabled
-            className="border border-border px-4 py-2 text-sm font-medium text-muted-foreground disabled:cursor-not-allowed"
-          >
-            Ejecutar
-          </button>
-          <button
-            type="button"
-            disabled
-            className="border border-border px-4 py-2 text-sm font-medium text-muted-foreground disabled:cursor-not-allowed"
-          >
-            Parar el programa
-          </button>
-          <span className="text-xs text-muted-foreground">
-            Los dos necesitan el agente de sesión.
-          </span>
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled
+              className="cursor-not-allowed rounded-full bg-[rgb(var(--vidrio)/0.07)] px-5 py-2 text-sm font-semibold text-muted-foreground"
+            >
+              Ejecutar
+            </button>
+            <button
+              type="button"
+              disabled
+              className="cursor-not-allowed rounded-full border border-[rgb(var(--filo)/0.12)] px-5 py-2 text-sm font-medium text-muted-foreground"
+            >
+              Parar el programa
+            </button>
+            <span className="font-mono text-sm text-muted-foreground">PID —</span>
+            <span className="text-xs text-muted-foreground">
+              El PID es dato de la práctica 99, no decoración. Los tres necesitan el agente de
+              sesión.
+            </span>
+          </div>
         </div>
-      </section>
+      </Tarjeta>
 
-      {/*
-        ✅ Y ESTO SÍ FUNCIONA HOY, que es lo que separa esta pantalla de una
-           maqueta. La parada está verificada contra el robot —4 de 4 corridas,
-           frenada de 1,8 a 2,9 cm, con el driver confirmándolo en su bandera— y
-           para el robot **venga la orden de donde venga**, incluido un guion del
-           alumno lanzado por SSH. Que es justo lo que esta pestaña albergará.
-      */}
-      <section className="border border-border bg-card">
-        <header className="border-b border-border px-3 py-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Esto sí funciona
-          </h2>
-        </header>
-        <div className="p-3">
-          <BotonParada teleoperacion={teleoperacion} />
-          <p className="mt-2 max-w-prose text-xs text-muted-foreground">
-            Para el robot aunque el programa lo esté moviendo desde un guion lanzado por SSH: el
-            driver descarta todo mando de movimiento mientras la tenga puesta. Liberarla es
-            presencial, con el robot delante.
-          </p>
-        </div>
-      </section>
-
-      {/* ── POR QUÉ ESTÁ VACÍO ──────────────────────────────────────────── */}
-      <section className="border border-border bg-card">
-        <header className="border-b border-border px-3 py-2">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-            Qué falta, en orden
-          </h2>
-        </header>
-        <dl className="rejilla">
-          {CADENA.map((e) => (
-            <div key={e.que} className="p-3">
-              <dt className="flex flex-wrap items-baseline gap-2">
-                <span className="text-sm font-semibold">{e.que}</span>
-                <span className="border border-border px-1.5 py-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                  {e.estado}
-                </span>
-              </dt>
-              <dd className="mt-1 max-w-prose text-xs text-muted-foreground">{e.porque}</dd>
-            </div>
+      <Tarjeta
+        titulo="Qué falta, en orden"
+        subtitulo="Tres casillas, no un avance medido: ninguna se puede saltar y ninguna está a medias."
+      >
+        <ol className="divide-y divide-[rgb(var(--filo)/0.09)]">
+          {CADENA.map((c) => (
+            <li key={c.paso} className="flex gap-4 px-5 py-4">
+              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[rgb(var(--filo)/0.16)] font-mono text-xs text-muted-foreground">
+                {c.paso}
+              </span>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-baseline gap-x-2.5">
+                  <h3 className="text-[15px] font-semibold tracking-tight">{c.titulo}</h3>
+                  <span className="text-[11px] uppercase tracking-wider text-estado-mirar">
+                    {c.estado}
+                  </span>
+                </div>
+                <p className="mt-1.5 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+                  {c.porque}
+                </p>
+              </div>
+            </li>
           ))}
-        </dl>
-      </section>
+        </ol>
+      </Tarjeta>
+
+      <Tarjeta
+        titulo="Lo que el agente tendrá que dar"
+        subtitulo="Cada requisito con la medida que lo obliga. Es lo que separa «no está hecho» de «no está hecho de cualquier manera»."
+      >
+        <ul className="divide-y divide-[rgb(var(--filo)/0.09)]">
+          {REQUISITOS.map((r) => (
+            <li key={r.titulo} className="px-5 py-4">
+              <h3 className="text-[15px] font-semibold tracking-tight">{r.titulo}</h3>
+              <p className="mt-1.5 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+                {r.porque}
+              </p>
+            </li>
+          ))}
+        </ul>
+      </Tarjeta>
 
       {/*
-        🔴 ESTO SOLO PUEDE VIVIR AQUÍ, y es incómodo de escribir: cuando el
-           terminal exista, el alumno tendrá MÁS autoridad sobre el robot que
-           esta web. Es el precio de que su código corra con rclpy nativo, y esta
-           pantalla es su único domicilio posible.
+        🔴 LA CUENTA DEL ESPACIO VA **ANTES** DE EJECUTAR, NO EN UNA AYUDA.
+        En cuanto el guion construye `Robot()`, la biblioteca enciende el
+        barrido y el robot ya obedece. Para cuando alguien buscara esta tabla
+        detrás de un clic, el robot ya se estaría moviendo.
       */}
-      <section className="border border-warning/40 bg-warning/10 p-3">
-        <h2 className="text-sm font-semibold">
-          Cuando esto funcione, el alumno podrá más que esta web
-        </h2>
-        <p className="mt-1 max-w-prose text-xs">
-          Su código corre con <code>rclpy</code> nativo en el robot, así que alcanza{' '}
-          <code>raw_motors</code>, <code>move_timed</code>, <code>move_to_pose</code> y los modos de
-          infrarrojos — los caminos que <strong>se saltan la capa de seguridad</strong> y que esta
-          web tiene cerrados con una lista blanca. La frase «<code>raw_motors</code> ya no es
-          alcanzable», que está verificada para el navegador, deja de ser cierta mientras haya una
-          sesión de alumno en marcha. No es un fallo del diseño: es su precio, y está escrito aquí
-          para que nadie lo descubra por sorpresa.
-        </p>
-      </section>
+      <Tarjeta
+        titulo="Haz la cuenta del espacio, antes"
+        subtitulo="El robot no esquiva: solo tiene la capa de seguridad, y esa necesita el barrido encendido."
+      >
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                <th scope="col" className="px-5 py-2.5 font-medium">práctica</th>
+                <th scope="col" className="px-5 py-2.5 font-medium">qué despejar</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[rgb(var(--filo)/0.08)]">
+              {ESPACIO.map((p) => (
+                <tr key={p.fichero ?? 'propio'}>
+                  <td className="px-5 py-2.5">
+                    <span className="font-mono text-[12.5px] text-muted-foreground">
+                      {p.fichero ?? '—'}
+                    </span>
+                    <span className="ml-2.5">{p.titulo}</span>
+                  </td>
+                  <td className="px-5 py-2.5">
+                    {p.despejar === null ? (
+                      <span className="italic text-muted-foreground">
+                        no se puede saber: la cuenta sale de tu código
+                      </span>
+                    ) : p.despejar}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ul className="space-y-2 border-t border-[rgb(var(--filo)/0.09)] px-5 py-4">
+          {AVISOS_ESPACIO.map((a) => (
+            <li key={a} className="max-w-prose text-[13px] leading-relaxed text-estado-mirar">
+              · {a}
+            </li>
+          ))}
+        </ul>
+      </Tarjeta>
     </div>
   )
 }

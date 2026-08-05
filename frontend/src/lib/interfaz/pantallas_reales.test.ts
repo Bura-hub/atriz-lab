@@ -92,9 +92,12 @@ const ESPERA_MS = Number(process.env.ATRIZ_ESPERA_MS ?? 9000)
 const RUTAS: readonly [string, string][] = [
   ['portada', '/'],
   ['flota', '/flota'],
+  ['cuaderno', '/cuaderno'],
+  ['taller', `/robot/${HOST}`],
   ['telemetría', `/robot/${HOST}/telemetria`],
   ['conducir', `/robot/${HOST}/conducir`],
   ['LIDAR', `/robot/${HOST}/lidar`],
+  ['no obedece', `/robot/${HOST}/no-obedece`],
   ['diagnóstico', `/robot/${HOST}/diagnostico`],
 ]
 
@@ -269,6 +272,23 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
     const texto = normalizar(inf.texto)
     const halladas = FRASES_PROHIBIDAS.filter((f) => texto.includes(normalizar(f)))
     expect(halladas, JSON.stringify(halladas)).toEqual([])
+  })
+
+  it('🔴 el taller NO finge: ni codigo ni salida inventados', () => {
+    /*
+     * El criterio de esa pantalla es una sola pregunta: ¿alguien podria creer
+     * que esto ya funciona? Aqui se comprueba lo comprobable por maquina — que
+     * no hay prompt de shell, ni cursor simulado, ni una linea de salida.
+     */
+    const t = informes.get('taller')!
+    expect(t.texto).toMatch(/no construido/i)
+    // Ni prompt de shell ni salida simulada en ninguna hoja del DOM.
+    for (const hoja of t.hojas) {
+      expect(hoja, `hoja del taller: ${hoja}`).not.toMatch(/^\s*[$>#]\s|^Traceback|^>>> /)
+    }
+    // Y la linea de entrada existe y esta desactivada: sin ella, dos practicas
+    // de diez estan muertas, y eso tiene que VERSE.
+    expect(t.html).toMatch(/<input[^>]*disabled/)
   })
 
   it('🔴 y la MITAD que nunca se verifico: que los datos LLEGUEN', () => {
