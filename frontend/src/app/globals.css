@@ -52,6 +52,17 @@
   --luz-a: 91 140 255;
   --luz-b: 34 211 238;
 
+  /*
+   * ── EL RAÍL Y LA MARCA ───────────────────────────────────────────────────
+   * Valores sacados del HTML de la maqueta, no aproximados:
+   *   · el raíl NO es el pozo ni la barra: es una superficie propia, más clara
+   *     y ligeramente violácea, que lo separa del contenido sin una línea
+   *   · y la marca va en un azul claro, no en blanco. Es lo que hace que el
+   *     logotipo se lea como identidad y no como un titular más
+   */
+  --rail: 30 31 41;
+  --marca: 187 195 255;
+
   /* ── Ranuras de Tailwind ────────────────────────────────────────────────── */
   --background: 7 8 13;
   --foreground: 237 239 245;
@@ -359,6 +370,95 @@
    */
   .aparece {
     animation: aparecer var(--t-entrada) var(--curva-salida);
+  }
+
+  /*
+   * ── LA MICROETIQUETA ─────────────────────────────────────────────────────
+   * El primero de los tres niveles de una medida, y el que faltaba: hasta
+   * ahora el rótulo de un dato iba en la misma fuente que el texto corrido,
+   * así que un valor medido y una frase se leían igual.
+   *
+   * Va en monoespaciada, muy pequeña y muy espaciada. No es decoración: es
+   * lo que hace que el ojo distinga **una lectura del robot** de **algo que
+   * escribió una persona** sin tener que leer ninguna de las dos.
+   */
+  .microetiqueta {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgb(var(--muted-foreground));
+  }
+
+  /*
+   * ── EL FILO DE ESTADO ────────────────────────────────────────────────────
+   * Una línea de 1 px en el canto superior de la tarjeta, en degradado desde
+   * el color del estado hasta transparente.
+   *
+   * 🔴 Es **lo único** que colorea una tarjeta de vidrio, y sustituye a lo que
+   *    había antes: un `border-left` de 8 px que `craft-floor` prohíbe y que,
+   *    además, **desplazaba el contenido** al cambiar de grosor — los
+   *    identificadores de dos baldosas vecinas dejaban de alinearse.
+   *
+   * El color se inyecta por `--filo-estado`; sin él no se pinta nada.
+   */
+  .filo-estado {
+    position: relative;
+  }
+
+  .filo-estado::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    border-radius: inherit;
+    background: linear-gradient(
+      to right,
+      rgb(var(--filo-estado)) 0%,
+      rgb(var(--filo-estado) / 0.35) 45%,
+      transparent 100%
+    );
+    transition: background var(--t-estado) ease;
+  }
+
+  /*
+   * ── LAS TRAMAS ───────────────────────────────────────────────────────────
+   * 🔴 EL TERCER CÓDIGO, Y NO ES ESTÉTICA. Una de cada doce personas no
+   *    distingue el lima del coral, y esto se PROYECTA en una pared. El color
+   *    dice el estado, la palabra lo dice otra vez, y el paso de la trama lo
+   *    dice una tercera — **más denso = más urgente**, que se lee incluso en un
+   *    proyector que desatura y desde tres metros.
+   *
+   * Los pasos están medidos contra la maqueta: 14 px para MIRAR y 6 px para IR.
+   */
+  .trama-mirar {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0 7px,
+      rgb(0 0 0 / 0.15) 7px 14px
+    );
+  }
+
+  .trama-ir {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0 3px,
+      rgb(255 255 255 / 0.2) 3px 6px
+    );
+  }
+
+  /*
+   * ── EL POZO INTERIOR ─────────────────────────────────────────────────────
+   * Una superficie hundida DENTRO de una tarjeta de vidrio. Es lo que separa
+   * «la tarjeta» de «el dato que la tarjeta contiene» sin gastar otra línea
+   * ni otra sombra, y es el patrón que más se repite en la maqueta.
+   */
+  .pozo-interior {
+    background: rgb(0 0 0 / 0.2);
+    border: 1px solid rgb(var(--filo) / 0.05);
+    border-radius: 12px;
   }
 }
 
