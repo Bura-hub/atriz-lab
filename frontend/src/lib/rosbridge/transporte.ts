@@ -46,16 +46,32 @@ export interface Aviso {
 /**
  * Cuanto se espera a que un socket ABRA antes de darlo por colgado.
  *
- * 5 s con holgura: por IP el navegador abrio en 2,4-2,8 s con el muro entero
- * intentandolo a la vez (medido; a solas son decenas de ms). Bajarlo mucho
- * convertiria una red lenta en un falso «no llego».
+ * 🔴 **10 s, y la primera version puso 5 — demasiado justo.** Remedido en el
+ *    navegador el 2026-08-04 despues del arreglo del robot, **con el muro
+ *    entero intentandolo a la vez**, que es el caso que manda:
+ *
+ *      ws://rvr-01.local:9090    4339 ms (caché fría) · 2331 ms (caliente)
+ *      ws://192.168.1.200:9090   4623 ms
+ *      una toma suelta por nombre               7293 ms
+ *
+ *    Con 5 s el margen era de 400 ms sobre lo medido, y hubo una toma de
+ *    **7,3 s** que lo habria pasado: un falso «no llego» intermitente, que es
+ *    el peor modo de fallo posible para depurar.
+ *
+ * ⚠️ Y subirlo **no cuesta nada en pantalla**: la baldosa ya dice «no llego»
+ *    desde el primer instante y hasta que el socket abre. Este plazo solo
+ *    decide cuando se REINTENTA, no lo que se ve.
+ *
+ * 📝 La resolucion mDNS es casi todo el coste, y solo la primera vez: medido
+ *    desde el sistema, **2716 · 2710 · 2729 ms con la cache vaciada** contra
+ *    **2 ms** con ella caliente.
  *
  * ⚠️ Este plazo es del CLIENTE y no tiene nada que ver con el de `llamar()`
  *    (ver `MARGEN_PLAZO_LOCAL_MS`): aquel arbitra contra el plazo de rosbridge,
  *    y este existe porque el navegador **no da error nunca** ante un socket que
  *    no abre. Son dos problemas distintos y no se pueden unificar.
  */
-export const PLAZO_CONEXION_MS = 5000
+export const PLAZO_CONEXION_MS = 10000
 
 interface OpcionesTransporte {
   reconectar?: boolean
@@ -150,19 +166,36 @@ export class Transporte {
      * ═════════════════════════════════════════════════════════════════════
      * 🔴🔴 PLAZO DE CONEXION. UN SOCKET COLGADO NO DA ERROR **NUNCA**.
      * ═════════════════════════════════════════════════════════════════════
-     * Medido en el navegador el 2026-08-04, con el robot encendido y sano:
+     * Medido en el navegador el 2026-08-04 por la mañana, con el robot
+     * encendido y sano:
      *
      *   ws://rvr-01.local:9090   🔴 12 s sin onopen, sin onerror, sin onclose
      *   ws://10.14.7.7:9090      🔴 12 s igual — MISMA FIRMA
      *   ws://192.168.1.58:9090   ✅ abre
      *   ws://192.168.1.200:9090  ✅ abre
      *
-     * `rvr-NN.local` resuelve a CUATRO direcciones y el sistema las devuelve
+     * `rvr-NN.local` resolvia a CUATRO direcciones y el sistema las devolvia
      * en este orden: `fe80::…` (IPv6 link-local **sin zona**, que el navegador
      * no puede usar), `10.14.7.7` (la estatica del laboratorio, inalcanzable
-     * desde casa), y despues las dos que si sirven. Las dos primeras no
-     * FALLAN: se cuelgan, y un SYN sin respuesta tarda ~21 s en rendirse, asi
-     * que el navegador nunca llega a las buenas.
+     * desde casa), y despues las dos que si servian. Las dos primeras no
+     * FALLABAN: se colgaban, y un SYN sin respuesta tarda ~21 s en rendirse,
+     * asi que el navegador nunca llegaba a las buenas.
+     *
+     * ✅ **ESA CAUSA ESTA CERRADA EN EL ROBOT** desde la tarde del 2026-08-04
+     *    (evidencia 74): una direccion por red con `[Match] SSID=` de
+     *    systemd-networkd, y en avahi `use-ipv6=no` **mas**
+     *    `publish-aaaa-on-ipv4=no` — sin lo segundo el registro `AAAA` se
+     *    seguia anunciando por el transporte IPv4. Hoy `rvr-01.local` resuelve
+     *    a **una sola** direccion y `ws://rvr-01.local:9090` **abre**: 4339 ms
+     *    en frio, 2331 en caliente, verificado desde el navegador.
+     *
+     * 🔴 **Y este plazo NO sobra por eso**, por tres motivos medidos:
+     *    · el aula esta **sin probar entera** — `05-atriz-lab.network` nunca ha
+     *      casado con nada, y si el SSID difiere en un caracter el robot cae al
+     *      netplan generico;
+     *    · un robot apagado sigue dando exactamente esta firma: cuelgue mudo;
+     *    · y sin `onclose` la reconexion con espera creciente **no llega ni a
+     *      arrancar**, asi que el muro dejaba 16 conexiones colgadas.
      *
      * 🔴 Sin este plazo el muro dejaba **16 conexiones colgadas para siempre**
      *    y ninguna llamaba a `onclose`, o sea que la reconexion con espera

@@ -2,9 +2,25 @@
  * DONDE BUSCAR A CADA ROBOT. PURO: sin React, sin red, sin `localStorage`.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴🔴 POR QUE HACE FALTA PODER APUNTAR A UNA IP
+ * ✅ LA CAUSA QUE LO HIZO NACER YA ESTA CERRADA — Y ESTO SE QUEDA
  * ═══════════════════════════════════════════════════════════════════════════
- * Medido en el navegador el 2026-08-04, con el robot encendido y sano:
+ * La tarde del 2026-08-04 el robot paso a tener **una direccion por red**
+ * (`[Match] SSID=` de systemd-networkd, y en avahi `use-ipv6=no` **mas**
+ * `publish-aaaa-on-ipv4=no`). Hoy `rvr-01.local` resuelve a **una sola**
+ * direccion y el muro **funciona por nombre**, verificado con control:
+ *
+ *     por nombre, sin override   rvr-01 · 7,67 V · en linea     ✅
+ *
+ * 🔴 **No se retira, y no es por si acaso.** El aula esta **sin probar entera**:
+ *    `05-atriz-lab.network` nunca ha casado con nada, y si el SSID real difiere
+ *    en un caracter el robot cae al netplan generico y se queda **sin direccion
+ *    estatica** con 16 alumnos delante. Esto es el camino de escape para ese
+ *    dia, y cuesta un campo de texto.
+ *
+ * Lo que sigue es el fallo original, conservado porque explica la forma:
+ *
+ * Medido en el navegador el 2026-08-04 por la mañana, con el robot encendido y
+ * sano:
  *
  *   ws://rvr-01.local:9090   🔴 12 s sin abrir, sin error y sin cierre
  *   ws://10.14.7.7:9090      🔴 12 s igual — LA MISMA FIRMA

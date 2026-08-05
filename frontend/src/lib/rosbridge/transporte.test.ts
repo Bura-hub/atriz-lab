@@ -809,10 +809,21 @@ describe('🔴 plazo de conexion — un socket colgado NO da error nunca', () =>
     expect(disparos).toHaveLength(0)
   })
 
-  it('el plazo por defecto deja holgura sobre lo medido en el navegador', () => {
-    // Por IP el navegador abrio en 2,4-2,8 s CON el muro entero intentandolo a
-    // la vez. Un plazo por debajo de eso convertiria una red lenta en un falso
-    // «no llego», que es justo el diagnostico equivocado que hay que evitar.
-    expect(PLAZO_CONEXION_MS).toBeGreaterThanOrEqual(4000)
+  it('🔴 el plazo por defecto deja holgura sobre lo PEOR medido, no sobre lo tipico', () => {
+    /*
+     * Medido en el navegador con el muro entero intentandolo a la vez:
+     *   ws://rvr-01.local:9090    4339 ms (cache fria) · 2331 ms (caliente)
+     *   ws://192.168.1.200:9090   4623 ms
+     *   una toma suelta por nombre               7293 ms
+     *
+     * La primera version puso 5000 y dejaba 400 ms de margen sobre lo tipico —
+     * y la toma de 7,3 s lo habria pasado. Un plazo demasiado corto no da un
+     * fallo: da un «no llego» INTERMITENTE sobre un robot sano, que es el peor
+     * modo de fallo para depurar y el que este proyecto lleva persiguiendo.
+     *
+     * Subirlo no cuesta nada en pantalla: la baldosa ya dice «no llego» desde
+     * el primer instante. El plazo solo decide cuando se REINTENTA.
+     */
+    expect(PLAZO_CONEXION_MS).toBeGreaterThanOrEqual(7300)
   })
 })

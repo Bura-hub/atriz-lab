@@ -6,10 +6,18 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴 POR QUE EXISTE — y no es una preferencia, es un fallo medido
  * ═══════════════════════════════════════════════════════════════════════════
- * `rvr-NN.local` resuelve a CUATRO direcciones y el navegador prueba las dos
- * peores primero. Ninguna falla: **se cuelgan**. Medido el 2026-08-04 con el
+ * `rvr-NN.local` resolvia a CUATRO direcciones y el navegador probaba las dos
+ * peores primero. Ninguna fallaba: **se colgaban**. Medido el 2026-08-04 con el
  * robot encendido y sano — 12 s sin `onopen`, sin `onerror` y sin `onclose`.
- * El detalle completo esta en `lib/interfaz/direcciones.ts`.
+ *
+ * ✅ **Esa causa esta cerrada en el robot** desde esa misma tarde: una direccion
+ *    por red. Hoy el muro funciona por nombre, sin tocar nada de aqui.
+ *
+ * 🔴 **Y esto se queda, porque el AULA esta sin probar entera.** El fichero de
+ *    red del laboratorio nunca ha casado con nada: si su SSID difiere en un
+ *    caracter, el robot cae al netplan generico y se queda sin direccion
+ *    estatica — con 16 alumnos delante. Este cuadro es el camino de escape para
+ *    ese dia. El detalle esta en `lib/interfaz/direcciones.ts`.
  *
  * JavaScript no puede enumerar lo que resolvio un nombre ni elegir direccion:
  * no hay API. Asi que lo unico que puede hacer el cliente es dejar que una
