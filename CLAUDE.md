@@ -170,6 +170,30 @@ detector que se escribió solo veía lo primero, o sea la mitad de lo que ya hab
   solo elemento**. `Atasco [no se sabe] no se sabe` —la misma frase repartida entre la insignia y
   la antigüedad— pasó por delante sin que lo detectara. Eso lo vio una captura.
 
+### 🔴🔴 Un WebSocket que no abre NO da error. Nunca.
+
+Ni `onerror`, ni `onclose`, ni excepción. Medido el 2026-08-04 contra un robot **encendido y
+sano**: `ws://rvr-01.local:9090` estuvo **12 s en silencio absoluto**, la misma firma exacta que
+una dirección inalcanzable. El navegador prueba las direcciones que resolvió el nombre en orden
+y se queda ~21 s en cada SYN sin respuesta.
+
+**Por qué importa más de lo que parece:** sin `onclose`, la reconexión con espera creciente **no
+llega ni a arrancar**. El muro dejaba **16 conexiones colgadas para siempre** y las 16 baldosas
+decían «no llego» sobre un robot que estaba perfectamente.
+
+→ Por eso `transporte.ts` tiene **`PLAZO_CONEXION_MS`** (10 s): convierte un cuelgue en un cierre,
+  y con él vuelve el camino normal —aviso, cancelación de pendientes, reintento—.
+→ ⚠️ **Y el número está medido, no elegido:** la primera versión puso 5 s y era demasiado justo
+  —4623 ms con el muro entero intentándolo, y una toma suelta de **7293 ms**—. Un plazo corto no
+  da un fallo: da un «no llego» **intermitente sobre un robot sano**, que es el peor caso posible
+  para depurar. Subirlo **no cuesta nada en pantalla**: la baldosa ya dice «no llego» desde el
+  primer instante, y el plazo solo decide cuándo se reintenta.
+→ ✅ La causa de fondo se arregló **en el robot** (una dirección por red), porque JavaScript **no
+  puede** enumerar lo que resolvió un nombre ni elegir dirección: no hay API. Detalle en
+  `lib/interfaz/direcciones.ts`.
+→ 📝 **La regla general: `ping` y `Resolve-DnsName` pueden dar verde los dos con el navegador
+  colgado.** Para un cliente web, el único testigo válido es abrir el socket desde el navegador.
+
 ### Dos trampas de este repositorio en concreto
 
 **🔴 `npm run build` con `npm run dev` corriendo rompe el servidor.** Los dos escriben en

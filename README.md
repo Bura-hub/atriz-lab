@@ -12,9 +12,10 @@ transportador. El profesor mira los 16 desde el otro lado del aula.
 | | |
 |---|---|
 | ✅ **Capa de datos** (`src/lib/rosbridge/`) | Verificada contra el hardware: ha movido un RVR, ha disparado su parada de emergencia con el robot en marcha, y su odometría coincide con la cinta (30 cm contra 30,2) |
-| ✅ **Telemetría, flota, LIDAR, conducir, diagnóstico** | Cinco rutas construidas |
+| ✅ **Telemetría, flota, LIDAR, conducir, diagnóstico** | Cinco rutas construidas, y **miradas renderizadas contra el robot vivo** — no solo con `curl`. El LIDAR dibuja geometría real (224 de 260 puntos, lo más cercano a 0,30 m) |
+| ✅ **El muro encuentra a los robots por su nombre** | `ws://rvr-01.local:9090` abre en el navegador: 4339 ms con la caché mDNS fría, 2331 caliente. Estuvo roto hasta el 2026-08-04 —el nombre resolvía a cuatro direcciones y el navegador se colgaba en las dos primeras, **sin dar error**— y se arregló en el robot, no aquí. Queda un campo para apuntar a una IP, porque el aula sigue sin probarse |
 | ✅ **Sistema visual** | Tokens claro **y oscuro** en `src/app/globals.css`, tipografía del sistema, rejilla de 1 px |
-| ✅ **Pruebas** | **317**, más 2 que se saltan porque necesitan el robot |
+| ✅ **Pruebas** | **358**, más 2 que se saltan porque necesitan el robot |
 | ❌ **El terminal** | El producto, y lo único que falta. Bloqueado — ver `/robot/[id]`, que lo explica en pantalla |
 | ❌ **Autenticación** | No existe. rosbridge 2.7.0 no la tiene: cualquiera en la red puede hablar con cualquier robot |
 | — | **No hay cámaras** en los robots |
@@ -35,7 +36,7 @@ Todo lo de abajo corre dentro de `frontend/`.
 cd frontend
 npm install
 npm run dev        # http://localhost:3000 — y ENTRA en las rutas: compilar no es pintar
-npm test           # 317 pruebas, en Node
+npm test           # 358 pruebas, en Node
 npm run contrato   # compara la lista blanca de la web con robot.launch.py DEL ROBOT
 npm run build
 ```
