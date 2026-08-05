@@ -56,6 +56,10 @@ function pestanas(segmento: string): Pestana[] {
     //    suscripcion tiene que morir al salir. Metido dentro de Telemetria se
     //    pagaria siempre, y con 16 pestañas serian ~8,6 Mbit/s sobre la unica AP.
     { href: `${base}/lidar`, texto: 'LIDAR' },
+    // 🔴 «Por que no obedece» va ENTRE conducir y diagnostico a proposito: es
+    //    donde alguien la busca —justo despues de intentar mover el robot— y no
+    //    al final, donde solo llega quien ya sabe que existe.
+    { href: `${base}/no-obedece`, texto: 'Por qué no obedece' },
     { href: `${base}/diagnostico`, texto: 'Diagnóstico' },
   ]
 }
