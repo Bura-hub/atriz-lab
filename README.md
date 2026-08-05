@@ -56,6 +56,13 @@ Dos pruebas se saltan por defecto y **mueven el robot**:
 ```bash
 ATRIZ_ROBOT=1 npx vitest run src/lib/rosbridge/parada_en_marcha.test.ts   # ⚠️ lo deja parado
 ATRIZ_ROBOT=1 npx vitest run src/lib/interfaz/barrido_real.test.ts        # solo enciende el LIDAR
+
+Y una tercera que **no toca el robot** —solo abre las seis rutas en un navegador y mira lo que
+pintan—, pero necesita el robot encendido y `next dev` corriendo:
+
+```bash
+ATRIZ_ROBOT=1 npx vitest run src/lib/interfaz/pantallas_reales.test.ts   # 19 comprobaciones, ~56 s
+```
 ```
 
 Aparecen como `skipped`, no como aprobadas: un guion que mueve un robot no se

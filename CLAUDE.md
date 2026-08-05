@@ -137,9 +137,17 @@ renderiza un componente**, y `vitest.config.ts` documenta que `jsdom` no se inst
 → **Una batería verde no prueba que nada se pinte.** Si un cambio visual se declara terminado
   por un `npm test` en verde, ha reproducido el fallo que este proyecto lleva documentando
   desde el principio: una comprobación que no mira nada y cuenta como aprobada.
-→ Lo que sí se puede automatizar sin instalar nada: **Edge headless por CDP contra un
-  rosbridge falso escrito a mano**. Está descrito en `.superpowers/informe-pantallas.md`.
-  Reutilízalo, no lo reinventes.
+→ ✅ **Y desde el 2026-08-04 hay una prueba que sí las mira**:
+  `lib/interfaz/pantallas_reales.test.ts`, guardada tras `ATRIZ_ROBOT=1`. Arranca un navegador
+  headless por CDP —sin instalar nada: node 22 trae `WebSocket` global—, abre las seis rutas
+  contra el robot real y comprueba el HTML **ya hidratado**. 19 comprobaciones, ~56 s.
+→ 🔴 **Y su primera ejecución enseñó la lección más útil del día: 18 de sus 19 comprobaciones
+  pasaron sobre seis páginas 404.** Repetición, hueco disfrazado de dato y frase prohibida son
+  todas de **ausencia**, y una página vacía las cumple. Solo la que exige que los datos
+  **lleguen** lo vio. → **Toda batería de comprobaciones de ausencia necesita al menos una de
+  presencia**, o es una comprobación muerta que cuenta como aprobada.
+→ Lo que sigue sin cubrirse: colores, espaciado y si algo se lee a tres metros. **Eso exige una
+  persona mirando.**
 → Y para el muro del profesor, el criterio de aceptación es **una persona a tres metros**.
 
 ### El texto pintado sí se comprueba ya — `lib/interfaz/repeticion.ts`
