@@ -68,15 +68,15 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
 
   return (
     /*
-      EL MISMO TABLERO QUE EL MURO. Un alumno que llega desde el muro tiene que
+      LA MISMA BARRA QUE EL MURO. Un alumno que llega desde el muro tiene que
       reconocer que sigue en el mismo sitio: el campo de color es lo que da esa
       continuidad, y por eso ocupa la cabecera entera y no un filete.
 
       Las pestañas van DENTRO del campo y montadas sobre el borde inferior, como
-      las lengüetas de una carpeta: la activa es papel —del mismo color que las
-      fichas de abajo— y las demás se quedan en el tablero.
+      las lengüetas de una carpeta: la activa es del color del suelo y las demás
+      se quedan en la chapa.
     */
-    <header className="bg-tablero text-tablero-foreground shadow-rail">
+    <header className="relative z-10 bg-pozo-alto/70 shadow-barra backdrop-blur-xl">
       <div className="mx-auto max-w-6xl px-4 pt-5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -85,16 +85,16 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
             </h1>
             {/* La URL, siempre visible: es lo que distingue «me equivoqué de
                 robot» de «este robot no responde». */}
-            <code className="font-mono text-xs text-tablero-tenue">{url}</code>
+            <code className="font-mono text-xs text-muted-foreground">{url}</code>
           </div>
           <div className="flex items-center gap-3">
-            <InsigniaEnlace sobreTablero />
-            <span className="text-xs text-tablero-tenue">
+            <InsigniaEnlace sobreBarra />
+            <span className="text-xs text-muted-foreground">
               socket {conectado ? 'abierto' : 'cerrado'}
             </span>
             <Link
               href="/flota"
-              className="focus-ring rounded px-1 text-xs text-tablero-foreground underline decoration-tablero-tenue underline-offset-4 hover:decoration-tablero-foreground"
+              className="focus-ring rounded px-1 text-xs text-foreground underline decoration-muted-foreground underline-offset-4 transition-colors hover:decoration-foreground"
             >
               ver los 16
             </Link>
@@ -109,16 +109,27 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
                 key={p.href}
                 href={p.href}
                 aria-current={activa ? 'page' : undefined}
-                className={`focus-ring rounded-t-lg px-4 py-2.5 text-sm font-medium transition-colors duration-[var(--t-estado)] ${
+                className={`focus-ring relative rounded-t-md px-4 py-3 text-sm font-medium transition-colors duration-[var(--t-estado)] ${
                   activa
-                    ? 'bg-background text-foreground'
-                    : 'text-tablero-tenue hover:bg-tablero-claro hover:text-tablero-foreground'
+                    ? 'text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {p.texto}
                 {p.bloqueada === true && (
                   <span className="ml-1.5 text-xs opacity-70">(bloqueado)</span>
                 )}
+                {/*
+                  La barra eléctrica de la pestaña activa. Va DENTRO del enlace
+                  y no en un elemento flotante: así no hay que medir posiciones
+                  ni sincronizar nada, y el subrayado no puede desalinearse.
+                */}
+                <span
+                  aria-hidden="true"
+                  className={`absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-primary transition-opacity duration-[var(--t-estado)] ${
+                    activa ? 'opacity-100' : 'opacity-0'
+                  }`}
+                />
               </Link>
             )
           })}
@@ -136,9 +147,11 @@ export interface PropsMarcoRobot {
 export function MarcoRobot({ destino, children }: PropsMarcoRobot) {
   return (
     <ProveedorRobot robot={destinoParaTransporte(destino)}>
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="relative min-h-screen bg-background text-foreground">
+        {/* La misma luz que el muro: continuidad de mundo entre pantallas. */}
+        <div className="luz-ambiente" aria-hidden="true" />
         <CabeceraRobot destino={destino} />
-        <main className="mx-auto max-w-6xl px-4 sm:px-6 py-5">{children}</main>
+        <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-7 sm:px-6">{children}</main>
       </div>
     </ProveedorRobot>
   )

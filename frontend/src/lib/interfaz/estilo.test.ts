@@ -147,3 +147,37 @@ describe('la guardia visual sobre el codigo real', () => {
     expect(muertos, `globs que no casan con ningun directorio: ${muertos.join(' ')}`).toEqual([])
   })
 })
+
+describe('🔴 la exencion de degradado, y por que no puede ensancharse', () => {
+  it('un titular con bg-clip-text esta eximido: ahi el degradado es TINTA', () => {
+    const titular = '<h1 className="bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text text-transparent">'
+    expect(buscarProhibiciones(titular)).toEqual([])
+  })
+
+  it('🔴 un RELLENO con degradado sigue prohibido', () => {
+    // Es lo que traia la maqueta borrada: tarjetas y botones con degradado,
+    // donde el color SIGNIFICA un estado y el degradado lo diluye.
+    expect(buscarProhibiciones('<div className="bg-gradient-to-br from-blue-500 to-cyan-400">'))
+      .toEqual(['gradientes'])
+  })
+
+  it('🔴🔴 la exencion es POR LINEA: un titular no absuelve al resto del fichero', () => {
+    /*
+     * Si se comprobara sobre el fichero entero, bastaria con tener un titular
+     * eximido en cualquier parte para que todos los rellenos pasaran. Es
+     * exactamente la forma de fallo que este proyecto persigue: una guardia que
+     * se desactiva por accidente y sigue contando como aprobada.
+     */
+    const fichero = [
+      '<h1 className="bg-gradient-to-b from-white bg-clip-text text-transparent">Flota</h1>',
+      '<button className="bg-gradient-to-r from-red-500 to-orange-400">Parar</button>',
+    ].join('\n')
+    expect(buscarProhibiciones(fichero)).toEqual(['gradientes'])
+  })
+
+  it('solo UNA prohibicion tiene exencion, y es esa', () => {
+    // Si alguien añade otra, que sea un acto deliberado y visible en el diff.
+    const conExencion = PROHIBICIONES.filter((p) => p.exime !== undefined).map((p) => p.nombre)
+    expect(conExencion).toEqual(['gradientes'])
+  })
+})

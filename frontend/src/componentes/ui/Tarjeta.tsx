@@ -32,7 +32,7 @@ export interface PropsTarjeta {
  */
 export function Tarjeta({ titulo, subtitulo, extremo, children }: PropsTarjeta) {
   return (
-    <section className="overflow-hidden rounded-lg bg-card text-card-foreground shadow-ficha">
+    <section className="vidrio overflow-hidden rounded-ficha text-card-foreground">
       <header className="flex items-start justify-between gap-3 px-5 pb-4 pt-5">
         <div>
           <h2 className="text-base font-semibold tracking-tight text-foreground">
@@ -46,7 +46,7 @@ export function Tarjeta({ titulo, subtitulo, extremo, children }: PropsTarjeta) 
         </div>
         {extremo}
       </header>
-      <div className="border-t border-border/70">{children}</div>
+      <div className="border-t border-[rgb(var(--filo)/0.09)]">{children}</div>
     </section>
   )
 }

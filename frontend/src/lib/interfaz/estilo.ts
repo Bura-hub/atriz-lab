@@ -36,6 +36,12 @@ import { join } from 'node:path'
 export interface Prohibicion {
   /** Se busca tal cual en el fuente, sin distinguir mayusculas. */
   patron: RegExp
+  /**
+   * Si esta puesta y casa **en la MISMA linea** que `patron`, esa linea no
+   * cuenta. Se usa con cuentagotas y cada exencion lleva su motivo escrito
+   * encima: una guardia con exenciones vagas deja de proteger.
+   */
+  exime?: RegExp
   /** Como se nombra en el informe. */
   nombre: string
   porque: string
@@ -62,11 +68,31 @@ export const PROHIBICIONES: readonly Prohibicion[] = [
       '1 px y el tamaño, no una sombra que sugiere relieve donde no hay ninguno',
   },
   {
+    /*
+     * 🔴 SE PROHIBE EL DEGRADADO COMO **RELLENO**, NO COMO TINTA DE UN TITULAR.
+     *
+     * La regla nacio contra los rellenos de la maqueta borrada: tarjetas y
+     * botones con degradado, donde el color SIGNIFICA -no se sabe, vivo, mirar,
+     * ir- y un degradado lo diluye en algo que ya no se lee como estado. Eso
+     * sigue prohibido y es lo que este patron persigue.
+     *
+     * ⚠️ Lo que se exime, y solo eso: `bg-gradient-* … bg-clip-text` en un
+     *    TITULAR de pantalla. Ahi el degradado no colorea una superficie ni
+     *    compite con ningun estado — es la tinta de una palabra. `craft-floor`
+     *    lo lista como refuso por defecto, no como prohibicion («the brief's own
+     *    words can earn any of them»), y la direccion elegida lo pide
+     *    explicitamente.
+     *
+     * La exencion exige `bg-clip-text` EN LA MISMA linea: sin el, el degradado
+     * pinta el fondo del elemento y vuelve a ser un relleno.
+     */
     patron: /\bbg-gradient-|--gradient-|\bgradient-(primary|success|warning|destructive)\b/i,
+    exime: /bg-clip-text/,
     nombre: 'gradientes',
     porque:
       'decoracion. Aqui el color SIGNIFICA -no se sabe, vivo, mirar, ir, frenando- y un ' +
-      'degradado lo diluye en algo que ya no se puede leer como estado',
+      'degradado lo diluye en algo que ya no se puede leer como estado. Un titular con ' +
+      '`bg-clip-text` esta eximido: ahi es tinta, no relleno',
   },
 ]
 
@@ -79,11 +105,19 @@ export const PROHIBICIONES: readonly Prohibicion[] = [
  * documentar sus propias reglas.
  */
 export function buscarProhibiciones(fuente: string): string[] {
-  const util = fuente
-    .split('\n')
-    .filter((l) => !esComentario(l))
-    .join('\n')
-  return PROHIBICIONES.filter((p) => p.patron.test(util)).map((p) => p.nombre)
+  const lineas = fuente.split('\n').filter((l) => !esComentario(l))
+  /*
+   * 🔴 LA EXENCION SE COMPRUEBA **LINEA A LINEA**, y esto no es un detalle.
+   *
+   * Sobre el fichero entero, una sola linea eximida absolveria a TODAS las
+   * demas: bastaria con tener un titular con `bg-clip-text` en cualquier parte
+   * del componente para que sus botones pudieran llevar degradado sin que nadie
+   * se enterara. Una guardia que se puede desactivar por accidente no es una
+   * guardia.
+   */
+  return PROHIBICIONES.filter((p) => lineas.some(
+    (l) => p.patron.test(l) && !(p.exime !== undefined && p.exime.test(l)),
+  )).map((p) => p.nombre)
 }
 
 /** Comentarios de una linea de JS/TS y de CSS, y lineas de bloque `*`. */

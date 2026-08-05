@@ -50,16 +50,19 @@ const config: Config = {
           DEFAULT: 'rgb(var(--card) / <alpha-value>)',
           foreground: 'rgb(var(--card-foreground) / <alpha-value>)',
         },
+        /* El pozo: el fondo de la aplicación y sus barras fijas. */
+        pozo: {
+          DEFAULT: 'rgb(var(--pozo) / <alpha-value>)',
+          alto: 'rgb(var(--pozo-alto) / <alpha-value>)',
+        },
         /*
-         * EL TABLERO. El campo de color que sostiene la aplicación entera: la
-         * cabecera, el raíl y el fondo sobre el que se apoyan las fichas.
-         * **No es un acento — ocupa regiones enteras.**
+         * LOS BLOQUES. Color a plena saturación que ocupa una tarjeta ENTERA, y
+         * **solo cuando ese robot pide algo**. No son acentos: son campos.
          */
-        tablero: {
-          DEFAULT: 'rgb(var(--tablero) / <alpha-value>)',
-          claro: 'rgb(var(--tablero-claro) / <alpha-value>)',
-          foreground: 'rgb(var(--tablero-foreground) / <alpha-value>)',
-          tenue: 'rgb(var(--tablero-tenue) / <alpha-value>)',
+        bloque: {
+          vivo: 'rgb(var(--bloque-vivo) / <alpha-value>)',
+          mirar: 'rgb(var(--bloque-mirar) / <alpha-value>)',
+          ir: 'rgb(var(--bloque-ir) / <alpha-value>)',
         },
         // El vocabulario de estados. Son NUESTROS, así que van en español.
         estado: {
@@ -89,20 +92,27 @@ const config: Config = {
       },
       borderRadius: {
         /*
-         * 🔴 EL RADIO 0 ERA UNA POSE, y se corrige.
+         * 🔴 2 px, Y ESTO **NO** ES VOLVER AL RADIO 0.
          *
-         * Estaba escrito como si fuera un principio —«un instrumento no
-         * redondea»— y no lo es: era una elección estética que dejaba la
-         * aplicación con aspecto de maqueta sin terminar. `craft-floor` fija el
-         * radio de tarjeta en 12-16 px y reserva la píldora para controles
-         * pequeños; eso es una escala pensada, no un gusto.
+         * `craft-floor` fija el radio de tarjeta en 12-16 px, y aquí se anula a
+         * propósito porque la dirección elegida lo pide: en el mundo de «Galón»
+         * una ficha es una **placa de máquina troquelada**, y una chapa tiene el
+         * canto apenas roto, no redondeado. La propia skill lo autoriza —«The
+         * brief wins… even when they conflict with a saturated-pattern
+         * warning»—.
+         *
+         * La diferencia con lo que había antes: aquello era radio **0** escrito
+         * como un principio inventado («un instrumento no redondea»). Esto es
+         * 2 px sacados de un objeto real, y la píldora sigue existiendo para los
+         * controles pequeños, que es donde toca.
          */
-        sm: '4px',
-        DEFAULT: '6px',
-        md: '8px',
-        lg: '12px',
-        xl: '14px',
-        '2xl': '18px',
+        sm: '8px',
+        DEFAULT: '12px',
+        md: '14px',
+        lg: '16px',
+        xl: '20px',
+        '2xl': '24px',
+        ficha: '20px',
       },
       boxShadow: {
         /*
@@ -113,14 +123,14 @@ const config: Config = {
          * SOMBRA; la rejilla de 1 px usa LÍNEA. No se mezclan en el mismo
          * elemento.
          *
-         * Llevan desplazamiento y desenfoque —un halo sin desplazamiento es
-         * decoración— y van teñidas del color del tablero, no en negro puro,
-         * que es lo que hace que una sombra parezca suciedad sobre papel.
+         * En «Galón» la placa no flota: se APOYA. Por eso lleva una línea dura
+         * de 1 px debajo —el canto de la chapa— y sobre ella una sombra difusa.
+         * Las dos van teñidas de grafito, nunca en negro puro.
          */
-        ficha: '0 1px 2px -1px rgb(var(--sombra) / 0.30), 0 2px 6px -2px rgb(var(--sombra) / 0.20)',
-        'ficha-alta':
-          '0 2px 4px -2px rgb(var(--sombra) / 0.32), 0 12px 22px -10px rgb(var(--sombra) / 0.28)',
-        rail: '0 10px 28px -14px rgb(var(--sombra) / 0.50)',
+        ficha: '0 18px 40px -22px rgb(var(--sombra) / 0.70)',
+        'ficha-alta': '0 26px 54px -22px rgb(var(--sombra) / 0.80)',
+        bloque: '0 20px 44px -20px rgb(var(--sombra) / 0.75)',
+        barra: '0 10px 28px -18px rgb(var(--sombra) / 0.60)',
       },
       /*
        * 🔴 SIGUE SIN HABER NINGUNA ANIMACIÓN INFINITA, y eso no se negocia.
@@ -136,7 +146,7 @@ const config: Config = {
        */
       keyframes: {
         entrar: {
-          from: { opacity: '0', transform: 'translateY(8px)' },
+          from: { opacity: '0', transform: 'translateY(20px)' },
           to: { opacity: '1', transform: 'none' },
         },
       },

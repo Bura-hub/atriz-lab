@@ -12,30 +12,31 @@ import { ReactNode } from 'react'
 
 export type TonoInsignia = 'NEUTRO' | 'BIEN' | 'ATENCION' | 'GRAVE'
 
+/*
+ * Sobre el pozo oscuro la relación se invierte respecto a una interfaz clara:
+ * el color va en el TEXTO a plena luminosidad y el fondo es un velo del propio
+ * color. Un relleno saturado aquí compite con los bloques del muro, que son
+ * los que tienen derecho a gritar.
+ */
 const CLASES: Readonly<Record<TonoInsignia, string>> = {
-  NEUTRO: 'bg-muted text-muted-foreground border-border',
-  BIEN: 'bg-success/10 text-success border-success/30',
-  ATENCION: 'bg-warning/15 text-warning border-warning/40',
-  GRAVE: 'bg-destructive/10 text-destructive border-destructive/40',
+  NEUTRO: 'bg-[rgb(var(--vidrio)/0.06)] text-muted-foreground border-[rgb(var(--filo)/0.14)]',
+  BIEN: 'bg-success/12 text-success border-success/35',
+  ATENCION: 'bg-warning/12 text-warning border-warning/35',
+  GRAVE: 'bg-destructive/12 text-destructive border-destructive/40',
 }
 
 /**
- * 🔴 LA MISMA INSIGNIA SOBRE EL TABLERO NO SE LEE, Y ESO SE VIO EN LA CAPTURA.
+ * ⚠️ `sobreBarra` YA NO CAMBIA NADA, y se conserva por una razón concreta.
  *
- * Los tonos de arriba están calculados sobre papel claro: verde oscuro sobre un
- * lavado verde muy claro. Puestos en la cabecera —campo verde pino— el texto y
- * el fondo quedan casi al mismo valor y la insignia desaparece.
+ * Existía cuando la cabecera era un campo de color claro y estos tonos, hechos
+ * para papel, desaparecían encima. Con el pozo oscuro la cabecera y el cuerpo
+ * son la misma familia, así que una sola tabla vale para los dos sitios.
  *
- * No se arregla bajando la opacidad: se arregla invirtiendo la relación. Sobre
- * el tablero el color va en el TEXTO a plena luminosidad y el fondo es un velo
- * del propio tablero.
+ * Se deja el parámetro porque el MURO DEL PROFESOR va a necesitar un modo claro
+ * de alto contraste para proyectar, y ahí volverá a hacer falta. Borrarlo hoy y
+ * reescribirlo en dos semanas no ahorra nada.
  */
-const CLASES_TABLERO: Readonly<Record<TonoInsignia, string>> = {
-  NEUTRO: 'bg-white/10 text-tablero-tenue border-white/20',
-  BIEN: 'bg-white/10 text-[rgb(134,239,172)] border-[rgb(134,239,172)]/40',
-  ATENCION: 'bg-white/10 text-[rgb(253,224,71)] border-[rgb(253,224,71)]/40',
-  GRAVE: 'bg-white/10 text-[rgb(249,168,212)] border-[rgb(249,168,212)]/50',
-}
+const CLASES_BARRA: Readonly<Record<TonoInsignia, string>> = CLASES
 
 export interface PropsInsignia {
   tono: TonoInsignia
@@ -51,8 +52,8 @@ export interface PropsInsignia {
    *    impide (`estilo.test.ts`) y el motivo esta en `CLAUDE.md`.
    */
   punto?: boolean
-  /** Para la cabecera, que es campo de color y no papel. Ver `CLASES_TABLERO`. */
-  sobreTablero?: boolean
+  /** Para la cabecera, que es campo de color y no papel. Ver `CLASES_BARRA`. */
+  sobreBarra?: boolean
 }
 
 /*
@@ -81,12 +82,12 @@ const TRANSICION = 'transition-[color,background-color,border-color] '
   + 'duration-[var(--t-estado)] ease-[cubic-bezier(0.23,1,0.32,1)]'
 
 export function Insignia({
-  tono, children, punto = true, sobreTablero = false,
+  tono, children, punto = true, sobreBarra = false,
 }: PropsInsignia) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${TRANSICION} ${
-        sobreTablero ? CLASES_TABLERO[tono] : CLASES[tono]
+        sobreBarra ? CLASES_BARRA[tono] : CLASES[tono]
       }`}
     >
       {punto && (

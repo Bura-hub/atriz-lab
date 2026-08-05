@@ -20,15 +20,13 @@ import Link from 'next/link'
 import { Baldosa } from '@/lib/flota/resumen'
 import { EstadoRobot } from '@/lib/rosbridge/salud'
 import { SIN_DATO, voltios } from '@/lib/interfaz/formato'
-import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
 
-/** Los tres estados con los colores del diseño: gris · verde · ámbar. */
-const TONO_ESTADO: Readonly<Record<EstadoRobot, TonoInsignia>> = {
-  SIN_CONEXION: 'NEUTRO',
-  EN_LINEA: 'BIEN',
-  SIN_DATOS: 'ATENCION',
-}
-
+/*
+ * ⚠️ Aquí ya no se usa `Insignia`. Sus tonos están calculados sobre el pozo
+ *    oscuro y sobre un bloque de color saturado no se leen. En una ficha el
+ *    estado lo dice la píldora de borde, que hereda el color del texto del
+ *    bloque y por tanto contrasta siempre.
+ */
 const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
   SIN_CONEXION: 'no llego',
   EN_LINEA: 'en línea',
@@ -46,23 +44,27 @@ const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
  * estas palabras: «Meaning conveyed by color alone».
  */
 /*
- * ⚠️ VA ARRIBA, NO A LA IZQUIERDA, Y EL ANCHO VA POR `transform`.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 VIDRIO O BLOQUE: LA DIFERENCIA **ES** EL IDIOMA DE ESTA PANTALLA
+ * ═══════════════════════════════════════════════════════════════════════════
+ *   VIDRIO  →  sin novedad, o no se llega al robot. No pide nada.
+ *   BLOQUE  →  color a plena saturación. **Este robot pide algo.**
  *
- * Era un `border-left` de color de 8 px, que `craft-floor` prohíbe sin matices
- * («A colored border-left … above 1px on cards, list items, callouts, or
- * alerts»): es el tic de alerta de cualquier panel genérico. En un tablero de
- * operaciones la pieza equivalente es la **pestaña del canto superior**, que es
- * como se marca una unidad en un tablero de verdad.
+ * El color saturado se lo gana el ESTADO, no la decoración. Con trece fichas de
+ * vidrio y tres bloques, el ojo del profesor va solo. Si todas fueran de color
+ * la pantalla gritaría entera y no diría nada; si todas fueran de vidrio, el que
+ * importa se perdería entre los quince que no.
  *
- * El ancho se escala con `transform`, así que cambiar de estado no desplaza
- * nada ni recalcula maquetación. Ver `.pestana` en `globals.css`.
+ * ⚠️ Y el color NUNCA va solo: cada bloque lleva su PALABRA. Una de cada doce
+ *    personas no distingue el lima del coral, y este muro se proyecta.
  */
-const PESTANA: Readonly<Record<Baldosa['atencion'], string>> = {
-  NINGUNA: 'pestana [--pestana-escala:0]',
-  MIRAR: 'pestana [--pestana-escala:0.45] [--pestana-color:rgb(var(--warning))]',
-  IR: 'pestana [--pestana-escala:1] [--pestana-color:rgb(var(--destructive))]',
+const BLOQUE: Readonly<Record<Baldosa['atencion'], string>> = {
+  // En línea y sin nada que mirar: cobalto. Es un bloque igual, porque «este
+  // robot está vivo» ya es algo que decir cuando quince no lo están.
+  NINGUNA: 'bg-bloque-vivo text-white shadow-bloque',
+  MIRAR: 'bg-bloque-mirar text-[rgb(16,18,6)] shadow-bloque',
+  IR: 'bg-bloque-ir text-white shadow-bloque',
 }
-
 const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
   NINGUNA: '',
   MIRAR: 'mirar',
@@ -96,15 +98,27 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
     return (
       <Link
         href={href}
-        className="pulsable focus-ring flex h-full flex-col rounded-lg bg-card/60 p-4 opacity-70 shadow-ficha transition-[opacity,box-shadow] duration-200 hover:opacity-100 hover:shadow-ficha-alta"
+        className="vidrio pulsable focus-ring flex h-full flex-col justify-between rounded-ficha p-5"
       >
-        <span
-          className="block font-semibold leading-none tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3.8vw, 2.5rem)' }}
-        >
-          {etiqueta}
-        </span>
-        <span className="mt-1 block text-xs text-muted-foreground">no llego</span>
+        {/* VIDRIO: no se llega a él, así que no pide nada. Sin color. */}
+        <div className="flex items-start justify-between gap-2">
+          <span
+            className="font-semibold leading-none tracking-tight text-muted-foreground"
+            style={{ fontSize: 'clamp(1.35rem, 2.5vw, 2rem)' }}
+          >
+            {etiqueta}
+          </span>
+          <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[10.5px] uppercase tracking-wider text-muted-foreground">
+            no llego
+          </span>
+        </div>
+        <div className="mt-6">
+          {/* Una raya, no la frase: se distingue de un cero al instante. */}
+          <span className="font-mono text-xl text-muted-foreground" title={SIN_DATO}>—</span>
+          <span className="mt-2 block text-[11.5px] text-muted-foreground">
+            último dato: nunca
+          </span>
+        </div>
       </Link>
     )
   }
@@ -112,51 +126,52 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
   return (
     <Link
       href={href}
-      className={
-        // `pt-5` deja sitio a la pestaña del canto SIEMPRE, la tenga o no:
-        // es lo que mantiene alineadas las dieciséis.
-        'pulsable focus-ring flex h-full flex-col overflow-hidden rounded-lg bg-card p-4 pt-5 '
-        + 'shadow-ficha transition-shadow duration-200 hover:shadow-ficha-alta '
-        + PESTANA[baldosa.atencion]
-      }
+      className={`pulsable focus-ring relative flex h-full flex-col overflow-hidden rounded-ficha p-5 transition-transform duration-[var(--t-hover)] ease-[cubic-bezier(0.32,0.72,0,1)] ${BLOQUE[baldosa.atencion]}`}
     >
       {/*
-        ── LA DISTANCIA LARGA ──────────────────────────────────────────────
-        Lo que tiene que leerse a tres metros: QUE robot y CUANTA bateria. El
-        `clamp()` es el unico de la aplicacion, y se gana el sitio aqui: esta
-        pantalla se proyecta.
+        LA CIFRA FANTASMA. El número del robot, enorme y recortado por el canto
+        del bloque. Refuerza a DÓNDE hay que ir sin añadir una palabra, y solo
+        aparece en los bloques: en el vidrio sería adorno.
       */}
-      <div className="flex items-baseline justify-between gap-2">
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-8 -right-4 font-mono text-[8.5rem] font-extrabold leading-none tracking-tighter opacity-[0.13]"
+      >
+        {etiqueta.slice(-2)}
+      </span>
+
+      <div className="relative flex flex-1 flex-col">
+      {/*
+        ── LA DISTANCIA LARGA ──────────────────────────────────────────────
+        Lo que tiene que leerse a tres metros: QUE robot y CUANTA bateria.
+      */}
+      <div className="flex items-start justify-between gap-2">
         <span
           // 🔴 NO monoespaciado. `craft-floor.md`: «Monospace as a costume for
           //    "technical" rather than for code, data, o measurement». Esto es un
-          //    NOMBRE, no una medida — y en la captura se leia como un disfraz.
+          //    NOMBRE, no una medida.
           className="font-bold leading-none tracking-tight"
-          style={{ fontSize: 'clamp(1.75rem, 4.5vw, 3rem)' }}
+          style={{ fontSize: 'clamp(1.5rem, 3.2vw, 2.4rem)' }}
         >
           {etiqueta}
         </span>
-        {baldosa.atencion !== 'NINGUNA' && (
-          <span
-            className={`text-xs font-bold uppercase tracking-widest ${
-              baldosa.atencion === 'IR' ? 'text-destructive' : 'text-warning'
-            }`}
-          >
-            {TEXTO_ATENCION[baldosa.atencion]}
-          </span>
-        )}
+        <span className="shrink-0 rounded-full border-[1.5px] border-current px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider opacity-90">
+          {baldosa.atencion === 'NINGUNA'
+            ? TEXTO_ESTADO[baldosa.estado]
+            : TEXTO_ATENCION[baldosa.atencion]}
+        </span>
       </div>
 
-      <div className="mt-1 flex items-baseline gap-2">
+      <div className="mt-auto flex items-baseline gap-2 pt-6">
         <span
-          className={`font-mono text-2xl leading-none ${
-            baldosa.voltios === null ? 'italic text-base text-muted-foreground' : ''
-          } ${baldosa.datosVigentes ? '' : 'opacity-50'}`}
+          className={`font-mono font-bold leading-none tracking-tighter ${
+            baldosa.voltios === null ? 'text-xl opacity-70' : 'text-[2.4rem]'
+          } ${baldosa.datosVigentes ? '' : 'opacity-60'}`}
         >
           {voltios(baldosa.voltios)}
         </span>
         {baldosa.bateria !== 'OK' && (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs opacity-80">
             {baldosa.bateria === 'DESCONOCIDO' ? SIN_DATO : baldosa.bateria.toLowerCase()}
           </span>
         )}
@@ -173,14 +188,16 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
            alturas de la rejilla. Estan TODAS; la frase entera vive un clic mas
            alla, en la ficha del robot, que es a donde lleva esta baldosa.
       */}
-      <div className="mt-1.5">
-        <Insignia tono={TONO_ESTADO[baldosa.estado]}>{TEXTO_ESTADO[baldosa.estado]}</Insignia>
-      </div>
-
+      {/*
+        ⚠️ Sobre un bloque de color, la `Insignia` de papel no se lee: sus tonos
+           están calculados sobre el pozo oscuro. Aquí el estado ya lo dice la
+           píldora de arriba, así que la insignia sobra — y quitarla es lo que
+           deja sitio a que los motivos se lean.
+      */}
       {baldosa.etiquetas.length > 0 && (
-        <ul className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
+        <ul className="mt-2.5 flex flex-wrap gap-x-2.5 gap-y-0.5">
           {baldosa.etiquetas.map((e) => (
-            <li key={e} className="text-[11px] leading-snug text-muted-foreground">
+            <li key={e} className="text-[11.5px] leading-snug opacity-85">
               · {e}
             </li>
           ))}
@@ -193,16 +210,17 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
            existe y la frase no significaba nada.
       */}
       {!baldosa.datosVigentes && baldosa.voltios !== null && (
-        <p className="mt-1 text-xs italic text-muted-foreground">
+        <p className="mt-1.5 text-[11.5px] italic opacity-80">
           Lo de arriba es lo último que se supo, de antigüedad desconocida.
         </p>
       )}
 
       {baldosa.termicoRancio && (
-        <p className="mt-1 text-xs text-muted-foreground">
+        <p className="mt-1.5 text-[11.5px] opacity-80">
           La temperatura publicada es el mismo dato repetido: el sondeo va cada 30 s.
         </p>
       )}
+      </div>
     </Link>
   )
 }

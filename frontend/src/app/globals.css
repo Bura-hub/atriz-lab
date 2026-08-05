@@ -4,125 +4,106 @@
 
 /*
  * ═══════════════════════════════════════════════════════════════════════════
- * EL TABLERO DE OPERACIONES
+ * ÓRBITA + BLOQUES
  * ═══════════════════════════════════════════════════════════════════════════
- * El mundo visual de esta aplicación es el **tablero de una sala de control**:
- * un campo de color profundo que sostiene la pantalla, y sobre él fichas de
- * papel —una por robot— con su pestaña de color arriba. La gramática de la
- * capa de atención viene de la señalética industrial: galones, placas, cinta
- * de suelo. Cosas hechas para leerse rápido y de lejos, en una nave con luz.
+ * Pozo oscuro azulado con dos orbes de luz ambiente fijos. Encima, dos clases
+ * de superficie y **la diferencia entre ellas ES el idioma de la aplicación**:
  *
- * 🔴 POR QUÉ NO ES UNA PANTALLA OSCURA DE TELEMETRÍA. Ese es el reflejo de la
- *    categoría —fondo casi negro, un acento de neón, trazas de fósforo— y la
- *    escena real lo desmiente: aula **con las luces encendidas**, portátiles, y
- *    un proyector que lava los negros. Un tablero impreso se lee a tres metros
- *    proyectado; una consola oscura, no.
+ *   VIDRIO    superficie normal. Sin novedad, o no se llega al robot.
+ *   BLOQUE    color a plena saturación. **Este robot pide algo.**
  *
- * 🔴 Y TAMPOCO ES LO QUE HABÍA. La versión anterior era gris piedra, radio 0,
- *    tipografía del sistema, sin profundidad ni color de marca. Eso no era
- *    sobriedad: era el otro surco de la categoría, el minimalismo plano, y
- *    dejaba la aplicación con aspecto de maqueta sin terminar.
+ * 🔴 El color saturado se lo gana el ESTADO, no la decoración. Con trece
+ *    tarjetas de vidrio y tres bloques, el ojo del profesor va solo. Si todas
+ *    fueran de color, la pantalla gritaría entera y no diría nada; si todas
+ *    fueran de vidrio, el que importa se perdería entre los quince que no.
  *
- * 🔴 Los nombres de Tailwind (`--card`, `--muted-foreground`, …) SE CONSERVAN a
- *    propósito: son las ranuras semánticas del framework y las consumen todos
- *    los componentes. Lo que cambia es lo que hay DETRÁS. Los tokens NUEVOS
- *    —el tablero y el vocabulario de estados— van en español: son nuestros.
+ * 🔴 Y el color NUNCA va solo: cada bloque lleva su palabra —«en línea»,
+ *    «batería baja», «oruga trabada»—. Una de cada doce personas no distingue
+ *    el lima del coral, y este muro se proyecta.
  *
- * 🔴 CERO PETICIONES EXTERNAS, y ahora CON tipografía propia. Antes esto
- *    importaba Inter y JetBrains Mono de `fonts.googleapis.com`, y la respuesta
- *    fue quitarlas y usar la del sistema. La premisa era buena —el punto de
- *    acceso del aula puede bloquear el tráfico— pero la conclusión era falsa:
- *    una fuente **se empaqueta**. Geist viaja en el bundle. Hay una prueba que
- *    impide volver a las remotas (`estilo.test.ts`).
+ * 📝 Lo que hubo antes y por qué se fue: gris piedra plano, y luego un tablero
+ *    verde de papel. Las dos eran la misma familia —apagadas, contenidas, de
+ *    objeto físico— y las dos se descartaron. El encargo pedía color, movimiento
+ *    y que se viera caro desde el principio.
+ *
+ * 🔴 Los nombres de Tailwind (`--card`, `--muted-foreground`, …) SE CONSERVAN:
+ *    son las ranuras del framework y las consumen todos los componentes. Lo que
+ *    cambia es lo que hay detrás.
+ *
+ * 🔴 CERO PETICIONES EXTERNAS. Geist viaja empaquetada en el bundle; hay una
+ *    prueba que impide volver a las fuentes remotas (`estilo.test.ts`).
  */
 
 :root {
-  /*
-   * ── EL TABLERO ───────────────────────────────────────────────────────────
-   * Verde pino profundo. Ocupa la cabecera y el raíl de robots: **regiones
-   * enteras**, no un acento salpicado. Es lo que hace que la aplicación tenga
-   * una identidad reconocible con todo el contenido quitado.
-   */
-  --tablero: 14 61 58;
-  --tablero-claro: 22 84 80;
-  --tablero-foreground: 233 242 239;
-  --tablero-tenue: 141 176 170;
+  /* ── EL POZO ────────────────────────────────────────────────────────────── */
+  --pozo: 7 8 13;
+  --pozo-alto: 12 14 22;          /* cabeceras y barras fijas */
 
-  /*
-   * ── EL PAPEL ─────────────────────────────────────────────────────────────
-   * El fondo es el fieltro del tablero; las fichas son papel casi blanco. Esa
-   * diferencia es la que da profundidad sin necesidad de dibujarla.
-   */
-  --background: 240 238 231;
-  --foreground: 19 28 27;
-  --card: 255 254 251;
-  --card-foreground: 19 28 27;
-  --muted: 233 231 223;
-  /*
-   * 🔴 El texto secundario va TEÑIDO del tono del mundo, nunca gris neutro.
-   *    `craft-floor`: «On colored surfaces tint secondary text from that hue or
-   *    the foreground; never gray». Un gris puro sobre un fondo cálido-verdoso
-   *    se ve sucio.
-   */
-  --muted-foreground: 78 92 89;
-  --border: 213 210 199;
-  --input: 255 254 251;
-  --secondary: 233 231 223;
-  --secondary-foreground: 32 45 43;
-  --accent: 226 232 227;          /* el realce al pasar por encima */
-  --accent-foreground: 19 28 27;
+  /* ── EL VIDRIO ──────────────────────────────────────────────────────────── */
+  --vidrio: 255 255 255;          /* se usa siempre con alfa: /.045, /.075 */
+  --filo: 255 255 255;            /* el borde de 1 px, con alfa /.09 */
 
-  /* La sombra va TEÑIDA del tablero. En negro puro parece suciedad. */
-  --sombra: 14 61 58;
+  /* ── LOS BLOQUES ────────────────────────────────────────────────────────── */
+  --bloque-vivo: 43 75 242;       /* cobalto */
+  --bloque-mirar: 182 224 30;     /* lima */
+  --bloque-ir: 255 92 57;         /* coral */
+
+  /* ── LA LUZ AMBIENTE ────────────────────────────────────────────────────── */
+  --luz-a: 91 140 255;
+  --luz-b: 34 211 238;
+
+  /* ── Ranuras de Tailwind ────────────────────────────────────────────────── */
+  --background: 7 8 13;
+  --foreground: 237 239 245;
+  --card: 18 20 28;               /* el fallback opaco del vidrio */
+  --card-foreground: 237 239 245;
+  --muted: 26 29 40;
+  --muted-foreground: 139 144 163;
+  --border: 42 46 60;
+  --input: 18 20 28;
+  --secondary: 26 29 40;
+  --secondary-foreground: 237 239 245;
+  --accent: 32 36 50;
+  --accent-foreground: 237 239 245;
+
+  --sombra: 0 0 0;
 
   /*
    * ── EL VOCABULARIO DE ESTADOS ────────────────────────────────────────────
-   * 🔴 No es una paleta de acento: es un vocabulario. Cuatro de las skills
-   *    instaladas exigen «máximo un color de acento», y aquí eso es incompatible
-   *    con tener que distinguir «no se sabe» de «vivo» de «mirar» de «ir».
-   * 🔴 Y el color NUNCA es el único código: cada estado lleva además su palabra
-   *    y, en el muro, una pestaña cuyo ancho cambia. Un proyector desaturado y
-   *    una persona daltónica tienen que poder leerlo igual.
+   * Los tonos para TEXTO sobre el pozo. Los bloques usan `--bloque-*`, que son
+   * los mismos colores subidos de saturación para funcionar como campo.
    */
-  --estado-neutro: 106 118 115;   /* NO SE SABE. Ni bueno ni malo */
-  --estado-vivo: 21 128 61;       /* solo desde un dato RECIENTE y concreto */
-  --estado-mirar: 180 83 9;
-  --estado-ir: 190 24 93;         /* reservado a un hecho confirmado */
-  --estado-frenando: 29 78 216;   /* ⚠️ DECLARADO Y SIN USAR: ver abajo */
+  --estado-neutro: 139 144 163;   /* NO SE SABE. Ni bueno ni malo */
+  --estado-vivo: 74 222 128;      /* solo desde un dato RECIENTE y concreto */
+  --estado-mirar: 251 191 36;
+  --estado-ir: 251 106 90;        /* reservado a un hecho confirmado */
+  --estado-frenando: 91 140 255;  /* ⚠️ DECLARADO Y SIN USAR: ver abajo */
 
-  /* Lo que consumen las utilidades que ya usan los componentes. */
-  --primary: 14 61 58;
-  --primary-foreground: 233 242 239;
-  --destructive: 190 24 93;
-  --destructive-foreground: 255 255 255;
-  --warning: 180 83 9;
-  --warning-foreground: 255 255 255;
-  --success: 21 128 61;
-  --success-foreground: 255 255 255;
+  --primary: 91 140 255;
+  --primary-foreground: 7 8 13;
+  --destructive: 251 106 90;
+  --destructive-foreground: 7 8 13;
+  --warning: 251 191 36;
+  --warning-foreground: 7 8 13;
+  --success: 74 222 128;
+  --success-foreground: 7 8 13;
 
-  /* Queda por compatibilidad con el CSS que lo usaba; hoy manda Tailwind. */
-  --radio: 10px;
+  --radio: 20px;
 
   /*
    * ── LAS CURVAS ───────────────────────────────────────────────────────────
-   * De `emil-design-eng`, literales: «the built-in CSS easings are too weak.
-   * They lack the punch that makes animations feel intentional.»
-   *
-   * ⚠️ Y NUNCA `ease-in` en interfaz: empieza lento justo en el instante que el
-   *    usuario mira, asi que 300 ms con `ease-in` SE SIENTEN mas lentos que
-   *    300 ms con `ease-out`.
+   * De `emil-design-eng`, literales: «the built-in CSS easings are too weak.»
+   * ⚠️ Y NUNCA `ease-in` en interfaz: empieza lento justo en el instante que se
+   *    mira, así que 300 ms con `ease-in` SE SIENTEN más lentos que con `out`.
    */
   --curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
-  --curva-mov: cubic-bezier(0.77, 0, 0.175, 1);
+  --curva-mov: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /*
-   * ── DURACIONES ───────────────────────────────────────────────────────────
-   * La tabla de Emil. Un instrumento profesional es «crisp and fast»: nos
-   * quedamos en el extremo corto de cada banda.
-   */
+  /* ── DURACIONES ─────────────────────────────────────────────────────────── */
   --t-pulsacion: 140ms;   /* 100-160 */
   --t-estado: 200ms;      /* cambio de color legible sin parpadeo */
-  --t-entrada: 180ms;     /* algo que aparece */
+  --t-entrada: 720ms;     /* la entrada escalonada */
+  --t-hover: 500ms;
 }
 
 /*
@@ -135,70 +116,20 @@
  */
 
 /*
- * ── MODO OSCURO ──────────────────────────────────────────────────────────────
- * 🔴 Hasta hoy era INALCANZABLE. Las variables existían y lo único que ponía
- *    `[data-theme="dark"]` era `DashboardLayout.tsx`, un fichero huérfano que no
- *    importa nadie: la aplicación era permanentemente clara.
+ * ── EL TEMA ──────────────────────────────────────────────────────────────────
+ * 🔴 LA BASE ES OSCURA, Y NO SE HEREDA DEL SISTEMA OPERATIVO.
  *
- * Se hace con `prefers-color-scheme` y nada más: cero JavaScript, cero parpadeo
- * y cero riesgo de discrepancia de hidratación. El conmutador manual —que el
- * aula necesita, porque el proyector manda más que el sistema operativo— es un
- * paso APARTE; hasta que exista, esto ya funciona.
+ * `craft-floor`: «Light or dark picked by category. Pick it from the use scene».
+ * La escena que manda es la del ALUMNO: sentado, a 50 cm de la pantalla, dos
+ * horas seguidas, con su robot delante. Eso pide oscuro.
+ *
+ * ⏳ PENDIENTE, y está identificado: el MURO DEL PROFESOR se proyecta, y un
+ *    proyector lava los negros. Necesita un modo claro de alto contraste **solo
+ *    en esa pantalla**, con un botón — no con `prefers-color-scheme`, porque la
+ *    decisión la toma quien proyecta, no su sistema operativo. El gancho
+ *    `[data-tema]` se conserva para eso.
  */
-/*
- * 🔴 EL TEMA SE ELIGE DESDE LA ESCENA, NO DESDE EL SISTEMA OPERATIVO.
- *
- * `craft-floor.md` de `impeccable`: «Light or dark picked by category. Pick it
- * from the use scene: who, where, under what ambient light.» Esto estaba en
- * `prefers-color-scheme` a secas — o sea elegido por la máquina de quien mire, y
- * el resultado era un instrumento sombrío en un aula iluminada.
- *
- * La escena real es doble y las dos piden CLARO:
- *   · el alumno, en un portátil, en un aula con luz, con el robot delante
- *   · el profesor, proyectando el muro — y un proyector lava los negros: un
- *     fondo claro con tinta oscura se lee a tres metros, uno oscuro no
- *
- * Así que el claro es el mundo comprometido. El oscuro existe para el caso real
- * de persianas bajadas, y se pide con `[data-tema="oscuro"]`, no se hereda.
- */
-:root[data-tema='oscuro'] {
-  /* El mismo tablero, con las luces bajadas: el verde se hace el fondo. */
-  --tablero: 8 32 31;
-  --tablero-claro: 16 52 50;
-  --tablero-foreground: 226 238 234;
-  --tablero-tenue: 126 158 153;
 
-  --background: 9 20 19;
-  --foreground: 229 238 235;
-  --card: 17 34 32;
-  --card-foreground: 229 238 235;
-  --muted: 26 46 44;
-  --muted-foreground: 152 176 171;
-  --border: 44 68 65;
-  --input: 17 34 32;
-  --secondary: 26 46 44;
-  --secondary-foreground: 229 238 235;
-  --accent: 26 46 44;
-  --accent-foreground: 229 238 235;
-
-  /* En oscuro la sombra no separa: lo hace el borde. Se deja casi negra. */
-  --sombra: 0 0 0;
-
-  --estado-neutro: 152 176 171;
-  --estado-vivo: 74 222 128;
-  --estado-mirar: 251 191 36;
-  --estado-ir: 244 114 182;
-  --estado-frenando: 96 165 250;
-
-  --primary: 122 214 200;
-  --primary-foreground: 9 20 19;
-  --destructive: 244 114 182;
-  --destructive-foreground: 9 20 19;
-  --warning: 251 191 36;
-  --warning-foreground: 9 20 19;
-  --success: 74 222 128;
-  --success-foreground: 9 20 19;
-}
 
 @layer base {
   body {
@@ -238,47 +169,67 @@
   }
 
   /*
-   * ── LA PESTAÑA DE ATENCIÓN DE UNA FICHA ──────────────────────────────────
-   * 🔴 ERA UN `border-left` DE COLOR DE 8 px, Y ESO ESTÁ PROHIBIDO.
+   * ── EL VIDRIO ────────────────────────────────────────────────────────────
+   * La superficie NORMAL. Un robot sin novedad, o al que no se llega, vive
+   * aquí. Lo que la distingue de un bloque de color no es el estilo: es que
+   * **no pide nada**.
    *
-   * `craft-floor` lo dice sin matices: «A colored `border-left` or
-   * `border-right` above 1px on cards, list items, callouts, or alerts». Es el
-   * tic de alerta que llevan todos los paneles genéricos, y yo lo tenía.
-   *
-   * En un tablero de operaciones la pieza equivalente **existe y es mejor**: la
-   * pestaña de color en el canto superior de la ficha, que es como se marca una
-   * unidad en un tablero de verdad. Ocupa el ancho y su ANCHO codifica la
-   * urgencia además del color —un proyector desatura, y una de cada doce
-   * personas no distingue rojo de ámbar—.
-   *
-   * Se escala en X, así que:
-   *   · el contenido **nunca se mueve** y todas las fichas alinean igual;
-   *   · el cambio es `transform`, sin recalcular maquetación;
-   *   · y la transición de 200 ms es **anti-parpadeo**: con 16 fichas, un hipo
-   *     de WiFi que cruce el umbral y vuelva daría un estroboscopio.
-   *
-   * ⚠️ `scaleX(0)` es legítimo aquí: no es un elemento «apareciendo de la
-   *    nada» —lo que la regla de Emil prohíbe— sino la ausencia de pestaña, que
-   *    es un estado real y el más común.
+   * ⚠️ `backdrop-filter` solo sobre superficies que NO se desplazan con mucho
+   *    contenido detrás. Aquí son tarjetas pequeñas sobre un fondo fijo, que es
+   *    el caso barato.
    */
-  .pestana {
-    position: relative;
+  .vidrio {
+    background: rgb(var(--vidrio) / 0.045);
+    border: 1px solid rgb(var(--filo) / 0.09);
+    backdrop-filter: blur(20px);
+    box-shadow:
+      inset 0 1px 0 rgb(var(--filo) / 0.10),
+      0 18px 40px -22px rgb(var(--sombra) / 0.70);
+    transition: background-color var(--t-hover) var(--curva-mov),
+                border-color var(--t-hover) var(--curva-mov),
+                transform var(--t-hover) var(--curva-mov);
   }
 
-  .pestana::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 4px;
-    border-radius: 12px 12px 0 0;
-    background: var(--pestana-color, transparent);
-    transform: scaleX(var(--pestana-escala, 0));
-    transform-origin: left center;
-    transition: transform var(--t-estado) var(--curva-salida),
-                background-color var(--t-estado) ease;
+  .vidrio:hover {
+    background: rgb(var(--vidrio) / 0.075);
+    border-color: rgb(var(--filo) / 0.18);
   }
 
   /*
+   * ── LA LUZ AMBIENTE ──────────────────────────────────────────────────────
+   * Dos orbes desenfocados que tiñen la pantalla entera. Es lo que impide que
+   * el fondo oscuro se lea como «apagado» en vez de como «profundo».
+   *
+   * 🔴 `position: fixed` y `pointer-events: none`, y esto NO es un detalle:
+   *    un desenfoque de 100 px dentro de un contenedor que se desplaza obliga
+   *    al navegador a repintar en cada scroll y hunde el rendimiento en móvil.
+   *    Fijo, se calcula una vez.
+   */
+  .luz-ambiente {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+
+  .luz-ambiente::before,
+  .luz-ambiente::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(100px);
+  }
+
+  .luz-ambiente::before {
+    width: 660px; height: 660px; left: -180px; top: -240px;
+    background: radial-gradient(circle, rgb(var(--luz-a) / 0.36), transparent 70%);
+  }
+
+  .luz-ambiente::after {
+    width: 600px; height: 600px; right: -160px; top: 80px;
+    background: radial-gradient(circle, rgb(var(--luz-b) / 0.20), transparent 70%);
+  }  /*
    * El foco, visible siempre. Quien navega con teclado tiene que ver dónde
    * está, y en un instrumento eso no es una preferencia.
    */
