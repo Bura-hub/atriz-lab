@@ -87,6 +87,21 @@ const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
 /** El nombre del robot: presente, y por debajo del dato. */
 const TAMANO_NOMBRE = 'clamp(1.1rem, 1.8vw, 1.35rem)'
 
+/**
+ * 🔴 Y MAS PEQUEÑO TODAVIA CUANDO NO SE LLEGA AL ROBOT.
+ *
+ * En una ficha inalcanzable el nombre es **lo unico que queda escrito**, asi que
+ * al tamaño de la ficha viva se convierte en el contenido de la baldosa — y con
+ * los dieciseis apagados, en el contenido del muro entero. Lo que ese nombre dice
+ * ya lo dice la POSICION en la rejilla 4x4, que no se mueve.
+ *
+ * ⚠️ La ficha NO cambia de forma al conectarse el robot: la fila de arriba la
+ *    gobierna la altura de la pildora de estado (~26 px), que es mayor que
+ *    cualquiera de los dos nombres. El hueco del dato ya estaba igualado con
+ *    `ALTO_DEL_DATO`.
+ */
+const TAMANO_NOMBRE_SIN_CONEXION = 'clamp(0.95rem, 1.4vw, 1.1rem)'
+
 /*
  * 🔴 EL HUECO DEL DATO MIDE LO MISMO EN LOS DOS ESTADOS, Y ESO ES EL PUNTO.
  *
@@ -126,7 +141,19 @@ function VoltajeDeBaldosa({ v, sobreBloque, atenuado, children }: {
   return (
     <div className={atenuado ? 'opacity-60' : undefined}>
       <p className={`microetiqueta ${sobreBloque ? '!text-current opacity-75' : ''}`}>Voltaje</p>
-      <div className="mt-1.5 flex items-end gap-2" style={{ minHeight: ALTO_DEL_DATO }}>
+      {/*
+        🔴 `items-baseline`, Y ANTES ERA `items-end`. La caja reserva el alto de
+           la cifra conectada (`ALTO_DEL_DATO`), asi que con solo una raya dentro
+           el alineado al fondo la empujaba a ~20 px de su propio rotulo y a ~8
+           de la linea siguiente: la ausencia se leia agrupada con la frase de
+           debajo, no con el `VOLTAJE` que la nombra.
+
+        📝 Alineado a la linea base, la raya cuelga de su rotulo **y** la palabra
+           de nivel de bateria comparte base con la cifra cuando el robot si
+           llega -que es lo que `items-end` aproximaba a ojo-. Con un solo hijo
+           el resultado es el mismo que `items-start`.
+      */}
+      <div className="mt-1.5 flex items-baseline gap-2" style={{ minHeight: ALTO_DEL_DATO }}>
         {v === null ? (
           <span
             className={`font-mono text-lg leading-none ${sobreBloque ? 'opacity-60' : 'hueco'}`}
@@ -176,7 +203,7 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
         <div className="flex items-start justify-between gap-2">
           <span
             className="font-semibold leading-none tracking-tight text-muted-foreground"
-            style={{ fontSize: TAMANO_NOMBRE }}
+            style={{ fontSize: TAMANO_NOMBRE_SIN_CONEXION }}
           >
             {etiqueta}
           </span>
@@ -188,10 +215,16 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
           El MISMO bloque que la baldosa de bloque, con el mismo hueco: es lo
           que impide que la ficha se recomponga cuando el robot aparece. La
           raya, no la frase — se distingue de un cero al instante.
+
+          🔴 AQUI HABIA UN «ultimo dato: nunca», Y SOBRABA. La pildora de arriba
+             ya dice «no llego» y la raya ya dice que no hay valor: eran **tres
+             formas del mismo hecho en una casilla**, y por dieciseis fichas, 48
+             en el muro. Lo que falta cuando fallan todos no es repetirlo mas
+             veces, es decirlo UNA vez arriba — que es lo que hace ahora
+             `MuroFlota`.
         */}
         <div className="mt-auto pt-6">
           <VoltajeDeBaldosa v={null} sobreBloque={false} atenuado={false} />
-          <p className="mt-2 text-[11.5px] text-muted-foreground">último dato: nunca</p>
         </div>
       </Link>
     )

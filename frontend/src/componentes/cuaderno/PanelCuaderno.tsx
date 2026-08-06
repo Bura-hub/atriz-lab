@@ -17,6 +17,7 @@ import {
   AVISO_ALMACENAMIENTO, CLAVE_CUADERNO, Medida, aCSV, diferencia, leerMedidas,
 } from '@/lib/cuaderno/medidas'
 import { ROBOTS } from '@/lib/interfaz/identidad'
+import { Grupo } from '@/componentes/ui/Grupo'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
 const VACIA = { robot: 'rvr-01', que: '', robotValor: '', personaValor: '', unidad: 'cm', nota: '' }
@@ -134,22 +135,52 @@ export function PanelCuaderno() {
            las paradas de degradado con blanco literal que dejaron tres
            titulares invisibles al cambiar el tema.
       */}
+      {/*
+        🔴 LA MITAD DERECHA DE LA BANDA ESTABA VACIA, y lo que tenia que ir ahi
+           flotaba en papel: el contador de medidas iba escondido en el titulo de
+           una tarjeta («3 medidas», 19 px) y Exportar en su esquina. El contador
+           es la unica cifra que esta pantalla produce por si misma — va en
+           `.cifra`, que es la escala que la aplicacion ya define para un valor.
+
+        📐 Y el titular pasa a `clamp(2.5rem, 6vw, 4.5rem)`, el MISMO de la
+           portada y la flota. Media 60 px contra 72 y 78, con otro factor `vw`:
+           tres tamaños no son una escala.
+      */}
       <header className="campo-seccion relative z-10" style={tono}>
-        <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-12 sm:px-6">
-          {/* Lo que esta pantalla NO hace, y es su rasgo definitorio: es lo
-              unico que funciona con los 16 robots apagados. */}
-          <p className="microetiqueta !text-white/80">No abre ninguna conexión</p>
-          <h1
-            className="mt-3 font-semibold leading-[0.94] tracking-[-0.05em] text-white"
-            style={{ fontSize: 'clamp(2.25rem, 5.4vw, 3.75rem)' }}
-          >
-            Cuaderno<br />de medidas
-          </h1>
-          <p className="mt-4 max-w-[56ch] text-base leading-relaxed text-white/80">
-            Lo que dijo el robot, al lado de lo que mediste con la cinta. La resta la hace la
-            página; <strong className="font-semibold text-white">si una medida está bien o no, lo
-            decides tú</strong> — aquí no hay tolerancias inventadas.
-          </p>
+        <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-6 px-4 pb-10 pt-12 sm:px-6">
+          <div>
+            {/* Lo que esta pantalla NO hace, y es su rasgo definitorio: es lo
+                unico que funciona con los 16 robots apagados. */}
+            <p className="microetiqueta !text-white/80">No abre ninguna conexión</p>
+            <h1
+              className="mt-3 font-semibold leading-[0.94] tracking-[-0.05em] text-white"
+              style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}
+            >
+              Cuaderno<br />de medidas
+            </h1>
+            <p className="mt-4 max-w-[56ch] text-base leading-relaxed text-white/80">
+              Lo que dijo el robot, al lado de lo que mediste con la cinta. La resta la hace la
+              página; <strong className="font-semibold text-white">si una medida está bien o no, lo
+              decides tú</strong> — aquí no hay tolerancias inventadas.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-start gap-4 sm:items-end">
+            <div className="sm:text-right">
+              <p className="microetiqueta !text-white/70">anotadas</p>
+              {/* Un cero es un VALOR, no un hueco: la pantalla arranca vacia a
+                  proposito y decirlo con una cifra es exacto. */}
+              <p className="cifra mt-1.5 text-white">{medidas.length}</p>
+            </div>
+            {medidas.length > 0 && (
+              <button
+                type="button" onClick={descargar}
+                className="pulsable focus-ring rounded-full border border-white/30 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white"
+              >
+                Exportar CSV
+              </button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -158,225 +189,263 @@ export function PanelCuaderno() {
            robot y de la portada. Con el 5xl que tenia, el texto saltaba al
            cambiar de pantalla.
       */}
-      <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 pb-16 pt-9 sm:px-6" style={tono}>
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-9 sm:px-6" style={tono}>
         {/*
           🔴 EL AVISO DE ALMACENAMIENTO VA ARRIBA Y SIEMPRE VISIBLE.
           Un alumno que crea que sus medidas están «en la nube» las perderá al
           cambiar de portátil, y eso es una práctica entera tirada.
+
+          🔴 Y CON FONDO OPACO. Con `bg-warning/[0.08]` la franja pasaba por
+             delante de los dos orbes FIJOS de la luz ambiente: medido en captura
+             a 1920 px, esta misma caja iba de `238 232 225` por la izquierda a
+             `231 231 224` por la derecha, o sea que el tinte que porta el nivel
+             del aviso solo existia en un trozo de su propia caja.
+             `--aviso-atencion` es ese tinte ya resuelto sobre la ficha blanca.
         */}
-        <p className="rounded-ficha border border-warning/40 bg-warning/[0.08] px-5 py-3.5 text-sm leading-relaxed text-muted-foreground">
+        <p className="rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">
           {AVISO_ALMACENAMIENTO}
         </p>
 
-        <Tarjeta titulo="Anotar una medida">
-          {/* Fila de contexto: de qué robot, qué se midió y en qué unidad. */}
-          <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
-            <label>
-              <span className="microetiqueta mb-1.5 block !text-[11px]">robot</span>
-              <select
-                className={campo}
-                value={f.robot}
-                onChange={(e) => setF({ ...f, robot: e.target.value })}
-              >
-                {ROBOTS.map((n) => {
-                  const r = `rvr-${String(n).padStart(2, '0')}`
-                  return <option key={r} value={r}>{r}</option>
-                })}
-              </select>
-            </label>
-            <label className="lg:col-span-2">
-              <span className="microetiqueta mb-1.5 block !text-[11px]">qué mediste</span>
-              <input
-                className={campo} value={f.que} placeholder="avance de 30 cm"
-                onChange={(e) => setF({ ...f, que: e.target.value })}
-              />
-            </label>
-            <label>
-              <span className="microetiqueta mb-1.5 block !text-[11px]">unidad</span>
-              <input
-                className={campo} value={f.unidad}
-                onChange={(e) => setF({ ...f, unidad: e.target.value })}
-              />
-            </label>
-          </div>
+        {/*
+          ── LA PAGINA SE PARTE EN DOS ────────────────────────────────────────
+          🔴 ERA LA PANTALLA MENOS TOCADA DE LAS NUEVE: tres cajas apiladas del
+             mismo peso y ni una division de pagina. Con todas las cajas iguales
+             la unica jerarquia posible es el ORDEN, y el orden no se ve.
 
-          {/*
-            LA PAREJA, EN SU PROPIO RECINTO. Los tres van juntos porque son una
-            sola operación: dos lecturas y su resta. Repartidos entre «robot» y
-            «unidad» no habia nada que los emparejara.
-          */}
-          <div className="px-5 pb-4">
-            <div className="pozo-interior px-4 pb-4 pt-3.5">
-              <p className="microetiqueta">la pareja que importa</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <label>
-                  <span className="microetiqueta mb-1.5 block !text-[11px]">dijo el robot</span>
-                  <input
-                    className={campoPar} value={f.robotValor} inputMode="decimal" placeholder="30,2"
-                    onChange={(e) => setF({ ...f, robotValor: e.target.value })}
-                  />
-                </label>
-                <label>
-                  <span className="microetiqueta mb-1.5 block !text-[11px]">mediste tú</span>
-                  <input
-                    className={campoPar} value={f.personaValor} inputMode="decimal" placeholder="30"
-                    onChange={(e) => setF({ ...f, personaValor: e.target.value })}
-                  />
-                </label>
-                {/*
-                  🔴 SOLO LECTURA, y sin color. La diferencia no se pinta de
-                     verde ni de rojo: sin una tolerancia medida por practica,
-                     un semaforo aqui seria un juicio que esta pantalla no puede
-                     emitir. Es la misma regla que ya cumple la tabla.
-                */}
-                <div>
-                  <span className="microetiqueta mb-1.5 block !text-[11px]">diferencia</span>
-                  <output
-                    className="block w-full rounded-md border border-dashed border-[rgb(var(--filo)/0.14)] px-3 py-2.5 font-mono text-lg"
-                  >
-                    {dPrevia === null
-                      /* `.hueco` y no un guion del tamaño del valor: falta un
-                         lado, y la ausencia no se pinta con el peso del dato. */
-                      ? <span className="hueco text-sm" title="falta un lado">—</span>
-                      /* La unidad al mismo tamaño que la de la tabla de abajo
-                         y no con `.unidad` (0,42 em): sobre 18 px saldría a
-                         7,5 px, que ya no se lee a 50 cm de la pantalla. */
-                      : <>{dPrevia > 0 ? '+' : ''}{dPrevia.toFixed(2)}
-                        <span className="ml-1 text-[11px] text-muted-foreground">{f.unidad}</span></>}
-                  </output>
-                </div>
-              </div>
-              <p className="mt-3 font-mono text-[11px] text-muted-foreground">
-                diferencia = mediste tú − dijo el robot
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 border-t border-[rgb(var(--filo)/0.09)] px-5 py-3.5">
+          Son dos trabajos distintos y ahora se llaman: **anotar** una medida, y
+          mirar **lo anotado**. El rotulo de `Grupo` lleva el grafito de esta
+          pantalla, que es lo que ata la division a la banda de arriba.
+        */}
+        <div className="mt-9 space-y-10">
+        <Grupo titulo="Anotar" fuente="la resta la hace la página">
+          <Tarjeta titulo="Una medida nueva">
             {/*
-              🔴 EL DESHABILITADO TIENE FORMA PROPIA, NO ES EL PRIMARIO
-                 TRANSPARENTADO. Con `opacity-40` el unico boton de la pantalla
-                 salia al cargar como un lila lavado, que no se lee como
-                 «todavia no» sino como «esto esta sin terminar». Ahora pierde
-                 el relleno y se queda en un contorno: la diferencia con el
-                 estado activo es de CATEGORIA, no de intensidad.
+              Fila de contexto: de qué robot, qué se midió y en qué unidad.
 
-              📝 El borde transparente esta SIEMPRE, no solo deshabilitado: si
-                 apareciera con el `disabled:`, el boton crecería 2 px al
-                 escribir la primera letra y daría un salto en el sitio donde
-                 esta el ojo.
+              🔴 TRES COLUMNAS, Y ANTES ERAN CUATRO. La rejilla de dentro del pozo
+                 es de tres, así que las dos no compartían **ni una sola vertical**:
+                 medido a 1920 px, `ROBOT` empezaba 15 px a la izquierda de `DIJO
+                 EL ROBOT` y `UNIDAD` 93 px a la derecha de `DIFERENCIA`. Dos
+                 rejillas desalineadas dentro de la misma tarjeta se leen como dos
+                 cosas que no tienen que ver.
             */}
-            <button
-              type="button"
-              onClick={anotar}
-              disabled={f.que.trim() === ''}
-              className="pulsable focus-ring rounded-full border border-transparent bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:border-[rgb(var(--filo)/0.16)] disabled:bg-transparent disabled:text-muted-foreground"
-            >
-              Anotar
-            </button>
-            <span className="text-xs text-muted-foreground">
-              Puedes dejar un lado vacío y completarlo después.
-            </span>
-          </div>
-        </Tarjeta>
+            <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
+              <label>
+                <span className="microetiqueta mb-1.5 block !text-[11px]">robot</span>
+                <select
+                  className={campo}
+                  value={f.robot}
+                  onChange={(e) => setF({ ...f, robot: e.target.value })}
+                >
+                  {ROBOTS.map((n) => {
+                    const r = `rvr-${String(n).padStart(2, '0')}`
+                    return <option key={r} value={r}>{r}</option>
+                  })}
+                </select>
+              </label>
+              <label>
+                <span className="microetiqueta mb-1.5 block !text-[11px]">qué mediste</span>
+                <input
+                  className={campo} value={f.que} placeholder="avance de 30 cm"
+                  onChange={(e) => setF({ ...f, que: e.target.value })}
+                />
+              </label>
+              <label>
+                <span className="microetiqueta mb-1.5 block !text-[11px]">unidad</span>
+                <input
+                  className={campo} value={f.unidad}
+                  onChange={(e) => setF({ ...f, unidad: e.target.value })}
+                />
+              </label>
+            </div>
 
-        <Tarjeta
-          titulo={medidas.length === 0 ? 'Todavía no hay medidas' : `${medidas.length} medidas`}
-          extremo={medidas.length > 0 ? (
-            <button
-              type="button" onClick={descargar}
-              className="pulsable focus-ring rounded-full border border-[rgb(var(--filo)/0.16)] px-4 py-1.5 text-xs font-medium"
-            >
-              Exportar CSV
-            </button>
-          ) : undefined}
-        >
-          {/*
-            🔴🔴 LA TABLA NO DESAPARECE CUANDO ESTA VACIA, Y ESE ERA EL ESTADO
-               POR DEFECTO DE ESTA PANTALLA.
+            {/*
+              LA PAREJA, EN SU PROPIO RECINTO. Los tres van juntos porque son una
+              sola operación: dos lecturas y su resta. Repartidos entre «robot» y
+              «unidad» no habia nada que los emparejara.
 
-            Antes el estado vacio BORRABA la tabla entera y la sustituia por una
-            franja de 120 px con una frase centrada: mas de media pantalla en
-            gris muerto, y el alumno no veia que se le iba a pedir hasta
-            escribir la primera fila. Y al anotarla la pagina cambiaba de forma
-            debajo del cursor.
+              🔴 EL RECINTO VA A SANGRE Y SU RELLENO ES EL MISMO `px-5` DE LA FILA
+                 DE ARRIBA. Antes era un `px-5` exterior MAS el `px-4` del pozo, o
+                 sea 16 px de desfase entre las dos rejillas — el desalineamiento
+                 medido. Con el pozo llegando a los cantos de la tarjeta (que ya va
+                 a sangre), las dos rejillas parten del mismo sitio y comparten sus
+                 tres verticales.
+            */}
+            <div className="pozo-interior rounded-none border-x-0 px-5 pb-4 pt-3.5">
+                <p className="microetiqueta">la pareja que importa</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  <label>
+                    <span className="microetiqueta mb-1.5 block !text-[11px]">dijo el robot</span>
+                    <input
+                      className={campoPar} value={f.robotValor} inputMode="decimal" placeholder="30,2"
+                      onChange={(e) => setF({ ...f, robotValor: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    <span className="microetiqueta mb-1.5 block !text-[11px]">mediste tú</span>
+                    <input
+                      className={campoPar} value={f.personaValor} inputMode="decimal" placeholder="30"
+                      onChange={(e) => setF({ ...f, personaValor: e.target.value })}
+                    />
+                  </label>
+                  {/*
+                    🔴 SOLO LECTURA, y sin color. La diferencia no se pinta de
+                       verde ni de rojo: sin una tolerancia medida por practica,
+                       un semaforo aqui seria un juicio que esta pantalla no puede
+                       emitir. Es la misma regla que ya cumple la tabla.
+                  */}
+                  <div>
+                    <span className="microetiqueta mb-1.5 block !text-[11px]">diferencia</span>
+                    <output
+                      className="block w-full rounded-md border border-dashed border-[rgb(var(--filo)/0.14)] px-3 py-2.5 font-mono text-lg"
+                    >
+                      {dPrevia === null
+                        /* `.hueco` y no un guion del tamaño del valor: falta un
+                           lado, y la ausencia no se pinta con el peso del dato. */
+                        ? <span className="hueco text-sm" title="falta un lado">—</span>
+                        /* La unidad al mismo tamaño que la de la tabla de abajo
+                           y no con `.unidad` (0,42 em): sobre 18 px saldría a
+                           7,5 px, que ya no se lee a 50 cm de la pantalla. */
+                        : <>{dPrevia > 0 ? '+' : ''}{dPrevia.toFixed(2)}
+                          <span className="ml-1 text-[11px] text-muted-foreground">{f.unidad}</span></>}
+                    </output>
+                  </div>
+                </div>
+                <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+                  diferencia = mediste tú − dijo el robot
+                </p>
+            </div>
 
-            Con el `<thead>` siempre montado, la pagina conserva su forma y las
-            cinco columnas —robot · qué · dijo el robot · mediste tú ·
-            diferencia— dicen de antemano cual es el trabajo. Es lo que hace la
-            maqueta de Stitch de esta pantalla, que deja la cabecera puesta y
-            mete la frase en una fila con `colspan` y `py-16`.
-          */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                {/* La línea bajo la cabecera es lo que hace que una tabla vacía
-                    siga leyéndose como una tabla: sin ella los rótulos flotan
-                    sobre el hueco. */}
-                <tr className="border-b border-[rgb(var(--filo)/0.09)] text-left text-muted-foreground">
-                  <th scope="col" className="microetiqueta px-5 py-3 !text-[11px]">robot</th>
-                  <th scope="col" className="microetiqueta px-3 py-3 !text-[11px]">qué</th>
-                  <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">dijo el robot</th>
-                  <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">mediste tú</th>
-                  <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">diferencia</th>
-                  <th scope="col" className="px-5 py-3"><span className="sr-only">quitar</span></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[rgb(var(--filo)/0.08)]">
-                {medidas.length === 0 ? (
-                  /*
-                    El estado vacio de PRIMER USO, que no es lo mismo que «sin
-                    resultados» ni que «fallo». Dice como se llena.
-                  */
-                  <tr>
-                    <td colSpan={6} className="px-5 py-16 text-center text-sm text-muted-foreground">
-                      Anota la primera arriba. La pareja que importa es{' '}
-                      <strong className="text-foreground/85">lo que dijo el robot</strong> junto a{' '}
-                      <strong className="text-foreground/85">lo que mediste tú</strong>.
-                    </td>
+            <div className="flex flex-wrap items-center gap-3 border-t border-[rgb(var(--filo)/0.09)] px-5 py-3.5">
+              {/*
+                🔴 EL DESHABILITADO TIENE FORMA PROPIA, NO ES EL PRIMARIO
+                   TRANSPARENTADO. Con `opacity-40` el unico boton de la pantalla
+                   salia al cargar como un lila lavado, que no se lee como
+                   «todavia no» sino como «esto esta sin terminar». Ahora pierde
+                   el relleno y se queda en un contorno: la diferencia con el
+                   estado activo es de CATEGORIA, no de intensidad.
+
+                📝 El borde transparente esta SIEMPRE, no solo deshabilitado: si
+                   apareciera con el `disabled:`, el boton crecería 2 px al
+                   escribir la primera letra y daría un salto en el sitio donde
+                   esta el ojo.
+              */}
+              <button
+                type="button"
+                onClick={anotar}
+                disabled={f.que.trim() === ''}
+                className="pulsable focus-ring rounded-full border border-transparent bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:border-[rgb(var(--filo)/0.16)] disabled:bg-transparent disabled:text-muted-foreground"
+              >
+                Anotar
+              </button>
+              <span className="text-xs text-muted-foreground">
+                Puedes dejar un lado vacío y completarlo después.
+              </span>
+            </div>
+          </Tarjeta>
+        </Grupo>
+
+        {/*
+          🔴 AQUI NO VA UNA `Tarjeta`, Y ES DELIBERADO: su capucha caia justo
+             encima del `<thead>` de la tabla, o sea **dos cabeceras apiladas**
+             —«Todavía no hay medidas» y luego ROBOT · QUÉ · DIJO EL ROBOT…—.
+             El rotulo de la division lo pone ahora `Grupo`, y la cabecera de la
+             tabla es la cabecera de la tabla.
+
+          📝 Y el contador ya no vive en un titulo de 19 px: esta en la banda, en
+             `.cifra`. Repetirlo aqui seria decir el mismo hecho dos veces, que
+             es justo lo que esta ronda esta quitando del muro.
+        */}
+        <Grupo titulo="Lo anotado" fuente="una fila por medida · se exporta desde la cabecera">
+          <div className="vidrio overflow-hidden rounded-ficha">
+            {/*
+              🔴🔴 LA TABLA NO DESAPARECE CUANDO ESTA VACIA, Y ESE ERA EL ESTADO
+                 POR DEFECTO DE ESTA PANTALLA.
+
+              Antes el estado vacio BORRABA la tabla entera y la sustituia por una
+              franja de 120 px con una frase centrada: mas de media pantalla en
+              gris muerto, y el alumno no veia que se le iba a pedir hasta
+              escribir la primera fila. Y al anotarla la pagina cambiaba de forma
+              debajo del cursor.
+
+              Con el `<thead>` siempre montado, la pagina conserva su forma y las
+              cinco columnas —robot · qué · dijo el robot · mediste tú ·
+              diferencia— dicen de antemano cual es el trabajo. Es lo que hace la
+              maqueta de Stitch de esta pantalla, que deja la cabecera puesta y
+              mete la frase en una fila con `colspan` y `py-16`.
+            */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  {/* La línea bajo la cabecera es lo que hace que una tabla vacía
+                      siga leyéndose como una tabla: sin ella los rótulos flotan
+                      sobre el hueco. */}
+                  <tr className="border-b border-[rgb(var(--filo)/0.09)] text-left text-muted-foreground">
+                    <th scope="col" className="microetiqueta px-5 py-3 !text-[11px]">robot</th>
+                    <th scope="col" className="microetiqueta px-3 py-3 !text-[11px]">qué</th>
+                    <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">dijo el robot</th>
+                    <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">mediste tú</th>
+                    <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">diferencia</th>
+                    <th scope="col" className="px-5 py-3"><span className="sr-only">quitar</span></th>
                   </tr>
-                ) : medidas.map((m) => {
-                  const d = diferencia(m)
-                  return (
-                    <tr key={m.id}>
-                      <td className="px-5 py-3 font-mono text-[13px] text-muted-foreground">{m.robot}</td>
-                      <td className="px-3 py-3">{m.que}</td>
-                      <td className="px-3 py-3 text-right font-mono text-[15px]">
-                        {m.robotValor === null
-                          ? <span className="hueco" title="no se sabe">—</span>
-                          : <>{m.robotValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
-                      </td>
-                      <td className="px-3 py-3 text-right font-mono text-[15px]">
-                        {m.personaValor === null
-                          ? <span className="hueco" title="no se sabe">—</span>
-                          : <>{m.personaValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
-                      </td>
-                      {/*
-                        🔴 La diferencia NO se colorea. Sin una tolerancia
-                           medida por práctica, un verde o un rojo aquí serían
-                           un juicio que esta pantalla no puede emitir.
-                      */}
-                      <td className="px-3 py-3 text-right font-mono text-[15px]">
-                        {d === null
-                          ? <span className="hueco" title="falta un lado">—</span>
-                          : <>{d > 0 ? '+' : ''}{d.toFixed(2)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <button
-                          type="button"
-                          onClick={() => guardar(medidas.filter((x) => x.id !== m.id))}
-                          className="focus-ring rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                        >
-                          quitar
-                        </button>
+                </thead>
+                <tbody className="divide-y divide-[rgb(var(--filo)/0.08)]">
+                  {medidas.length === 0 ? (
+                    /*
+                      El estado vacio de PRIMER USO, que no es lo mismo que «sin
+                      resultados» ni que «fallo». Dice como se llena.
+                    */
+                    <tr>
+                      <td colSpan={6} className="px-5 py-16 text-center text-sm text-muted-foreground">
+                        Anota la primera arriba. La pareja que importa es{' '}
+                        <strong className="text-foreground/85">lo que dijo el robot</strong> junto a{' '}
+                        <strong className="text-foreground/85">lo que mediste tú</strong>.
                       </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+                  ) : medidas.map((m) => {
+                    const d = diferencia(m)
+                    return (
+                      <tr key={m.id}>
+                        <td className="px-5 py-3 font-mono text-[13px] text-muted-foreground">{m.robot}</td>
+                        <td className="px-3 py-3">{m.que}</td>
+                        <td className="px-3 py-3 text-right font-mono text-[15px]">
+                          {m.robotValor === null
+                            ? <span className="hueco" title="no se sabe">—</span>
+                            : <>{m.robotValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                        </td>
+                        <td className="px-3 py-3 text-right font-mono text-[15px]">
+                          {m.personaValor === null
+                            ? <span className="hueco" title="no se sabe">—</span>
+                            : <>{m.personaValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                        </td>
+                        {/*
+                          🔴 La diferencia NO se colorea. Sin una tolerancia
+                             medida por práctica, un verde o un rojo aquí serían
+                             un juicio que esta pantalla no puede emitir.
+                        */}
+                        <td className="px-3 py-3 text-right font-mono text-[15px]">
+                          {d === null
+                            ? <span className="hueco" title="falta un lado">—</span>
+                            : <>{d > 0 ? '+' : ''}{d.toFixed(2)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                        </td>
+                        <td className="px-5 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => guardar(medidas.filter((x) => x.id !== m.id))}
+                            className="focus-ring rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            quitar
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </Tarjeta>
+        </Grupo>
+        </div>
       </main>
     </div>
   )

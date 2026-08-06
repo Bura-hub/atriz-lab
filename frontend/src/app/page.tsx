@@ -63,14 +63,24 @@ export default function Portada() {
            centímetros a la izquierda y en la misma caja alta monoespaciada. Una
            repetición así no informa: enseña a saltarse las microetiquetas.
       */}
-      <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6">
+      {/*
+        🔴 A DOS COLUMNAS, Y NO POR ADORNO: medido a 1920 px, con el titular y el
+           parrafo apilados a la izquierda la banda dejaba ~740 px de violeta
+           vacio a su derecha. La banda es lo mas grande de la pantalla y estaba
+           medio sin usar.
+
+        📐 Y el tamaño del titular es `clamp(2.5rem, 6vw, 4.5rem)`, el MISMO de
+           la flota y del cuaderno. Antes las tres cabeceras median 72, 78 y 60 px
+           con factores `vw` distintos — tres tamaños no son una escala.
+      */}
+      <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-5 px-4 pb-10 pt-14 sm:px-6">
         <h1
           className="font-semibold leading-[0.94] tracking-[-0.05em] text-white"
-          style={{ fontSize: 'clamp(2.5rem, 6.4vw, 4.5rem)' }}
+          style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}
         >
           Laboratorio<br />Atriz
         </h1>
-        <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-white/80">
+        <p className="max-w-[46ch] pb-1.5 text-base leading-relaxed text-white/80">
           {TOTAL_ROBOTS} robots Sphero RVR, cada uno con su Raspberry Pi y su LIDAR. Esta
           aplicación habla con ellos por rosbridge, un WebSocket por robot.
         </p>
@@ -99,12 +109,25 @@ export default function Portada() {
         con otra caja del mismo peso.
       */}
       <Grupo titulo="Los 16 robots" fuente="una conexión por robot, y se cierra al salir">
+        {/*
+          🔴 FONDO OPACO, Y ANTES ERA `--vidrio` AL 4 %. Los dieciseis destinos
+             son la MISMA cosa dieciseis veces, asi que tienen que verse iguales.
+             Con el fondo translucido pasaban por delante de los dos orbes de la
+             luz ambiente, que son FIJOS: medido en captura a 1920 px, las seis
+             primeras pastillas salian `237 236 234` -gris calido- y la 08 y la
+             16 `229 235 234`, o sea con el tono girado a frio. Dos pastillas
+             identicas de distinto color parecen decir cosas distintas.
+
+          📝 El hover tambien es opaco: `--aviso-nota` es el azul de la luz
+             ambiente **ya resuelto sobre la ficha blanca**, asi que vale lo
+             mismo en cualquier punto de la pantalla.
+        */}
         <ul className="grid grid-cols-4 gap-2.5 sm:grid-cols-8">
           {ROBOTS.map((n) => (
             <li key={n}>
               <Link
                 href={`/robot/${n}`}
-                className="pulsable focus-ring block rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.04)] py-3.5 text-center font-mono text-base transition-colors duration-[var(--t-estado)] hover:border-[rgb(var(--filo)/0.28)] hover:bg-[rgb(var(--vidrio)/0.09)]"
+                className="pulsable focus-ring block rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--card))] py-3.5 text-center font-mono text-base transition-colors duration-[var(--t-estado)] hover:border-[rgb(var(--filo)/0.28)] hover:bg-[rgb(var(--aviso-nota))]"
               >
                 {String(n).padStart(2, '0')}
               </Link>
@@ -163,7 +186,14 @@ export default function Portada() {
            de lo de arriba es que NO es un destino. Si algo se desbloquea, se
            quita de aqui — y si algo se rompe, se añade.
       */}
-      <section className="mt-14 rounded-ficha border border-warning/40 bg-warning/[0.08] p-6 sm:p-7">
+      {/*
+        🔴 FONDO OPACO, por lo mismo que las pastillas de arriba: un `warning` al
+           8 % deja que los orbes de la luz ambiente atraviesen la caja, y el
+           color que porta el nivel del aviso solo existe en un trozo de su
+           propia caja. `--aviso-atencion` es ese tinte ya resuelto sobre la
+           ficha blanca — el mismo que usa `Aviso`.
+      */}
+      <section className="mt-14 rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] p-6 sm:p-7">
         {/*
           Dos columnas y no una: `max-w-prose` a ancho completo dejaba 450 px de
           ámbar vacío a la derecha. Con el título en su propia columna el texto

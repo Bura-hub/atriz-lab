@@ -81,7 +81,10 @@ function Contenido({ id, alResumir }: { id: number; alResumir?: AlResumir }) {
    * eso la ficha informa de su estado hacia arriba y el muro coloca con `order`
    * de CSS, que cambia la posición VISUAL sin tocar el árbol.
    */
-  useEffect(() => { alResumir?.(id, baldosa.atencion) }, [alResumir, id, baldosa.atencion])
+  useEffect(
+    () => { alResumir?.(id, baldosa.atencion, baldosa.estado) },
+    [alResumir, id, baldosa.atencion, baldosa.estado],
+  )
 
   return (
     <BaldosaRobot
@@ -92,8 +95,16 @@ function Contenido({ id, alResumir }: { id: number; alResumir?: AlResumir }) {
   )
 }
 
-/** Lo unico que el muro necesita saber de una ficha para ordenarla. */
-export type AlResumir = (id: number, atencion: Baldosa['atencion']) => void
+/**
+ * Lo unico que el muro necesita saber de una ficha: la ATENCION para ordenarla,
+ * y el ESTADO para poder decir **una vez** que no responde ninguno en vez de
+ * dejar que las dieciseis fichas lo repitan por su cuenta.
+ */
+export type AlResumir = (
+  id: number,
+  atencion: Baldosa['atencion'],
+  estado: Baldosa['estado'],
+) => void
 
 export function BaldosaConectada(
   { id, destino, alResumir }: { id: number; destino?: number | string; alResumir?: AlResumir },

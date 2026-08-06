@@ -54,14 +54,35 @@ const ORDENES: readonly { valor: OrdenMuro; texto: string }[] = [
   { valor: 'ATENCION', texto: 'por atención' },
 ]
 
+/*
+ * 🔴 12 px ERA EL TEXTO MAS PEQUEÑO DE LA PANTALLA, EN LA PANTALLA CUYO CRITERIO
+ *    ESCRITO ES «UNA PERSONA A TRES METROS».
+ *
+ * Los dos unicos controles del muro iban a `text-xs`. Ahora van a 14 px, y en
+ * modo proyeccion a 16: quien proyecta esta de pie junto al proyector y tiene que
+ * poder cambiar el orden sin acercarse a leer.
+ *
+ * ⚠️ El tamaño va aqui y no en `globals.css` -que es compartido- porque depende
+ *    de un estado de ESTE componente.
+ */
+const TEXTO = (proyeccion: boolean) => (proyeccion ? 'text-base' : 'text-sm')
+
 export function ControlesMuro({
   proyeccion, alCambiarProyeccion, orden, alCambiarOrden,
 }: PropsControlesMuro) {
+  const texto = TEXTO(proyeccion)
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {/* El selector de orden: dos posiciones, la de por defecto primero. */}
+      {/*
+        El selector de orden: dos posiciones, la de por defecto primero.
+
+        ⚠️ Ya no es `.vidrio`: estos controles viven sobre el campo cobalto de la
+           cabecera, y una ficha de papel blanco encima se lee como una tarjeta
+           suelta en vez de como parte de la banda. El relleno es blanco al 10 %
+           SOBRE UN CAMPO OPACO, asi que no depende de lo que haya detras.
+      */}
       <div
-        className="vidrio flex rounded-full p-1"
+        className="flex rounded-full border border-white/25 bg-white/10 p-1"
         role="group"
         aria-label="Orden de las fichas"
       >
@@ -73,10 +94,10 @@ export function ControlesMuro({
               type="button"
               onClick={() => alCambiarOrden(o.valor)}
               aria-pressed={activo}
-              className={`pulsable focus-ring rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors duration-[var(--t-estado)] ${
+              className={`pulsable focus-ring rounded-full px-4 py-2 ${texto} font-medium transition-colors duration-[var(--t-estado)] ${
                 activo
-                  ? 'bg-[rgb(var(--vidrio)/0.14)] text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
+                  ? 'bg-white/25 text-white'
+                  : 'text-white/75 hover:text-white'
               }`}
             >
               {o.texto}
@@ -89,7 +110,7 @@ export function ControlesMuro({
         type="button"
         onClick={() => alCambiarProyeccion(!proyeccion)}
         aria-pressed={proyeccion}
-        className="vidrio pulsable focus-ring flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium"
+        className={`pulsable focus-ring flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 ${texto} font-medium text-white`}
       >
         {/*
           Icono dibujado, no un glifo Unicode ni un emoji: `craft-floor` lo
