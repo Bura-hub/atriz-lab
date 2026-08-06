@@ -279,7 +279,11 @@ export function PanelNoObedece() {
           {/* «cuántas hay» y «cuántas encajan» son dos números distintos, y
               confundirlos es afirmar de más. */}
           <p className="microetiqueta">
-            {confirmadas.length} de {causas.length} miradas
+            {/* El plural concuerda: con el socket cerrado `diagnosticar()`
+                devuelve UNA sola causa, asi que «1 de 1 miradas» es el caso que
+                mas se ve. */}
+            {confirmadas.length} de {causas.length}{' '}
+            {causas.length === 1 ? 'mirada' : 'miradas'}
           </p>
         </div>
         <h2

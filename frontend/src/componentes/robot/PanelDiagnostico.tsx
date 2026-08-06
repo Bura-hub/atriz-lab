@@ -105,14 +105,16 @@ function Hueco() {
   return <span className="hueco font-sans text-sm italic">{SIN_DATO}</span>
 }
 
-function Hercios({ valor, patron }: {
-  valor: number | null | undefined
-  /** `true` = es la constante del laboratorio, no una medida de este robot. */
-  patron?: boolean
-}) {
+/*
+ * 📝 Tenia una bandera `patron` para pintar la constante del laboratorio un
+ *    escalon por debajo. Sobra desde que el patron dejo de ser una columna: ya
+ *    no es un ritmo con su propia celda, es la linea de referencia de la medida.
+ *    Una sola forma de pintar un ritmo.
+ */
+function Hercios({ valor }: { valor: number | null | undefined }) {
   if (valor === null || valor === undefined) return <Hueco />
   return (
-    <span className={patron === true ? 'cifra-menor text-muted-foreground' : 'cifra'}>
+    <span className="cifra">
       {numero(valor, 2)}
       <span className="unidad">Hz</span>
     </span>
@@ -138,19 +140,34 @@ function FilaTopic({ topic }: { topic: TopicModelado }) {
       <td className="py-4 pr-4 text-right font-mono tabular-nums text-sm">
         {desde === null ? <Hueco /> : milisegundos(desde)}
       </td>
-      {/* LA MEDIDA. Es lo único de esta tabla que depende del robot de ahora. */}
-      <td className="py-4 pr-4 text-right">
-        <Hercios valor={observado} />
-      </td>
       {/*
-        🔴 EL PATRON DE COMPARACION, UN ESCALON POR DEBAJO Y EN TINTA SECUNDARIA.
-           Una version anterior lo dejo a la misma escala que la medida y a plena
-           tinta «para que no fuera lo mas apagado del cuadro»; el efecto medido
-           en captura fue el contrario — la constante del laboratorio se convirtio
-           en lo mas grande de la pantalla. Ver la cabecera de `Hercios`.
+        ═══════════════════════════════════════════════════════════════════════
+        🔴🔴 LA MEDIDA, CON SU PATRON DEBAJO — Y ERAN DOS COLUMNAS
+        ═══════════════════════════════════════════════════════════════════════
+        El ritmo medido en el robot tenia COLUMNA PROPIA, y eso le daba un rango
+        que no le corresponde: es una constante del laboratorio, no una lectura.
+        Con el robot apagado la fila se leia
+
+            /odom · 0 · no se sabe · no se sabe · 16,53 Hz
+
+        y lo unico grande de la pantalla era el numero que NO se esta midiendo.
+
+        📝 Y esto lleva TRES RONDAS seguidas apareciendo, señalado por revisores
+           distintos y arreglado dos veces por caminos que no eran: primero se le
+           quito el atenuado «porque no es secundario» -y paso a gritar-, luego se
+           le bajo la escala -y seguia teniendo columna propia, o sea rango-. La
+           tercera vez la salida era estructural: **el patron no es una columna,
+           es la referencia de una medida**, exactamente como en `Dato`, `Coste` y
+           las celdas de `EstadoMotores`. Cuatro columnas y una anatomia unica en
+           toda la aplicacion.
       */}
       <td className="py-4 text-right">
-        <Hercios valor={medido} patron />
+        <Hercios valor={observado} />
+        {medido !== undefined && (
+          <div className="mt-1 text-[11px] leading-tight text-muted-foreground">
+            {numero(medido, 2)} Hz medidos en el robot
+          </div>
+        )}
       </td>
     </tr>
   )
@@ -265,8 +282,7 @@ export function PanelDiagnostico() {
                   <th className="pb-2 pr-4 font-medium">Topic</th>
                   <th className="pb-2 pr-4 font-medium text-right">Mensajes</th>
                   <th className="pb-2 pr-4 font-medium text-right">Último hace</th>
-                  <th className="pb-2 pr-4 font-medium text-right">Observado aquí</th>
-                  <th className="pb-2 font-medium text-right">Medido en el robot</th>
+                  <th className="pb-2 font-medium text-right">Observado aquí</th>
                 </tr>
               </thead>
               <tbody>

@@ -712,7 +712,13 @@
     font-weight: 400;
     letter-spacing: 0;
     color: rgb(var(--muted-foreground));
-    margin-left: 0.22em;
+    /*
+     * ⚠️ 0,5 em y no 0,22. El margen se calcula sobre el cuerpo de la UNIDAD
+     *    -que es 0,42 em-, asi que 0,22 daban ~3 px reales; y el
+     *    `letter-spacing: -0.03em` de `.cifra` se comia otro del ultimo digito.
+     *    Quedaban ~2 px y se leia «0,100m/s» pegado.
+     */
+    margin-left: 0.5em;
   }
 
   /*

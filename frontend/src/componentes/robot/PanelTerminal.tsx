@@ -212,7 +212,12 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
             <button
               type="button"
               disabled
-              className="cursor-not-allowed rounded-md bg-[rgb(var(--vidrio)/0.07)] px-5 py-2 text-sm font-semibold text-muted-foreground"
+              /* 🔴 LA JERARQUIA ESTABA INVERTIDA: «Ejecutar» -la accion
+                 principal- era un relleno sin filo que sobre papel casi no se
+                 distinguia de la tarjeta, mientras «Parar el programa», la
+                 secundaria, si llevaba borde y se veia mas. Los dos siguen
+                 desactivados; lo que se arregla es el orden de lectura. */
+              className="cursor-not-allowed rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.12)] px-5 py-2 text-sm font-semibold text-muted-foreground"
             >
               Ejecutar
             </button>

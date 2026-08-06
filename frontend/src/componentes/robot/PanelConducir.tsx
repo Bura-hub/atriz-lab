@@ -302,9 +302,15 @@ function CruzDeMando({
              los dos tokens dejaron de valer lo mismo, la diferencia se ve.
         */}
         <span className="flex h-[2.1rem] w-[2.1rem] items-center justify-center rounded-full bg-[rgb(var(--destructive))]">
-          <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
-            parar
-          </span>
+          {/*
+            ⚠️ 8 px y sin traqueo: a 9 px con `tracking-[0.06em]` la palabra medía
+               32,5 px dentro de un disco de 33,6, así que **las esquinas de la P
+               y de la última R caían fuera del círculo** y se pintaban sobre el
+               papel. A 1× la tecla se leía como un borrón. Medido en un recorte
+               a 8×; a tamaño normal no se ve, y por eso la hizo mal quien la
+               escribió —yo— y la encontró quien la miró con lupa.
+          */}
+          <span className="text-[8px] font-semibold uppercase text-white">parar</span>
         </span>
       </button>
     </div>

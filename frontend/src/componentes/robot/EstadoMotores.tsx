@@ -170,16 +170,29 @@ export function EstadoMotores() {
           → **En una `.rejilla`, una `nota` va en las DOS celdas de un par o en
             ninguna.** La explicacion de que estos dos numeros van en crudo no
             pertenece a una celda: es de las dos, y esta abajo en «Por qué».
+
+          ⚠️ Y LA REGLA SE ESCRIBIO PARA `nota` Y NO SE APLICO A `referencia`,
+             que ocupa **la misma ranura**. Las dos oruga llevaban su «°C en
+             reposo» y las dos termicas no, asi que la mitad derecha de la fila
+             de cuatro se quedaba con 76 px de vacio debajo — el mismo hueco que
+             este parrafo dice haber cerrado, por la otra prop. Medido en la
+             captura de la ronda 4: tinta hasta y=1359 a la izquierda contra
+             y=1283 a la derecha.
+
+          → La regla vale para **todo lo que caiga bajo el valor**, no para una
+            prop concreta. Las cuatro celdas llevan referencia.
         */}
         <Dato
           etiqueta="Térmico izquierdo"
           valor={numero(m?.estado_termico_izquierdo, 0)}
           crudo={m?.estado_termico_izquierdo}
+          referencia="0 es normal"
         />
         <Dato
           etiqueta="Térmico derecho"
           valor={numero(m?.estado_termico_derecho, 0)}
           crudo={m?.estado_termico_derecho}
+          referencia="0 es normal"
         />
       </div>
 
