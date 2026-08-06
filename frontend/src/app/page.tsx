@@ -27,7 +27,9 @@ export default function Portada() {
     <main className="relative z-10 mx-auto max-w-4xl space-y-6 px-6 pb-16 pt-14">
       <header>
         <h1
-          className="bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text font-semibold leading-[0.94] tracking-[-0.05em] text-transparent"
+          /* Tinta arriba, gris frio abajo. Iba al reves -`from-white`- y sobre
+             papel el titular era invisible. Motivo entero en `MuroFlota.tsx`. */
+          className="bg-gradient-to-b from-[rgb(var(--foreground))] to-[rgb(var(--estado-neutro))] bg-clip-text font-semibold leading-[0.94] tracking-[-0.05em] text-transparent"
           style={{ fontSize: 'clamp(2.5rem, 6.4vw, 4.5rem)' }}
         >
           Laboratorio<br />Atriz

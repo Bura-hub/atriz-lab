@@ -86,14 +86,33 @@ export function MuroFlota() {
             titular de una sola linea se come el ancho que necesitan las cifras
             de caudal, y partirlo deja la columna izquierda libre.
 
-            ⚠️ En proyeccion el degradado se apaga: sobre fondo claro un texto
-               con degradado pierde contraste justo donde mas hace falta.
+            🔴 EL DEGRADADO VA DE TINTA A GRIS, Y ANTES IBA AL REVES. Sus dos
+               paradas eran literales -blanco puro arriba y un gris azulado fijo
+               abajo-, o sea **luz que cae desde arriba**, que es el gesto
+               correcto sobre un pozo negro. Al pasar el tema a papel **nada las
+               toco**, porque un literal no sigue a ninguna variable, y el
+               titular se volvio **invisible**: tinta blanca sobre papel blanco.
+
+               El gesto NO se quita, se gira: tinta plena arriba aclarando hacia
+               abajo. Es el mismo efecto optico con la polaridad que pide el
+               fondo. Y el gris de destino no es inventado: `--estado-neutro` ya
+               es el gris frio de la paleta, el equivalente en papel del que
+               habia. Lo mas oscuro da 17,8:1 y lo mas claro 6,4:1 sobre el
+               papel, asi que las dos puntas pasan AA hasta para texto normal.
+
+            📝 Y lo vigila una prohibicion nueva de `estilo.ts` -«parada de
+               degradado con color literal»-, sin exencion: `bg-clip-text` dice
+               que ahi el degradado es tinta, no que esa tinta se lea.
+
+            ⚠️ En proyeccion se apaga del todo y queda tinta plana: un proyector
+               aplasta el rango bajo, asi que la mitad clara de cada letra se
+               perderia justo en la pantalla que menos contraste puede regalar.
           */}
           <h1
             className={`font-semibold leading-[0.92] tracking-[-0.05em] ${
               proyeccion
                 ? 'text-foreground'
-                : 'bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text text-transparent'
+                : 'bg-gradient-to-b from-[rgb(var(--foreground))] to-[rgb(var(--estado-neutro))] bg-clip-text text-transparent'
             }`}
             style={{ fontSize: 'clamp(2.5rem, 6.4vw, 4.875rem)' }}
           >

@@ -83,6 +83,39 @@ export const PROHIBICIONES: readonly Prohibicion[] = [
     porque: 'lo mismo, escrito en CSS a mano en vez de con una utilidad',
   },
   {
+    /*
+     * 🔴🔴 UNA PARADA DE DEGRADADO CON UN COLOR LITERAL NO SIGUE AL TEMA, Y ASI
+     *    ES COMO TRES TITULARES SE VOLVIERON INVISIBLES.
+     *
+     * Los tres decian `bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text`:
+     * blanco en la altura de mayuscula apagandose hacia la linea base. Sobre el
+     * pozo casi negro era «luz que cae desde arriba» y funcionaba. Al pasar el
+     * tema a papel **nada los toco** —son literales, no variables— y quedo
+     * tinta blanca sobre papel blanco.
+     *
+     * Es la misma familia que `.pozo-interior`, que se quedo en `rgb(0 0 0/0.2)`
+     * y sobre una tarjeta blanca es un bloque gris. Un cambio de tema alcanza a
+     * todo lo que pasa por una variable **y a nada mas**.
+     *
+     * ⚠️ La regla se acota a las PARADAS DE DEGRADADO (`from-`, `via-`, `to-`)
+     *    con hexadecimal, `white` o `black`, que son las que siempre tienen que
+     *    seguir al fondo. Deliberadamente NO alcanza a `bg-[#ff0000]` de
+     *    `PanelLeds`: ahi el hexadecimal es el RGB **fisico** que va a emitir el
+     *    LED del robot. Ese no debe seguir al tema — seria mentir sobre lo que
+     *    hace el robot.
+     *
+     * 🔴 Y NO tiene exencion, ni siquiera con `bg-clip-text`: un titular con
+     *    degradado sigue estando obligado a leerse sobre su fondo. Era
+     *    exactamente el caso que fallo.
+     */
+    patron: /\b(?:from|via|to)-(?:\[#[0-9a-f]{3,8}\]|white\b|black\b)/i,
+    nombre: 'parada de degradado con color literal',
+    porque:
+      'un literal no sigue al tema. `from-white` sobre el pozo negro era luz cayendo; al ' +
+      'pasar la base a papel se quedo igual y el titular se volvio invisible. Las paradas ' +
+      'salen de `--foreground`, `--estado-neutro` y compañia, que si cambian con el tema',
+  },
+  {
     patron: /\bshadow-(lg|xl|2xl)\b|\bdrop-shadow\b/i,
     nombre: 'shadow-lg / shadow-xl / drop-shadow',
     porque:

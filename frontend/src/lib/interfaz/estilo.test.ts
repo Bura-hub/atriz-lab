@@ -262,8 +262,28 @@ describe('la guardia visual sobre el codigo real', () => {
 
 describe('🔴 la exencion de degradado, y por que no puede ensancharse', () => {
   it('un titular con bg-clip-text esta eximido: ahi el degradado es TINTA', () => {
-    const titular = '<h1 className="bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text text-transparent">'
+    // Las paradas salen de variables, que es lo que exige la OTRA prohibicion.
+    const titular = '<h1 className="bg-gradient-to-b from-[rgb(var(--foreground))] '
+      + 'to-[rgb(var(--estado-neutro))] bg-clip-text text-transparent">'
     expect(buscarProhibiciones(titular)).toEqual([])
+  })
+
+  it('🔴🔴 pero `bg-clip-text` NO absuelve una parada con color literal', () => {
+    /*
+     * El titular real de tres pantallas, tal y como estuvo hasta hoy. Pasaba la
+     * guardia entera —la exencion de degradado lo cubria— y **era invisible**:
+     * `from-white` sobre papel es tinta blanca sobre papel blanco. La exencion
+     * de degradado dice «aqui es tinta, no relleno», que sigue siendo verdad; lo
+     * que no dice es que esa tinta se lea, y eso lo comprueba la otra regla.
+     */
+    const antes = '<h1 className="bg-gradient-to-b from-white to-[#A8B0C8] bg-clip-text text-transparent">'
+    expect(buscarProhibiciones(antes)).toEqual(['parada de degradado con color literal'])
+  })
+
+  it('🔴 y NO alcanza al hexadecimal de una muestra de LED', () => {
+    // `PanelLeds` pinta el RGB FISICO que va a emitir el robot. Ese literal no
+    // debe seguir al tema: seria mentir sobre lo que hace el robot.
+    expect(buscarProhibiciones("muestra: 'bg-[#ff0000]'")).toEqual([])
   })
 
   it('🔴 un RELLENO con degradado sigue prohibido', () => {
@@ -281,7 +301,7 @@ describe('🔴 la exencion de degradado, y por que no puede ensancharse', () => 
      * se desactiva por accidente y sigue contando como aprobada.
      */
     const fichero = [
-      '<h1 className="bg-gradient-to-b from-white bg-clip-text text-transparent">Flota</h1>',
+      '<h1 className="bg-gradient-to-b from-[rgb(var(--foreground))] bg-clip-text text-transparent">Flota</h1>',
       '<button className="bg-gradient-to-r from-red-500 to-orange-400">Parar</button>',
     ].join('\n')
     expect(buscarProhibiciones(fichero)).toEqual(['gradientes'])
