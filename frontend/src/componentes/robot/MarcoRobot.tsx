@@ -31,7 +31,9 @@
  * datos ya pago dos veces.
  */
 
-import { ReactNode } from 'react'
+import { usePathname } from 'next/navigation'
+import { CSSProperties, ReactNode } from 'react'
+import { colorDeRuta } from '@/componentes/comun/RailNavegacion'
 import { ProveedorRobot, useRobot } from '@/hooks/ContextoRobot'
 import { urlDeRobot } from '@/lib/rosbridge/transporte'
 import { DestinoRobot, destinoParaTransporte, etiquetaRobot } from '@/lib/interfaz/identidad'
@@ -62,6 +64,11 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
   // `/cmd_vel_raw`.
   const { conectado, teleoperacion } = useRobot()
   const url = urlDeRobot(destinoParaTransporte(destino))
+  /*
+    El tono de la pestaña en la que estamos. `null` fuera de las rutas conocidas
+    —y entonces no se pinta ningún canto, en vez de inventar un color—.
+  */
+  const tono = colorDeRuta(usePathname())
 
   return (
     /*
@@ -73,7 +80,16 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
       relleno inferior pasa de cero —lo daban las lengüetas— a `pb-5`, para que
       la barra no quede pegada al contenido.
     */
-    <header className="relative z-10 bg-pozo-alto/70 shadow-barra backdrop-blur-xl">
+    <header
+      /*
+        EL CANTO DE COLOR: una línea de 1 px con el tono de esta pestaña.
+        Sustituye a lo que el suelo de calidad prohíbe —un borde lateral de color
+        de más de 1 px— y además no desplaza nada al cambiar de pantalla, que era
+        el defecto que ya se corrigió en las baldosas del muro.
+      */
+      className={`relative z-10 bg-pozo-alto shadow-barra ${tono === null ? '' : 'filo-estado'}`}
+      style={tono === null ? undefined : ({ '--filo-estado': `var(${tono})` } as CSSProperties)}
+    >
       <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">

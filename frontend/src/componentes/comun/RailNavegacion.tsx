@@ -46,6 +46,18 @@ export interface EntradaRail {
   href: string
   texto: string
   Icono: (p: PropsIcono) => ReactNode
+  /**
+   * El tono de IDENTIDAD de esa pantalla, como nombre de variable CSS.
+   *
+   * 🔴 ES UN EJE DISTINTO DEL DE ESTADO, y separarlos es lo que permite tener
+   *    color por todas partes sin romper el idioma. Los `--bloque-*` de la flota
+   *    significan «este robot pide algo»; si esos mismos tres tonos se
+   *    repartieran como adorno dejarían de significarlo —«si todas fueran de
+   *    color la pantalla gritaría entera y no diría nada»—. Estos responden a
+   *    «¿dónde estoy?», nunca a «¿qué pasa?», y por eso son hues que el
+   *    vocabulario de estado no usa.
+   */
+  color: string
   /** Se pinta atenuado y con la coletilla. Para el terminal. */
   bloqueada?: boolean
 }
@@ -54,34 +66,54 @@ export interface EntradaRail {
 export function pestanasDeRobot(segmento: string): EntradaRail[] {
   const base = `/robot/${segmento}`
   return [
-    { href: base, texto: 'Taller', Icono: IconoTaller, bloqueada: true },
-    { href: `${base}/conducir`, texto: 'Conducir', Icono: IconoConducir },
-    { href: `${base}/no-obedece`, texto: 'Por qué no obedece', Icono: IconoNoObedece },
-    { href: `${base}/telemetria`, texto: 'Telemetría', Icono: IconoTelemetria },
+    { href: base, texto: 'Taller', Icono: IconoTaller, color: '--seccion-taller', bloqueada: true },
+    { href: `${base}/conducir`, texto: 'Conducir', Icono: IconoConducir, color: '--seccion-conducir' },
+    { href: `${base}/no-obedece`, texto: 'Por qué no obedece', Icono: IconoNoObedece, color: '--seccion-porque' },
+    { href: `${base}/telemetria`, texto: 'Telemetría', Icono: IconoTelemetria, color: '--seccion-telemetria' },
     // 🔴 El LIDAR va en su PROPIA pestaña, y eso no es organizacion: es coste.
     //    `/scan` es el 83 % del trafico de un robot, asi que su suscripcion
     //    tiene que morir al salir.
-    { href: `${base}/lidar`, texto: 'LIDAR', Icono: IconoLidar },
-    { href: `${base}/diagnostico`, texto: 'Diagnóstico', Icono: IconoDiagnostico },
+    { href: `${base}/lidar`, texto: 'LIDAR', Icono: IconoLidar, color: '--seccion-lidar' },
+    { href: `${base}/diagnostico`, texto: 'Diagnóstico', Icono: IconoDiagnostico, color: '--seccion-diagnostico' },
   ]
 }
 
 /** Los tres destinos que existen siempre, haya robot o no. */
 const GENERALES: EntradaRail[] = [
-  { href: '/flota', texto: 'Flota', Icono: IconoFlota },
-  { href: '/cuaderno', texto: 'Cuaderno', Icono: IconoCuaderno },
-  { href: '/', texto: 'Portada', Icono: IconoPortada },
+  { href: '/flota', texto: 'Flota', Icono: IconoFlota, color: '--seccion-flota' },
+  { href: '/cuaderno', texto: 'Cuaderno', Icono: IconoCuaderno, color: '--seccion-cuaderno' },
+  { href: '/', texto: 'Portada', Icono: IconoPortada, color: '--seccion-flota' },
 ]
+
+/**
+ * El tono de la pantalla en la que estamos, para que el marco pueda llevarlo en
+ * su canto. Devuelve `null` fuera de las rutas conocidas: **sin tono inventado**.
+ */
+export function colorDeRuta(ruta: string | null): string | null {
+  if (ruta === null) return null
+  const m = /^\/robot\/([^/]+)/.exec(ruta)
+  const candidatas = m === null ? GENERALES : pestanasDeRobot(m[1])
+  return candidatas.find((e) => e.href === ruta)?.color ?? null
+}
 
 function Entrada({ e, activa }: { e: EntradaRail; activa: boolean }) {
   return (
     <Link
       href={e.href}
       aria-current={activa ? 'page' : undefined}
-      className={`pulsable focus-ring flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors duration-[var(--t-estado)] ${
+      /*
+        La entrada activa se pinta con el tono de SU pantalla, no con un azul
+        único: así el raíl deja de ser una lista gris y el color dice dónde
+        estás. En reposo el icono ya lleva su tono a media tinta, que es lo que
+        hace que la columna tenga color sin gritar.
+      */
+      style={
         activa
-          ? 'bg-primary text-primary-foreground'
-          : 'text-muted-foreground hover:bg-[rgb(var(--vidrio)/0.06)] hover:text-foreground'
+          ? { backgroundColor: `rgb(var(${e.color}))` }
+          : { color: `rgb(var(${e.color}) / 0.85)` }
+      }
+      className={`pulsable focus-ring flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors duration-[var(--t-estado)] ${
+        activa ? 'text-white' : 'hover:bg-[rgb(var(--vidrio)/0.05)]'
       }`}
     >
       <e.Icono className="shrink-0" />
