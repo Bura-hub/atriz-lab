@@ -602,6 +602,122 @@
   }
 
   /*
+   * ── EL CAMPO DE SECCIÓN ──────────────────────────────────────────────────
+   * 🔴🔴 UN TERCER TIPO DE SUPERFICIE, Y LA REGLA QUE LO SEPARA DE UN BLOQUE.
+   *
+   * El muro tiene dos: vidrio («no pide nada») y bloque saturado («este robot
+   * pide algo»). En la ficha de UN robot esa segunda no se puede usar como
+   * campo, porque el argumento que la sostiene —«un bloque entre quince
+   * vidrios»— no existe cuando solo hay un robot en pantalla: seria color
+   * permanente, o sea decoración, y ademas mentiria sobre el estado.
+   *
+   * Pero la ficha del robot sí necesitaba un campo, y por dos razones medidas:
+   *
+   *   · **no tenia título de pantalla.** El nombre de la sección iba en una
+   *     `.microetiqueta` de 10 px sobre una barra blanca, así que las seis
+   *     pestañas eran la misma pantalla con distinto contenido.
+   *   · y al llegar desde el muro —donde ese robot es una ficha de color con su
+   *     cifra enorme— se aterrizaba en una barra blanca. La continuidad de
+   *     mundo que `MarcoRobot` dice tener se rompia justo en el clic.
+   *
+   * → EL CAMPO LLEVA EL TONO DE **IDENTIDAD** (`--seccion-*`), nunca uno de
+   *   estado. Responde a «¿dónde estoy?». Los hues son los ocho del eje de
+   *   identidad, que no son ninguno de los tres del vocabulario de estado.
+   *
+   * 🔴 Y EL ESTADO NO SE PINTA AQUI. Cuando el robot pide algo aparece una
+   *    tira aparte, en su color y **con su palabra**, debajo del campo. Asi el
+   *    color saturado del estado sigue siendo escaso y sigue significando lo
+   *    mismo que en el muro.
+   */
+  .campo-seccion {
+    background: rgb(var(--tono-seccion));
+    color: rgb(255 255 255);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /*
+   * La cifra fantasma, la misma firma que las fichas del muro: el número del
+   * robot, enorme y recortado por el canto. Refuerza a DÓNDE estás sin añadir
+   * una palabra. `aria-hidden` en el marcado: no es contenido, es textura.
+   */
+  /*
+   * ⚠️ MEDIDA CONTRA LA ALTURA REAL DE LA BANDA, no elegida a ojo. La ficha del
+   *    muro es alta y admite una cifra de 8,5 rem recortada por abajo; esta
+   *    banda mide ~120 px, así que con ese tamaño la cifra la ocupaba entera y
+   *    se cruzaba con la insignia de enlace. A 6,5 rem y anclada abajo asoma por
+   *    el tercio inferior, que es lo que se quería: textura en el canto, no un
+   *    número compitiendo con el título.
+   */
+  .cifra-fantasma {
+    position: absolute;
+    right: 0.75rem;
+    bottom: -1.35rem;
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 6.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.06em;
+    opacity: 0.16;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  /*
+   * ── LA CAPUCHA DE SECCIÓN ────────────────────────────────────────────────
+   * Una tarjeta deja de ser una caja blanca más: su cabecera se tiñe con el
+   * tono de la pantalla, muy bajo, y el título lleva un filete de 3 px a su
+   * izquierda con el tono a plena tinta.
+   *
+   * ⚠️ El filete va sobre el TÍTULO, no sobre la tarjeta. Un borde lateral de
+   *    color en la ficha entera es lo que el suelo de calidad prohíbe y lo que
+   *    ya se retiró de las baldosas: desplaza el contenido y compite con el
+   *    campo. Aquí es un acento tipográfico, del alto de una línea.
+   */
+  .capucha {
+    background: rgb(var(--tono-seccion) / 0.055);
+  }
+
+  /*
+   * ── LA ENTRADA ESCALONADA DE UNA PESTAÑA ─────────────────────────────────
+   * El muro tiene un momento orquestado —las dieciséis fichas entrando— y las
+   * pestañas del robot no tenían ninguno: aparecían de golpe, todas iguales.
+   *
+   * 🔴 EL SELECTOR ASUME UNA COSA Y FALLA SIN ROMPER NADA: que cada panel es un
+   *    único envoltorio con sus tarjetas dentro (`main > div > tarjetas`). Si
+   *    algún panel cambia de forma, lo que ocurre es que **no se anima** — no
+   *    que se descoloque. Una animación decorativa no puede permitirse más.
+   *
+   * 📝 `both` conserva el estado inicial antes de arrancar: sin él la tarjeta
+   *    parpadea visible → oculta → visible en el primer fotograma.
+   */
+  .escalonado > * > * {
+    animation: entrar var(--t-entrada) var(--curva-salida) both;
+  }
+
+  .escalonado > * > *:nth-child(1) { animation-delay: 0ms; }
+  .escalonado > * > *:nth-child(2) { animation-delay: 55ms; }
+  .escalonado > * > *:nth-child(3) { animation-delay: 110ms; }
+  .escalonado > * > *:nth-child(4) { animation-delay: 165ms; }
+  .escalonado > * > *:nth-child(n+5) { animation-delay: 220ms; }
+
+  .filete-titulo {
+    position: relative;
+    padding-left: 0.75rem;
+  }
+
+  .filete-titulo::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.1em;
+    bottom: 0.1em;
+    width: 3px;
+    border-radius: 3px;
+    background: rgb(var(--tono-seccion));
+  }
+
+  /*
    * ── LAS TRAMAS ───────────────────────────────────────────────────────────
    * 🔴 EL TERCER CÓDIGO, Y NO ES ESTÉTICA. Una de cada doce personas no
    *    distingue el lima del coral, y esto se PROYECTA en una pared. El color

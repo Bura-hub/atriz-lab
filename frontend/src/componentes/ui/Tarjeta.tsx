@@ -57,13 +57,28 @@ export interface PropsTarjeta {
 export function Tarjeta({ titulo, subtitulo, extremo, pie, children }: PropsTarjeta) {
   return (
     <section className="vidrio overflow-hidden rounded-ficha text-card-foreground">
-      <header className="flex items-start justify-between gap-3 px-5 pb-4 pt-5">
+      {/*
+        🔴 LA CAPUCHA. La cabecera se tiñe con el tono de la pantalla —muy bajo,
+           5,5 %— y el título lleva su filete de 3 px. Sin esto, las seis
+           pestañas del robot eran una pila de cajas blancas idénticas: no había
+           nada que dijera dónde acaba una tarjeta y empieza la siguiente salvo
+           una sombra, ni nada que ligara la tarjeta a la pantalla en la que
+           está.
+
+        📝 El tono llega por HERENCIA, no por prop: `MarcoRobot` pone
+           `--tono-seccion` en su `<main>` y desde ahí baja a todas las tarjetas
+           de esa pestaña. Alternativa era enhebrar una prop por seis paneles y
+           veintitantas llamadas — y que un día alguien se olvidara en una.
+      */}
+      <header className="capucha flex items-start justify-between gap-3 px-5 pb-4 pt-5">
         <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground">
+          <h2 className="filete-titulo text-base font-semibold tracking-tight text-foreground">
             {titulo}
           </h2>
           {subtitulo !== undefined && (
-            <p className="mt-1.5 max-w-prose text-xs leading-snug text-muted-foreground">
+            /* `pl-3` = el ancho que el filete del título le roba a su línea:
+               sin esto el subtítulo empieza 12 px a la izquierda del título. */
+            <p className="mt-1.5 max-w-prose pl-3 text-xs leading-snug text-muted-foreground">
               {subtitulo}
             </p>
           )}

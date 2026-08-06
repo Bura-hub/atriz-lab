@@ -39,7 +39,7 @@ import { urlDeRobot } from '@/lib/rosbridge/transporte'
 import { DestinoRobot, destinoParaTransporte, etiquetaRobot } from '@/lib/interfaz/identidad'
 import { VoltajeDelMarco } from './Bateria'
 import { BotonParada } from './BotonParada'
-import { InsigniaEnlace } from './EstadoEnlace'
+import { InsigniaEnlace, InsigniaEnlaceSobreCampo } from './EstadoEnlace'
 
 /*
  * 🔴 LAS PESTAÑAS YA NO VIVEN AQUI. Se fueron al raíl
@@ -73,71 +73,79 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
   const tono = seccion?.color ?? null
 
   return (
-    /*
-      LA MISMA BARRA QUE EL MURO. Un alumno que llega desde el muro tiene que
-      reconocer que sigue en el mismo sitio: el campo de color es lo que da esa
-      continuidad, y por eso ocupa la cabecera entera y no un filete.
+    <>
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        🔴🔴 EL HERO DE LA PANTALLA, Y ANTES NO HABIA NINGUNO
+        ═══════════════════════════════════════════════════════════════════════
+        Esto era una barra blanca con el nombre del robot en `text-3xl` y el de
+        la SECCIÓN en una `.microetiqueta` de 10 px. Consecuencia, vista en
+        captura: **las seis pestañas eran la misma pantalla** con distinto
+        contenido debajo, y ninguna tenía título propio.
 
-      Al irse las pestañas al raíl, el campo se queda con una sola fila: el
-      relleno inferior pasa de cero —lo daban las lengüetas— a `pb-5`, para que
-      la barra no quede pegada al contenido.
-    */
-    <header
-      /*
-        EL CANTO DE COLOR: una línea de 1 px con el tono de esta pestaña.
-        Sustituye a lo que el suelo de calidad prohíbe —un borde lateral de color
-        de más de 1 px— y además no desplaza nada al cambiar de pantalla, que era
-        el defecto que ya se corrigió en las baldosas del muro.
-      */
-      className={`relative z-10 bg-pozo-alto shadow-barra ${tono === null ? '' : 'filo-estado'}`}
-      style={tono === null ? undefined : ({ '--filo-estado': `var(${tono})` } as CSSProperties)}
-    >
-      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
-        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-          <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-            {/*
-              🔴 EL RÓTULO DE SECCIÓN, EN SU TONO. Antes el único sitio donde
-                 vivía el tono de esta pantalla era un canto de 1 px sobre
-                 1400 de ancho: en la captura no se distinguía de la sombra de
-                 la barra. Aquí sí se ve, y **dice algo**: en móvil el raíl es
-                 una tira que se desplaza, así que la entrada activa puede
-                 quedar fuera de vista y esta era la única pantalla del robot
-                 sin nada que dijera en cuál estás.
+        Y peor: se llega aquí desde el muro, donde ese mismo robot es una ficha
+        de color saturado con su cifra enorme. Aterrizar en una barra blanca
+        rompe la continuidad de mundo justo en el clic — que es precisamente lo
+        que el comentario de este componente decía tener.
 
-              ⚠️ Va en `.microetiqueta`, o sea en el nivel tipográfico de un
-                 rótulo de dato, no en el de un titular: no compite con el
-                 nombre del robot, que es lo que manda en esta barra.
-            */}
-            {seccion !== null && (
-              <span
-                className="microetiqueta w-full"
-                style={{ color: `rgb(var(${seccion.color}))` }}
+        Ahora el campo lleva el tono de IDENTIDAD de la pestaña, el título de
+        pantalla es el título de pantalla, y la cifra fantasma es la misma firma
+        que las fichas del muro. El nombre del robot y su URL suben al ante-
+        título: siguen siempre visibles —«me equivoqué de robot» tiene que
+        distinguirse de «este robot no responde»— pero dejan de ser lo único.
+
+        🔴 EL TONO ES DE IDENTIDAD, NUNCA DE ESTADO. Ver `.campo-seccion` en
+           `globals.css`: el color saturado del estado sigue siendo escaso y
+           sigue significando lo mismo que en el muro.
+      */}
+      <header
+        className={`relative z-10 ${tono === null ? 'bg-pozo-alto' : 'campo-seccion'}`}
+        style={tono === null ? undefined : ({ '--tono-seccion': `var(${tono})` } as CSSProperties)}
+      >
+        {/* Textura, no contenido: por eso `aria-hidden` y por eso solo aparece
+            cuando el destino es un robot NUMERADO. Una dirección IP suelta no
+            tiene número que agrandar. */}
+        {destino.clase === 'NUMERO' && (
+          <span aria-hidden="true" className="cifra-fantasma">
+            {String(destino.numero).padStart(2, '0')}
+          </span>
+        )}
+        <div className="relative mx-auto max-w-6xl px-4 pb-7 pt-6 sm:px-6">
+          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+            <div className="min-w-0">
+              <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                <span className="microetiqueta !text-white/85">{etiquetaRobot(destino)}</span>
+                <code className="font-mono text-[11px] text-white/60">{url}</code>
+              </p>
+              {/*
+                El título de pantalla, por fin. `clamp` y no un tamaño fijo:
+                cae de 2,6 rem en un portátil a 1,9 en un móvil sin puntos de
+                corte, que es donde se leía peor.
+              */}
+              <h1
+                className="mt-1.5 font-semibold leading-[0.95] tracking-[-0.035em]"
+                style={{ fontSize: 'clamp(1.9rem, 3.6vw, 2.6rem)' }}
               >
-                {seccion.texto}
+                {seccion?.texto ?? etiquetaRobot(destino)}
+              </h1>
+            </div>
+            <div className="flex items-center gap-3">
+              {tono === null ? <InsigniaEnlace sobreBarra /> : <InsigniaEnlaceSobreCampo />}
+              {/*
+                «socket abierto/cerrado» y no «robot conectado»: lo que el
+                navegador sabe es el estado de SU WebSocket. Un socket abierto
+                contra un robot mudo sigue diciendo «abierto», y eso es exacto.
+              */}
+              <span className="text-xs text-white/70">
+                socket {conectado ? 'abierto' : 'cerrado'}
               </span>
-            )}
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-              {etiquetaRobot(destino)}
-            </h1>
-            {/* La URL, siempre visible: es lo que distingue «me equivoqué de
-                robot» de «este robot no responde». */}
-            <code className="font-mono text-xs text-muted-foreground">{url}</code>
-          </div>
-          <div className="flex items-center gap-3">
-            <InsigniaEnlace sobreBarra />
-            {/*
-              «socket abierto/cerrado» y no «robot conectado»: lo que el
-              navegador sabe es el estado de SU WebSocket. Un socket abierto
-              contra un robot mudo sigue diciendo «abierto», y eso es exacto.
-            */}
-            <span className="text-xs text-muted-foreground">
-              socket {conectado ? 'abierto' : 'cerrado'}
-            </span>
+            </div>
           </div>
         </div>
+      </header>
 
-        {/*
-          🔴 LA FRANJA DE SEGURIDAD, y está en LAS SEIS PESTAÑAS a propósito.
+      {/*
+        🔴 LA FRANJA DE SEGURIDAD, y está en LAS SEIS PESTAÑAS a propósito.
 
           Es exigencia escrita del documento de diseño (§4): «el marco le da la
           franja de seguridad con la parada y el voltaje en las seis pestañas,
@@ -149,9 +157,15 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
           voltaje no estaba en ninguna parte del marco.
 
           Va aquí abajo y no en la fila de arriba porque la parada es un bloque
-          —lleva el testigo del robot y el resultado del último intento—, no un
-          control de una línea.
-        */}
+        —lleva el testigo del robot y el resultado del último intento—, no un
+        control de una línea.
+
+        🔴 Y VA SOBRE BLANCO, FUERA DEL CAMPO DE COLOR. El rojo de la parada es
+           un color RESERVADO, y sobre un campo saturado —ámbar en «por qué no
+           obedece», ciruela en diagnóstico— deja de leerse como el único
+           elemento en rojo de la pantalla. Sobre papel no compite con nada.
+      */}
+      <div className="relative z-10 bg-pozo-alto shadow-barra">
         {/*
           ⚠️ La parada NO se estira. Iba con `flex-1 max-w-md`, o sea ~440 px de
              ancho por 90 de alto, y a su izquierda quedaban ~600 px con una
@@ -159,17 +173,14 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
              para que el rotulo entre en una linea, que es lo unico que importa-
              y el hueco que queda es respiro entre dos cosas, no un vacio.
         */}
-        <div className="mt-4 flex flex-wrap items-start justify-between gap-x-8 gap-y-4 border-t border-[rgb(var(--filo)/0.10)] pt-4">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-x-8 gap-y-4 px-4 py-4 sm:px-6">
           <VoltajeDelMarco />
-          {/* 23rem y no menos: es lo que necesita «Parada de emergencia» para
-              caer en UNA linea a `text-2xl`. Partido en dos se lee peor justo
-              en el control que tiene que ser inequivoco. */}
           <div className="w-full shrink-0 sm:w-[23rem]">
             <BotonParada teleoperacion={teleoperacion} />
           </div>
         </div>
       </div>
-    </header>
+    </>
   )
 }
 
@@ -179,13 +190,31 @@ export interface PropsMarcoRobot {
 }
 
 export function MarcoRobot({ destino, children }: PropsMarcoRobot) {
+  /*
+    El mismo tono que la cabecera, y de la misma fuente. Fuera de una ruta
+    conocida cae a grafito -`--estado-neutro`-, que es un gris: la tarjeta queda
+    como estaba en vez de heredar un color inventado.
+  */
+  const tono = entradaDeRuta(usePathname())?.color ?? '--estado-neutro'
+
   return (
     <ProveedorRobot robot={destinoParaTransporte(destino)}>
       <div className="relative min-h-screen bg-background text-foreground">
         {/* La misma luz que el muro: continuidad de mundo entre pantallas. */}
         <div className="luz-ambiente" aria-hidden="true" />
         <CabeceraRobot destino={destino} />
-        <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-7 sm:px-6">{children}</main>
+        {/*
+          `--tono-seccion` se pone AQUI y baja por herencia a todas las tarjetas
+          de la pestaña: es lo que les da su capucha y el filete de su titulo sin
+          enhebrar una prop por seis paneles. Y `.escalonado` les da la entrada
+          en cascada, el mismo momento orquestado que tiene el muro.
+        */}
+        <main
+          className="escalonado relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-7 sm:px-6"
+          style={{ '--tono-seccion': `var(${tono})` } as CSSProperties}
+        >
+          {children}
+        </main>
       </div>
     </ProveedorRobot>
   )

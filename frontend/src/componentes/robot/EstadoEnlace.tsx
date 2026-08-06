@@ -58,6 +58,41 @@ export function InsigniaEnlace({ sobreBarra = false }: { sobreBarra?: boolean } 
 }
 
 /**
+ * LA MISMA PASTILLA, PERO SOBRE UN CAMPO DE COLOR SATURADO.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 POR QUE NO VALE `Insignia` AQUI, Y ES UN FALLO QUE YA ESTABA DOCUMENTADO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Los tonos de `Insignia` estan calculados para leerse sobre PAPEL. Al poner la
+ * cabecera de la ficha del robot sobre un campo de color, el ambar de
+ * `SIN_DATOS` quedo **naranja sobre teal**: ilegible, y justo en el testigo que
+ * dice si el robot esta hablando.
+ *
+ * Y no era nuevo: `BaldosaRobot` lleva escrito exactamente esto —«sus tonos
+ * estan calculados sobre el pozo oscuro y sobre un bloque de color saturado no
+ * se leen»— y resolvio igual, con una pildora de BORDE. Se repitio el fallo en
+ * otra pantalla sin mirar la nota que ya existia.
+ *
+ * → La pildora hereda el color del texto del campo (`currentColor`), asi que
+ *   contrasta sobre cualquiera de los ocho tonos de identidad **sin tener que
+ *   calcular ninguno**.
+ *
+ * ⚠️ El estado NO se pierde por no tener color propio: va escrito con todas sus
+ *    letras, que es la regla del muro —«el color nunca va solo»— aplicada al
+ *    caso en que el color no puede ir.
+ */
+export function InsigniaEnlaceSobreCampo() {
+  const { transporte } = useRobot()
+  const salud = useSalud(transporte)
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-current/35 bg-white/10 px-2.5 py-1 text-[11px] font-medium leading-none">
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
+      {TITULO[salud.estado]}
+    </span>
+  )
+}
+
+/**
  * El panel entero: el estado, y -cuando lo hay- lo que se sabe y lo que no.
  *
  * Las causas de `SIN_DATOS` salen tal cual de `salud.causasPosibles`: la lista y

@@ -34,10 +34,12 @@ import type { PointerEvent as EventoPuntero } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
 import { ORDEN_ENVIADA, textoDeConfirmacion } from '@/lib/interfaz/lenguaje'
-import { horaCorta, metrosPorSegundo, numero } from '@/lib/interfaz/formato'
+import { horaCorta, metrosPorSegundo, numero, radianesPorSegundo } from '@/lib/interfaz/formato'
+import { numeroValido } from '@/lib/interfaz/lecturas'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { PanelEnlace } from './EstadoEnlace'
+import { useMuestreo } from './useMuestreo'
 
 /**
  * Las dos velocidades que ofrece esta pantalla, en m/s. Las dos estan MEDIDAS:
@@ -151,6 +153,8 @@ interface Mando {
   v: number
   w: number
   columna: string
+  /** Grados que se gira el chevron. 0 = adelante, y el resto en sentido horario. */
+  giro: number
 }
 
 function CruzDeMando({
@@ -181,28 +185,147 @@ function CruzDeMando({
   }
 
   const mandos: readonly Mando[] = [
-    { etiqueta: 'Adelante', v: 1, w: 0, columna: 'col-start-2 row-start-1' },
-    { etiqueta: 'Izquierda', v: 0, w: 1, columna: 'col-start-1 row-start-2' },
-    { etiqueta: 'Parar', v: 0, w: 0, columna: 'col-start-2 row-start-2' },
-    { etiqueta: 'Derecha', v: 0, w: -1, columna: 'col-start-3 row-start-2' },
-    { etiqueta: 'Atrás', v: -1, w: 0, columna: 'col-start-2 row-start-3' },
+    { etiqueta: 'Adelante', v: 1, w: 0, columna: 'col-start-2 row-start-1', giro: 0 },
+    { etiqueta: 'Izquierda', v: 0, w: 1, columna: 'col-start-1 row-start-2', giro: -90 },
+    { etiqueta: 'Derecha', v: 0, w: -1, columna: 'col-start-3 row-start-2', giro: 90 },
+    { etiqueta: 'Atrás', v: -1, w: 0, columna: 'col-start-2 row-start-3', giro: 180 },
   ]
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 LA CRUZ, CON LA FORMA DE LA MAQUETA Y NO CON LA QUE HABIA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Esto eran cinco pastillas grises con las palabras «Adelante / Izquierda /
+   * Parar / Derecha / Atrás» en una malla de 3×3, y no se parecia en nada a
+   * `conducir_laboratorio_atriz/screen.png`: alli es una CRUZ de celdas
+   * cuadradas con chevrones, y **la parada en el centro**, marcada.
+   *
+   * La forma no es capricho: un mando direccional se reconoce por su silueta
+   * antes de leer nada, y con la palabra dentro cada celda tenia un ancho
+   * distinto — la cruz se deshacia.
+   *
+   * ⚠️ Y LAS PALABRAS NO SE PIERDEN. Cada celda lleva su `aria-label` y su
+   *    `title`: el glifo es para el ojo, el nombre sigue estando para un lector
+   *    de pantalla y para quien deja el puntero encima. Una flecha es una
+   *    convencion universal; el centro, que es el que para, ademas lleva su
+   *    palabra escrita debajo del punto.
+   */
+  const celda = 'flex aspect-square select-none touch-none items-center justify-center '
+    + 'rounded-[14px] border border-[rgb(var(--filo)/0.14)] bg-[rgb(var(--vidrio)/0.025)] '
+    + 'text-foreground focus-ring transition-[background-color,border-color,transform] '
+    + 'duration-[var(--t-pulsacion)] ease-[cubic-bezier(0.23,1,0.32,1)] '
+    + 'disabled:opacity-35 disabled:cursor-not-allowed'
+
   return (
-    <div className="grid grid-cols-3 grid-rows-3 gap-2 max-w-xs">
+    // 🔴 `shrink-0` Y ANCHO FIJO. Con `max-w-` dentro de un flex, el padre lo
+    //    comprimia hasta ~34 px por celda: la cruz salia del tamaño de un icono
+    //    y las celdas, al ser cuadradas con radio 14, se veian como circulos.
+    //    Un mando direccional se reconoce por su silueta antes de leer nada.
+    <div className="grid w-[16.5rem] shrink-0 grid-cols-3 grid-rows-3 gap-2.5">
       {mandos.map((m) => (
         <button
           key={m.etiqueta}
           type="button"
           disabled={!conectado}
+          aria-label={m.etiqueta}
+          title={m.etiqueta}
           onPointerDown={empezar(m)}
           onPointerUp={pararSeguro}
           onPointerCancel={pararSeguro}
           onLostPointerCapture={pararSeguro}
-          className={`${m.columna} select-none touch-none rounded-md border border-border bg-secondary px-3 py-4 text-sm font-medium text-secondary-foreground focus-ring hover:bg-muted active:bg-primary active:text-primary-foreground disabled:opacity-40 disabled:cursor-not-allowed`}
+          /*
+            Al pulsar, la celda se llena con el tono de ESTA pantalla. Es
+            realimentacion de la interaccion —«te he oido»—, no un estado del
+            robot: por eso usa el eje de identidad y no uno de los tres colores
+            del vocabulario de estado, que significan otra cosa.
+          */
+          className={`${m.columna} ${celda} hover:border-[rgb(var(--seccion-conducir)/0.45)] hover:bg-[rgb(var(--seccion-conducir)/0.07)] active:scale-[0.96] active:border-[rgb(var(--seccion-conducir))] active:bg-[rgb(var(--seccion-conducir))] active:text-white`}
         >
-          {m.etiqueta}
+          <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true"
+            style={{ transform: `rotate(${m.giro}deg)` }}>
+            <path d="M12 6 L18.5 15 H5.5 Z" fill="currentColor" />
+          </svg>
         </button>
+      ))}
+
+      {/*
+        EL CENTRO ES LA PARADA, como en la maqueta. No manda `v=0 w=0` por un
+        camino distinto: llama al mismo `parar()` que el soltar de las flechas,
+        que corta el bucle ANTES de publicar.
+      */}
+      <button
+        type="button"
+        disabled={!conectado}
+        aria-label="Parar"
+        title="Parar"
+        onClick={pararSeguro}
+        className={`col-start-2 row-start-2 ${celda} flex-col gap-1 hover:border-[rgb(var(--estado-ir)/0.5)] hover:bg-[rgb(var(--estado-ir)/0.07)] active:scale-[0.96]`}
+      >
+        <span
+          aria-hidden="true"
+          className="block h-3.5 w-3.5 rounded-full bg-[rgb(var(--estado-ir))]"
+        />
+        <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">parar</span>
+      </button>
+    </div>
+  )
+}
+
+/**
+ * PEDIDO CONTRA MEDIDO — la pareja de la maqueta, y la pregunta real al conducir.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 POR QUE «PEDIDO» Y NO «MANDADO», QUE ES LO QUE DICE LA MAQUETA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * La maqueta rotula `MANDADO (V)`, y esa palabra afirma algo que esta pantalla
+ * **no sabe**: que la orden salio y llego. Lo unico cierto es la velocidad que
+ * hay SELECCIONADA aqui, que es lo que se mandaria al pulsar. Un robot con el
+ * enlace caido tendria un «mandado» de 0,20 m/s y un medido de 0,00, y el par se
+ * leeria como «no obedece» cuando la causa es que no salio nada.
+ *
+ * ⚠️ Y el MEDIDO sale de `/odom`, que **ya se paga en esta pantalla**:
+ *    `PanelEnlace` se suscribe por `useSalud` para tener un latido a 16,5 Hz.
+ *    Esto no añade caudal — si lo añadiera, no se pondria: `/odom` son 13 kB/s.
+ *
+ * 📝 `useMuestreo` y no `useTopic`: a 16,5 Hz un numero re-renderizado en cada
+ *    mensaje parpadea y no se puede leer. Es la misma decision que telemetria.
+ */
+function PedidoContraMedido({ velocidad }: { velocidad: number }) {
+  const { transporte } = useRobot()
+  const { ultimo } = useMuestreo(transporte, '/odom')
+  const lineal = ultimo?.twist?.twist?.linear
+  const angular = ultimo?.twist?.twist?.angular
+
+  const celdas: readonly { etiqueta: string; valor: string; propio: boolean }[] = [
+    { etiqueta: 'pedido · lineal', valor: metrosPorSegundo(velocidad), propio: true },
+    { etiqueta: 'medido · lineal', valor: metrosPorSegundo(numeroValido(lineal?.x)), propio: false },
+    { etiqueta: 'pedido · giro', valor: `${numero(GIRO, 1)} rad/s`, propio: true },
+    {
+      etiqueta: 'medido · giro',
+      valor: radianesPorSegundo(numeroValido(angular?.z)),
+      propio: false,
+    },
+  ]
+
+  return (
+    <div className="grid min-w-[17rem] flex-1 grid-cols-2 gap-2.5">
+      {celdas.map((c) => (
+        <div
+          key={c.etiqueta}
+          /*
+            La celda de lo PEDIDO lleva el tono de la pantalla; la de lo MEDIDO
+            se queda neutra. Es la diferencia que importa de un vistazo: lo de
+            color es lo que tu has elegido, lo neutro es lo que contesta el robot.
+          */
+          className={`rounded-[14px] border px-3.5 py-2.5 ${
+            c.propio
+              ? 'border-[rgb(var(--seccion-conducir)/0.3)] bg-[rgb(var(--seccion-conducir)/0.06)]'
+              : 'border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.02)]'
+          }`}
+        >
+          <div className="microetiqueta">{c.etiqueta}</div>
+          <div className="mt-1 font-mono text-xl tabular-nums tracking-tight">{c.valor}</div>
+        </div>
       ))}
     </div>
   )
@@ -276,24 +399,28 @@ export function PanelConducir() {
         derecha. `items-start` impide que un panel se estire hasta la altura de
         su vecino dejando un hueco muerto abajo.
       */}
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <div className="space-y-4">
-          <Tarjeta titulo="Enlace">
-            <PanelEnlace />
-          </Tarjeta>
+      {/*
+        🔴 EL MANDO ES EL HERO DE ESTA PANTALLA, Y ANTES ERA LO ULTIMO.
+        Estaba metido como tercera tarjeta de la columna IZQUIERDA de una malla
+        de dos, o sea en unos 240 px y al final del scroll — mientras la mitad
+        derecha de la pantalla acababa vacia. En la maqueta
+        (`conducir_laboratorio_atriz/screen.png`) el control direccional tiene su
+        propio panel grande, y es lo unico razonable: esta pestaña se llama
+        «Conducir» y lo que se viene a hacer aqui es conducir.
 
-          <Barrido teleoperacion={teleoperacion} />
-
+        Lo demas —enlace, barrido, consecuencias— son PRECONDICIONES y notas.
+        Van debajo, en dos columnas.
+      */}
       <Tarjeta
         titulo="Mando"
         subtitulo="Se conduce manteniendo pulsado. Al soltar, se manda parar. Se publica en /cmd_vel_raw, que es la ENTRADA de la capa de seguridad."
       >
-        <div className="flex flex-wrap items-start gap-6">
+        <div className="flex flex-wrap items-start gap-x-10 gap-y-6 px-5 py-5">
           <CruzDeMando teleoperacion={teleoperacion} velocidad={velocidad} alFallar={setFalloLocal} />
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             <div>
-              <p className="text-xs text-muted-foreground mb-1">Velocidad</p>
+              <p className="microetiqueta mb-1.5">Velocidad</p>
               <div className="flex gap-2">
                 {VELOCIDADES.map((v) => (
                   <button
@@ -311,19 +438,34 @@ export function PanelConducir() {
                 ))}
               </div>
             </div>
-            <p className="text-xs text-muted-foreground max-w-xs">
+            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
               Giro fijo a {numero(GIRO, 1)} rad/s. Entre 0,5 y 2,0 rad/s el robot cumple el 99-102 %
               de lo que se le pide. El tope del robot son 0,40 m/s y esta pantalla no lo ofrece.
             </p>
           </div>
+
+          <PedidoContraMedido velocidad={velocidad} />
         </div>
 
         {!conectado && (
-          <p className="text-sm text-muted-foreground mt-3">
+          <p className="text-sm text-muted-foreground">
             Sin enlace no se puede conducir, así que el mando está desactivado.
           </p>
         )}
       </Tarjeta>
+
+      {/*
+        Las PRECONDICIONES y las notas, en dos columnas. `items-start` impide
+        que un panel se estire hasta la altura de su vecino dejando un hueco
+        muerto abajo.
+      */}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <div className="space-y-4">
+          <Tarjeta titulo="Enlace">
+            <PanelEnlace />
+          </Tarjeta>
+
+          <Barrido teleoperacion={teleoperacion} />
         </div>
 
       <Tarjeta titulo="Lo que va a pasar y no es un fallo">
