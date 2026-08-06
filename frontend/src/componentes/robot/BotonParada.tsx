@@ -113,7 +113,11 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
         //    parecer que sobresale: necesita ser el elemento más inequívoco de
         //    la pantalla, y eso lo dan el tamaño, el color reservado y el marco.
         className={
-          'w-full border-4 border-destructive bg-destructive px-6 py-6 text-2xl font-bold '
+          // `py-4` y no `py-6`: el rotulo cae en DOS lineas en la columna de la
+          // franja, asi que con el relleno de antes el bloque medía 165 px de
+          // alto. Sigue siendo con diferencia el elemento mas grande y el unico
+          // en rojo — que es lo que tiene que ser.
+          'w-full border-4 border-destructive bg-destructive px-6 py-4 text-2xl font-bold '
           + 'uppercase tracking-wide text-destructive-foreground transition-transform focus-ring '
           + 'active:scale-[0.99] hover:brightness-110'
         }
@@ -159,12 +163,36 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground max-w-prose">
-        Para quitarla hay que ir hasta el robot: se libera con{' '}
-        <code>/release_emergency_stop</code> en el propio laboratorio, y esta interfaz no ofrece ese
-        botón a propósito. Al liberarla con un objetivo de Nav2 vivo el robot arrancó solo —34,7 cm
-        medidos— porque el controlador nunca había dejado de publicar.
-      </p>
+      {/*
+        🔴 PLEGADO, Y EL BOTON NO. Estas cuatro lineas estaban SIEMPRE abiertas
+           bajo el boton, en las seis pestañas del robot. El resultado, visto en
+           captura: la cabecera de cada pantalla medía 270 px y lo mas ruidoso de
+           toda la aplicacion era un parrafo explicando por que NO hay un boton
+           — con el robot en reposo y sin nada que mal.
+
+           Lo que se pliega es la EXPLICACION. El boton se queda exactamente
+           igual: mismo tamaño, mismo rojo reservado, mismo marco de 4 px y a un
+           solo clic. Una parada que ha fallado cinco veces en silencio no se
+           esconde ni se encoge; lo que sobra es la prosa de al lado.
+
+        📝 Y va abierto por defecto la primera vez que importa: si la parada
+           esta puesta, el aviso rojo de arriba ya lo dice sin desplegar nada.
+      */}
+      <details className="group">
+        {/* La `.microetiqueta` va en el propio `summary`, no en un `span` de
+            dentro: esa clase fija su color, asi que desde fuera el `hover` no
+            la alcanzaria y el desplegable no daria ni una señal de ser
+            pulsable. */}
+        <summary className="microetiqueta focus-ring cursor-pointer list-none transition-colors duration-[var(--t-estado)] hover:text-foreground">
+          ▸ por qué no hay botón para liberarla
+        </summary>
+        <p className="mt-2 max-w-prose text-xs leading-relaxed text-muted-foreground">
+          Para quitarla hay que ir hasta el robot: se libera con{' '}
+          <code>/release_emergency_stop</code> en el propio laboratorio, y esta interfaz no ofrece
+          ese botón a propósito. Al liberarla con un objetivo de Nav2 vivo el robot arrancó solo
+          —34,7 cm medidos— porque el controlador nunca había dejado de publicar.
+        </p>
+      </details>
     </div>
   )
 }

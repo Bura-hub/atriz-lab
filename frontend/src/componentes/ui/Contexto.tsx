@@ -31,7 +31,10 @@ import { ReactNode } from 'react'
  */
 export function Contexto({ children }: { children: ReactNode }) {
   return (
-    <details className="group px-3 pb-2">
+    // `px-5`, no `px-3`: la misma columna que el titulo de la tarjeta. Con 3 el
+    // «Por qué» quedaba 8 px a la izquierda de todo lo demas, lo justo para
+    // notarse como desalineado sin que se viera por que.
+    <details className="group px-5 pb-2">
       <summary
         className="focus-ring inline-flex cursor-pointer list-none items-center gap-1 py-1 text-xs text-muted-foreground hover:text-foreground"
       >

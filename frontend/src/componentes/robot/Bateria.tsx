@@ -71,12 +71,25 @@ export function VoltajeDelMarco() {
   const v = voltajeDe(mensaje)
   const nivel: NivelBateria = v === null ? 'DESCONOCIDO' : nivelBateria(v)
 
+  /*
+    🔴 APILADO Y GRANDE, Y NO ES ESTETICA. Esto era una linea de `text-sm` al
+       lado de un boton rojo de 90 px de alto: en la captura la mitad izquierda
+       de la franja se leia vacia, con la unica cifra que decide si la practica
+       puede seguir puesta en el tamaño de un pie de foto.
+
+       El voltaje ES el signo vital de este robot -y por regla del proyecto, el
+       unico valido: el porcentaje dijo 100 % con la bateria a 8,29 V, a 1,29 V
+       del umbral de «baja» del propio firmware-. Darle el peso de un dato y no
+       el de una etiqueta es decir la verdad sobre lo que significa.
+  */
   return (
-    <span className="flex items-center gap-2">
+    <div className="flex flex-col gap-1">
       <span className="microetiqueta">Batería</span>
-      <span className="font-mono text-sm tabular-nums text-foreground">{voltios(v)}</span>
-      {nivel !== 'DESCONOCIDO' && <Insignia tono={TONO[nivel]}>{nivel}</Insignia>}
-    </span>
+      <span className="flex items-baseline gap-2.5">
+        <span className="font-mono text-2xl tabular-nums text-foreground">{voltios(v)}</span>
+        {nivel !== 'DESCONOCIDO' && <Insignia tono={TONO[nivel]}>{nivel}</Insignia>}
+      </span>
+    </div>
   )
 }
 

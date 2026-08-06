@@ -97,7 +97,9 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
       titulo="Barrido del LIDAR"
       subtitulo="Sin /scan el robot NO se puede conducir: la capa de seguridad bloquea el movimiento."
     >
-      <div className="flex flex-wrap gap-2">
+      {/* `px-5 pt-4`: el cuerpo de `Tarjeta` va a sangre para que las rejillas
+          lleguen al canto, asi que lo que no es rejilla pone su relleno. */}
+      <div className="flex flex-wrap gap-2 px-5 pt-4">
         <button
           type="button"
           disabled={!conectado || estado.clase === 'ARRANCANDO'}
@@ -116,7 +118,7 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
         </button>
       </div>
 
-      <div className="mt-3 space-y-2">
+      <div className="mt-3 space-y-2 px-5 pb-4">
         {estado.clase === 'SIN_PEDIR' && (
           <p className="text-sm text-muted-foreground max-w-prose">
             El barrido arranca <strong>apagado</strong> con el robot, a propósito: si no, el X2 giraría

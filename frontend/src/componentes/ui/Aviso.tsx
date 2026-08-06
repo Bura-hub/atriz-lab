@@ -12,8 +12,22 @@ import { ReactNode } from 'react'
 
 export type NivelAviso = 'NOTA' | 'ATENCION' | 'ERROR'
 
+/*
+ * 🔴 UN NIVEL DE AVISO NO ATENUA EL TEXTO. `NOTA` era
+ *    `bg-muted/40 text-muted-foreground`: sobre el pozo negro pasaba, pero sobre
+ *    papel es **gris sobre gris**, y eso en una interfaz significa una cosa muy
+ *    concreta —desactivado—. El aviso de coste de ancho de banda del LIDAR, que
+ *    es la unica pantalla que gasta de verdad, se leia como un control apagado.
+ *
+ * → El nivel lo dice el CONTINENTE (el tinte y el filo), nunca el contenido: si
+ *   algo merece pintarse, merece leerse. Los tres van en `--foreground`.
+ *
+ * 📝 El tinte de `NOTA` es el azul de la luz ambiente, no un gris neutro: se lee
+ *    como un apunte al margen y ata el aviso al mundo de la aplicacion, en vez
+ *    de parecer una caja inerte.
+ */
 const CLASES: Readonly<Record<NivelAviso, string>> = {
-  NOTA: 'border-border bg-muted/40 text-muted-foreground',
+  NOTA: 'border-[rgb(var(--luz-a)/0.30)] bg-[rgb(var(--luz-a)/0.07)] text-foreground',
   ATENCION: 'border-warning/40 bg-warning/10 text-foreground',
   ERROR: 'border-destructive/40 bg-destructive/10 text-foreground',
 }

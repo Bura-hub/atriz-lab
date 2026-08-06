@@ -86,14 +86,19 @@ const GENERALES: EntradaRail[] = [
 ]
 
 /**
- * El tono de la pantalla en la que estamos, para que el marco pueda llevarlo en
- * su canto. Devuelve `null` fuera de las rutas conocidas: **sin tono inventado**.
+ * La entrada del raíl que corresponde a la ruta actual, para que el marco pueda
+ * llevar **su nombre y su tono**. `null` fuera de las rutas conocidas: sin tono
+ * inventado y sin rótulo inventado.
+ *
+ * 📝 Devuelve la entrada entera y no solo el color -que es lo que hacía antes-
+ *    porque el marco necesita las dos cosas y sacarlas de la misma fuente es lo
+ *    que impide que el rótulo y el tono se desincronicen.
  */
-export function colorDeRuta(ruta: string | null): string | null {
+export function entradaDeRuta(ruta: string | null): EntradaRail | null {
   if (ruta === null) return null
   const m = /^\/robot\/([^/]+)/.exec(ruta)
   const candidatas = m === null ? GENERALES : pestanasDeRobot(m[1])
-  return candidatas.find((e) => e.href === ruta)?.color ?? null
+  return candidatas.find((e) => e.href === ruta) ?? null
 }
 
 function Entrada({ e, activa }: { e: EntradaRail; activa: boolean }) {

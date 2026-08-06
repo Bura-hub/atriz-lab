@@ -33,7 +33,7 @@
 
 import { usePathname } from 'next/navigation'
 import { CSSProperties, ReactNode } from 'react'
-import { colorDeRuta } from '@/componentes/comun/RailNavegacion'
+import { entradaDeRuta } from '@/componentes/comun/RailNavegacion'
 import { ProveedorRobot, useRobot } from '@/hooks/ContextoRobot'
 import { urlDeRobot } from '@/lib/rosbridge/transporte'
 import { DestinoRobot, destinoParaTransporte, etiquetaRobot } from '@/lib/interfaz/identidad'
@@ -65,10 +65,12 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
   const { conectado, teleoperacion } = useRobot()
   const url = urlDeRobot(destinoParaTransporte(destino))
   /*
-    El tono de la pestaña en la que estamos. `null` fuera de las rutas conocidas
-    —y entonces no se pinta ningún canto, en vez de inventar un color—.
+    La pestaña en la que estamos: da el rótulo Y el tono. `null` fuera de las
+    rutas conocidas —y entonces no se pinta ningún canto ni ningún rótulo, en
+    vez de inventarlos—.
   */
-  const tono = colorDeRuta(usePathname())
+  const seccion = entradaDeRuta(usePathname())
+  const tono = seccion?.color ?? null
 
   return (
     /*
@@ -93,6 +95,27 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
       <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {/*
+              🔴 EL RÓTULO DE SECCIÓN, EN SU TONO. Antes el único sitio donde
+                 vivía el tono de esta pantalla era un canto de 1 px sobre
+                 1400 de ancho: en la captura no se distinguía de la sombra de
+                 la barra. Aquí sí se ve, y **dice algo**: en móvil el raíl es
+                 una tira que se desplaza, así que la entrada activa puede
+                 quedar fuera de vista y esta era la única pantalla del robot
+                 sin nada que dijera en cuál estás.
+
+              ⚠️ Va en `.microetiqueta`, o sea en el nivel tipográfico de un
+                 rótulo de dato, no en el de un titular: no compite con el
+                 nombre del robot, que es lo que manda en esta barra.
+            */}
+            {seccion !== null && (
+              <span
+                className="microetiqueta w-full"
+                style={{ color: `rgb(var(${seccion.color}))` }}
+              >
+                {seccion.texto}
+              </span>
+            )}
             <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
               {etiquetaRobot(destino)}
             </h1>
@@ -129,9 +152,19 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
           —lleva el testigo del robot y el resultado del último intento—, no un
           control de una línea.
         */}
+        {/*
+          ⚠️ La parada NO se estira. Iba con `flex-1 max-w-md`, o sea ~440 px de
+             ancho por 90 de alto, y a su izquierda quedaban ~600 px con una
+             sola linea pequeña dentro. Ahora tiene un ancho fijo -suficiente
+             para que el rotulo entre en una linea, que es lo unico que importa-
+             y el hueco que queda es respiro entre dos cosas, no un vacio.
+        */}
         <div className="mt-4 flex flex-wrap items-start justify-between gap-x-8 gap-y-4 border-t border-[rgb(var(--filo)/0.10)] pt-4">
           <VoltajeDelMarco />
-          <div className="min-w-[16rem] max-w-md flex-1">
+          {/* 23rem y no menos: es lo que necesita «Parada de emergencia» para
+              caer en UNA linea a `text-2xl`. Partido en dos se lee peor justo
+              en el control que tiene que ser inequivoco. */}
+          <div className="w-full shrink-0 sm:w-[23rem]">
             <BotonParada teleoperacion={teleoperacion} />
           </div>
         </div>

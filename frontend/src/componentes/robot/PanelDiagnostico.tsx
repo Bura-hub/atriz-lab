@@ -95,7 +95,11 @@ export function PanelDiagnostico() {
         titulo="Llegadas por topic"
         subtitulo={`Esta pantalla está suscrita a ${TOPICS.length} topics: ${numero(caudal, 2)} kB/s medidos para este robot. El muro de 16 no puede pagar esto y por eso usa otros dos.`}
       >
-        <div className="overflow-x-auto">
+        {/* `px-5`: la tabla es hija directa de la tarjeta, que va a sangre, asi
+            que sin esto la ultima columna -alineada a la derecha- tocaba el
+            canto de la ficha. Y `pt-3`, para que la cabecera no se pegue a la
+            linea que la separa del titulo. */}
+        <div className="overflow-x-auto px-5 pt-3">
           <table className="w-full text-left">
             <thead>
               <tr className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -132,7 +136,9 @@ export function PanelDiagnostico() {
         titulo="Lo que esta interfaz no puede decir"
         subtitulo="Un hueco declarado es honesto; un hueco callado se lee como «todo bien»."
       >
-        <dl className="space-y-3">
+        {/* Mismo motivo que en `PanelEnlace`: el cuerpo de la tarjeta va a
+            sangre, asi que la lista pone su propio relleno. */}
+        <dl className="space-y-3 px-5 py-4">
           {LO_QUE_NO_SE_PUEDE_DECIR.map((h) => (
             <div key={h.que}>
               <dt className="text-sm font-medium">{h.que}</dt>

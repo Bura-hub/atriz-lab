@@ -69,7 +69,10 @@ export function PanelEnlace() {
   const salud = useSalud(transporte)
 
   return (
-    <div className="space-y-3">
+    // `px-5 py-4`: este panel es hijo directo de una `Tarjeta`, cuyo cuerpo va a
+    // sangre para que las rejillas lleguen al canto. Sin esto su prosa quedaba
+    // pegada al borde izquierdo, fuera de la columna del titulo.
+    <div className="space-y-3 px-5 py-4">
       <div className="flex flex-wrap items-center gap-3">
         <Insignia tono={TONO[salud.estado]}>{TITULO[salud.estado]}</Insignia>
         <span className="text-xs text-muted-foreground font-mono">
