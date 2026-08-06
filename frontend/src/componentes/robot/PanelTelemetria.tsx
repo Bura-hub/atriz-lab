@@ -19,6 +19,7 @@ import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { Bateria } from './Bateria'
 import { EstadoMotores } from './EstadoMotores'
 import { PanelLeds } from './PanelLeds'
+import { PanelOrigenOdometria } from './PanelOrigenOdometria'
 import { useMuestreo } from './useMuestreo'
 
 /** 7792 ticks por metro, contrastados contra cinta metrica. */
@@ -407,7 +408,14 @@ export function PanelTelemetria() {
         titulo="Salidas directas"
         fuente="aquí no se lee: sale cuando pulsas, y enciende luces de verdad"
       >
-        <PanelLeds />
+        {/* Dos salidas, dos naturalezas: los LEDs no se pueden comprobar desde
+            aquí —`success` y el efecto están medidos separándose—, y el origen
+            de la odometría SÍ, porque `/odom` lo publica. Van juntas porque las
+            dos salen, y separadas en tarjetas porque prometen cosas distintas. */}
+        <div className="grid items-start gap-4 lg:grid-cols-2">
+          <PanelLeds />
+          <PanelOrigenOdometria />
+        </div>
       </Grupo>
     </div>
   )
