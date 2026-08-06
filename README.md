@@ -54,19 +54,33 @@ pone `rama ros2`, míralo antes de tocar `contrato.ts`.
 
 ### Contra el robot
 
-Dos pruebas se saltan por defecto y **mueven el robot**:
+**Cuatro** ficheros solo corren con `ATRIZ_ROBOT=1`. Aparecen como `skipped`, no
+como aprobados: un guion que mueve un robot no se ejecuta por accidente al pasar
+la batería.
 
 ```bash
-ATRIZ_ROBOT=1 npx vitest run src/lib/rosbridge/parada_en_marcha.test.ts   # ⚠️ lo deja parado
-ATRIZ_ROBOT=1 npx vitest run src/lib/interfaz/barrido_real.test.ts        # solo enciende el LIDAR
+# ⚠️ MUEVE EL ROBOT
+ATRIZ_ROBOT=1 npx vitest run src/lib/rosbridge/parada_en_marcha.test.ts   # lo deja parado
 
-Y una tercera que **no toca el robot** —solo abre las seis rutas en un navegador y mira lo que
-pintan—, pero necesita el robot encendido y `next dev` corriendo:
+# Toca el robot pero no lo mueve
+ATRIZ_ROBOT=1 npx vitest run src/lib/interfaz/barrido_real.test.ts        # enciende el LIDAR
+ATRIZ_ROBOT=1 npx vitest run src/lib/rosbridge/accion_real.test.ts        # manda un objetivo de acción
 
-```bash
-ATRIZ_ROBOT=1 npx vitest run src/lib/interfaz/pantallas_reales.test.ts   # 19 comprobaciones, ~56 s
+# No toca el robot: abre las rutas en un navegador y mira lo que pintan.
+# 🔴 NECESITA `next dev` CORRIENDO, y por defecto lo busca en el puerto 3118.
+ATRIZ_ROBOT=1 ATRIZ_WEB=http://localhost:3000 \
+  npx vitest run src/lib/interfaz/pantallas_reales.test.ts
 ```
-```
 
-Aparecen como `skipped`, no como aprobadas: un guion que mueve un robot no se
-ejecuta por accidente al pasar la batería.
+🔴 **Ese `ATRIZ_WEB` no es opcional si sirves en otro puerto, y equivocarlo no da
+un error claro:** el navegador abre la página de «no se puede conectar» de Edge y
+**27 de las 29 comprobaciones pasan igual**, porque son de AUSENCIA —sin
+repeticiones, sin frases prohibidas, sin huecos afirmados— y una página vacía las
+cumple todas. Es la misma trampa que el propio fichero documenta (18 de 19
+pasando sobre seis páginas 404) y ha vuelto a morder. Si pasa demasiado rápido y
+demasiado limpio, comprueba el puerto.
+
+🔴 **`accion_real.test.ts` comprueba que Nav2 está PARADO antes de mandar nada**
+—mira si llegan `/amcl_pose` o `/map`—, porque su objetivo movería el robot si
+estuviera corriendo. `atriz-nav.service` está instalado y **no** habilitado, así
+que normalmente no lo está; «normalmente» no es una garantía.
