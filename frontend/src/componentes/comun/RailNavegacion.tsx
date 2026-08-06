@@ -38,9 +38,10 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
 import {
-  IconoConducir, IconoCuaderno, IconoDiagnostico, IconoFlota, IconoLidar,
-  IconoNoObedece, IconoPortada, IconoTaller, IconoTelemetria, PropsIcono,
+  IconoConducir, IconoCuaderno, IconoDiagnostico, IconoEntrar, IconoFlota, IconoLidar,
+  IconoNoObedece, IconoPortada, IconoTaller, IconoTelemetria, IconoUsuarios, PropsIcono,
 } from './Iconos'
+import { useSesion } from '@/hooks/ContextoSesion'
 
 export interface EntradaRail {
   href: string
@@ -108,6 +109,23 @@ export const GENERALES: EntradaRail[] = [
 ]
 
 /**
+ * Administrar cuentas. Fuera de `GENERALES` a propósito: **no está siempre**, y
+ * meterla ahí obligaría a filtrar la lista en dos sitios —al pintarla y en
+ * `entradaDeRuta`—, con el riesgo de que uno de los dos se olvidara.
+ *
+ * 📝 `entradaDeRuta` SÍ la conoce (ver abajo): el rótulo y el tono de una
+ *    pantalla no dependen de quién mire.
+ */
+const USUARIOS: EntradaRail = {
+  href: '/usuarios', texto: 'Usuarios', Icono: IconoUsuarios, color: '--seccion-sesion',
+}
+
+/** La pantalla de entrar. Tampoco vive en el raíl: su enlace es el pie. */
+const ENTRAR: EntradaRail = {
+  href: '/entrar', texto: 'Entrar', Icono: IconoEntrar, color: '--seccion-sesion',
+}
+
+/**
  * La entrada del raíl que corresponde a la ruta actual, para que el marco pueda
  * llevar **su nombre y su tono**. `null` fuera de las rutas conocidas: sin tono
  * inventado y sin rótulo inventado.
@@ -119,7 +137,13 @@ export const GENERALES: EntradaRail[] = [
 export function entradaDeRuta(ruta: string | null): EntradaRail | null {
   if (ruta === null) return null
   const m = /^\/robot\/([^/]+)/.exec(ruta)
-  const candidatas = m === null ? GENERALES : pestanasDeRobot(m[1])
+  /*
+   * 🔴 `USUARIOS` y `ENTRAR` entran aquí AUNQUE no siempre se pinten en el raíl.
+   *    El rótulo y el tono de una pantalla son suyos y no dependen de quién
+   *    mire: si esta función las ignorara, sus cabeceras saldrían sin tono y sin
+   *    nombre para la misma persona que las está usando.
+   */
+  const candidatas = m === null ? [...GENERALES, USUARIOS, ENTRAR] : pestanasDeRobot(m[1])
   return candidatas.find((e) => e.href === ruta) ?? null
 }
 
@@ -170,6 +194,18 @@ export interface PropsRail {
 
 export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
   const ruta = usePathname()
+  const { usuario, cargando, refrescar } = useSesion()
+
+  const salir = async () => {
+    await fetch('/api/sesion/salir', { method: 'POST' })
+    /*
+     * 🔴 SE REFRESCA LA SESIÓN, NO SE PONE `usuario` A `null` A MANO. La verdad
+     *    la tiene el servidor: si el borrado de la cookie fallara, poner `null`
+     *    aquí enseñaría «has salido» con la sesión todavía viva — un estado
+     *    engañoso sobre lo único que abre la liberación de una parada.
+     */
+    await refrescar()
+  }
 
   return (
     /*
@@ -215,7 +251,56 @@ export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
         {GENERALES.map((e) => (
           <Entrada key={e.href} e={e} activa={ruta === e.href} />
         ))}
+
+        {/*
+          🔴 SOLO CON SESIÓN, Y SEPARADA POR UNA LÍNEA. `/usuarios` es otra clase
+             de destino —administrar, no operar— y se lee como tal.
+
+          ⚠️ Y esto es un filtro de INTERFAZ, no una autorización: quien no la ve
+             igualmente recibe **401** si llama a `/api/sesion/usuarios` con
+             `curl`. Ahí sí manda el servidor. Ocultar una entrada del menú no
+             cierra nada por sí solo, y conviene tenerlo escrito para que nadie
+             se apoye en ello.
+        */}
+        {usuario !== null && (
+          <>
+            <hr className="my-2 hidden border-[rgb(var(--filo)/0.08)] lg:block" />
+            <Entrada key={USUARIOS.href} e={USUARIOS} activa={ruta === USUARIOS.href} />
+          </>
+        )}
       </div>
+
+      {/*
+        EL PIE DE SESIÓN. Quién eres y cómo salir, o el camino de entrar.
+
+        📝 Mientras `cargando` no se pinta ninguna de las dos: no saber todavía
+           no es «no hay sesión», y sin este tercer estado el raíl parpadearía
+           en cada carga enseñando «entrar» a quien ya está dentro.
+      */}
+      {!cargando && (
+        <div className="shrink-0 border-t border-[rgb(var(--filo)/0.08)] pt-3">
+          {usuario === null ? (
+            <Link
+              href="/entrar"
+              className="pulsable focus-ring flex items-center gap-2 rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-[rgb(var(--vidrio)/0.05)]"
+            >
+              Entrar
+            </Link>
+          ) : (
+            <div className="px-4">
+              <p className="microetiqueta">Sesión</p>
+              <p className="mt-1 truncate text-sm font-medium">{usuario}</p>
+              <button
+                type="button"
+                onClick={() => { void salir() }}
+                className="focus-ring mt-1.5 rounded text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+              >
+                Salir
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {parada !== undefined && <div className="shrink-0">{parada}</div>}
     </nav>

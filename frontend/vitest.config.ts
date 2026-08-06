@@ -1,6 +1,29 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  /*
+   * ═════════════════════════════════════════════════════════════════════════
+   * 🔴 EL ALIAS `@/`, QUE ANTES NO ESTABA Y COSTÓ DOS TROPIEZOS
+   * ═════════════════════════════════════════════════════════════════════════
+   * `tsconfig.json` lo define, así que `tsc` y Next lo resuelven y el editor no
+   * subraya nada. **Vitest no lee `tsconfig`**: sin esta línea, una prueba que
+   * importa un fichero que a su vez usa `@/…` falla con
+   * `Cannot find package '@/…'` — y el mensaje señala al import, no al alias
+   * que falta, así que se lee como un paquete sin instalar.
+   *
+   * Mordió dos veces. La primera se esquivó cambiando ESA prueba a una ruta
+   * relativa, que es un parche por fichero: la trampa seguía armada para el
+   * siguiente. La segunda fue justo el siguiente — `rail.test.ts`, en cuanto el
+   * raíl empezó a leer la sesión. Arreglarlo aquí la desarma para todos.
+   *
+   * 📝 Es la forma que este proyecto ya conoce: **una cifra o una regla correcta
+   *    en su contexto se vuelve falsa al mudarla de sitio.** El alias existía;
+   *    lo que no existía era en el intérprete que corre las pruebas.
+   */
+  resolve: {
+    alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+  },
   test: {
     // El nucleo de rosbridge se prueba en Node, sin navegador y sin robot.
     //

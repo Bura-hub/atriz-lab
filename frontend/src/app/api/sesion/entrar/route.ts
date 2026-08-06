@@ -7,7 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { normalizar, verificar } from '@/lib/sesion/credenciales'
+import { verificar } from '@/lib/sesion/credenciales'
+import { normalizar } from '@/lib/sesion/reglas'
 import { segundosQueFaltan, trasAcertar, trasFallar } from '@/lib/sesion/bloqueo'
 import { anotarIntentos, intentosDe, leerCuentas, secreto } from '@/lib/sesion/almacen'
 import { conSesion, faltaSecreto } from '@/lib/sesion/peticion'

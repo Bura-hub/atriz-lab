@@ -28,7 +28,7 @@
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
-import { Cuenta } from './credenciales'
+import { Cuenta } from './reglas'
 import { Intentos, SIN_INTENTOS } from './bloqueo'
 
 /** Junto al `package.json` del frontend, fuera de `src/`. */

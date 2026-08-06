@@ -3,9 +3,9 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
-  FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeTransicion, esComentario,
-  ficherosDeEstilo, globsMuertos, gruposDeClases, lineasDeCodigo, partirEnComas,
-  transicionesDeClases,
+  FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeColor, colisionesDeTransicion,
+  esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases, lineasDeCodigo, partirEnComas,
+  tokensDeColor, transicionesDeClases,
 } from './estilo'
 
 const RAIZ = dirname(fileURLToPath(import.meta.url))
@@ -298,12 +298,82 @@ describe('la guardia visual sobre el codigo real', () => {
     expect(FUENTES_REMOTAS.test(css), 'globals.css importa una fuente remota').toBe(false)
   })
 
+  it('🔴🔴 el vocabulario de color no colisiona entre sus tres ejes', () => {
+    /*
+     * `--bloque-*` es el ESTADO del robot, `--estado-*` un HECHO confirmado y
+     * `--seccion-*` la IDENTIDAD de una pantalla. Dos tokens de ejes distintos
+     * con el mismo valor no son un detalle estético: rompen el eje.
+     *
+     * Ha pasado TRES veces, las tres con la regla escrita tres líneas más
+     * arriba en el mismo fichero, y las tres se encontraron mirando píxeles.
+     * El ojo humano compara colores que ve juntos; estos nunca se ven juntos.
+     */
+    const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+    const tokens = tokensDeColor(css)
+    // Que los encuentre de verdad: sin esto, una expresion regular rota daria
+    // cero tokens, cero colisiones y verde. Es la trampa del comprobador muerto.
+    expect(tokens.length, 'no se leyo ningun token de color').toBeGreaterThan(15)
+
+    const choques = colisionesDeColor(tokens, [
+      // Excepción NOMBRADA y documentada en `globals.css`: frenar y estar vivo
+      // comparten azul a propósito. Escribirla aquí obliga a justificarla.
+      ['--estado-frenando', '--bloque-vivo'],
+    ])
+    expect(choques, `colisiones de color: ${choques.join(' · ')}`).toEqual([])
+  })
+
   it('🔴 ningun glob de `content` apunta a un directorio que no existe', () => {
     // El comentario del propio tailwind.config.ts lo documenta: un glob roto
     // hace que los componentes se monten SIN NINGUN ESTILO y sin dar error.
     const config = readFileSync(join(FRONTEND, 'tailwind.config.ts'), 'utf8')
     const muertos = globsMuertos(config, (r) => existsSync(join(FRONTEND, r)))
     expect(muertos, `globs que no casan con ningun directorio: ${muertos.join(' ')}`).toEqual([])
+  })
+})
+
+describe('colisionesDeColor', () => {
+  it('pilla las tres colisiones REALES que este repositorio ha tenido', () => {
+    // No son ejemplos inventados: los tres pares estuvieron en `globals.css`.
+    const css = `
+      --bloque-vivo: 30 58 210;
+      --seccion-flota: 30 58 210;
+      --destructive: 190 42 22;
+      --estado-ir: 190 42 22;
+      --seccion-conducir: 6 118 140;
+      --seccion-entrar: 6 118 140;
+    `
+    const choques = colisionesDeColor(tokensDeColor(css))
+    // `--destructive` no lleva prefijo de eje, asi que ese par NO lo ve esta
+    // guardia. Se dice aqui para que el hueco sea declarado y no una sorpresa.
+    expect(choques).toHaveLength(2)
+    expect(choques.join(' ')).toContain('--seccion-flota')
+    expect(choques.join(' ')).toContain('--seccion-entrar')
+  })
+
+  it('🔴 un valor citado dentro de un COMENTARIO no cuenta', () => {
+    /*
+     * Es la trampa que ya mordio tres veces en un dia con `lineasDeCodigo`:
+     * documentar una colision arreglada —citando los valores viejos— volveria a
+     * dispararla, y entonces la unica salida seria borrar la explicacion.
+     */
+    const css = `
+      /* Antes esto valia --seccion-flota: 30 58 210; y chocaba. */
+      --bloque-vivo: 30 58 210;
+      --seccion-flota: 22 44 150;
+    `
+    expect(colisionesDeColor(tokensDeColor(css))).toEqual([])
+  })
+
+  it('una excepcion NOMBRADA no cuenta, y solo esa', () => {
+    const css = `
+      --bloque-vivo: 30 58 210;
+      --estado-frenando: 30 58 210;
+      --seccion-lidar: 30 58 210;
+    `
+    const choques = colisionesDeColor(tokensDeColor(css), [['--estado-frenando', '--bloque-vivo']])
+    // Los otros dos pares que forma el mismo valor siguen saltando.
+    expect(choques).toHaveLength(2)
+    expect(choques.every((c) => c.includes('--seccion-lidar'))).toBe(true)
   })
 })
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { Armazon } from '@/componentes/comun/Armazon'
+import { ProveedorSesion } from '@/hooks/ContextoSesion'
 import './globals.css'
 
 /**
@@ -87,8 +88,21 @@ export default function DisposicionRaiz({
           El raíl va aquí y no dentro de cada zona: es la ÚNICA navegación de la
           aplicación, y antes de existir había tres agujeros —el cuaderno sin
           salida, la portada inalcanzable, y el muro sin camino al cuaderno—.
+
+          🔴 Y el proveedor de sesión lo envuelve TODO, por encima del raíl,
+             porque las dos piezas que preguntan quién eres están lejos entre sí:
+             el raíl (para el pie y la entrada de `/usuarios`) y `BotonParada`,
+             dentro del marco del robot. Con un `fetch` en cada una habría dos
+             verdades que podrían discrepar durante un instante.
+
+          ⚠️ La sesión NO cierra ninguna pantalla. Las nueve siguen abiertas sin
+             entrar, igual que antes: los dieciséis alumnos usan la aplicación
+             sin cuenta. Lo único que la sesión abre es liberar una parada y dar
+             de alta a alguien.
         */}
-        <Armazon>{children}</Armazon>
+        <ProveedorSesion>
+          <Armazon>{children}</Armazon>
+        </ProveedorSesion>
       </body>
     </html>
   )

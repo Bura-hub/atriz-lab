@@ -408,3 +408,78 @@ export function colisionesDeTransicion(
  * silencio** justo donde va a usarse.
  */
 export const FUENTES_REMOTAS = /@import\s+url\(\s*['"]?https?:\/\//i
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   EL VOCABULARIO DE COLOR NO PUEDE COLISIONAR
+   ═══════════════════════════════════════════════════════════════════════════
+   Esta interfaz reparte el color en tres ejes con significados distintos:
+
+     · `--bloque-*`   el ESTADO del robot en el muro (vivo · mirar · ir)
+     · `--estado-*`   un HECHO confirmado sobre un dato
+     · `--seccion-*`  la IDENTIDAD de una pantalla — dónde estás
+
+   Que dos tokens de ejes distintos valgan lo mismo no es feo: **rompe el eje**.
+   Una baldosa que «pide algo» no puede destacar sobre una banda de su propio
+   color, y una pantalla de administrar cuentas no puede ir vestida del color
+   que significa «el robot va a moverse».
+
+   🔴 HA PASADO TRES VECES, Y LAS TRES CON LA REGLA ESCRITA AL LADO:
+     1. `--seccion-flota` valía exactamente `--bloque-vivo`.
+     2. `--estado-ir` valía exactamente `--destructive`.
+     3. `--seccion-entrar`/`--seccion-usuarios` nacieron sobre `--seccion-conducir`
+        y `--estado-ir`, con un comentario que decía «comprobado» al lado.
+
+   Las tres se encontraron mirando píxeles, no leyendo el fichero. Un ojo humano
+   compara dos colores que ve juntos; estos nunca se ven juntos. Por eso lo tiene
+   que medir el ejecutor. */
+
+/** Un token de color del vocabulario, ya normalizado. */
+export interface TokenDeColor {
+  nombre: string
+  /** `R G B` con un solo espacio, para poder comparar por igualdad. */
+  valor: string
+}
+
+const TOKEN_COLOR = /^\s*(--(?:bloque|estado|seccion)-[a-z0-9-]+)\s*:\s*(\d{1,3}\s+\d{1,3}\s+\d{1,3})\s*;/
+
+/**
+ * Los tokens de los tres ejes tal y como están escritos en `globals.css`.
+ *
+ * ⚠️ Solo mira LÍNEAS DE CÓDIGO. Los valores viejos citados dentro de un
+ *    comentario —que es como se documenta una colisión ya arreglada— no cuentan;
+ *    si contaran, explicar el fallo lo reintroduciría.
+ */
+export function tokensDeColor(css: string): TokenDeColor[] {
+  const salida: TokenDeColor[] = []
+  for (const linea of lineasDeCodigo(css)) {
+    const m = TOKEN_COLOR.exec(linea)
+    if (m !== null) salida.push({ nombre: m[1], valor: m[2].replace(/\s+/g, ' ') })
+  }
+  return salida
+}
+
+/**
+ * Pares de tokens que comparten valor exacto, descontando los permitidos.
+ *
+ * 📝 `permitidos` existe por un caso real y documentado: `--estado-frenando`
+ *    vale a propósito lo mismo que `--bloque-vivo` —frenar y estar vivo son el
+ *    mismo azul deliberadamente—. Una excepción **nombrada** es distinta de una
+ *    colisión: obliga a escribir por qué, y la prueba sigue vigilando el resto.
+ */
+export function colisionesDeColor(
+  tokens: readonly TokenDeColor[],
+  permitidos: readonly (readonly [string, string])[] = [],
+): string[] {
+  const exento = new Set(permitidos.map(([a, b]) => [a, b].sort().join('|')))
+  const salida: string[] = []
+  for (let i = 0; i < tokens.length; i += 1) {
+    for (let j = i + 1; j < tokens.length; j += 1) {
+      const a = tokens[i]
+      const b = tokens[j]
+      if (a.valor !== b.valor) continue
+      if (exento.has([a.nombre, b.nombre].sort().join('|'))) continue
+      salida.push(`${a.nombre} y ${b.nombre} valen los dos «${a.valor}»`)
+    }
+  }
+  return salida
+}

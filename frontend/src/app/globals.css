@@ -14,7 +14,7 @@
  *   BLOQUE    color a plena saturación. **Este robot pide algo.**
  *
  * 🔴 El color saturado se lo gana el ESTADO, no la decoración. Con trece
- *    tarjetas de vidrio y tres bloques, el ojo del profesor va solo. Si todas
+ *    tarjetas de vidrio y tres bloques, el ojo del administrador va solo. Si todas
  *    fueran de color, la pantalla gritaría entera y no diría nada; si todas
  *    fueran de vidrio, el que importa se perdería entre los quince que no.
  *
@@ -116,6 +116,38 @@
    *    habla con ningun robot, pero ahora es un color y no una falta de color.
    */
   --seccion-cuaderno: 58 68 96;
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * LA SESIÓN. UN SOLO TONO PARA `/entrar` Y `/usuarios`, a propósito.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * No son dos pantallas: son una sección con dos páginas, como las pestañas de
+   * un robot comparten el robot. Inventar dos hues nuevos en una rueda que ya
+   * tiene doce identidades más tres estados es cómo se fabrican colisiones.
+   *
+   * 🔴 Y ESTE TOKEN NACIÓ CON DOS, LAS DOS CHOCANDO. Lo que había aquí era
+   *    `--seccion-entrar: 17 84 96` y `--seccion-usuarios: 120 58 40`:
+   *      · el primero es un teal, y `--seccion-conducir` ya es `6 118 140`;
+   *      · el segundo es un ladrillo, y `--estado-ir` es `168 62 40` — o sea el
+   *        color que en esta interfaz significa «el robot va a moverse», puesto
+   *        de fondo permanente en una pantalla de administrar cuentas.
+   *    Es la tercera vez que pasa en este fichero (`--seccion-flota` valía
+   *    `--bloque-vivo`; `--estado-ir` valía `--destructive`).
+   *
+   * 🔴 Lo grave no es el color: el comentario que acompañaba a esos dos valores
+   *    decía «comprobado contra los ocho tonos de arriba y contra
+   *    `--bloque-vivo/mirar/ir`». **Esa comprobación no se hizo.** Escribir
+   *    «comprobado» sin comprobar es peor que no escribir nada, porque el
+   *    siguiente que lea el fichero se lo cree. Por eso ahora hay una prueba que
+   *    lo mide (`estilo.test.ts`, «el vocabulario de color no colisiona»): la
+   *    afirmación la sostiene el ejecutor, no la buena intención de quien
+   *    escribe.
+   *
+   * El valor es tinta casi neutra: se distingue del grafito del cuaderno
+   * (`58 68 96`) por VALOR y no por hue, que es el eje que quedaba libre. Dice
+   * «administración», no compite con ninguna identidad de robot, y blanco
+   * encima da 14,1:1.
+   */
+  --seccion-sesion: 38 40 50;
   /* 🔴 Violeta PROFUNDO, y no el mismo `91 46 168` del taller. Nacio copiando
         ese valor, asi que la portada y la pestaña Taller tenian banda identica:
         dos sitios distintos con el mismo color es exactamente lo que este eje
@@ -414,7 +446,7 @@
    * 🔴 SOLO PARA EL MURO, Y SOLO A PETICIÓN. No es un tema alternativo.
    *
    * El mundo oscuro está elegido desde la escena del ALUMNO: a 50 cm, dos horas
-   * seguidas. El muro del profesor tiene otra escena y otro criterio escrito
+   * seguidas. El muro del administrador tiene otra escena y otro criterio escrito
    * —«una persona de pie a tres metros del muro proyectado»— y ahí el mundo
    * oscuro juega en contra por dos motivos medidos:
    *

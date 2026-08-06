@@ -132,6 +132,27 @@ export function IconoPortada({ className }: PropsIcono) {
   )
 }
 
+/** Usuarios: dos siluetas. Administrar cuentas, no un perfil. */
+export function IconoUsuarios({ className }: PropsIcono) {
+  return (
+    <svg {...base} className={className}>
+      <circle cx="9.5" cy="8" r="3.2" />
+      <path d="M3.5 20.5c0-3.1 2.7-5.2 6-5.2s6 2.1 6 5.2" />
+      <path d="M16 5.4a3.2 3.2 0 0 1 0 5.2M17.4 15.8c1.9.6 3.1 2.3 3.1 4.7" />
+    </svg>
+  )
+}
+
+/** Entrar: una flecha que cruza el vano de una puerta. */
+export function IconoEntrar({ className }: PropsIcono) {
+  return (
+    <svg {...base} className={className}>
+      <path d="M13.5 3.5h5A1.5 1.5 0 0 1 20 5v14a1.5 1.5 0 0 1-1.5 1.5h-5" />
+      <path d="M4 12h9.5M10 8.2l3.8 3.8L10 15.8" />
+    </svg>
+  )
+}
+
 /** Proyeccion: una pantalla que emite. */
 export function IconoProyeccion({ className }: PropsIcono) {
   return (

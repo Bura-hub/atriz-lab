@@ -182,7 +182,7 @@ export default function Portada() {
              linea larga ahi grita mas que el titulo al que acompaña. */}
       <Grupo titulo="Las otras dos pantallas" fuente="una para mirar · otra para anotar">
       <div className="grid gap-5 sm:grid-cols-2">
-        <Tarjeta titulo="Para el profesor" subtitulo="El muro dice a cuál hay que levantarse.">
+        <Tarjeta titulo="Para el administrador" subtitulo="El muro dice a cuál hay que levantarse.">
           <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
             Los {TOTAL_ROBOTS} de un vistazo: batería en voltios y estado de motores. Solo se
             suscribe a los dos topics baratos, así que cuesta unos 7,7 kB/s en total.
@@ -259,10 +259,11 @@ export default function Portada() {
             escrito, y ese diseño depende de medir primero el punto de acceso del aula.
           </li>
           <li>
-            <strong className="text-foreground">No hay autenticación.</strong> rosbridge no la
-            trae, así que cualquiera en la misma red puede hablar con cualquier robot. Es un taller
-            presencial y está asumido, pero no se disimula con un inicio de sesión que no
-            protegería nada.
+            <strong className="text-foreground">La sesión protege esta interfaz, no el
+            robot.</strong> Entrar identifica a quien libera una parada de emergencia, y para eso
+            sirve. Pero rosbridge no trae autenticación, así que cualquiera en la misma red sigue
+            pudiendo hablar con cualquier robot sin pasar por aquí. Es un taller presencial y está
+            asumido; se dice, no se disimula.
           </li>
           <li>
             <strong className="text-foreground">Nada de esta aplicación confirma un efecto

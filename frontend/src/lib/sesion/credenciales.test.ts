@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { MINIMO_CONTRASENA, hashear, normalizar, revisarAlta, verificar } from './credenciales'
+import { hashear, verificar } from './credenciales'
+import { MINIMO_CONTRASENA, normalizar, revisarAlta } from './reglas'
 
 describe('hashear y verificar', () => {
   it('la contraseña no aparece en lo que se guarda', () => {

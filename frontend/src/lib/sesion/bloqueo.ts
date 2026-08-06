@@ -40,8 +40,12 @@ export const SIN_INTENTOS: Intentos = { fallos: 0, bloqueadoHasta: 0 }
  * Segundos de castigo tras `fallos` fallos.
  *
  * 📝 Devuelve 0 hasta el quinto: los cuatro primeros son gratis porque teclear
- *    mal una contraseña larga es lo normal, y bloquear al segundo intento
- *    convierte una molestia en una llamada al profesor.
+ *    mal una contraseña larga es lo normal.
+ *
+ * 🔴 Y aquí el coste de pasarse no es abstracto: **quien entra es quien libera
+ *    una parada de emergencia**. Bloquear al segundo intento deja a esa persona
+ *    fuera hasta `BLOQUEO_MAXIMO_S` —cinco minutos— con un robot parado delante
+ *    y una clase esperando. Por eso la curva empieza tarde y tiene tope.
  */
 export function castigoS(fallos: number): number {
   if (fallos < FALLOS_ANTES_DE_BLOQUEAR) return 0

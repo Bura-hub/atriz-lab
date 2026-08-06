@@ -8,8 +8,8 @@ const AHORA = 1_700_000_000_000
 
 describe('la curva de castigo', () => {
   it('los cuatro primeros fallos son gratis', () => {
-    // Teclear mal una contraseña larga es normal. Bloquear al segundo intento
-    // convierte una molestia en una llamada al profesor.
+    // Teclear mal una contraseña larga es normal, y quien entra es quien libera
+    // una parada: bloquearle pronto lo deja fuera con un robot parado delante.
     for (let n = 0; n < FALLOS_ANTES_DE_BLOQUEAR; n += 1) expect(castigoS(n)).toBe(0)
   })
 

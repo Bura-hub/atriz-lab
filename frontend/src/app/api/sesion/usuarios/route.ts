@@ -12,7 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { hashear, normalizar, revisarAlta } from '@/lib/sesion/credenciales'
+import { hashear } from '@/lib/sesion/credenciales'
+import { normalizar, revisarAlta } from '@/lib/sesion/reglas'
 import { guardarCuentas, leerCuentas } from '@/lib/sesion/almacen'
 import { noAutorizado, sesionDe } from '@/lib/sesion/peticion'
 
