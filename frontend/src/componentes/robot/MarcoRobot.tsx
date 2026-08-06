@@ -35,6 +35,8 @@ import { ReactNode } from 'react'
 import { ProveedorRobot, useRobot } from '@/hooks/ContextoRobot'
 import { urlDeRobot } from '@/lib/rosbridge/transporte'
 import { DestinoRobot, destinoParaTransporte, etiquetaRobot } from '@/lib/interfaz/identidad'
+import { VoltajeDelMarco } from './Bateria'
+import { BotonParada } from './BotonParada'
 import { InsigniaEnlace } from './EstadoEnlace'
 
 /*
@@ -55,7 +57,10 @@ import { InsigniaEnlace } from './EstadoEnlace'
  */
 
 function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
-  const { conectado } = useRobot()
+  // La teleoperacion se TOMA del contexto, no se crea: es una sola por conexion
+  // y la crea el proveedor. Dos instancias serian dos bucles de 10 Hz sobre
+  // `/cmd_vel_raw`.
+  const { conectado, teleoperacion } = useRobot()
   const url = urlDeRobot(destinoParaTransporte(destino))
 
   return (
@@ -89,6 +94,29 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
             <span className="text-xs text-muted-foreground">
               socket {conectado ? 'abierto' : 'cerrado'}
             </span>
+          </div>
+        </div>
+
+        {/*
+          🔴 LA FRANJA DE SEGURIDAD, y está en LAS SEIS PESTAÑAS a propósito.
+
+          Es exigencia escrita del documento de diseño (§4): «el marco le da la
+          franja de seguridad con la parada y el voltaje en las seis pestañas,
+          así que no cambia de pantalla para saber si el robot está vivo».
+
+          Antes la parada vivía solo en Conducir y en el Terminal: quien
+          estuviera mirando la telemetría, el LIDAR o el diagnóstico con el
+          robot en marcha **tenía que cambiar de pantalla para pararlo**. Y el
+          voltaje no estaba en ninguna parte del marco.
+
+          Va aquí abajo y no en la fila de arriba porque la parada es un bloque
+          —lleva el testigo del robot y el resultado del último intento—, no un
+          control de una línea.
+        */}
+        <div className="mt-4 flex flex-wrap items-start justify-between gap-x-8 gap-y-4 border-t border-[rgb(var(--filo)/0.10)] pt-4">
+          <VoltajeDelMarco />
+          <div className="min-w-[16rem] max-w-md flex-1">
+            <BotonParada teleoperacion={teleoperacion} />
           </div>
         </div>
       </div>

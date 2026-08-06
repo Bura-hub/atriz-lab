@@ -18,6 +18,7 @@
 
 import { ReactNode, createContext, useContext, useMemo } from 'react'
 import { Aviso, Transporte, urlDeRobot } from '../lib/rosbridge/transporte'
+import { ControlTeleoperacion, useTeleoperacion } from './useTeleoperacion'
 import { FabricaWS, useTransporte } from './useTransporte'
 
 export interface ValorContextoRobot {
@@ -26,6 +27,21 @@ export interface ValorContextoRobot {
   transporte: Transporte
   conectado: boolean
   ultimoAviso: Aviso | null
+  /**
+   * 🔴 UNA SOLA TELEOPERACION POR CONEXION, Y VIVE AQUI POR UN MOTIVO MEDIDO.
+   *
+   * `useTeleoperacion` construye una `Teleoperacion` NUEVA en cada componente
+   * que lo llama (`useMemo` local). Con la parada en el marco y otra en
+   * `/conducir` habria **dos**, y cada una con su bucle de `setInterval` a
+   * 10 Hz publicando en `/cmd_vel_raw`. `BotonParada` ya exigia recibirla en
+   * vez de crearla justamente para evitar eso; subirla al proveedor lo hace
+   * imposible por construccion en vez de por convencion.
+   *
+   * Y el ciclo de vida encaja: el proveedor es la frontera de la conexion, asi
+   * que cambiar de robot desmonta la teleoperacion vieja -y `desmontar()` corta
+   * su bucle- antes de abrir la nueva.
+   */
+  teleoperacion: ControlTeleoperacion
 }
 
 const Contexto = createContext<ValorContextoRobot | null>(null)
@@ -59,10 +75,12 @@ export function ProveedorRobot({ robot, fabrica, children }: PropsProveedorRobot
   // mismo codigo funcione en casa y en el laboratorio sin tocar nada.
   const url = useMemo(() => urlDeRobot(robot), [robot])
   const { transporte, conectado, ultimoAviso } = useTransporte(url, fabrica)
+  // La unica de este robot. Ver el comentario de `ValorContextoRobot`.
+  const teleoperacion = useTeleoperacion(transporte)
 
   const valor = useMemo<ValorContextoRobot>(
-    () => ({ robot, transporte, conectado, ultimoAviso }),
-    [robot, transporte, conectado, ultimoAviso],
+    () => ({ robot, transporte, conectado, ultimoAviso, teleoperacion }),
+    [robot, transporte, conectado, ultimoAviso, teleoperacion],
   )
 
   return <Contexto.Provider value={valor}>{children}</Contexto.Provider>

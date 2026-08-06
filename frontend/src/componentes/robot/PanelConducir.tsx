@@ -32,12 +32,11 @@
 import { useEffect, useState } from 'react'
 import type { PointerEvent as EventoPuntero } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
-import { ControlTeleoperacion, useTeleoperacion } from '@/hooks/useTeleoperacion'
+import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
 import { ORDEN_ENVIADA, textoDeConfirmacion } from '@/lib/interfaz/lenguaje'
 import { horaCorta, metrosPorSegundo, numero } from '@/lib/interfaz/formato'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
-import { BotonParada } from './BotonParada'
 import { PanelEnlace } from './EstadoEnlace'
 
 /**
@@ -208,9 +207,12 @@ function CruzDeMando({
 }
 
 export function PanelConducir() {
-  const { transporte, conectado } = useRobot()
-  // 🔴 UNA sola instancia para toda la pantalla. Ver la regla 2 de la cabecera.
-  const teleoperacion = useTeleoperacion(transporte)
+  // 🔴 UNA sola instancia POR CONEXION, y la crea el proveedor — no esta
+  //    pantalla. Desde que la parada vive en el marco, si esta pantalla siguiera
+  //    llamando a `useTeleoperacion()` habria DOS instancias con dos bucles de
+  //    10 Hz publicando en `/cmd_vel_raw` a la vez, que es exactamente lo que la
+  //    regla 2 de la cabecera de este fichero prohíbe.
+  const { conectado, teleoperacion } = useRobot()
   const [velocidad, setVelocidad] = useState<number>(VELOCIDADES[0])
   const [falloLocal, setFalloLocal] = useState<string | null>(null)
 
@@ -242,11 +244,13 @@ export function PanelConducir() {
 
   return (
     <div className="space-y-4">
-      {/* El control que no puede fallar en silencio va ARRIBA y pegado. */}
-      <div className="sticky top-0 z-20 -mx-4 bg-background/95 px-4 py-3 backdrop-blur border-b border-border sm:-mx-6 sm:px-6">
-        <BotonParada teleoperacion={teleoperacion} />
-      </div>
-
+      {/*
+        🔴 LA PARADA YA NO SE REPITE AQUÍ: vive en la franja del marco, donde
+        sale en las seis pestañas. Tenerla en las dos habría puesto DOS botones
+        de parada en esta misma pantalla — y ante dos, quien tiene el robot
+        moviéndose delante duda cuál pulsar. Esto es lo contrario de lo que la
+        franja pretende.
+      */}
       {teleoperacion.ultimoAviso !== null && (
         <Aviso nivel="ERROR" titulo="El bucle de mando se ha cortado">
           {teleoperacion.ultimoAviso.mensaje}

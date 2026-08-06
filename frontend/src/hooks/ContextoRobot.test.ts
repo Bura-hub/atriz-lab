@@ -21,6 +21,16 @@ describe('exigirContextoRobot — usar el contexto sin proveedor', () => {
       transporte: new Transporte(urlDeRobot(1), fabricaFalsa),
       conectado: false,
       ultimoAviso: null,
+      // La teleoperacion vive en el contexto desde que la parada esta en el
+      // marco: una sola por conexion, para que dos pantallas no publiquen en
+      // `/cmd_vel_raw` a la vez. Aqui basta un doble inerte.
+      teleoperacion: {
+        mover: () => {},
+        parar: () => {},
+        paradaEmergencia: () => {},
+        arrancarBarrido: async () => {},
+        ultimoAviso: null,
+      },
     }
     expect(exigirContextoRobot(valor)).toBe(valor)
   })

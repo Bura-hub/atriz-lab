@@ -24,10 +24,7 @@
  */
 
 import { ReactNode } from 'react'
-import { useRobot } from '@/hooks/ContextoRobot'
-import { useTeleoperacion } from '@/hooks/useTeleoperacion'
 import { AVISOS_ESPACIO, ESPACIO } from '@/lib/taller/espacio'
-import { BotonParada } from './BotonParada'
 import { Insignia } from '@/componentes/ui/Insignia'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
@@ -99,12 +96,6 @@ function Hueco({ etiqueta, children }: { etiqueta: string; children: ReactNode }
 }
 
 export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
-  const { transporte } = useRobot()
-  // 🔴 Se crea aqui porque esta pantalla es la dueña de su parada, y NUNCA llama
-  //    a `mover()`: no arranca ningun bucle de 10 Hz. `BotonParada` exige recibir
-  //    la teleoperacion en vez de crearla, justamente para que dos pantallas no
-  //    publiquen `cmd_vel_raw` a la vez.
-  const teleoperacion = useTeleoperacion(transporte)
 
   return (
     <div className="space-y-4">
@@ -114,17 +105,22 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
         extremo={<Insignia tono="NEUTRO">no construido</Insignia>}
       >
         {/*
-          LA PARADA, ancho completo y sin compartir fila. Es lo ÚNICO de esta
-          pantalla que habla con el robot hoy, y hace falta precisamente porque
-          el alumno lanza sus guiones por SSH: el robot se mueve de verdad
-          mientras esto está abierto.
+          🔴 LA PARADA YA NO ESTÁ AQUÍ: subió al MARCO, y por eso ahora sale en
+          las seis pestañas. Era exigencia del documento de diseño (§4), y
+          además cierra un hueco real — con la parada solo en esta pantalla y en
+          Conducir, quien estuviera mirando la telemetría o el LIDAR con el robot
+          en marcha tenía que CAMBIAR DE PANTALLA para pararlo.
+
+          Lo que sí se queda es el porqué de que aquí importe tanto: el alumno
+          lanza sus guiones por SSH, así que el robot se mueve de verdad mientras
+          esta pantalla está abierta y sin que ella haya mandado nada.
         */}
         <div className="px-5 py-5">
-          <BotonParada teleoperacion={teleoperacion} />
-          <p className="mt-3 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
-            Para el robot <strong className="text-foreground/85">venga la orden de donde
-            venga</strong>, incluido un guion que hayas lanzado por SSH. No hay botón para
-            liberarla: soltarla es un acto presencial, junto al robot.
+          <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+            La parada está arriba, en la franja del marco, y sale en las seis pestañas. Para el
+            robot <strong className="text-foreground/85">venga la orden de donde venga</strong>,
+            incluido un guion que hayas lanzado por SSH. No hay botón para liberarla: soltarla es
+            un acto presencial, junto al robot.
           </p>
         </div>
 

@@ -49,6 +49,37 @@ const TEXTO: Readonly<Record<NivelBateria, string>> = {
   DESCONOCIDO: SIN_DATO,
 }
 
+/**
+ * EL VOLTAJE PARA LA FRANJA DEL MARCO, en las seis pestañas.
+ *
+ * 🔴 Vive AQUI y no en `MarcoRobot` para que la semantica de la bateria se
+ *    decida en UN solo sitio: los umbrales (`nivelBateria`), el tono, y sobre
+ *    todo que **DESCONOCIDO no es OK**. Duplicarla en la cabecera habria sido
+ *    la forma exacta de que un dia una de las dos dijera «bien» sobre un
+ *    `voltage` que llego como NaN.
+ *
+ * 📝 Sin porcentaje y sin antiguedad: aqui no caben, y la tarjeta de la pestaña
+ *    de telemetria sigue siendo la que los da. Esto responde a una sola
+ *    pregunta —«¿le queda bateria a este robot?»— sin cambiar de pantalla, que
+ *    es lo que pide §4 del documento de diseño.
+ */
+export function VoltajeDelMarco() {
+  const { transporte } = useRobot()
+  const mensaje = useTopic(transporte, '/battery_state')
+  useLatido()
+
+  const v = voltajeDe(mensaje)
+  const nivel: NivelBateria = v === null ? 'DESCONOCIDO' : nivelBateria(v)
+
+  return (
+    <span className="flex items-center gap-2">
+      <span className="microetiqueta">Batería</span>
+      <span className="font-mono text-sm tabular-nums text-foreground">{voltios(v)}</span>
+      {nivel !== 'DESCONOCIDO' && <Insignia tono={TONO[nivel]}>{nivel}</Insignia>}
+    </span>
+  )
+}
+
 export function Bateria() {
   const { transporte } = useRobot()
   const mensaje = useTopic(transporte, '/battery_state')
