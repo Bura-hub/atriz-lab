@@ -34,7 +34,9 @@ import type { PointerEvent as EventoPuntero } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
 import { ORDEN_ENVIADA, textoDeConfirmacion } from '@/lib/interfaz/lenguaje'
-import { horaCorta, metrosPorSegundo, numero, radianesPorSegundo } from '@/lib/interfaz/formato'
+import {
+  SIN_DATO, horaCorta, metrosPorSegundo, numero, partirUnidad, radianesPorSegundo,
+} from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
@@ -324,14 +326,35 @@ function PedidoContraMedido({ velocidad }: { velocidad: number }) {
             se queda neutra. Es la diferencia que importa de un vistazo: lo de
             color es lo que tu has elegido, lo neutro es lo que contesta el robot.
           */
-          className={`rounded-[14px] border px-3.5 py-2.5 ${
+          className={`rounded-[14px] border px-4 py-3.5 ${
             c.propio
               ? 'border-[rgb(var(--seccion-conducir)/0.3)] bg-[rgb(var(--seccion-conducir)/0.06)]'
               : 'border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.02)]'
           }`}
         >
           <div className="microetiqueta">{c.etiqueta}</div>
-          <div className="mt-1 font-mono text-xl tabular-nums tracking-tight">{c.valor}</div>
+          {/*
+            🔴 ESTOS CUATRO NUMEROS SON LO QUE SE MIRA AL CONDUCIR, y estaban a
+               20 px: mas pequeños que el titulo de la cabecera y a 7 px de la
+               prosa de al lado. En la maqueta son lo mas grande de la pantalla.
+
+            ⚠️ Y el hueco no se pinta como el valor: sin dato iba en la misma
+               monoespaciada y el mismo tamaño que «0,100 m/s», asi que no se
+               distinguia una medida de su ausencia — justo en la pantalla donde
+               esa diferencia decide si crees que el robot te obedece.
+          */}
+          <div className="mt-1.5">
+            {c.valor === SIN_DATO ? (
+              <span className="hueco text-lg leading-none" title={SIN_DATO}>—</span>
+            ) : (
+              <span className="cifra">
+                {partirUnidad(c.valor).numero}
+                {partirUnidad(c.valor).unidad !== null && (
+                  <span className="unidad">{partirUnidad(c.valor).unidad}</span>
+                )}
+              </span>
+            )}
+          </div>
         </div>
       ))}
     </div>
@@ -422,10 +445,27 @@ export function PanelConducir() {
         titulo="Mando"
         subtitulo="Se conduce manteniendo pulsado. Al soltar, se manda parar. Se publica en /cmd_vel_raw, que es la ENTRADA de la capa de seguridad."
       >
-        <div className="flex flex-wrap items-start gap-x-10 gap-y-6 px-5 py-5">
-          <CruzDeMando teleoperacion={teleoperacion} velocidad={velocidad} alFallar={setFalloLocal} />
+        {/*
+          🔴 MALLA, NO `flex-wrap`. Eran tres bloques de alturas 264 / 150 / 160
+             px en una fila que envuelve, asi que bajo la columna de velocidad y
+             bajo la malla de datos quedaban ~110 y ~100 px de blanco en forma de
+             L. Con `grid-cols-[auto_1fr]` la cruz ocupa lo que necesita y todo
+             lo demas se apila a su derecha llenando la altura.
+        */}
+        <div className="grid items-start gap-x-10 gap-y-6 px-5 py-5 lg:grid-cols-[auto_1fr]">
+          {/*
+            La cruz sobre un campo tenue: `craft-floor` pide que una silueta se
+            recorte contra algo. Sobre papel blanco las cuatro esquinas vacias de
+            la malla de 3×3 hacian que el bloque se leyera como una rejilla a la
+            que le faltan piezas, no como una cruz.
+          */}
+          <div className="rounded-[18px] bg-[rgb(var(--vidrio)/0.025)] p-3">
+            <CruzDeMando teleoperacion={teleoperacion} velocidad={velocidad} alFallar={setFalloLocal} />
+          </div>
 
-          <div className="space-y-4">
+          {/* Velocidad y lecturas en UNA columna: son los dos hijos de la
+              segunda celda de la malla, no dos celdas mas. */}
+          <div className="space-y-5">
             <div>
               <p className="microetiqueta mb-1.5">Velocidad</p>
               <div className="flex gap-2">
@@ -445,17 +485,17 @@ export function PanelConducir() {
                 ))}
               </div>
             </div>
-            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+            <PedidoContraMedido velocidad={velocidad} />
+
+            <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">
               Giro fijo a {numero(GIRO, 1)} rad/s. Entre 0,5 y 2,0 rad/s el robot cumple el 99-102 %
               de lo que se le pide. El tope del robot son 0,40 m/s y esta pantalla no lo ofrece.
             </p>
           </div>
-
-          <PedidoContraMedido velocidad={velocidad} />
         </div>
 
         {!conectado && (
-          <p className="text-sm text-muted-foreground">
+          <p className="px-5 pb-4 text-sm text-muted-foreground">
             Sin enlace no se puede conducir, así que el mando está desactivado.
           </p>
         )}
