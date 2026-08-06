@@ -55,7 +55,7 @@ import { useSesion } from '@/hooks/ContextoSesion'
 import { SIN_DATO, aGrados, grados, horaCorta, metros, numero, yawDeCuaternion } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
 import {
-  cuaternionDeYaw, mundoAPixel, pixelAMundo, pixelesDeMapa, recuentoDeCeldas,
+  cuaternionDeYaw, fronteraAbierta, mundoAPixel, pixelAMundo, pixelesDeMapa, recuentoDeCeldas,
 } from '@/lib/robot/mapa'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Contexto } from '@/componentes/ui/Contexto'
@@ -185,6 +185,9 @@ export function PanelNavegar() {
   const puedeNavegar = hayPose
   const recuento = hayMapa ? recuentoDeCeldas(mapa.data) : null
   const total = recuento === null ? 0 : recuento.LIBRE + recuento.OCUPADA + recuento.DESCONOCIDA
+  // Un relleno por inundación sobre ~5000 celdas: gratis, y es lo único que
+  // responde de verdad a «¿queda algo por mapear?».
+  const frontera = hayMapa ? fronteraAbierta(mapa.info, mapa.data) : null
 
   return (
     <div className="space-y-8" style={tono}>
@@ -267,14 +270,37 @@ export function PanelNavegar() {
               />
               <Dato etiqueta="Tamaño" valor={hayMapa ? `${mapa.info.width} × ${mapa.info.height}` : SIN_DATO} />
               {/*
-                🔴 EL PORCENTAJE DE DESCONOCIDO, y no es una curiosidad: es lo que
-                   evita la conclusión falsa más común con SLAM. Un robot que no se
-                   ha movido produce un mapa 92,9 % desconocido y está SANO.
+                🔴🔴 «FRONTERA», Y NO «% SIN EXPLORAR» — el porcentaje ENGAÑA en
+                     cuanto la habitación se cierra, y costó conducir el robot en
+                     círculos buscando algo que ya no existía.
+
+                La rejilla es un rectángulo que envuelve al mapa, así que todo lo
+                que hay FUERA de las paredes cuenta como desconocido para siempre.
+                Medido en un cuarto real el 2026-08-06, tras mapearlo entero:
+
+                    desconocido total ...... 2857 celdas (44,8 % del mapa)
+                    desconocido ALCANZABLE ..    1 celda
+
+                O sea: mapa terminado, y el número seguía diciendo «44,8 % sin
+                explorar». Lo que responde a «¿queda algo por mapear?» es cuántas
+                celdas grises se pueden ALCANZAR sin cruzar pared.
+
+                📝 El porcentaje sigue a la vista en la nota, porque para un mapa
+                   RECIÉN empezado sí es la cifra que evita la otra conclusión
+                   falsa: un robot quieto produce 92,9 % desconocido y está sano.
               */}
               <Dato
-                etiqueta="Sin explorar"
-                valor={recuento === null || total === 0 ? SIN_DATO : `${numero((recuento.DESCONOCIDA / total) * 100, 1)} %`}
-                nota="Un mapa nuevo es casi todo esto, y no es un fallo."
+                etiqueta="Frontera"
+                // `celda` en singular cuando es una. Sale en pantalla y «1 celdas»
+                // se lee como un descuido en una interfaz que pide que se la crea.
+                valor={frontera === null
+                  ? SIN_DATO
+                  : `${numero(frontera, 0)} ${frontera === 1 ? 'celda' : 'celdas'}`}
+                nota={frontera === 0
+                  ? 'Cero: la habitación está cerrada. No queda nada alcanzable por mapear.'
+                  : recuento === null || total === 0
+                    ? undefined
+                    : `Grises que se pueden alcanzar. Del mapa, ${numero((recuento.DESCONOCIDA / total) * 100, 1)} % es desconocido, casi todo fuera de las paredes.`}
               />
               <Dato
                 etiqueta="Pose de AMCL"

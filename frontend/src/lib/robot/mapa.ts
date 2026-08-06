@@ -118,3 +118,64 @@ export function recuentoDeCeldas(data: readonly number[]): Record<EstadoCelda, n
   for (const v of data) r[estadoDeCelda(v)] += 1
   return r
 }
+
+/**
+ * Cuántas celdas desconocidas se pueden ALCANZAR desde dentro, sin cruzar pared.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 EL «% SIN EXPLORAR» ENGAÑA EN CUANTO LA HABITACIÓN SE CIERRA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * La rejilla es un rectángulo que envuelve al mapa, así que todo lo que hay
+ * **fuera de las paredes** cuenta como desconocido para siempre: el robot no
+ * puede verlo ni yendo a buscarlo.
+ *
+ * Medido en un cuarto real el 2026-08-06, tras conducir el robot hasta que el
+ * porcentaje dejó de bajar:
+ *
+ *     desconocido total ......... 2857 celdas  (44,8 % del mapa)
+ *     desconocido ALCANZABLE ....    1 celda
+ *
+ * O sea que el mapa estaba **terminado** y el número seguía diciendo «44,8 % sin
+ * explorar». Con esa cifra sola se conduce el robot en círculos buscando algo
+ * que no existe — que es exactamente lo que pasó antes de medir esto.
+ *
+ * → Esta función es la que responde a «¿queda algo por mapear?». Una frontera
+ *   abierta pequeña significa que se acabó.
+ *
+ * ⚠️ La pared se cruza en 4-vecindad, no en 8: en diagonal se colaría por las
+ *    esquinas de dos paredes que se tocan, y el conteo se escaparía al exterior
+ *    justo en las habitaciones bien cerradas.
+ */
+export function fronteraAbierta(info: InfoMapa, data: readonly number[]): number | null {
+  const { width: an, height: al } = info
+  if (data.length !== an * al || an <= 0 || al <= 0) return null
+
+  // Se siembra en la primera celda LIBRE. Sin ninguna, no hay «dentro».
+  let semilla = -1
+  for (let i = 0; i < data.length; i += 1) {
+    if (estadoDeCelda(data[i]) === 'LIBRE') { semilla = i; break }
+  }
+  if (semilla < 0) return null
+
+  const visto = new Uint8Array(data.length)
+  const pila = [semilla]
+  visto[semilla] = 1
+  let frontera = 0
+  while (pila.length > 0) {
+    const i = pila.pop() as number
+    if (estadoDeCelda(data[i]) === 'DESCONOCIDA') { frontera += 1; continue }
+    const x = i % an
+    const y = Math.floor(i / an)
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx
+      const ny = y + dy
+      if (nx < 0 || ny < 0 || nx >= an || ny >= al) continue
+      const j = ny * an + nx
+      if (visto[j] === 1) continue
+      if (estadoDeCelda(data[j]) === 'OCUPADA') continue   // no se cruza pared
+      visto[j] = 1
+      pila.push(j)
+    }
+  }
+  return frontera
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  InfoMapa, cuaternionDeYaw, estadoDeCelda, mundoAPixel, pixelAMundo, pixelesDeMapa,
+  InfoMapa, cuaternionDeYaw, estadoDeCelda, fronteraAbierta, mundoAPixel, pixelAMundo, pixelesDeMapa,
   recuentoDeCeldas,
 } from './mapa'
 
@@ -105,5 +105,68 @@ describe('recuentoDeCeldas', () => {
     expect(recuentoDeCeldas([-1, -1, 0, 10, 90, 100])).toEqual({
       DESCONOCIDA: 2, LIBRE: 2, OCUPADA: 2,
     })
+  })
+})
+
+describe('fronteraAbierta', () => {
+  /**
+   * Rejillas 5x5 escritas a mano. `#` pared, `.` libre, `?` desconocido.
+   * La fila 0 del array es la de mas al SUR, pero para contar da igual.
+   */
+  const rejilla = (dibujo: string[]) => dibujo.join('').split('')
+    .map((c) => (c === '#' ? 100 : c === '.' ? 0 : -1))
+
+  it('🔴 una habitacion CERRADA no tiene frontera abierta, aunque sobre gris fuera', () => {
+    /*
+     * Es el caso medido en un cuarto real: 2857 celdas desconocidas y UNA
+     * alcanzable. El mapa estaba terminado y el «% sin explorar» decia 44,8 %.
+     */
+    const d = rejilla([
+      '?????',
+      '?###?',
+      '?#.#?',
+      '?###?',
+      '?????',
+    ])
+    expect(fronteraAbierta(info(5, 5), d)).toBe(0)
+  })
+
+  it('un hueco en la pared SI cuenta como frontera', () => {
+    const d = rejilla([
+      '?????',
+      '?###?',
+      '?#..?',   // la pared derecha se abre: el gris de fuera es alcanzable
+      '?###?',
+      '?????',
+    ])
+    expect(fronteraAbierta(info(5, 5), d)).toBeGreaterThan(0)
+  })
+
+  it('🔴 no se cruza en DIAGONAL por la esquina de dos paredes', () => {
+    /*
+     * Con 8-vecindad, el relleno se colaria entre las dos `#` que se tocan solo
+     * por el vertice y contaria TODO el exterior — justo en las habitaciones
+     * bien cerradas, que es donde este numero tiene que valer 0.
+     */
+    const d = rejilla([
+      '?????',
+      '?##??',
+      '?#.#?',
+      '??##?',
+      '?????',
+    ])
+    /*
+     * La unica celda libre es (2,2). En 4-vecindad esta CERRADA: arriba, abajo,
+     * izquierda y derecha son pared -> 0.
+     * En 8-vecindad tocaria (3,1), que es `?`, y el relleno se escaparia al
+     * exterior entero. Asi que este `toBe(0)` distingue las dos implementaciones
+     * en vez de limitarse a comprobar que devuelve algo.
+     */
+    expect(fronteraAbierta(info(5, 5), d)).toBe(0)
+  })
+
+  it('devuelve null si no cuadra o si no hay ninguna celda libre', () => {
+    expect(fronteraAbierta(info(2, 2), [0, 0, 0])).toBeNull()
+    expect(fronteraAbierta(info(2, 2), [-1, -1, 100, -1])).toBeNull()
   })
 })
