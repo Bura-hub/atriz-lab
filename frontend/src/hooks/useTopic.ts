@@ -147,21 +147,23 @@ export interface MensajeColor {
  *      **una sola vez** al arrancar, al contrario que `slam_toolbox`, que lo
  *      reemite cada `map_update_interval` (5 s).
  *
- * ⚠️ CONSECUENCIA NO VERIFICADA, y hay que decirlo antes de que muerda: rosbridge
- *    se suscribe con `qos_profile_sensor_data` —BEST_EFFORT y **VOLATILE**— si no
- *    se le manda un `qos`. Un suscriptor VOLATILE **empareja** con un publicador
- *    TRANSIENT_LOCAL pero **no recibe lo ya publicado**. Con AMCL, donde el mapa
- *    se emite una vez, eso significaria que `/map` no llega NUNCA.
+ * ✅ Y AUN ASI LLEGA. Se temia que no: rosbridge se suscribe con
+ *    `qos_profile_sensor_data` —BEST_EFFORT y **VOLATILE**— si no se le manda un
+ *    `qos`, y un VOLATILE empareja con un TRANSIENT_LOCAL pero, en teoria, **no
+ *    recibe lo ya publicado**. Medido el 2026-08-06 con un mapa de verdad
+ *    (slam_toolbox, que republica cada 5 s), cinco suscripciones NUEVAS:
  *
- *    No se ha podido medir: `atriz-nav.service` esta instalado y no habilitado, y
- *    sin el no hay `/map` que pedir. La pantalla de navegacion **detecta
- *    exactamente esta firma** —AMCL vivo y mapa mudo— y la nombra, en vez de
- *    dejar un canvas vacio que parezca un fallo de dibujo.
+ *        41 ms · 38 ms · 44 ms · 44 ms · 48 ms
  *
- *    🔴 Y el arreglo NO es «mandar qos y ya»: rosbridge crea UNA suscripcion ROS
- *      por topic y **el QoS del primer cliente gobierna a los demas**. Pedir
- *      TRANSIENT_LOCAL aqui podria dejar mudo a otro consumidor de `/map`. Es una
- *      decision que hay que MEDIR con Nav2 corriendo, no adivinar.
+ *    Sin entrega del latch, una suscripcion en un instante cualquiera esperaria
+ *    ~2,5 s de media. Cinco de cinco a ~40 ms zanjan que **el valor latcheado SI
+ *    se entrega**. Y no hizo falta mandar `qos`, que era el arreglo obvio y el
+ *    que habria tenido coste: rosbridge crea UNA suscripcion por topic y el QoS
+ *    del PRIMER cliente gobierna a los demas.
+ *
+ * ⚠️ Lo medido es contra `slam_toolbox`. Con AMCL publica `map_server`, que lo
+ *    emite **una sola vez**; el mecanismo de QoS es identico en los dos lados,
+ *    asi que lo esperable es que tambien llegue — pero eso sigue **SIN MEDIR**.
  */
 export interface MensajeMapa {
   header: Cabecera

@@ -20,22 +20,32 @@
  *   falta se lee como lo que es.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴🔴 Y DISTINGUE **TRES** ESTADOS, NO DOS — el tercero es una trampa medida
+ * 🔴🔴 RETRACTADO EL 2026-08-06: LA «TRAMPA DE LA DURABILIDAD» NO EXISTE AQUÍ
  * ═══════════════════════════════════════════════════════════════════════════
- *   · nada llega                     → Nav2 no está corriendo
- *   · llega `/amcl_pose` y NO `/map` → **la firma de la durabilidad**
- *   · llegan los dos                 → se dibuja
+ * Este bloque decía que `/map` podía no llegar nunca: va `TRANSIENT_LOCAL`,
+ * rosbridge se suscribe VOLATILE si no se le manda `qos`, y un VOLATILE empareja
+ * con un TRANSIENT_LOCAL pero —en teoría— **no recibe lo ya publicado**. La
+ * pantalla llevaba una rama entera dedicada a diagnosticar esa firma.
  *
- * El del medio importa: `/map` va `TRANSIENT_LOCAL` y `map_server` lo publica
- * **una sola vez**. rosbridge se suscribe VOLATILE si no se le manda `qos`, y un
- * VOLATILE empareja con un TRANSIENT_LOCAL pero **no recibe lo ya publicado**.
- * O sea que el mapa podría no llegar nunca, con todo lo demás bien.
+ * Se midió en cuanto hubo un mapa de verdad, y **es falso**. Cinco suscripciones
+ * NUEVAS a `/map`, contra un `slam_toolbox` que republica cada 5 s:
  *
- * Eso está **SIN VERIFICAR** —hace falta Nav2 corriendo—, y por eso la pantalla
- * no lo arregla a ciegas: lo **nombra**. Mandar `qos: transient_local` sería la
- * corrección obvia y tiene un coste medido que la desaconseja sin datos:
- * rosbridge comparte UNA suscripción por topic y **el QoS del primer cliente
- * gobierna a todos los demás**.
+ *     41 ms · 38 ms · 44 ms · 44 ms · 48 ms
+ *
+ * Si el latch no se entregara, una suscripción en un instante cualquiera tendría
+ * que esperar del orden de 2,5 s de media. Cinco de cinco a ~40 ms **no es
+ * casualidad: rosbridge SÍ entrega el valor latcheado.**
+ *
+ * → Así que la rama sigue existiendo —AMCL puede hablar con el mapa mudo por
+ *   otras razones— pero **ya no acusa a la durabilidad**: la descarta con la
+ *   medida, que es lo contrario de lo que hacía. Una pantalla que envía a
+ *   investigar una causa ya refutada es peor que una que no dice nada.
+ *
+ * ⚠️ Lo medido es contra `slam_toolbox`. Con AMCL el publicador es `map_server`,
+ *    que emite **una sola vez**; el mecanismo de QoS es el mismo en los dos
+ *    lados, así que lo esperable es que también llegue — pero eso **no está
+ *    medido**, y la pantalla lo dice con esas palabras en vez de dar por hecho
+ *    que se generaliza.
  */
 
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react'
@@ -119,7 +129,9 @@ export function PanelNavegar() {
 
   /* ── Mandar un objetivo ──────────────────────────────────────────────── */
   const alPulsarMapa = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (mapa === null || usuario === null || objetivo !== null) return
+    // `puedeNavegar` primero: sin servidor de accion el objetivo solo produciria
+    // un error, y el gesto ya esta desaconsejado en pantalla.
+    if (mapa === null || pose === null || usuario === null || objetivo !== null) return
     const c = lienzo.current
     if (c === null) return
     const caja = c.getBoundingClientRect()
@@ -147,11 +159,30 @@ export function PanelNavegar() {
       () => setDesenlace({ hora: horaCorta(Date.now()), texto: 'Nav2 dio el objetivo por terminado. Mira el robot: esto dice que la acción acabó, no dónde acabó.', malo: false }),
       (err: Error) => setDesenlace({ hora: horaCorta(Date.now()), texto: err.message, malo: true }),
     ).finally(() => { setObjetivo(null); setAvance(null) })
-  }, [mapa, usuario, objetivo, transporte])
+  }, [mapa, pose, usuario, objetivo, transporte])
 
   /* ── Los tres estados ────────────────────────────────────────────────── */
   const hayMapa = mapa !== null
   const hayPose = pose !== null
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 HAY MAPA **SIN** PODER NAVEGAR, y es el estado en el que se probó esto.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * `slam.launch.py` levanta `slam_toolbox` y ya hay `/map` — pero Nav2 sigue
+   * parado, así que **no existe el servidor de `/navigate_to_pose`**: un
+   * objetivo contesta «No action server available», medido.
+   *
+   * Sin esta distinción la pantalla decía «pulsa en el mapa para mandar al
+   * robot» sobre un robot que no puede recibir el objetivo. Invitar a un gesto
+   * que va a fallar es peor que no ofrecerlo: quien lo pulsa busca el fallo en
+   * su clic.
+   *
+   * ⚠️ Se deduce de `/amcl_pose`, no se pregunta: AMCL y el servidor de acción
+   *    vienen del MISMO launch, así que sin AMCL no hay a quién mandar nada. No
+   *    es una comprobación directa, y por eso la pantalla dice «parece» y manda
+   *    a mirar el robot en vez de afirmarlo.
+   */
+  const puedeNavegar = hayPose
   const recuento = hayMapa ? recuentoDeCeldas(mapa.data) : null
   const total = recuento === null ? 0 : recuento.LIBRE + recuento.OCUPADA + recuento.DESCONOCIDA
 
@@ -175,32 +206,65 @@ export function PanelNavegar() {
             </div>
           </Tarjeta>
         ) : hayPose && !hayMapa ? (
-          <Tarjeta titulo="AMCL habla, pero el mapa no llega" subtitulo="Esto tiene una causa concreta y conocida.">
+          <Tarjeta titulo="AMCL habla, pero el mapa no llega" subtitulo="Y hay una causa que ya se puede descartar.">
             {/*
-              🔴 LA FIRMA. Si AMCL publica y el mapa no, lo primero a mirar NO es
-                 el dibujo ni la red: es la durabilidad de la suscripción.
+              🔴 ESTE AVISO DECIA «sospecha de la durabilidad», y se MIDIO que no
+                 era eso. Descartar una causa con datos vale tanto como señalar
+                 la buena: lo que sobra es mandar a investigar lo ya refutado.
             */}
-            <Aviso nivel="ATENCION" titulo="Sospecha primero de la durabilidad, no del dibujo">
-              <code>/map</code> se publica <strong>latcheado</strong> y{' '}
-              <code>map_server</code> lo emite <strong>una sola vez</strong>. rosbridge se suscribe
-              de forma <strong>volátil</strong> si no se le pide otra cosa, y un suscriptor volátil
-              empareja con un publicador latcheado pero <strong>no recibe lo que ya se publicó</strong>.
-              Eso explica exactamente lo que estás viendo.
-              <br /><br />
-              ⚠️ No se corrige desde esta pantalla a ciegas: pedir otra durabilidad afecta{' '}
-              <strong>a todos los clientes de ese topic a la vez</strong> —rosbridge comparte una
-              sola suscripción—, así que es una decisión que hay que medir con Nav2 corriendo.
+            <Aviso nivel="NOTA" titulo="No es la durabilidad de la suscripción: está medida">
+              Se comprobó con cinco suscripciones nuevas a <code>/map</code> contra un mapa vivo, y
+              el primer mensaje llegó en <strong>38-48 ms</strong> las cinco veces. Si el valor
+              latcheado no se entregara habría que esperar segundos. Así que{' '}
+              <strong>rosbridge sí recibe mapas ya publicados</strong>, y esa vía queda descartada.
             </Aviso>
+            <div className="mt-3">
+              <Aviso nivel="ATENCION" titulo="Dónde mirar entonces">
+                Que <code>map_server</code> esté vivo y con un fichero de mapa que exista, y que el
+                mapa se esté publicando de verdad. <strong>Nada de esto se ve desde aquí</strong>:
+                hay que mirarlo en el robot.
+                <br /><br />
+                ⚠️ Y una diferencia sin medir: lo de arriba se comprobó contra{' '}
+                <code>slam_toolbox</code>, que republica cada 5 s. Con AMCL el mapa lo emite{' '}
+                <code>map_server</code> <strong>una sola vez</strong>. El mecanismo es el mismo, así
+                que lo esperable es que también llegue — pero esperable no es medido.
+              </Aviso>
+            </div>
           </Tarjeta>
         ) : (
           <Tarjeta
             titulo="Mapa"
-            subtitulo={usuario === null
-              ? 'Pulsa en el mapa para mandar al robot… con sesión iniciada.'
-              : 'Pulsa en el mapa para mandar al robot a ese punto.'}
+            subtitulo={!puedeNavegar
+              ? 'El mapa se está construyendo. Todavía no hay a quién mandar un objetivo.'
+              : usuario === null
+                ? 'Pulsa en el mapa para mandar al robot… con sesión iniciada.'
+                : 'Pulsa en el mapa para mandar al robot a ese punto.'}
           >
+            {!puedeNavegar && (
+              <div className="mb-3">
+                <Aviso nivel="NOTA" titulo="Esto parece SLAM, no Nav2: hay mapa pero no navegación">
+                  Llega <code>/map</code> pero no <code>/amcl_pose</code>, y los dos salen del
+                  mismo arranque de Nav2. Así que el mapa se está dibujando —eso funciona— pero{' '}
+                  <strong>no hay servidor al que mandarle un objetivo</strong>: pulsar aquí
+                  contestaría «no hay servidor de acción». Es lo que pasa con{' '}
+                  <code>slam.launch.py</code> a solas, que es justo lo que hace falta para{' '}
+                  <strong>crear</strong> el mapa.
+                  <br /><br />
+                  Para navegar hace falta el mapa guardado y AMCL. Y esto se deduce de que no
+                  llegue <code>/amcl_pose</code>, no se pregunta: si crees que Nav2 sí está
+                  levantado, míralo en el robot.
+                </Aviso>
+              </div>
+            )}
             <div className="rejilla mb-3 sm:grid-cols-2 xl:grid-cols-4">
-              <Dato etiqueta="Resolución" valor={hayMapa ? `${numero(mapa.info.resolution * 100, 1)} cm/celda` : SIN_DATO} />
+              {/* `cm` y no `cm/celda`: `Dato` parte el valor por su primer numero
+                  y pinta el resto como UNIDAD, asi que «cm/celda» salia a 22 px y
+                  partido en dos renglones. Lo que sobra va a la nota. */}
+              <Dato
+                etiqueta="Resolución"
+                valor={hayMapa ? `${numero(mapa.info.resolution * 100, 1)} cm` : SIN_DATO}
+                nota="por celda"
+              />
               <Dato etiqueta="Tamaño" valor={hayMapa ? `${mapa.info.width} × ${mapa.info.height}` : SIN_DATO} />
               {/*
                 🔴 EL PORCENTAJE DE DESCONOCIDO, y no es una curiosidad: es lo que
@@ -224,10 +288,31 @@ export function PanelNavegar() {
             <canvas
               ref={lienzo}
               onClick={alPulsarMapa}
-              // `image-rendering: pixelated`: una celda son 5 cm, y suavizarlas
-              // inventaría paredes intermedias que el robot no ve.
-              className={`w-full max-w-full rounded-md border border-[rgb(var(--filo)/0.16)] [image-rendering:pixelated] ${
-                usuario !== null && objetivo === null ? 'cursor-crosshair' : 'cursor-not-allowed'
+              /*
+                🔴🔴 EL TAMAÑO DEL MAPA, EN DOS INTENTOS FALLIDOS Y UNO BUENO.
+                     Las tres versiones se vieron en captura; ninguna la vio tsc.
+
+                1. `w-full` a secas: un mapa de 69×82 celdas se estiraba a
+                   ~1050 px de ancho y **1250 de alto**. Ocupaba la pantalla
+                   entera y había que hacer scroll para ver un cuarto de
+                   3,45 × 4,10 m.
+                2. `max-h-[62vh] w-auto`: el tope de altura **nunca entraba**,
+                   porque `w-auto` toma el ancho INTRÍNSECO del canvas —69 px—.
+                   El mapa salió como una miniatura de 70×85. Cambiar un defecto
+                   por su opuesto.
+                3. Esta: el tope de ALTURA se traduce a un tope de ANCHO con la
+                   proporción real del mapa, así que crece todo lo que puede sin
+                   pasarse de alto y **sin deformarse**. Un mapa cuadrado y uno
+                   apaisado se comportan los dos bien.
+
+                `image-rendering: pixelated`: una celda son 5 cm, y suavizarlas
+                inventaría paredes intermedias que el robot no ve.
+              */
+              style={hayMapa && mapa.info.height > 0
+                ? { width: `min(100%, calc(62vh * ${mapa.info.width / mapa.info.height}))` }
+                : undefined}
+              className={`mx-auto block h-auto rounded-md border border-[rgb(var(--filo)/0.16)] [image-rendering:pixelated] ${
+                puedeNavegar && usuario !== null && objetivo === null ? 'cursor-crosshair' : 'cursor-not-allowed'
               }`}
             />
 
