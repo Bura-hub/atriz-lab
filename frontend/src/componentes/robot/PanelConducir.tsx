@@ -119,7 +119,12 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
           type="button"
           disabled={!conectado}
           onClick={() => void parar()}
-          className="border border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
+          /* 🔴 `rounded-md`, que le faltaba: este boton y el de al lado son
+             hermanos y tenian radios DISTINTOS —14 px contra 0—, o sea una
+             pildora pegada a una caja de esquina viva. Se ve a 2,4× en un
+             recorte, y `PanelTerminal` ya deja escrito que la forma tambien es
+             vocabulario. */
+          className="rounded-md border border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
         >
           Parar barrido
         </button>
@@ -257,9 +262,17 @@ function CruzDeMando({
                ahora de y=3,5 a y=18 y el svg sube a `h-9`, asi que el chevron
                pasa de ~15 px a ~34, a la altura de las cifras de al lado.
           */}
-          <svg viewBox="0 0 24 24" className="h-9 w-9" aria-hidden="true"
+          {/*
+            🔴 LA RONDA ANTERIOR MIDIO LA CAJA Y NO LA TINTA. Se lleno el viewBox
+               y se subio a `h-9`, pero sobre una celda de 81 px eso sigue siendo
+               un triangulo de ~22×26: el 27 % de la celda, no el 34 que se creia
+               haber conseguido. Es la misma forma de error que persigue este
+               proyecto —comprobar el numero que se toco en vez del efecto— y la
+               pillo un revisor midiendo pixeles sobre un recorte a 2,4×.
+          */}
+          <svg viewBox="0 0 24 24" className="h-11 w-11" aria-hidden="true"
             style={{ transform: `rotate(${m.giro}deg)` }}>
-            <path d="M12 3.5 L20.5 18 H3.5 Z" fill="currentColor" />
+            <path d="M12 2 L22 20 H2 Z" fill="currentColor" />
           </svg>
         </button>
       ))}
@@ -275,20 +288,24 @@ function CruzDeMando({
         aria-label="Parar"
         title="Parar"
         onClick={pararSeguro}
-        className={`col-start-2 row-start-2 ${celda} flex-col gap-1 hover:border-[rgb(var(--estado-ir)/0.5)] hover:bg-[rgb(var(--estado-ir)/0.07)] active:scale-[0.96]`}
+        className={`col-start-2 row-start-2 ${celda} hover:border-[rgb(var(--destructive)/0.5)] active:scale-[0.96]`}
       >
         {/*
-          🔴 `--destructive` Y NO `--estado-ir`, aunque valgan lo mismo. Los
-             `--estado-*` significan «esto es un HECHO sobre el robot», y este
-             punto esta en un control EN REPOSO: teñirlo con el color de un hecho
-             confirmado afirma algo que no ha pasado. `--destructive` es el token
-             de «accion que corta», que es lo que este boton hace.
+          🔴 LA TECLA MAS PESADA DE LA CRUZ, Y ERA LA MAS LIGERA. Un punto de
+             14 px contra flechas de ~22, con la palabra a 9 px debajo: la tecla
+             que se pulsa CON PRISA tenia la menor masa de las cinco. Ahora es un
+             disco lleno de 34 px con la palabra dentro. En un mando, la tecla de
+             parar tiene que encontrarse sin mirar.
+
+          📝 `--destructive` y no `--estado-ir`: los `--estado-*` significan «esto
+             es un HECHO sobre el robot», y este control esta en reposo. Desde que
+             los dos tokens dejaron de valer lo mismo, la diferencia se ve.
         */}
-        <span
-          aria-hidden="true"
-          className="block h-3.5 w-3.5 rounded-full bg-[rgb(var(--destructive))]"
-        />
-        <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">parar</span>
+        <span className="flex h-[2.1rem] w-[2.1rem] items-center justify-center rounded-full bg-[rgb(var(--destructive))]">
+          <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-white">
+            parar
+          </span>
+        </span>
       </button>
     </div>
   )

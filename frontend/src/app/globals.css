@@ -94,8 +94,28 @@
   --seccion-telemetria: 13 108 84;/* verde profundo */
   --seccion-lidar: 39 78 176;     /* azul */
   --seccion-diagnostico: 130 44 96; /* ciruela */
-  --seccion-flota: 30 58 210;     /* el muro se queda en cobalto */
-  --seccion-cuaderno: 90 92 108;  /* grafito: no habla con ningún robot */
+  /*
+   * 🔴🔴 ESTE FICHERO INCUMPLIA SU PROPIA REGLA, TRES LINEAS MAS ARRIBA.
+   *
+   * Justo encima dice que los tonos de identidad son «hues que NO son los tres
+   * del estado». Y `--seccion-flota` valia `30 58 210`, que es **exactamente
+   * `--bloque-vivo`**. Consecuencia visible en el muro: la muestra azul de la
+   * leyenda que dice «este robot PIDE ALGO» era el mismo color que la banda que
+   * dice «estas en Flota», y una baldosa viva no podia destacar contra un fondo
+   * de su propio color — la figura y el suelo pintados igual.
+   *
+   * Cobalto mas profundo: la banda vuelve a ser SUELO y la baldosa, FIGURA.
+   * Blanco encima da 11,4:1.
+   */
+  --seccion-flota: 22 44 150;
+  /*
+   * ⚠️ Y el grafito del cuaderno no era una identidad, era la AUSENCIA de una:
+   *    un gris sin croma al lado de un violeta y un cobalto se lee como una
+   *    pantalla deshabilitada. Pizarra con croma — sigue siendo el tono mas
+   *    sobrio de los nueve, que es lo que le toca a la unica pantalla que no
+   *    habla con ningun robot, pero ahora es un color y no una falta de color.
+   */
+  --seccion-cuaderno: 58 68 96;
   /* 🔴 Violeta PROFUNDO, y no el mismo `91 46 168` del taller. Nacio copiando
         ese valor, asi que la portada y la pestaña Taller tenian banda identica:
         dos sitios distintos con el mismo color es exactamente lo que este eje
@@ -188,7 +208,23 @@
   --estado-neutro: 90 92 108;     /* NO SE SABE. Ni bueno ni malo */
   --estado-vivo: 21 122 61;       /* solo desde un dato RECIENTE y concreto */
   --estado-mirar: 158 92 8;
-  --estado-ir: 190 42 22;         /* reservado a un hecho confirmado */
+  /*
+   * 🔴🔴 SEPARADO DE `--destructive`, QUE VALIA EL MISMO RGB EXACTO.
+   *
+   * `--estado-ir` dice «hecho confirmado sobre el robot» y `--destructive` dice
+   * «este control corta». Valian los dos `190 42 22`, asi que en la pantalla de
+   * «por que no obedece» habia CUATRO cosas en el rojo de la parada -el
+   * veredicto, la causa, el valor «cerrado» y el icono- y el slab de emergencia
+   * perdia toda su exclusividad. Muestreado en la captura: los cuatro daban
+   * `#BE2A16`, identico al boton.
+   *
+   * Y peor: `MarcoRobot` lleva escrito que la parada es «el unico elemento en
+   * rojo de la pantalla». Era falso justo en la pantalla donde mas importa.
+   *
+   * Teja, a 5,8:1 sobre el papel. Sigue leyendose como alarma; deja de ser EL
+   * rojo de la parada.
+   */
+  --estado-ir: 168 62 40;
   --estado-frenando: 30 58 210;   /* ⚠️ DECLARADO Y SIN USAR: ver abajo */
 
   --primary: 30 58 210;

@@ -155,8 +155,17 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
 
         🔴 Y VA SOBRE BLANCO, FUERA DEL CAMPO DE COLOR. El rojo de la parada es
            un color RESERVADO, y sobre un campo saturado —ámbar en «por qué no
-           obedece», ciruela en diagnóstico— deja de leerse como el único
-           elemento en rojo de la pantalla. Sobre papel no compite con nada.
+           obedece», ciruela en diagnóstico— deja de destacar. Sobre papel no
+           compite con nada.
+
+        ⚠️ ESTE COMENTARIO DECÍA «el ÚNICO elemento en rojo de la pantalla», Y
+           ERA FALSO. `--estado-ir` y `--destructive` valían el mismo RGB, así
+           que en «por qué no obedece» había cuatro cosas exactamente del color
+           del botón —el veredicto, la causa, el valor «cerrado» y su icono— y la
+           parada no era única en nada. Lo pilló un revisor muestreando el píxel,
+           no leyendo. Los dos tokens ya están separados; lo que se conserva es
+           la lección: **una afirmación escrita en un comentario envejece igual
+           que el código, y nadie la comprueba.**
       */}
       <div className="relative z-10 bg-pozo-alto shadow-barra">
         {/*

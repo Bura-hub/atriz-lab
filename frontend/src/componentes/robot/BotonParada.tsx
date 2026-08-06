@@ -117,7 +117,9 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
           // franja, asi que con el relleno de antes el bloque medía 165 px de
           // alto. Sigue siendo con diferencia el elemento mas grande y el unico
           // en rojo — que es lo que tiene que ser.
-          'w-full border-4 border-destructive bg-destructive px-6 py-4 text-2xl font-bold '
+          // `rounded-md`: era la unica superficie de esquina viva de la
+          // aplicacion, y encima la mas grande. La forma tambien es vocabulario.
+          'w-full rounded-md border-4 border-destructive bg-destructive px-6 py-4 text-2xl font-bold '
           + 'uppercase tracking-wide text-destructive-foreground transition-transform focus-ring '
           + 'active:scale-[0.99] hover:brightness-110'
         }

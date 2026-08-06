@@ -80,6 +80,14 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
 
 /** Los tres destinos que existen siempre, haya robot o no. */
 const GENERALES: EntradaRail[] = [
+  /*
+    🔴 LA PORTADA VA PRIMERA. Estaba la ULTIMA de las tres, asi que la puerta de
+       entrada de la aplicacion aparecia debajo de todo y su pastilla activa se
+       pintaba al final de la lista. El logotipo de arriba tambien lleva a la
+       portada, pero un enlace ROTULADO no puede estar por debajo de los sitios a
+       los que se llega desde el.
+  */
+  { href: '/', texto: 'Portada', Icono: IconoPortada, color: '--seccion-portada' },
   { href: '/flota', texto: 'Flota', Icono: IconoFlota, color: '--seccion-flota' },
   { href: '/cuaderno', texto: 'Cuaderno', Icono: IconoCuaderno, color: '--seccion-cuaderno' },
   /*

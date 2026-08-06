@@ -72,7 +72,33 @@ export interface PropsDato {
  * 📝 Si la referencia no empieza por un numero -«en reposo», por ejemplo- se
  *    pinta entera como texto: `partirUnidad` no fuerza nada.
  */
-function Referencia({ texto }: { texto: string }) {
+function Referencia({ texto, hayValor }: { texto: string; hayValor: boolean }) {
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 EL PATRON NUNCA PESA MAS QUE LA RANURA DE SU MEDIDA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * La ronda anterior subio la referencia a `.cifra-menor` para que la pantalla
+   * apagada tuviera alguna cifra que leer. Se paso: con el robot apagado el
+   * escalon quedaba **invertido** — la medida real caia a raya de 18 px al 55 %
+   * de tinta y el patron se quedaba a 22 px en tinta casi negra. En Motores se
+   * leia, de arriba abajo:
+   *
+   *     —
+   *     27,5 °C en reposo
+   *
+   * o sea la pantalla **afirmando una temperatura que no tiene**, que es
+   * exactamente lo que este proyecto lleva meses evitando. Y en la tabla del
+   * diagnostico lo mas grande y oscuro de la pantalla era un numero que no se
+   * esta midiendo.
+   *
+   * → La regla, y es comprobable: **el patron solo sube cuando hay una medida
+   *   encima de la que ser subordinado.** Sin valor baja con el, y la referencia
+   *   sigue viendose —que era el objetivo de la ronda anterior— pero como lo que
+   *   es: contexto, no lectura.
+   */
+  if (!hayValor) {
+    return <span className="opacity-80">{texto}</span>
+  }
   /*
    * 🔴 UN SOLO NUMERO SUELTO, Y NADA MAS. La primera version aceptaba cualquier
    *    racimo de digitos y signos, asi que «99-102 % de lo que se le pide» sacaba
@@ -230,7 +256,9 @@ export function Dato({
             **sigue siendo el patron de comparacion, no la medida**. Cuando
             llegue un dato de verdad, el valor esta dos niveles por encima.
           */}
-          {referencia !== undefined && <Referencia texto={referencia} />}
+          {referencia !== undefined && (
+            <Referencia texto={referencia} hayValor={!desconocido} />
+          )}
         </div>
       )}
 
