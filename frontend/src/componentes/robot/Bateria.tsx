@@ -28,7 +28,6 @@ import { useLatido } from '@/hooks/useTransporte'
 import { NivelBateria, V_BAJA, V_CRITICA, nivelBateria } from '@/lib/rosbridge/contrato'
 import { SIN_DATO, milisegundos, numero, partirUnidad, voltios } from '@/lib/interfaz/formato'
 import { porcentajeDe, voltajeDe } from '@/lib/interfaz/lecturas'
-import { Dato } from '@/componentes/ui/Dato'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
 import { Contexto } from '@/componentes/ui/Contexto'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
@@ -174,9 +173,15 @@ export function Bateria() {
         en el dato desautorizado.
 
         El voltaje es el signo vital de este robot y el unico valido por regla del
-        proyecto, asi que se pinta con `.cifra-hero` (~56 px) a ancho completo,
-        con su veredicto y su antiguedad al lado, y el porcentaje baja a una fila
-        secundaria de la misma rejilla.
+        proyecto, asi que se pinta con `.cifra-hero` (~56 px), y todo lo
+        subordinado —el porcentaje que no decide nada y los umbrales del
+        firmware— se va al rail de la derecha.
+
+        🔴 DOS COLUMNAS, Y NO DOS FILAS. Apilados, el porcentaje ocupaba una fila
+           entera de la tarjeta a la misma anchura que el voltaje: dos bloques de
+           ancho completo se leen como dos datos del mismo rango, que es
+           exactamente lo que aqui NO son. Al lado y en una columna estrecha, la
+           jerarquia se ve sin leer ninguno de los dos.
 
         📝 Va a mano y no con `<Dato grande>` por una sola razon: `Dato` pone la
            antiguedad DEBAJO del valor y no tiene sitio para la insignia. Aqui las
@@ -184,9 +189,15 @@ export function Bateria() {
            como un solo enunciado —«8,23 V, correcto, de hace 12 s»— en vez de
            como tres cosas. El `<data value>` se emite igual: es la regla del
            proyecto y no se pierde por escribir el bloque a mano.
+
+        ⚠️ LA ANTIGUEDAD SE QUEDA EN LA LINEA BASE DEL VOLTAJE, y no baja al
+           rail. Es regla del proyecto —`/battery_state` llega cada 30,0 s, asi
+           que su antiguedad va SIEMPRE al lado del voltaje— y ademas es lo que
+           hace que las tres piezas se lean como una sola frase. Separarlas 300 px
+           las convierte en dos datos.
       */}
-      <div className="rejilla">
-        <div className="px-5 pb-4 pt-4">
+      <div className="rejilla lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)]">
+        <div className="px-5 pb-5 pt-4">
           <div className="microetiqueta">Voltaje</div>
           <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-2">
             {/* La ausencia sigue siendo una raya pequeña: si creciera con la
@@ -219,22 +230,76 @@ export function Bateria() {
           )}
         </div>
 
-        {/* 🔴 EL ROTULO, ACORTADO. «Porcentaje que reporta el firmware (no decide
-            nada)» son 51 caracteres en versalitas espaciadas; el matiz baja a la
-            nota, que es donde `Dato` documenta que va lo que el numero no dice. */}
-        <Dato
-          etiqueta="Porcentaje del firmware"
-          valor={pct === null ? SIN_DATO : `${numero(pct, 0)} %`}
-          crudo={pct ?? undefined}
-          nota="No decide nada: es una estimación gruesa. Se enseña para que nadie lo busque en otro sitio."
-        />
+        {/*
+          EL RAIL DE LO SUBORDINADO. Una sola celda de la rejilla, con las dos
+          cosas que acompañan al voltaje sin competir con el.
+        */}
+        {/* 🔴 LOS DOS EN FILA, NO APILADOS. Apilados —y aún más repartidos con
+            `justify-between`— el raíl medía 150 px de alto y **era él quien fijaba
+            la altura de la fila**: con el robot apagado, cuando el voltaje es una
+            raya de 24 px, la celda del hero quedaba con 120 px de papel debajo.
+            Uno al lado del otro el raíl mide lo que mide una etiqueta y su cifra,
+            y la fila deja de estar gobernada por lo subordinado. */}
+        <div className="grid grid-cols-2 gap-x-5 gap-y-4 px-5 pb-4 pt-4">
+          {/* 🔴 EL ROTULO, ACORTADO. «Porcentaje que reporta el firmware (no
+              decide nada)» son 51 caracteres en versalitas espaciadas; el matiz
+              baja a la nota. Y aqui la escala es `.cifra-menor` a mano y no
+              `Dato`: `Dato` pinta en `.cifra` —28-36 px—, que al lado de la
+              cifra hero volveria a empatar el dato desautorizado con el bueno. */}
+          <div>
+            {/* ⚠️ «Porcentaje del firmware» son 23 caracteres en versalitas
+                espaciadas: en esta columna partia en dos renglones y el rotulo
+                acababa siendo mas alto que su propia cifra. El matiz baja a la
+                nota, que es donde `Dato` documenta que va lo que el numero no
+                dice por si mismo. */}
+            <div className="microetiqueta">Porcentaje</div>
+            <div className="mt-1">
+              {pct === null ? (
+                <span className="hueco text-lg leading-none" title={SIN_DATO}>—</span>
+              ) : (
+                <data value={String(pct)} className="cifra-menor text-muted-foreground">
+                  {numero(pct, 0)}
+                  <span className="unidad">%</span>
+                </data>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground/80">
+              Del firmware. No decide nada: es una estimación gruesa.
+            </p>
+          </div>
+
+          {/*
+            🔴 LOS UMBRALES SUBEN A LA PANTALLA, Y SALEN DEL DESPLEGABLE.
+
+            Estaban en el «Por qué», o sea plegados. Son CONSTANTES medidas del
+            firmware, así que —al contrario que el voltaje— se pintan igual con el
+            robot apagado: con el RVR fuera, esta tarjeta pasa de tener cero
+            cifras a tener dos. Es la misma regla por la que `Dato` pinta su
+            `referencia` aunque no haya dato.
+
+            ⚠️ En `.cifra-menor` y en tinta secundaria: son el patrón contra el
+               que se lee el voltaje, no una medida. Nunca la escala del valor.
+          */}
+          <div>
+            <div className="microetiqueta">Umbrales</div>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
+              <span className="flex items-baseline gap-1.5">
+                <span className="cifra-menor text-muted-foreground">{voltios(V_BAJA)}</span>
+                <span className="text-[11px] text-muted-foreground">baja</span>
+              </span>
+              <span className="flex items-baseline gap-1.5">
+                <span className="cifra-menor text-muted-foreground">{voltios(V_CRITICA)}</span>
+                <span className="text-[11px] text-muted-foreground">crítica</span>
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground/80">
+              Del firmware, con 0,2 V de histéresis.
+            </p>
+          </div>
+        </div>
       </div>
 
       <Contexto>
-        <p>
-          Umbrales del firmware: <strong>baja</strong> por debajo de {voltios(V_BAJA)} y{' '}
-          <strong>crítica</strong> por debajo de {voltios(V_CRITICA)}, con 0,2 V de histéresis.
-        </p>
         <p>
           El porcentaje llega como fracción 0-1 y aquí ya va multiplicado por 100. Es una
           estimación gruesa del firmware: marcó <strong>100 % con la batería a 8,29 V</strong>, a

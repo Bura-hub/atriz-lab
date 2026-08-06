@@ -73,7 +73,18 @@ export interface PropsDato {
  *    pinta entera como texto: `partirUnidad` no fuerza nada.
  */
 function Referencia({ texto }: { texto: string }) {
-  const m = /^([\d.,+-]+)\s*(.*)$/.exec(texto.trim())
+  /*
+   * 🔴 UN SOLO NUMERO SUELTO, Y NADA MAS. La primera version aceptaba cualquier
+   *    racimo de digitos y signos, asi que «99-102 % de lo que se le pide» sacaba
+   *    «99-102» a 22 px partido en dos renglones — una referencia que es un
+   *    RANGO no tiene una cifra que destacar, y agrandar media la desfiguraba.
+   *    Lo vio un agente al mirar la captura, no leyendo el codigo.
+   *
+   * → Se exige un numero con separador decimal opcional **seguido de un
+   *   espacio**. Con eso «0,199 m/s» sube y «99-102 %» se queda como texto, que
+   *   es lo correcto: si no hay una cifra unica, no hay nada que destacar.
+   */
+  const m = /^([+-]?\d+(?:[.,]\d+)?)\s+(.*)$/.exec(texto.trim())
   if (m === null) return <span>{texto}</span>
   return (
     <span className="flex items-baseline gap-1.5">

@@ -168,7 +168,13 @@ export function PanelNoObedece() {
     pestanaOculta: oculta,
   })
 
-  const hayConfirmada = causas.some((c) => c.estado === 'CONFIRMADA')
+  /*
+    Las que ENCAJAN, separadas de las examinadas. `diagnosticar()` devuelve todas
+    las que sabe mirar con su estado, asi que «cuantas hay» y «cuantas encajan»
+    son dos numeros distintos — y confundirlos es afirmar de mas.
+  */
+  const confirmadas = causas.filter((c) => c.estado === 'CONFIRMADA')
+  const hayConfirmada = confirmadas.length > 0
 
   /*
    * `-1` en `antiguedad_odom_s` NO es «hace cero segundos»: es «nunca se ha
@@ -186,19 +192,53 @@ export function PanelNoObedece() {
            a la palabra que ya lo dice —«encaja», «encajan»—: una de cada doce
            personas no distingue el coral del lima, y esto se proyecta.
       */}
-      <section className="vidrio rounded-ficha px-6 py-7 sm:px-8">
-        <p className="microetiqueta">Veredicto</p>
-        <h2
-          className={`mt-3 font-semibold leading-[1.12] tracking-tight ${
-            hayConfirmada ? 'text-estado-ir' : 'text-foreground'
-          }`}
-          style={{ fontSize: 'clamp(1.5rem, 2.6vw, 2rem)' }}
-        >
-          {resumen(causas)}
-        </h2>
-        <p className="mt-3.5 max-w-prose text-sm leading-relaxed text-muted-foreground">
-          En orden de probabilidad. No se elige una causa: se enseñan todas las que encajan.
-        </p>
+      {/*
+        🔴 DOS COLUMNAS, Y LA DERECHA NO ES RELLENO. La banda ocupaba el ancho
+           entero con su contenido en el 45 % izquierdo -~600×150 px de blanco a
+           la derecha- y, peor, decía «una causa encaja» **sin decir cuál**: la
+           causa vivía 400 px más abajo, fuera del golpe de vista de alguien que
+           mira esto proyectado. El hueco se cierra con la única información que
+           faltaba, no con adorno.
+      */}
+      <section className="vidrio flex flex-wrap items-baseline justify-between gap-x-8 gap-y-4 rounded-ficha px-6 py-7 sm:px-8">
+        <div className="min-w-0">
+          <p className="microetiqueta">Veredicto</p>
+          <h2
+            className={`mt-3 font-semibold leading-[1.12] tracking-tight ${
+              hayConfirmada ? 'text-estado-ir' : 'text-foreground'
+            }`}
+            style={{ fontSize: 'clamp(1.5rem, 2.6vw, 2rem)' }}
+          >
+            {resumen(causas)}
+          </h2>
+          <p className="mt-3.5 max-w-prose text-sm leading-relaxed text-muted-foreground">
+            En orden de probabilidad. No se elige una causa: se enseñan todas las que encajan.
+          </p>
+        </div>
+
+        {/*
+          🔴 LA PRIMERA CONFIRMADA, NO LA PRIMERA DE LA LISTA. `diagnosticar()`
+             devuelve TODAS las causas que sabe mirar, cada una con su estado
+             -confirmada, posible, descartada, no se sabe-, no solo las que
+             encajan. Coger `causas[0]` habria enseñado la primera EXAMINADA como
+             si fuera la culpable: una afirmación falsa en la pantalla cuyo
+             trabajo entero es no afirmar de más.
+
+          Y si no hay ninguna confirmada no se pinta nada aquí: el veredicto ya
+          dice «ninguna de las causas conocidas encaja», y añadir una «más
+          probable» sería justo la elección que esta pantalla se niega a hacer.
+        */}
+        {confirmadas.length > 0 && (
+          <div className="min-w-[13rem] shrink-0 sm:text-right">
+            <p className="microetiqueta">La primera que encaja</p>
+            <p className="mt-2 text-[19px] font-semibold leading-snug text-estado-ir">
+              {confirmadas[0].titulo}
+            </p>
+            <p className="microetiqueta mt-2">
+              {confirmadas.length} de {causas.length} miradas
+            </p>
+          </div>
+        )}
       </section>
 
       {/*

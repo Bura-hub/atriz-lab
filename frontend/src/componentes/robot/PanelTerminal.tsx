@@ -25,6 +25,7 @@
 
 import { ReactNode } from 'react'
 import { AVISOS_ESPACIO, ESPACIO } from '@/lib/taller/espacio'
+import { Aviso } from '@/componentes/ui/Aviso'
 import { Insignia } from '@/componentes/ui/Insignia'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
@@ -96,11 +97,19 @@ const REQUISITOS: readonly { titulo: string; porque: string }[] = [
  */
 function Hueco({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-[300px] flex-col rounded-md border border-dashed border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
+    /*
+      ⚠️ 210 px y no 300. A 300 con el texto centrado quedaban ~110 px de vacio
+         encima y otros 110 debajo, dos veces: se leia como un componente que no
+         termino de cargar, no como un chasis. El argumento del comentario -que
+         la caja no sea mas baja que las tarjetas de debajo- se cumple igual.
+    */
+    <div className="flex min-h-[210px] flex-col rounded-md border border-dashed border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
       <p className="microetiqueta border-b border-[rgb(var(--filo)/0.12)] px-4 py-2.5">
         {etiqueta}
       </p>
-      <div className="flex flex-1 items-center px-4 py-5">
+      {/* `items-start`: el texto queda pegado bajo su rotulo y el hueco de abajo
+          se lee como «aqui ira el codigo», que es lo que es. */}
+      <div className="flex flex-1 items-start px-4 py-5">
         <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">{children}</p>
       </div>
     </div>
@@ -231,12 +240,20 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
           En un `div` con su relleno: el cuerpo de `Tarjeta` va a sangre.
         */}
         <div className="px-5 py-5">
-          <ol className="grid gap-4 md:grid-cols-3">
+          {/* `items-start`: sin el, las tres fichas se estiran a la altura de la
+              mas larga y la tercera -una linea- se quedaba con ~210 px de blanco
+              dentro. `PanelNoObedece` ya resuelve este mismo caso asi, con su
+              motivo escrito: una pantalla hacia bien lo que la otra hacia mal. */}
+          <ol className="grid items-start gap-4 md:grid-cols-3">
             {CADENA.map((c) => (
               <li key={c.paso} className="pozo-interior flex flex-col p-4">
                 <div className="flex items-baseline gap-3">
                   <span className="cifra-menor text-muted-foreground/45">{c.paso}</span>
-                  <span className="microetiqueta text-estado-mirar">{c.estado}</span>
+                  {/* Sin `--estado-mirar`: es un color del vocabulario de ESTADO
+                      y estas tres palabras no hablan del robot, hablan de lo que
+                      falta por construir. El ordinal y la palabra ya las
+                      separan. */}
+                  <span className="microetiqueta">{c.estado}</span>
                 </div>
                 <h3 className="mt-3 text-base font-semibold leading-snug tracking-tight">
                   {c.titulo}
@@ -308,14 +325,29 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
         {/* Mismo arreglo que en «no obedece»: los topos son de CSS, no un `·`
             tecleado dentro del texto —que se lleva el sangrado por delante y no
             lo ve ningún lector de pantalla—. */}
+        {/*
+          🔴🔴 ESTO ERA DOS PARRAFOS ENTEROS EN AMBAR, Y EL AMBAR ES ESTADO.
+
+          `--estado-mirar` significa «este robot pide que lo mires». Aqui teñia
+          dos avisos que **no dicen nada del robot** —hablan del espacio que hace
+          falta para que una practica no choque contra nada—, asi que el color
+          afirmaba algo falso. Y su hue es casi identico al de `--seccion-porque`
+          (166 78 8), asi que la pantalla violeta llevaba ademas pegotes del color
+          identitario de OTRA pantalla.
+
+          Son advertencias de seguridad de verdad, asi que no pierden peso: pasan
+          a un `Aviso` con su PALABRA. La regla del muro —«el color nunca va
+          solo»— vale igual al reves: una advertencia no puede ir señalada solo
+          por un color, y menos por uno prestado.
+        */}
         <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 py-4">
-          <ul className="list-disc space-y-2 pl-5 marker:text-estado-mirar/50">
-            {AVISOS_ESPACIO.map((a) => (
-              <li key={a} className="max-w-prose text-[13px] leading-relaxed text-estado-mirar">
-                {a}
-              </li>
-            ))}
-          </ul>
+          <Aviso nivel="ATENCION" titulo="Espacio">
+            <ul className="mt-1 list-disc space-y-1.5 pl-5 marker:text-muted-foreground/50">
+              {AVISOS_ESPACIO.map((a) => (
+                <li key={a} className="max-w-prose leading-relaxed">{a}</li>
+              ))}
+            </ul>
+          </Aviso>
         </div>
       </Tarjeta>
     </div>

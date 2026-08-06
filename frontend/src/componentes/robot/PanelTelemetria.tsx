@@ -50,6 +50,20 @@ function Odometria() {
            170 px. Con tres caben en dos filas y las dos columnas de la banda
            terminan casi a la misma altura. Es la maqueta de Stitch, que pinta la
            odometria en una malla de tres.
+
+        🔴🔴 Y EL `col-span-2` DE LA VELOCIDAD ANGULAR SE RETIRA: PRODUCIA LA
+             CELDA VACIA MAS GRANDE DE LA PANTALLA.
+
+        Medido en una captura de 1400 px: la celda ocupaba dos tercios de la
+        malla —unos 470 px— y dentro solo habia una etiqueta y **una raya de
+        20 px**. Ademas, al no haber tercera celda en esa fila, **la linea
+        vertical entre la segunda y la tercera columna se cortaba tras la primera
+        fila**: la rejilla dejaba de ser una rejilla justo a la mitad.
+
+        La malla se completa con una SEXTA celda de verdad, no con un relleno: el
+        ORIGEN DEL YAW, que es un hueco declarado y ademas el que mas falta hace
+        al lado de «Rumbo (yaw)» — un alumno que lee 0° tiene que saber que eso no
+        es el norte.
       */}
       <div className="rejilla sm:grid-cols-2 xl:grid-cols-3">
         <Dato etiqueta="Posición X" valor={metros(numeroValido(pos?.x))}
@@ -68,16 +82,35 @@ function Odometria() {
           crudo={numeroValido(lineal?.x) ?? undefined}
           referencia="meseta real 0,199 m/s pidiendo 0,20"
         />
+        {/* 🔴 `nota` Y NO `referencia`, y la diferencia se vio en una captura:
+            `Referencia` parte el texto por su primer número y lo pinta en
+            `.cifra-menor` — con «99-102 %» eso daba un «99-102» de 22 px partido
+            en dos renglones dentro de la celda, o sea una cifra enorme para un
+            dato que ni siquiera es del robot. En una `.rejilla` las tres celdas de
+            una fila comparten alto, así que lo que hace falta aquí es una línea
+            subordinada, no una cifra. */}
+        <Dato etiqueta="Velocidad angular" valor={radianesPorSegundo(numeroValido(angular?.z))}
+          crudo={numeroValido(angular?.z) ?? undefined}
+          nota="Alcanza el 99-102 % de lo pedido entre 0,5 y 2,0 rad/s." />
         {/*
-          🔴 `col-span-2`: son CINCO datos, asi que en una malla par el hueco
-             sobrante salia como una celda gris vacia — una casilla que no
-             significa nada en una pantalla donde todo significa algo. Con dos
-             columnas ocupa la fila entera; con tres, dos tercios.
+          🔴 UN HUECO DECLARADO, Y SIEMPRE. Este no es un dato que falte por
+             estar el robot apagado: **no llega por ningun topic y no va a
+             llegar**. El driver resta el yaw del arranque antes de publicar
+             `/odom`, asi que el origen se queda en su log y aqui no hay nada que
+             leer. Y el RVR no tiene rumbo absoluto con el que reponerlo:
+             `magnetometer_calibrate_to_north` se acepta sin error y es un no-op
+             —ni gira el robot ni emite notificacion—, comprobado mirando el
+             robot.
+
+             Se pinta con la misma anatomia que los otros cinco -rotulo, raya,
+             nota- para que la malla cierre sin una casilla de relleno, que es lo
+             que este proyecto llama «un hueco callado».
         */}
-        <div className="sm:col-span-2">
-          <Dato etiqueta="Velocidad angular" valor={radianesPorSegundo(numeroValido(angular?.z))}
-            crudo={numeroValido(angular?.z) ?? undefined} />
-        </div>
+        <Dato
+          etiqueta="Origen del yaw"
+          valor={SIN_DATO}
+          nota="0° es «donde miraba al arrancar», nunca el norte."
+        />
       </div>
 
       <Contexto>
@@ -87,6 +120,12 @@ function Odometria() {
         Sobre una práctica de 15 min eso son decenas de grados, y poner la odometría a cero no lo
         corrige: pone el origen a cero, no la deriva. Desaparece sola dejando el robot un rato en
         marcha.
+      </p>
+      <p>
+        El origen del rumbo no se puede recuperar desde aquí, y por eso está declarado como hueco:
+        el driver resta el yaw del arranque antes de publicar, así que ese valor se queda en su
+        registro. Y el RVR tampoco tiene rumbo absoluto con el que reponerlo — la calibración al
+        norte magnético se acepta sin dar error y no hace nada, comprobado mirando el robot.
       </p>
       </Contexto>
     </Tarjeta>
@@ -144,20 +183,46 @@ function Encoders() {
  * `Grupo` pone el rotulo y la fuente, que es donde esa diferencia se vuelve
  * visible sin gastar una tarjeta en explicarla.
  *
- * 📝 El orden es el de la maqueta de Stitch: flujo, sondeo, salidas. El voltaje
- *    —el signo vital— no se pierde por ir en la segunda banda: `VoltajeDelMarco`
- *    ya lo lleva a la franja de las seis pestañas, encima del pliegue.
+ * 🔴🔴 Y LA BATERIA ABRE LA PANTALLA, EN SU PROPIA BANDA Y A ANCHO COMPLETO.
+ *
+ * Estaba dentro de la banda de sondeo, en una malla de dos columnas, EMPATADA
+ * con la de motores y en la SEGUNDA banda de la pagina. Con el robot apagado
+ * —el estado mas frecuente del laboratorio— eso dejaba la pantalla **sin un solo
+ * elemento que dominara**: cinco tarjetas del mismo rango, todas llenas de
+ * rayas. El voltaje es el signo vital de este robot y el unico valido por regla
+ * del proyecto (el porcentaje dijo 100 % con la bateria a 8,29 V), asi que abre.
+ *
+ * 📝 Va en su propia banda y no suelta encima de la primera: `/battery_state`
+ *    llega cada 30,0 s y ese dato -de donde sale y cada cuanto- es lo que impide
+ *    leer un voltaje de hace medio minuto como si fuera de ahora. Sin banda, la
+ *    unica tarjeta de la pagina sin procedencia seria justo la que manda.
+ *
+ * 📝 El resto del orden sigue siendo el de la maqueta de Stitch: flujo, sondeo,
+ *    salidas. Y `VoltajeDelMarco` sigue llevando el voltaje a la franja de las
+ *    seis pestañas, que responde a la misma pregunta sin cambiar de pantalla.
  */
 export function PanelTelemetria() {
   /*
     Las columnas son `flex flex-col`, no celdas de rejilla: asi una tarjeta corta
     se apila bajo la de arriba en vez de estirarse, y el dia que una banda gane
     una tarjeta nueva no hay que tocar el reparto.
+
+    🔴 `[&>section]:flex-1`: sin esto las dos tarjetas de la banda **cerraban a
+       alturas distintas** —la de encoders acababa 46 px antes que la de
+       odometria— y la banda se leia rota por abajo. Con el, las dos llegan a la
+       misma linea.
   */
-  const columna = 'flex flex-col gap-4'
+  const columna = 'flex flex-col gap-4 [&>section]:flex-1'
 
   return (
     <div className="space-y-8">
+      <Grupo
+        titulo="Signo vital"
+        fuente="/battery_state · cada 30,0 s exactos, es el latido del keepalive"
+      >
+        <Bateria />
+      </Grupo>
+
       {/*
         📝 LA `fuente` ES UNA LINEA, NO UNA EXPLICACION. La primera version metia
            aqui el porque del muestreo entero y cruzaba la pantalla de lado a
@@ -182,14 +247,17 @@ export function PanelTelemetria() {
         </div>
       </Grupo>
 
+      {/*
+        Motores se queda SOLO en su banda y a ancho completo: la bateria se fue a
+        abrir la pantalla, y media tarjeta vacia al lado habria sido peor que una
+        entera. Sus cuatro medidas pasan a una malla de cuatro en pantalla ancha
+        (ver `EstadoMotores`).
+      */}
       <Grupo
         titulo="Sondeo del driver"
-        fuente="/battery_state y /motor_status · cada 30 s, así que un valor puede tener medio minuto"
+        fuente="/motor_status · cada 30 s, así que un valor puede tener medio minuto"
       >
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className={columna}><Bateria /></div>
-          <div className={columna}><EstadoMotores /></div>
-        </div>
+        <EstadoMotores />
       </Grupo>
 
       {/*

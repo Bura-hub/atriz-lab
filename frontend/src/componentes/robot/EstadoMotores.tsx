@@ -136,7 +136,13 @@ export function EstadoMotores() {
            valor. El matiz no se pierde: baja al «Por qué» del final, que es el
            unico sitio donde cabe sin descuadrar una fila de la rejilla.
       */}
-      <div className="rejilla sm:grid-cols-2">
+      {/*
+        🔴 CUATRO COLUMNAS EN PANTALLA ANCHA. Esta tarjeta compartia banda con la
+           de bateria a media anchura; ahora la ocupa entera, y con dos columnas
+           cada celda medía ~530 px para una cifra de 36 px y una etiqueta corta.
+           Las cuatro medidas son del mismo rango y se leen mejor en fila.
+      */}
+      <div className="rejilla sm:grid-cols-2 xl:grid-cols-4">
         <Dato
           etiqueta="Oruga izquierda"
           valor={celsius(m?.temperatura_izquierdo)}
