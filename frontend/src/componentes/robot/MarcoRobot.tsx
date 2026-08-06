@@ -39,7 +39,7 @@ import { urlDeRobot } from '@/lib/rosbridge/transporte'
 import { DestinoRobot, destinoParaTransporte, etiquetaRobot } from '@/lib/interfaz/identidad'
 import { VoltajeDelMarco } from './Bateria'
 import { BotonParada } from './BotonParada'
-import { InsigniaEnlace, InsigniaEnlaceSobreCampo } from './EstadoEnlace'
+import { InsigniaEnlace } from './EstadoEnlace'
 
 /*
  * 🔴 LAS PESTAÑAS YA NO VIVEN AQUI. Se fueron al raíl
@@ -110,37 +110,30 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
             {String(destino.numero).padStart(2, '0')}
           </span>
         )}
-        <div className="relative mx-auto max-w-6xl px-4 pb-7 pt-6 sm:px-6">
-          <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-            <div className="min-w-0">
-              <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <span className="microetiqueta !text-white/85">{etiquetaRobot(destino)}</span>
-                <code className="font-mono text-[11px] text-white/60">{url}</code>
-              </p>
-              {/*
-                El título de pantalla, por fin. `clamp` y no un tamaño fijo:
-                cae de 2,6 rem en un portátil a 1,9 en un móvil sin puntos de
-                corte, que es donde se leía peor.
-              */}
-              <h1
-                className="mt-1.5 font-semibold leading-[0.95] tracking-[-0.035em]"
-                style={{ fontSize: 'clamp(1.9rem, 3.6vw, 2.6rem)' }}
-              >
-                {seccion?.texto ?? etiquetaRobot(destino)}
-              </h1>
-            </div>
-            <div className="flex items-center gap-3">
-              {tono === null ? <InsigniaEnlace sobreBarra /> : <InsigniaEnlaceSobreCampo />}
-              {/*
-                «socket abierto/cerrado» y no «robot conectado»: lo que el
-                navegador sabe es el estado de SU WebSocket. Un socket abierto
-                contra un robot mudo sigue diciendo «abierto», y eso es exacto.
-              */}
-              <span className="text-xs text-white/70">
-                socket {conectado ? 'abierto' : 'cerrado'}
-              </span>
-            </div>
-          </div>
+        {/*
+          🔴 LA BANDA SE QUEDA SOLO CON IDENTIDAD Y TITULO, y los signos vitales
+             bajan enteros a la franja. Antes la insignia de enlace y el «socket
+             cerrado» iban aqui arriba a la derecha, y **caian justo encima de la
+             cifra fantasma**: se leian las dos superpuestas y ninguna se leia
+             bien. Ademas dejaban los signos vitales repartidos en dos zonas
+             -enlace arriba, bateria abajo- cuando son la misma pregunta.
+        */}
+        <div className="relative mx-auto max-w-6xl px-4 pb-9 pt-7 sm:px-6">
+          <p className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+            <span className="microetiqueta !text-white/85">{etiquetaRobot(destino)}</span>
+            <code className="font-mono text-[11px] text-white/60">{url}</code>
+          </p>
+          {/*
+            El título de pantalla, por fin. `clamp` y no un tamaño fijo: cae de
+            2,6 rem en un portátil a 1,9 en un móvil sin puntos de corte, que es
+            donde se leía peor.
+          */}
+          <h1
+            className="mt-2 font-semibold leading-[0.95] tracking-[-0.035em]"
+            style={{ fontSize: 'clamp(1.9rem, 3.6vw, 2.6rem)' }}
+          >
+            {seccion?.texto ?? etiquetaRobot(destino)}
+          </h1>
         </div>
       </header>
 
@@ -173,9 +166,36 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
              para que el rotulo entre en una linea, que es lo unico que importa-
              y el hueco que queda es respiro entre dos cosas, no un vacio.
         */}
-        <div className="mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-x-8 gap-y-4 px-4 py-4 sm:px-6">
+        {/*
+          🔴 TRES BLOQUES, NO DOS, Y ESO CIERRA LA MAYOR ZONA MUERTA DE LA APP.
+             Con `justify-between` y solo dos hijos —voltaje y parada— quedaban
+             ~550 px de blanco puro en el centro, justo por encima del pliegue y
+             justo donde entra el ojo. El hueco no se rellena con adorno: se
+             rellena con el OTRO signo vital, que estaba arriba compitiendo con
+             la cifra fantasma. Bateria y enlace responden a la misma pregunta
+             -«¿este robot esta vivo?»- y ahora se leen juntos.
+        */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-start gap-x-10 gap-y-4 px-4 py-3.5 sm:px-6">
           <VoltajeDelMarco />
-          <div className="w-full shrink-0 sm:w-[23rem]">
+
+          <div className="flex flex-col gap-1">
+            <span className="microetiqueta">Enlace</span>
+            <span className="flex flex-wrap items-center gap-2.5">
+              <InsigniaEnlace sobreBarra />
+              {/*
+                «socket abierto/cerrado» y no «robot conectado»: lo que el
+                navegador sabe es el estado de SU WebSocket. Un socket abierto
+                contra un robot mudo sigue diciendo «abierto», y eso es exacto.
+              */}
+              <span className="text-xs text-muted-foreground">
+                socket {conectado ? 'abierto' : 'cerrado'}
+              </span>
+            </span>
+          </div>
+
+          {/* `ml-auto`: la parada se ancla a la derecha sin `justify-between`,
+              que es lo que abria el hueco cuando solo habia dos bloques. */}
+          <div className="w-full shrink-0 sm:ml-auto sm:w-[23rem]">
             <BotonParada teleoperacion={teleoperacion} />
           </div>
         </div>

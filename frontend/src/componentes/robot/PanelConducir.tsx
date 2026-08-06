@@ -261,9 +261,16 @@ function CruzDeMando({
         onClick={pararSeguro}
         className={`col-start-2 row-start-2 ${celda} flex-col gap-1 hover:border-[rgb(var(--estado-ir)/0.5)] hover:bg-[rgb(var(--estado-ir)/0.07)] active:scale-[0.96]`}
       >
+        {/*
+          🔴 `--destructive` Y NO `--estado-ir`, aunque valgan lo mismo. Los
+             `--estado-*` significan «esto es un HECHO sobre el robot», y este
+             punto esta en un control EN REPOSO: teñirlo con el color de un hecho
+             confirmado afirma algo que no ha pasado. `--destructive` es el token
+             de «accion que corta», que es lo que este boton hace.
+        */}
         <span
           aria-hidden="true"
-          className="block h-3.5 w-3.5 rounded-full bg-[rgb(var(--estado-ir))]"
+          className="block h-3.5 w-3.5 rounded-full bg-[rgb(var(--destructive))]"
         />
         <span className="text-[9px] uppercase tracking-[0.12em] text-muted-foreground">parar</span>
       </button>

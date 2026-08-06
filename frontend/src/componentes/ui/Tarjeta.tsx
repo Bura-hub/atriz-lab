@@ -72,13 +72,26 @@ export function Tarjeta({ titulo, subtitulo, extremo, pie, children }: PropsTarj
       */}
       <header className="capucha flex items-start justify-between gap-3 px-5 pb-4 pt-5">
         <div>
-          <h2 className="filete-titulo text-base font-semibold tracking-tight text-foreground">
+          {/*
+            🔴 EL ESCALON QUE FALTABA. Los tres revisores independientes dieron
+               el mismo veredicto: hay un titular de 60-78 px y despues **nada**
+               hasta los 16 px de esto, con el cuerpo a 14. Entre el titulo de
+               una tarjeta y el parrafo de dentro habia 3 px de diferencia, asi
+               que dentro de la ficha no mandaba nada y todo se leia como el
+               mismo material gris. Es la causa literal del «los titulos se ven
+               pequeños, todo esta muy plano».
+
+               19 px es el `card-title` de las maquetas de Stitch, y deja la
+               relacion titulo/cuerpo en 1,27 — por encima de 1,25, que es donde
+               un escalon se empieza a ver.
+          */}
+          <h2 className="filete-titulo text-[19px] font-semibold leading-tight tracking-tight text-foreground">
             {titulo}
           </h2>
           {subtitulo !== undefined && (
             /* `pl-3` = el ancho que el filete del título le roba a su línea:
                sin esto el subtítulo empieza 12 px a la izquierda del título. */
-            <p className="mt-1.5 max-w-prose pl-3 text-xs leading-snug text-muted-foreground">
+            <p className="mt-1.5 max-w-prose pl-3 text-[13px] leading-snug text-muted-foreground">
               {subtitulo}
             </p>
           )}

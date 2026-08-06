@@ -75,9 +75,24 @@ export function Dato({
    * llego. La explicacion de POR QUE no se sabe va una vez por tarjeta, no una
    * vez por campo.
    */
+  /*
+   * 🔴 EL VALOR PASA A LA ESCALA DE CIFRAS, Y ANTES ERA 20 px.
+   *
+   * Esto pintaba `text-xl` (20) para un valor normal y `text-3xl` (30) para el
+   * modo «grande». Las maquetas de Stitch pintan los valores de odometria y
+   * temperatura a 40-48 px con la etiqueta en monoespaciada de 11 — y el dato
+   * medido ES el contenido de esta aplicacion. Un instrumento cuyo numero pesa
+   * lo mismo que el parrafo de al lado obliga a buscarlo, y aqui se busca con el
+   * robot moviendose delante.
+   *
+   * ⚠️ El HUECO no crece con el valor, y es deliberado: sigue siendo una raya
+   *    pequeña y apagada. Si la ausencia creciera igual que el dato, una pantalla
+   *    sin conexion —el estado mas frecuente del laboratorio— saldria llena de
+   *    rayas enormes, que es justo el falso peso que `Dato` existe para evitar.
+   */
   const clases = desconocido
     ? 'hueco text-lg leading-none'
-    : `font-mono tracking-tight ${grande === true ? 'text-3xl font-semibold' : 'text-xl'}`
+    : (grande === true ? 'cifra-hero' : 'cifra')
 
   // 🔴 El numero manda, la unidad acompaña. Ver `partirUnidad()`: es informacion,
   //    no adorno — un multimetro no pinta «8,23» y «V» al mismo peso.
@@ -86,7 +101,10 @@ export function Dato({
   return (
     // Ritmo: apretado DENTRO del dato (etiqueta pegada al valor), generoso
     // ENTRE datos. `craft-floor`: «tight groups, generous separation».
-    <div className="px-4 py-3">
+    /* `px-5`, el mismo que la cabecera de `Tarjeta`: con `px-4` la columna de
+       etiquetas caia 4 px a la izquierda de la columna del titulo, y en una
+       rejilla de cuatro celdas eso son cuatro desalineaciones visibles. */
+    <div className="px-5 py-3.5">
       {/*
         La microetiqueta sobre el valor. `craft-floor.md:26` de la skill
         `impeccable` prohibe esto sin excepciones -«This one is a ban, not a
@@ -94,7 +112,14 @@ export function Dato({
         (CLAUDE.md): en un instrumento la microetiqueta ES la unidad y el
         contexto del numero, no un adorno de marketing.
       */}
-      <div className="text-[11px] leading-tight text-muted-foreground">{etiqueta}</div>
+      {/*
+        🔴 EN `.microetiqueta`, QUE ES LA CLASE QUE EXISTE PARA ESTO. Iba en el
+           mismo `text-[11px]` que la antiguedad y la nota de abajo, asi que los
+           TRES niveles de una medida —rotulo, valor, subordinadas— se leian como
+           dos. En monoespaciada, espaciada y en versalitas, el ojo distingue una
+           LECTURA DEL ROBOT de algo que escribio una persona sin leer ninguna.
+      */}
+      <div className="microetiqueta">{etiqueta}</div>
 
       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
         {desconocido || crudo === undefined || !Number.isFinite(crudo) ? (
@@ -106,9 +131,8 @@ export function Dato({
         ) : (
           <data value={String(crudo)} className={clases}>
             {cifra}
-            {unidad !== null && (
-              <span className="ml-1 text-[0.62em] font-normal text-muted-foreground">{unidad}</span>
-            )}
+            {/* `.unidad` escala sola con los tres niveles de cifra: 0,42 em. */}
+            {unidad !== null && <span className="unidad">{unidad}</span>}
           </data>
         )}
         {/*
@@ -124,8 +148,27 @@ export function Dato({
            8,5 s» como una sola cosa de dos partes iguales. Son subordinadas del
            valor, y ahora se ven asi.
       */}
+      {/*
+        🔴🔴 LA REFERENCIA SE PINTA SIEMPRE, TAMBIEN SIN DATO — Y ANTES NO.
+
+        Estaba atada a `!desconocido`, o sea que solo salia cuando ya habia un
+        valor con el que compararla. Pero la referencia **no es un dato del
+        enlace**: es una constante medida en el laboratorio y escrita en el
+        codigo -«27,5 °C en reposo», «meseta real 0,199 m/s pidiendo 0,20»-. Con
+        el robot apagado, que es el estado mas frecuente, la pantalla se quedaba
+        con trece rayas y ni una cifra, teniendo esos numeros ahi mismo sin
+        pintar.
+
+        La tabla del diagnostico ya demostraba lo contrario: su columna «medido
+        en el robot» sigue diciendo 16,53 Hz con el robot apagado, y es lo unico
+        que se puede leer en esa pantalla.
+
+        ⚠️ La ANTIGUEDAD si sigue oculta sin dato, y eso no cambia: fecha una
+           llegada, asi que sin llegada no existe. Son dos cosas distintas y por
+           eso dejan de compartir condicion.
+      */}
       {((antiguedad !== undefined && !desconocido && antiguedad !== SIN_DATO)
-        || (referencia !== undefined && !desconocido)) && (
+        || referencia !== undefined) && (
         <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] leading-tight text-muted-foreground">
           {/*
             🔴 Sin prefijos. Los llamantes YA traen la palabra —`hace 7,9 s`,
@@ -136,9 +179,7 @@ export function Dato({
           {antiguedad !== undefined && !desconocido && antiguedad !== SIN_DATO && (
             <span>{antiguedad}</span>
           )}
-          {referencia !== undefined && !desconocido && (
-            <span>{referencia}</span>
-          )}
+          {referencia !== undefined && <span>{referencia}</span>}
         </div>
       )}
 

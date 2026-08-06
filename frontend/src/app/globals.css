@@ -96,6 +96,20 @@
   --seccion-diagnostico: 130 44 96; /* ciruela */
   --seccion-flota: 30 58 210;     /* el muro se queda en cobalto */
   --seccion-cuaderno: 90 92 108;  /* grafito: no habla con ningún robot */
+  --seccion-portada: 91 46 168;   /* violeta: la portada no es el muro */
+
+  /*
+   * 🔴 EL VALOR POR DEFECTO, Y NO SOBRA. `--tono-seccion` lo pone `MarcoRobot`
+   *    en su `<main>`, así que **fuera de las pestañas del robot no existía**: en
+   *    la portada, el muro y el cuaderno, `rgb(var(--tono-seccion) / 0.055)` era
+   *    un valor inválido y la `.capucha` se pintaba transparente — la cabecera de
+   *    la tarjeta quedaba indistinguible de su cuerpo, sin error y sin aviso.
+   *
+   * Es la misma familia que todo lo demás de este proyecto: algo que falla y
+   * parece que funciona. Con el grafito por defecto, una tarjeta fuera de una
+   * pantalla con tono sigue teniendo su capucha y su filete, en gris.
+   */
+  --tono-seccion: var(--estado-neutro);
 
   /*
    * ── LA LUZ AMBIENTE ──────────────────────────────────────────────────────
@@ -568,6 +582,57 @@
     letter-spacing: 0.16em;
     text-transform: uppercase;
     color: rgb(var(--muted-foreground));
+  }
+
+  /*
+   * ── LA ESCALA DE LAS CIFRAS ──────────────────────────────────────────────
+   * 🔴🔴 EL DATO MEDIDO ES EL CONTENIDO DE ESTA APLICACIÓN, Y SE PINTABA A 20 px.
+   *
+   * `Dato` usaba `text-xl` (20 px) para un valor y `text-3xl` (30) para el modo
+   * «grande». Las maquetas de Stitch —que son la referencia acordada— pintan el
+   * voltaje de cabecera a ~72 px y los valores de odometría y temperatura a
+   * 40-48, con la etiqueta en monoespaciada de 11. La diferencia no es de gusto:
+   * decide si un instrumento se lee de un vistazo o hay que acercarse.
+   *
+   * Tres niveles, y ninguno más:
+   *
+   *   .cifra-hero   el dato que MANDA en la pantalla. Uno por pantalla, como
+   *                 mucho — si hay dos, no manda ninguno.
+   *   .cifra        el valor normal de una malla de datos.
+   *   .cifra-menor  un valor subordinado, dentro de otra cosa.
+   *
+   * `clamp` y no tamaños fijos: en un portátil de aula estas cifras tienen que
+   * caber al lado de su etiqueta, y en el proyector tienen que crecer.
+   *
+   * 📝 `tabular-nums` ya es global (`body`), pero se repite aquí porque estas
+   *    clases pueden acabar en un contexto que lo haya reseteado, y una cifra que
+   *    cambia de ancho al actualizarse sugiere un cambio donde no lo hay.
+   */
+  .cifra-hero,
+  .cifra,
+  .cifra-menor {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    font-weight: 600;
+  }
+
+  .cifra-hero { font-size: clamp(2.6rem, 5vw, 3.6rem); }
+  .cifra { font-size: clamp(1.75rem, 2.6vw, 2.25rem); }
+  .cifra-menor { font-size: 1.375rem; }
+
+  /*
+   * La unidad acompaña, no manda. `craft-floor`: un multímetro no pinta «8,23» y
+   * «V» al mismo peso. Va a 0,42 del tamaño de su cifra y en tinta secundaria,
+   * así que escala sola con los tres niveles de arriba.
+   */
+  .unidad {
+    font-size: 0.42em;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: rgb(var(--muted-foreground));
+    margin-left: 0.22em;
   }
 
   /*

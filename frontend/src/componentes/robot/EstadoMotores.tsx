@@ -99,35 +99,49 @@ export function EstadoMotores() {
       // rayas y la insignia no añade nada. `null` es «no se sabe».
       extremo={atascado === null ? undefined : insigniaDeHecho(atascado, 'atasco', 'sin atasco')}
     >
+      {/*
+        🔴 LOS ROTULOS SON CORTOS A PROPOSITO, Y LO QUE SOBRABA BAJO A `nota`.
+           `Dato` pinta la etiqueta como microetiqueta -monoespaciada, versalitas,
+           espaciada-, que es lo que separa «lectura del robot» de «frase que
+           escribio una persona». Con eso, un rotulo de 50 caracteres como
+           «Estado termico izquierdo (en crudo)» deja de ser una etiqueta y pasa a
+           ser un bloque de mayusculas de dos lineas que grita mas que su propio
+           valor. El matiz no se pierde: baja a la nota, que es su sitio.
+      */}
       <div className="rejilla sm:grid-cols-2">
         <Dato
-          etiqueta="Temperatura oruga izquierda"
+          etiqueta="Oruga izquierda"
           valor={celsius(m?.temperatura_izquierdo)}
           crudo={m?.temperatura_izquierdo}
           antiguedad={antiguedad(fTermico)}
           referencia="27,5 °C en reposo"
         />
         <Dato
-          etiqueta="Temperatura oruga derecha"
+          etiqueta="Oruga derecha"
           valor={celsius(m?.temperatura_derecho)}
           crudo={m?.temperatura_derecho}
           antiguedad={antiguedad(fTermico)}
           referencia="28,3 °C en reposo"
         />
         <Dato
-          etiqueta="Estado térmico izquierdo (en crudo)"
+          etiqueta="Térmico izquierdo"
           valor={numero(m?.estado_termico_izquierdo, 0)}
           crudo={m?.estado_termico_izquierdo}
-          nota="0 es normal. Los demás valores los define el RVR y este proyecto no los ha caracterizado: se enseñan sin traducir."
+          nota="En crudo. 0 es normal; los demás valores los define el RVR y este proyecto no los ha caracterizado, así que se enseñan sin traducir."
         />
         <Dato
-          etiqueta="Estado térmico derecho (en crudo)"
+          etiqueta="Térmico derecho"
           valor={numero(m?.estado_termico_derecho, 0)}
           crudo={m?.estado_termico_derecho}
+          nota="En crudo, igual que el izquierdo."
         />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border pt-3">
+      {/* 🔴 `px-5`: sin el, la palabra «Atasco» tocaba el canto izquierdo de la
+          ficha y quedaba cortada por el redondeo — 20 px a la izquierda del
+          titulo. Es el defecto recurrente que `Tarjeta` documenta: el cuerpo va
+          a sangre y lo que no es rejilla pone su propio relleno. */}
+      <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border px-5 pt-3">
         {hechoConAntiguedad('Atasco', atascado, 'oruga trabada', 'sin atasco', fAtasco)}
         {hechoConAntiguedad('Fallo eléctrico', fallo, 'hay fallo', 'sin fallo', fFallo)}
       </div>

@@ -86,7 +86,20 @@ export function VoltajeDelMarco() {
     <div className="flex flex-col gap-1">
       <span className="microetiqueta">Batería</span>
       <span className="flex items-baseline gap-2.5">
-        <span className="font-mono text-2xl tabular-nums text-foreground">{voltios(v)}</span>
+        {/*
+          🔴 LA AUSENCIA NO SE PINTA CON EL PESO DEL DATO, y aqui se habia
+             colado: al subir el voltaje a signo vital, «no se sabe» heredo la
+             monoespaciada de 24 px. Con el robot apagado —el estado mas
+             frecuente del laboratorio— la franja de las seis pestañas gritaba
+             una ausencia con el tamaño de una medida.
+             Es exactamente la regla que `Dato` ya hace cumplir con `.hueco`, y
+             se aplica igual: raya pequeña y apagada, con la frase en `title`.
+        */}
+        {v === null ? (
+          <span className="hueco text-lg leading-none" title={SIN_DATO}>—</span>
+        ) : (
+          <span className="cifra-menor text-foreground">{voltios(v)}</span>
+        )}
         {nivel !== 'DESCONOCIDO' && <Insignia tono={TONO[nivel]}>{nivel}</Insignia>}
       </span>
     </div>
