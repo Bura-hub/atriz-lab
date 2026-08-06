@@ -98,6 +98,10 @@ const RUTAS: readonly [string, string][] = [
   ['conducir', `/robot/${HOST}/conducir`],
   ['LIDAR', `/robot/${HOST}/lidar`],
   ['no obedece', `/robot/${HOST}/no-obedece`],
+  // Añadida el 2026-08-06 con la pantalla. Una pantalla nueva que esta prueba no
+  // recorre es un hueco: sus comprobaciones son de AUSENCIA, asi que lo que no
+  // se visita no se vigila.
+  ['navegar', `/robot/${HOST}/navegar`],
   ['diagnóstico', `/robot/${HOST}/diagnostico`],
 ]
 

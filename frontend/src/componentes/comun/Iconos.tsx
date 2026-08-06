@@ -91,6 +91,24 @@ export function IconoLidar({ className }: PropsIcono) {
   )
 }
 
+/**
+ * Navegar: una chincheta sobre un plano. NO una brujula ni una rosa de los
+ * vientos, y eso es deliberado: **este robot no tiene rumbo absoluto** —el
+ * magnetometro se acepta sin error y es un no-op, comprobado mirando el robot—,
+ * asi que un icono de brujula prometeria justo lo unico que no hay.
+ */
+export function IconoNavegar({ className }: PropsIcono) {
+  return (
+    <svg {...base} className={className}>
+      {/* El plano, con su doblez. */}
+      <path d="M3 6.5l6-2.5 6 2.5 6-2.5v13l-6 2.5-6-2.5-6 2.5z" />
+      <path d="M9 4v13M15 6.5v13" />
+      {/* La chincheta. */}
+      <path d="M15.5 9.5a2 2 0 1 1-4 0 2 2 0 0 1 4 0z" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 /** Diagnostico: un pulso con una lupa implicita. Ritmos y antiguedades. */
 export function IconoDiagnostico({ className }: PropsIcono) {
   return (

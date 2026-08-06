@@ -141,6 +141,52 @@ export interface MensajeColor {
 }
 
 /**
+ * `nav_msgs/msg/OccupancyGrid`.
+ *
+ * 🔴🔴 VA **LATCHEADO**: `RELIABLE + TRANSIENT_LOCAL`. Y `map_server` lo publica
+ *      **una sola vez** al arrancar, al contrario que `slam_toolbox`, que lo
+ *      reemite cada `map_update_interval` (5 s).
+ *
+ * ⚠️ CONSECUENCIA NO VERIFICADA, y hay que decirlo antes de que muerda: rosbridge
+ *    se suscribe con `qos_profile_sensor_data` —BEST_EFFORT y **VOLATILE**— si no
+ *    se le manda un `qos`. Un suscriptor VOLATILE **empareja** con un publicador
+ *    TRANSIENT_LOCAL pero **no recibe lo ya publicado**. Con AMCL, donde el mapa
+ *    se emite una vez, eso significaria que `/map` no llega NUNCA.
+ *
+ *    No se ha podido medir: `atriz-nav.service` esta instalado y no habilitado, y
+ *    sin el no hay `/map` que pedir. La pantalla de navegacion **detecta
+ *    exactamente esta firma** —AMCL vivo y mapa mudo— y la nombra, en vez de
+ *    dejar un canvas vacio que parezca un fallo de dibujo.
+ *
+ *    🔴 Y el arreglo NO es «mandar qos y ya»: rosbridge crea UNA suscripcion ROS
+ *      por topic y **el QoS del primer cliente gobierna a los demas**. Pedir
+ *      TRANSIENT_LOCAL aqui podria dejar mudo a otro consumidor de `/map`. Es una
+ *      decision que hay que MEDIR con Nav2 corriendo, no adivinar.
+ */
+export interface MensajeMapa {
+  header: Cabecera
+  info: {
+    resolution: number
+    width: number
+    height: number
+    origin: { position: Vector3; orientation: Cuaternion }
+  }
+  data: number[]
+}
+
+/**
+ * `geometry_msgs/msg/PoseWithCovarianceStamped`. Lo usan `/amcl_pose` (lectura) y
+ * `/initialpose` (escritura).
+ *
+ * 📝 `/amcl_pose` NO llega con el robot quieto, y no es un fallo: AMCL solo
+ *    actualiza tras moverse `update_min_d` (0,15 m).
+ */
+export interface MensajePoseConCovarianza {
+  header: Cabecera
+  pose: { pose: { position: Vector3; orientation: Cuaternion }; covariance: number[] }
+}
+
+/**
  * `atriz_rvr_msgs/msg/Encoder`. 🔴 `Encoder`, SINGULAR: `Encoders.msg` no existe,
  * y un tipo mal escrito da `InvalidClassException` en rosbridge con el sintoma
  * «ese topic no llega».
@@ -282,6 +328,8 @@ export interface MensajesPorTopic {
   '/odom': MensajeOdometria
   '/imu': MensajeImu
   '/color': MensajeColor
+  '/map': MensajeMapa
+  '/amcl_pose': MensajePoseConCovarianza
   '/encoders': MensajeEncoder
   '/scan': MensajeScan
   '/estado_robot': MensajeEstadoRobot

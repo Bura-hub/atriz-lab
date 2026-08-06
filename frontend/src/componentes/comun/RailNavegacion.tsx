@@ -39,7 +39,8 @@ import { usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
 import {
   IconoConducir, IconoCuaderno, IconoDiagnostico, IconoEntrar, IconoFlota, IconoLidar,
-  IconoNoObedece, IconoPortada, IconoTaller, IconoTelemetria, IconoUsuarios, PropsIcono,
+  IconoNavegar, IconoNoObedece, IconoPortada, IconoTaller, IconoTelemetria, IconoUsuarios,
+  PropsIcono,
 } from './Iconos'
 import { useSesion } from '@/hooks/ContextoSesion'
 
@@ -63,7 +64,7 @@ export interface EntradaRail {
   bloqueada?: boolean
 }
 
-/** Las seis pestañas de un robot, en el orden del documento. */
+/** Las SIETE pestañas de un robot, en el orden del documento. */
 export function pestanasDeRobot(segmento: string): EntradaRail[] {
   const base = `/robot/${segmento}`
   return [
@@ -75,6 +76,20 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
     //    `/scan` es el 83 % del trafico de un robot, asi que su suscripcion
     //    tiene que morir al salir.
     { href: `${base}/lidar`, texto: 'LIDAR', Icono: IconoLidar, color: '--seccion-lidar' },
+    /*
+     * 🔴 «Navegar» va DESPUES del LIDAR y ANTES del diagnostico, no al final.
+     *    El orden de estas pestañas es el del documento: primero lo que se hace
+     *    con el robot (conducir, navegar), luego lo que se mira (telemetria,
+     *    LIDAR) y al final por que falla. Navegar es una ACCION, y ponerla tras
+     *    «Diagnostico» la habria dejado leyendose como un apendice.
+     *
+     * ⚠️ Y NO lleva `bloqueada: true` aunque hoy Nav2 no arranque solo. La
+     *    diferencia con el Taller es real: el Taller **no esta construido**, y
+     *    esta pantalla si — funciona en cuanto alguien levante `atriz-nav`, y
+     *    mientras tanto explica que falta. Marcarla como bloqueada diria que no
+     *    hay nada detras, y lo hay.
+     */
+    { href: `${base}/navegar`, texto: 'Navegar', Icono: IconoNavegar, color: '--seccion-navegar' },
     { href: `${base}/diagnostico`, texto: 'Diagnóstico', Icono: IconoDiagnostico, color: '--seccion-diagnostico' },
   ]
 }

@@ -95,6 +95,18 @@
   --seccion-lidar: 39 78 176;     /* azul */
   --seccion-diagnostico: 130 44 96; /* ciruela */
   /*
+   * Navegar. Magenta profundo (~294°), el hueco que quedaba entre el violeta del
+   * taller (262°) y la ciruela del diagnóstico (324°): 30° de separación con
+   * cada uno, y bastante más oscuro que los dos.
+   *
+   * ⚠️ La rueda está llena, y ese margen de 30° es el más estrecho de los doce.
+   *    Lo dice aquí para que quien añada la pantalla trece sepa que ya no queda
+   *    hue libre y tenga que resolverlo por VALOR, como hizo `--seccion-sesion`,
+   *    en vez de meter un tercer morado. La prueba de colisiones solo comprueba
+   *    igualdad exacta: la cercanía la tiene que juzgar un ojo.
+   */
+  --seccion-navegar: 104 34 112;
+  /*
    * 🔴🔴 ESTE FICHERO INCUMPLIA SU PROPIA REGLA, TRES LINEAS MAS ARRIBA.
    *
    * Justo encima dice que los tonos de identidad son «hues que NO son los tres
