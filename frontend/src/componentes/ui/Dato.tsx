@@ -59,6 +59,30 @@ export interface PropsDato {
   grande?: boolean
 }
 
+/**
+ * El valor MEDIDO EN EL LABORATORIO con el que se compara, con su cifra un
+ * escalon por encima del texto y su coletilla debajo del todo.
+ *
+ * ⚠️ Un escalon, NO dos. Es el patron de comparacion, no la medida: si empatara
+ *    con el valor que llega del robot, un dia alguien leeria la constante
+ *    creyendo que es la lectura. Por eso va en `.cifra-menor` y en tinta
+ *    secundaria, mientras el valor va en `.cifra` o `.cifra-hero` y en tinta
+ *    plena.
+ *
+ * 📝 Si la referencia no empieza por un numero -«en reposo», por ejemplo- se
+ *    pinta entera como texto: `partirUnidad` no fuerza nada.
+ */
+function Referencia({ texto }: { texto: string }) {
+  const m = /^([\d.,+-]+)\s*(.*)$/.exec(texto.trim())
+  if (m === null) return <span>{texto}</span>
+  return (
+    <span className="flex items-baseline gap-1.5">
+      <span className="cifra-menor text-muted-foreground">{m[1]}</span>
+      {m[2] !== '' && <span>{m[2]}</span>}
+    </span>
+  )
+}
+
 export function Dato({
   etiqueta, valor, crudo, antiguedad, referencia, nota, grande,
 }: PropsDato) {
@@ -179,7 +203,23 @@ export function Dato({
           {antiguedad !== undefined && !desconocido && antiguedad !== SIN_DATO && (
             <span>{antiguedad}</span>
           )}
-          {referencia !== undefined && <span>{referencia}</span>}
+          {/*
+            🔴 LA REFERENCIA TIENE SU PROPIO ESCALON, Y NO ES CAPRICHO.
+
+            Con el robot apagado -que es el estado a diseñar- la escala de tres
+            niveles que se construyo **no se renderiza nunca**: todos los valores
+            colapsan en una raya de 18 px. Y los unicos numeros de verdad que
+            quedan en pantalla -«27,5 °C en reposo», «meseta real 0,199 m/s»,
+            «7792 ticks/m»- eran el texto MAS PEQUEÑO que habia, 11 px grises.
+            Una pantalla de instrumento apagada se quedaba sin ninguna ancla
+            legible: quince rayas iguales.
+
+            Ahora el numero de la referencia se parte y se pinta a `.cifra-menor`
+            en tinta secundaria, con la coletilla en 11. Sube un escalon, no dos:
+            **sigue siendo el patron de comparacion, no la medida**. Cuando
+            llegue un dato de verdad, el valor esta dos niveles por encima.
+          */}
+          {referencia !== undefined && <Referencia texto={referencia} />}
         </div>
       )}
 

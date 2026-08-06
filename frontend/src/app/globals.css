@@ -126,6 +126,29 @@
   --luz-b: 34 211 238;
 
   /*
+   * ── LOS FONDOS DE AVISO, OPACOS ──────────────────────────────────────────
+   * 🔴🔴 UNA SUPERFICIE QUE SIGNIFICA ALGO NO PUEDE SER TRASLUCIDA.
+   *
+   * Los avisos se pintaban con el tono al 7-10 % sobre lo que hubiera detras. Y
+   * detras estan los dos orbes de la luz ambiente, que son FIJOS y ocupan
+   * cuadrantes distintos de la pantalla: el resultado, visto en captura, es que
+   * **el mismo aviso empieza crema por la izquierda y acaba verde por la
+   * derecha**, porque el orbe cian vive en el tercio derecho. El color que
+   * porta el nivel del aviso solo existia en un trozo de su propia caja.
+   *
+   * Peor aun con elementos repetidos: dos pastillas identicas a distinta altura
+   * de la pantalla salian de distinto color, asi que parecian decir cosas
+   * distintas.
+   *
+   * → Estos tres son el MISMO tinte ya resuelto sobre la ficha blanca. Opacos,
+   *   asi que valen lo mismo en cualquier punto de la pantalla. La luz ambiente
+   *   no se toca: sigue tiñendo el fondo, que es donde no significa nada.
+   */
+  --aviso-nota: 244 247 255;
+  --aviso-atencion: 245 239 230;
+  --aviso-error: 249 234 232;
+
+  /*
    * ── EL RAÍL Y LA MARCA ───────────────────────────────────────────────────
    * Valores sacados del HTML de la maqueta, no aproximados:
    *   · el raíl NO es el pozo ni la barra: es una superficie propia, más clara
@@ -578,12 +601,29 @@
    * lo que hace que el ojo distinga **una lectura del robot** de **algo que
    * escribió una persona** sin tener que leer ninguna de las dos.
    */
+  /*
+   * 🔴🔴 11,5 px Y TRAQUEO 0,13 — ERAN 10 px Y 0,16, Y ESTE ES EL NIVEL QUE
+   *      NOMBRA TODAS LAS CIFRAS DE LA APLICACION.
+   *
+   * `BATERIA`, `PEDIDO · LINEAL`, `POSICION X`, `EDITOR · TU CODIGO`: todos los
+   * rotulos de dato viven aqui. A 10 px y a 50 cm no se leen — y la escala tenia
+   * ademas **cinco niveles apelmazados entre 10 y 15 px** que a esa distancia se
+   * ven todos iguales, asi que arreglar la cima (41,6 el titulo de pantalla, 19
+   * el de tarjeta) no arreglo el suelo.
+   *
+   * ⚠️ Y lo que mas costaba no era el cuerpo, era el TRAQUEO: 0,16 em separa
+   *    tanto las letras que a este tamaño la palabra deja de leerse como palabra.
+   *    Bajarlo a 0,13 gana mas legibilidad que el punto y medio de cuerpo.
+   *
+   * 📝 Sigue siendo el nivel MAS PEQUEÑO de la aplicacion, y eso no cambia: un
+   *    rotulo no puede competir con su valor. Lo que cambia es que ahora se lee.
+   */
   .microetiqueta {
     font-family: var(--font-geist-mono), ui-monospace, monospace;
-    font-size: 10px;
+    font-size: 11.5px;
     font-weight: 500;
     line-height: 1.2;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.13em;
     text-transform: uppercase;
     color: rgb(var(--muted-foreground));
   }

@@ -49,18 +49,38 @@ export function Grupo({ titulo, fuente, children }: PropsGrupo) {
       */}
       <header className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-[rgb(var(--filo)/0.12)] pb-2">
         {/*
-          El tono de la pantalla, a plena tinta. Aqui SI puede ir saturado
-          —al contrario que en un campo— porque son dos palabras pequeñas: el
-          color identifica, no inunda.
+          🔴 EL CONTENEDOR NO PUEDE LEERSE MAS PEQUEÑO QUE SU CONTENIDO.
+
+          Esto iba en `.microetiqueta` de 11 px sobre tarjetas cuyo titulo son 19
+          semibold: la banda quedaba por debajo de lo que agrupa, asi que no
+          llegaba a estructurar la pagina — se leia como una raya con una
+          etiqueta, no como una division. En las maquetas de Stitch es al reves:
+          «FLUJO CONTINUO DEL RVR» pesa mas que «ODOMETRIA BASE», que es un mono
+          diminuto.
+
+          17 px semibold en el tono de la pantalla, y en caja baja: en versalitas
+          espaciadas esto se leia como un ROTULO DE DATO -que es lo que hace
+          `.microetiqueta`- y aqui hace falta que se lea como un TITULO. No sube
+          a 20 a proposito: no compite con el titulo de pantalla de la cabecera,
+          que es el unico que manda. La escalera queda pantalla > grupo >
+          tarjeta > dato.
+
+          📝 Dos revisores de la segunda ronda, mirando pantallas distintas,
+             dieron este mismo hallazgo con casi las mismas palabras: «el
+             contenedor se lee mas pequeño que su contenido».
+
+          📝 El tono va a plena tinta y aqui SI puede ir saturado —al contrario
+             que en un campo— porque son dos palabras: el color identifica, no
+             inunda.
         */}
         <h2
-          className="microetiqueta !text-[11px]"
+          className="text-[17px] font-semibold leading-none tracking-tight"
           style={{ color: 'rgb(var(--tono-seccion))' }}
         >
           {titulo}
         </h2>
         {fuente !== undefined && (
-          <p className="text-[11px] leading-tight text-muted-foreground">{fuente}</p>
+          <p className="microetiqueta">{fuente}</p>
         )}
       </header>
       {children}

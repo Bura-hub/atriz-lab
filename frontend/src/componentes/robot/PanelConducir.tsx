@@ -108,7 +108,10 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
           type="button"
           disabled={!conectado || estado.clase === 'ARRANCANDO'}
           onClick={() => void arrancar()}
-          className="bg-primary px-4 py-2 text-sm font-medium text-primary-foreground focus-ring hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
+          /* Mismo motivo que la pildora de velocidad: `--primary` vale el mismo
+             RGB que `--bloque-vivo`, o sea vocabulario de ESTADO. Aqui manda el
+             tono de la pantalla. */
+          className="rounded-md bg-[rgb(var(--seccion-conducir))] px-4 py-2 text-sm font-medium text-white focus-ring hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
         >
           {estado.clase === 'ARRANCANDO' ? 'Esperando un /scan real…' : 'Arrancar barrido'}
         </button>
@@ -216,7 +219,10 @@ function CruzDeMando({
     + 'rounded-[14px] border border-[rgb(var(--filo)/0.14)] bg-[rgb(var(--vidrio)/0.025)] '
     + 'text-foreground focus-ring transition-[background-color,border-color,transform] '
     + 'duration-[var(--t-pulsacion)] ease-[cubic-bezier(0.23,1,0.32,1)] '
-    + 'disabled:opacity-35 disabled:cursor-not-allowed'
+    // 🔴 0.6 y no 0.35: la silueta del mando es lo que ENSEÑA de que va esta
+    //    pantalla, y con el robot apagado —el estado mas frecuente— se borraba.
+    //    Que este desactivado ya lo dicen el cursor, el pie y la franja.
+    + 'disabled:opacity-60 disabled:cursor-not-allowed'
 
   return (
     // 🔴 `shrink-0` Y ANCHO FIJO. Con `max-w-` dentro de un flex, el padre lo
@@ -243,9 +249,17 @@ function CruzDeMando({
           */
           className={`${m.columna} ${celda} hover:border-[rgb(var(--seccion-conducir)/0.45)] hover:bg-[rgb(var(--seccion-conducir)/0.07)] active:scale-[0.96] active:border-[rgb(var(--seccion-conducir))] active:bg-[rgb(var(--seccion-conducir))] active:text-white`}
         >
-          <svg viewBox="0 0 24 24" className="h-7 w-7" aria-hidden="true"
+          {/*
+            🔴 EL CHEVRON LLENA SU VIEWBOX, Y ANTES OCUPABA 9/24 DE ALTO.
+               Con `h-7` sobre una celda de 80 px el triangulo medía ~15×10 px:
+               el objeto principal de la pantalla —lo unico que hace que esto se
+               llame «Conducir»— era lo mas tenue que habia en ella. El path va
+               ahora de y=3,5 a y=18 y el svg sube a `h-9`, asi que el chevron
+               pasa de ~15 px a ~34, a la altura de las cifras de al lado.
+          */}
+          <svg viewBox="0 0 24 24" className="h-9 w-9" aria-hidden="true"
             style={{ transform: `rotate(${m.giro}deg)` }}>
-            <path d="M12 6 L18.5 15 H5.5 Z" fill="currentColor" />
+            <path d="M12 3.5 L20.5 18 H3.5 Z" fill="currentColor" />
           </svg>
         </button>
       ))}
@@ -343,7 +357,14 @@ function PedidoContraMedido({ velocidad }: { velocidad: number }) {
                distinguia una medida de su ausencia — justo en la pantalla donde
                esa diferencia decide si crees que el robot te obedece.
           */}
-          <div className="mt-1.5">
+          {/*
+            🔴 ALTURA FIJA, IGUAL CON DATO Y SIN EL. Las dos celdas de MEDIDO
+               tenian la altura de una `.cifra` con una raya de 18 px anclada
+               arriba, asi que quedaban ~60 px de blanco muerto debajo y el par
+               PEDIDO/MEDIDO se leia como dos cajas rotas en vez de como una
+               comparacion. `h-9 items-center` iguala las cuatro.
+          */}
+          <div className="mt-1.5 flex h-9 items-center">
             {c.valor === SIN_DATO ? (
               <span className="hueco text-lg leading-none" title={SIN_DATO}>—</span>
             ) : (
@@ -355,6 +376,16 @@ function PedidoContraMedido({ velocidad }: { velocidad: number }) {
               </span>
             )}
           </div>
+          {/*
+            🔴 LA AUSENCIA CON SU PALABRA. La raya era el unico elemento de la
+               pantalla sin una: el idioma de esta aplicacion es que el color -y
+               aqui el hueco- nunca va solo. Y decir POR QUE no hay dato importa
+               mas aqui que en ningun sitio, porque quien mira esta celda esta
+               intentando averiguar si el robot le obedece.
+          */}
+          {c.valor === SIN_DATO && !c.propio && (
+            <div className="microetiqueta mt-1 !tracking-[0.08em]">no llega /odom</div>
+          )}
         </div>
       ))}
     </div>
@@ -474,9 +505,19 @@ export function PanelConducir() {
                     key={v}
                     type="button"
                     onClick={() => setVelocidad(v)}
-                    className={`rounded-md border px-3 py-1.5 text-sm focus-ring ${
+                    /*
+                      🔴 EL TONO DE LA SECCION, NO `--primary`. `--primary` vale
+                         `30 58 210`, que es **exactamente el mismo RGB que
+                         `--bloque-vivo`**: la pildora seleccionada era un bloque
+                         saturado del vocabulario de ESTADO usado como adorno de
+                         un selector, y el segundo bloque saturado de una pantalla
+                         cuyo unico color reservado deberia ser el rojo de la
+                         parada. El seleccionado va en teal, igual que ya hacen
+                         las celdas de PEDIDO y el `active:` del mando.
+                    */
+                    className={`rounded-md border px-3.5 py-2 text-sm focus-ring ${
                       velocidad === v
-                        ? 'border-primary bg-primary text-primary-foreground'
+                        ? 'border-[rgb(var(--seccion-conducir))] bg-[rgb(var(--seccion-conducir))] text-white'
                         : 'border-border bg-secondary text-secondary-foreground hover:bg-muted'
                     }`}
                   >

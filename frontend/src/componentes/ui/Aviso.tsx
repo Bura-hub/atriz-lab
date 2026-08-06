@@ -26,10 +26,19 @@ export type NivelAviso = 'NOTA' | 'ATENCION' | 'ERROR'
  *    como un apunte al margen y ata el aviso al mundo de la aplicacion, en vez
  *    de parecer una caja inerte.
  */
+/*
+ * 🔴 LOS FONDOS SON OPACOS, Y ANTES ERAN EL TONO AL 7-10 %. Detras de un aviso
+ *    estan los dos orbes de la luz ambiente, que son FIJOS y ocupan cuadrantes
+ *    distintos: el mismo aviso empezaba crema por la izquierda y acababa verde
+ *    por la derecha, porque el orbe cian vive en el tercio derecho. El color que
+ *    porta el nivel solo existia en un trozo de su propia caja.
+ *    Los tres tokens de `globals.css` son ese mismo tinte ya resuelto sobre la
+ *    ficha blanca: valen lo mismo en cualquier punto de la pantalla.
+ */
 const CLASES: Readonly<Record<NivelAviso, string>> = {
-  NOTA: 'border-[rgb(var(--luz-a)/0.30)] bg-[rgb(var(--luz-a)/0.07)] text-foreground',
-  ATENCION: 'border-warning/40 bg-warning/10 text-foreground',
-  ERROR: 'border-destructive/40 bg-destructive/10 text-foreground',
+  NOTA: 'border-[rgb(var(--luz-a)/0.30)] bg-[rgb(var(--aviso-nota))] text-foreground',
+  ATENCION: 'border-warning/40 bg-[rgb(var(--aviso-atencion))] text-foreground',
+  ERROR: 'border-destructive/40 bg-[rgb(var(--aviso-error))] text-foreground',
 }
 
 const MARCA: Readonly<Record<NivelAviso, string>> = {

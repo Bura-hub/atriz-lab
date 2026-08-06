@@ -124,7 +124,15 @@ export function Tarjeta({ titulo, subtitulo, extremo, pie, children }: PropsTarj
           cierre caiga en la MISMA columna que el titulo. Y separado por su
           propia linea: aqui no es elevacion, es compartimentacion.
         */
-        <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 pb-4 pt-3.5 text-xs leading-relaxed text-muted-foreground [&_p+p]:mt-2 [&_p]:max-w-prose">
+        /*
+          🔴 13 px, NO 12. El pie nacio en `text-xs` y ahi es donde acabo, al
+             mover la prosa de cierre, **la frase que explica por que toda la
+             pantalla esta muerta**: «sin enlace no se puede conducir, asi que el
+             mando esta desactivado» se veia mas pequeña que la nota de al lado
+             sobre rad/s. El arreglo de la ronda anterior degrado la frase clave
+             a letra pequeña.
+        */
+        <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 pb-4 pt-3.5 text-[13px] leading-relaxed text-muted-foreground [&_p+p]:mt-2 [&_p]:max-w-prose">
           {pie}
         </div>
       )}

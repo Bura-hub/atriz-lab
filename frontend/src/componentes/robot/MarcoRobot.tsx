@@ -175,7 +175,16 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
              la cifra fantasma. Bateria y enlace responden a la misma pregunta
              -«¿este robot esta vivo?»- y ahora se leen juntos.
         */}
-        <div className="mx-auto flex max-w-6xl flex-wrap items-start gap-x-10 gap-y-4 px-4 py-3.5 sm:px-6">
+        {/*
+          ⚠️ `items-center` y `py-3`: la franja medía ~142 px con su contenido en
+             las dos esquinas —batería+enlace arriba a la izquierda, parada a la
+             derecha—, dejando un vacío en L de ~710×70 px en el centro. Sumada a
+             la cabecera eran **270 px antes del primer contenido**, o sea un
+             tercio de un portátil de aula gastado en dos cifras.
+             Con el rótulo de la parada en UNA línea (ver `sm:w-[27rem]`) el
+             bloque rojo baja de 124 px a ~75 y la franja entera a ~95.
+        */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-10 gap-y-4 px-4 py-3 sm:px-6">
           <VoltajeDelMarco />
 
           <div className="flex flex-col gap-1">
@@ -195,7 +204,12 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
 
           {/* `ml-auto`: la parada se ancla a la derecha sin `justify-between`,
               que es lo que abria el hueco cuando solo habia dos bloques. */}
-          <div className="w-full shrink-0 sm:ml-auto sm:w-[23rem]">
+          {/* 27rem: lo que necesita «PARADA DE EMERGENCIA» para caer en UNA
+              linea a `text-2xl`. Partido en dos lineas el bloque medía 124 px de
+              alto y era, con diferencia, el objeto mas pesado de la pantalla —
+              por encima de cualquier dato. Ahora es igual de inequivoco y ocupa
+              lo que le toca. */}
+          <div className="w-full shrink-0 sm:ml-auto sm:w-[27rem]">
             <BotonParada teleoperacion={teleoperacion} />
           </div>
         </div>
