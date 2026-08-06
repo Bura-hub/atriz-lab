@@ -106,12 +106,23 @@ describe('montarTeleoperacion — la limpieza que para el robot', () => {
 })
 
 describe('montarTeleoperacion — lo que no existe a proposito', () => {
-  it('no hay ningun metodo para LIBERAR la parada de emergencia', () => {
-    // Liberarla es un acto humano deliberado y exige comprobar antes que no haya
-    // un objetivo de Nav2 activo: sin eso el robot reanuda solo (34,7 cm medidos
-    // contra 0,0 con el arreglo). Esa comprobacion vive en el robot.
-    const nombres = Object.getOwnPropertyNames(Teleoperacion.prototype)
-    expect(nombres.some((n) => /liberar|release/i.test(n))).toBe(false)
+  /*
+   * 🔴 ESTA PRUEBA DECIA «no hay ningun metodo para LIBERAR la parada».
+   *
+   * Desde el 2026-08-06 lo hay, detras de sesion. Lo que se conserva —y es lo
+   * que de verdad protegia— es que el MONTAJE del hook no lo llama nunca: ni al
+   * montar, ni al desmontar, ni en la limpieza. Un robot que recupera el permiso
+   * de moverse porque alguien cambio de pestaña es justo lo que no puede pasar.
+   */
+  it('🔴 montar y desmontar NO libera la parada por su cuenta', () => {
+    const { t, teleoperacion, limpiarTransporte } = robotTeleoperable()
+    const liberar = vi.spyOn(teleoperacion, 'liberarParada')
+    const limpiar = montarTeleoperacion(teleoperacion, () => {})
+    limpiar()
+    t.cerrar()
+    expect(liberar).not.toHaveBeenCalled()
+    liberar.mockRestore()
+    limpiarTransporte()
   })
 
   it('la parada de emergencia LANZA si no hay enlace: quien la pulso tiene que enterarse', () => {

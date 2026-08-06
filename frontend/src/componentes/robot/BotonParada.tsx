@@ -21,23 +21,30 @@
  *     lanza a proposito cuando no hay enlace, porque antes hacia no-op EN
  *     SILENCIO y por ahi pasaba justo esto.
  *
- * 🔴 Y LO QUE NUNCA DICE: que la parada este puesta. El driver **no publica su
- * bandera de parada** -7 publicadores y ninguno es ese-, asi que afirmarlo seria
- * una suposicion sobre el unico control donde una suposicion no vale.
+ * ⚠️ ESTE COMENTARIO DECIA «lo que nunca dice: que la parada este puesta, porque
+ * el driver no publica su bandera». **Eso caduco el 2026-08-04**: el driver
+ * publica `/estado_robot.parada_emergencia`, y el flanco se presencio con el
+ * robot en marcha desde los dos lados a la vez (evidencia 71). El codigo de
+ * abajo ya lo leia; el comentario se habia quedado atras — la deriva documental
+ * que este proyecto persigue, dentro del fichero de la parada.
  *
- * 🔴 NO HAY BOTON DE LIBERAR, Y NO ES UN OLVIDO. `Teleoperacion` no tiene metodo
- * para eso, a proposito: al liberar la parada con un objetivo de Nav2 vivo el
- * robot **arranco solo** -34,7 cm medidos, contra 0,0 con el arreglo-, porque el
- * `controller_server` nunca dejo de publicar. Liberar es un acto presencial, con
- * el robot delante.
+ * ⚠️ Y TAMPOCO ES CIERTO YA que no haya forma de liberarla. Desde el 2026-08-06
+ * existe `LiberarParada`, **debajo** de este boton y detras de sesion. El
+ * peligro que lo prohibia esta cerrado y medido: al liberar con un objetivo de
+ * Nav2 vivo el robot arrancaba solo -34,7 cm-, y el nodo `cancelar_nav2` lo dejo
+ * en 0,0 con control. Lo que la web sigue sin poder comprobar es que ese nodo
+ * este vivo, y eso se dice EN la pantalla.
  */
 
 import { useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
+import { useSesion } from '@/hooks/ContextoSesion'
 import { useTopic } from '@/hooks/useTopic'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
 import { PARADA_ACTIVA, PARADA_ENVIADA, PARADA_NO_ENVIADA } from '@/lib/interfaz/lenguaje'
 import { horaCorta } from '@/lib/interfaz/formato'
+import { nombreDeRobot } from '@/lib/interfaz/identidad'
+import { LiberarParada } from './LiberarParada'
 
 interface Resultado {
   salio: boolean
@@ -56,7 +63,8 @@ export interface PropsBotonParada {
 
 export function BotonParada({ teleoperacion }: PropsBotonParada) {
   const [resultado, setResultado] = useState<Resultado | null>(null)
-  const { transporte } = useRobot()
+  const { transporte, robot } = useRobot()
+  const { usuario } = useSesion()
 
   // 🔴 EL TESTIGO DEL ROBOT. Hasta el 2026-08-04 esto no existia y esta pantalla
   //    solo podia decir «parada enviada». Ahora el driver publica su bandera y
@@ -100,8 +108,8 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
           role="status"
           className="rounded-md border border-destructive/60 bg-destructive/15 px-3 py-2 text-sm font-semibold"
         >
-          🔴 {PARADA_ACTIVA} — el robot no aceptará ninguna orden de movimiento hasta que se libere
-          presencialmente.
+          🔴 {PARADA_ACTIVA} — el robot no aceptará ninguna orden de movimiento hasta que se
+          libere.
         </p>
       )}
 
@@ -144,8 +152,8 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
             <p className="text-muted-foreground max-w-prose mt-1">
               {paradaPuesta === true ? (
                 <>
-                  Y el robot lo confirma: su bandera de parada está puesta. Para liberarla hay que
-                  hacerlo <strong>presencialmente</strong>, con el robot delante.
+                  Y el robot lo confirma: su bandera de parada está puesta. Se libera junto al
+                  robot, o desde aquí abajo con sesión iniciada.
                 </>
               ) : paradaPuesta === false ? (
                 <>
@@ -180,19 +188,43 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
         📝 Y va abierto por defecto la primera vez que importa: si la parada
            esta puesta, el aviso rojo de arriba ya lo dice sin desplegar nada.
       */}
+      {/*
+        🔴🔴 LIBERAR, **DEBAJO** Y NUNCA AL LADO.
+
+        Dos controles de parada juntos es la confusión que la franja de seguridad
+        existe para evitar. Aquí ni comparten forma: arriba un bloque rojo de
+        4 px de borde y 24 px de letra; esto es un enlace discreto que además hay
+        que abrir. Y solo aparece si **se sabe** que la parada está puesta: con
+        `/estado_robot` mudo no se ofrece, porque liberar a ciegas es justo lo
+        que este proyecto no hace.
+      */}
+      <LiberarParada
+        teleoperacion={teleoperacion}
+        nombreRobot={nombreDeRobot(robot)}
+        paradaPuesta={paradaPuesta}
+        usuario={usuario}
+      />
+
+      {/*
+        📝 ESTE DESPLEGABLE DECÍA «por qué no hay botón para liberarla».
+           Se sustituye en vez de borrarse: la razón por la que la parada es
+           delicada sigue siendo la misma, y es lo que hace que el control de
+           arriba tenga el tamaño que tiene. Lo que cambió es el remedio.
+      */}
       <details className="group">
         {/* La `.microetiqueta` va en el propio `summary`, no en un `span` de
             dentro: esa clase fija su color, asi que desde fuera el `hover` no
             la alcanzaria y el desplegable no daria ni una señal de ser
             pulsable. */}
         <summary className="microetiqueta focus-ring cursor-pointer list-none transition-colors duration-[var(--t-estado)] hover:text-foreground">
-          ▸ por qué no hay botón para liberarla
+          ▸ por qué liberarla no es un botón cualquiera
         </summary>
         <p className="mt-2 max-w-prose text-xs leading-relaxed text-muted-foreground">
-          Para quitarla hay que ir hasta el robot: se libera con{' '}
-          <code>/release_emergency_stop</code> en el propio laboratorio, y esta interfaz no ofrece
-          ese botón a propósito. Al liberarla con un objetivo de Nav2 vivo el robot arrancó solo
-          —34,7 cm medidos— porque el controlador nunca había dejado de publicar.
+          Al liberarla con un objetivo de Nav2 vivo el robot <strong>arrancó solo</strong> —34,7 cm
+          medidos— porque el controlador nunca había dejado de publicar. Lo cierra el nodo{' '}
+          <code>cancelar_nav2</code>, que lo dejó en 0,0 cm con control; pero esta interfaz{' '}
+          <strong>no puede comprobar que ese nodo esté vivo</strong>. Por eso liberar exige sesión,
+          escribir el nombre del robot, y mirarlo antes.
         </p>
       </details>
     </div>

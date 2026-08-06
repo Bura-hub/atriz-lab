@@ -45,6 +45,18 @@ export interface EntradaNoObedece {
   msDesdeBarrido: number | null
   /** ¿Está la pestaña en segundo plano ahora mismo? */
   pestanaOculta: boolean
+  /**
+   * ¿Hay sesión iniciada? Cambia **el remedio de la parada**, no el veredicto.
+   *
+   * 🔴 Sin sesión no se menciona ningún botón. Un remedio que dice «pulsa» a
+   *    quien no puede pulsar es peor que no decir nada: manda a buscar un
+   *    control que no está en la pantalla, y quien lo busca concluye que la
+   *    interfaz está rota.
+   *
+   * ⚠️ Opcional para no romper a quien ya llamaba a `diagnosticar()`. Ausente
+   *    equivale a **sin sesión**, que es el lado que no ofrece nada.
+   */
+  haySesion?: boolean
 }
 
 export type EstadoCausa = 'CONFIRMADA' | 'POSIBLE' | 'DESCARTADA' | 'NO_SE_SABE'
@@ -99,10 +111,22 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
         titulo: 'La parada de emergencia está puesta',
         estado: 'CONFIRMADA',
         evidencia: 'La bandera del driver vale `true`: el robot descarta todo `cmd_vel_raw`.',
-        // 🔴 No hay boton, y no es un olvido: liberarla es un acto presencial.
-        //    Con un objetivo de Nav2 vivo, liberarla hizo que el robot arrancara
-        //    solo -34,7 cm medidos-.
-        remedio: 'Se libera en el laboratorio, junto al robot. Esta pantalla no lo hace.',
+        /*
+         * ⚠️ ESTE REMEDIO DEPENDE DE LA SESIÓN, y es la única cosa de todo el
+         *    diagnóstico que lo hace. El veredicto NO cambia: la parada está
+         *    puesta lo mire quien lo mire. Lo que cambia es qué puede hacer
+         *    quien está delante.
+         *
+         * 📝 Antes decía «Esta pantalla no lo hace» a secas, porque no había
+         *    forma de liberarla desde aquí. Hoy la hay, con sesión, y el peligro
+         *    que lo impedía está cerrado y medido: liberar con un objetivo de
+         *    Nav2 vivo hacía que el robot arrancara solo —34,7 cm—, y el nodo
+         *    `cancelar_nav2` lo dejó en 0,0 con control.
+         */
+        remedio: e.haySesion === true
+          ? 'Puedes liberarla desde aquí, en el botón de abajo: hay que escribir el nombre del '
+            + 'robot para confirmar. Si no estás viendo el robot, ve a mirarlo antes.'
+          : 'Se libera en el laboratorio, junto al robot. Desde la web hace falta iniciar sesión.',
       }
       : {
         id: 'parada',

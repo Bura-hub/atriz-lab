@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
-import { Teleoperacion } from '../lib/rosbridge/teleoperacion'
+import { Liberacion, Teleoperacion } from '../lib/rosbridge/teleoperacion'
 import { Aviso, Transporte } from '../lib/rosbridge/transporte'
 
 export interface ControlTeleoperacion {
@@ -27,6 +27,13 @@ export interface ControlTeleoperacion {
   paradaEmergencia: () => void
   /** Espera un `/scan` REAL, no el codigo de retorno de `/start_scan`. */
   arrancarBarrido: (plazoMs?: number) => Promise<void>
+  /**
+   * Llama a `/release_emergency_stop` y **espera a que el robot lo atestigue**.
+   * `confirmada: true` SOLO cuando `/estado_robot` baja la bandera en un mensaje
+   * posterior a la referencia — la respuesta del servicio esta vacia y no prueba
+   * nada. 🔴 No reanuda el bucle de mando.
+   */
+  liberarParada: (plazoMs?: number) => Promise<Liberacion>
   /**
    * El ultimo aviso local. Hoy solo uno: el tick del bucle fallo y se corto.
    * 🔴 Hay que pintarlo. `console.error` es MUDO para quien teleopera: el alumno
@@ -60,19 +67,24 @@ export function useTeleoperacion(transporte: Transporte): ControlTeleoperacion {
     [teleoperacion],
   )
 
-  // 🔴 Los cuatro se envuelven en vez de exponer la instancia: asi la interfaz
+  // 🔴 Los cinco se envuelven en vez de exponer la instancia: asi la interfaz
   //    no puede quedarse con una referencia a una `Teleoperacion` ya desmontada
-  //    y seguir llamandola. Y NO se expone nada para LIBERAR la parada de
-  //    emergencia -`Teleoperacion` tampoco lo tiene-: liberarla es un acto
-  //    humano deliberado, con confirmacion, y exige comprobar antes que no haya
-  //    un objetivo de Nav2 activo (sin eso el robot reanuda solo: 34,7 cm
-  //    medidos contra 0,0 con el arreglo).
+  //    y seguir llamandola.
+  //
+  // ⚠️ `liberarParada` se expone desde el 2026-08-06 y **este comentario decia
+  //    antes que no debia existir**. El peligro que lo justificaba esta cerrado
+  //    y medido: liberar con un objetivo de Nav2 vivo hacia que el robot
+  //    arrancara solo -34,7 cm-, y `cancelar_nav2` lo dejo en 0,0 con control.
+  //    Lo que sigue siendo cierto, y por eso este hook NO lo llama nunca por su
+  //    cuenta, es que liberar es un acto humano deliberado: aqui solo se pone la
+  //    palanca al alcance de la pantalla, que la pide con confirmacion y sesion.
   const acciones = useMemo(
     () => ({
       mover: (v: number, w: number) => teleoperacion.mover(v, w),
       parar: () => teleoperacion.parar(),
       paradaEmergencia: () => teleoperacion.paradaEmergencia(),
       arrancarBarrido: (plazoMs?: number) => teleoperacion.arrancarBarrido(plazoMs),
+      liberarParada: (plazoMs?: number) => teleoperacion.liberarParada(plazoMs),
     }),
     [teleoperacion],
   )

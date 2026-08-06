@@ -27,17 +27,40 @@ describe('sin enlace no se diagnostica nada más', () => {
 })
 
 describe('la parada de emergencia', () => {
-  it('puesta → confirmada, y el remedio NO ofrece liberarla', () => {
+  it('🔴 SIN SESION el remedio no menciona ningun boton', () => {
     /*
-     * Liberar es presencial: con un objetivo de Nav2 vivo, liberarla hizo que el
-     * robot arrancara solo -34,7 cm medidos contra 0,0 con el nodo cancelar_nav2.
-     * Una pantalla que ofreciera el boton crearia ese caso desde el otro lado
-     * del aula.
+     * Es la mitad de la prueba original que sigue viva. Decir «pulsa» a quien no
+     * puede pulsar manda a buscar un control que no esta en la pantalla, y quien
+     * lo busca concluye que la interfaz esta rota.
      */
     const c = causa(diagnosticar({ ...sano, paradaEmergencia: true }), 'parada')
     expect(c.estado).toBe('CONFIRMADA')
-    expect(c.remedio).toMatch(/laboratorio|presencial|junto al robot/i)
-    expect(c.remedio).not.toMatch(/liberar|pulsa|bot[oó]n/i)
+    expect(c.remedio).toMatch(/laboratorio|junto al robot/i)
+    expect(c.remedio).not.toMatch(/pulsa|bot[oó]n de abajo/i)
+  })
+
+  it('CON sesion ofrece liberarla, y avisa de que hay que MIRAR el robot', () => {
+    /*
+     * ⚠️ Esta prueba es NUEVA y sustituye a «el remedio NO ofrece liberarla».
+     * El peligro que motivaba aquella —el robot arrancando solo al liberar con
+     * un objetivo de Nav2 vivo, 34,7 cm— esta cerrado por `cancelar_nav2`: 0,0 cm
+     * con control. Lo que la web NO puede comprobar es que ese nodo este vivo,
+     * y por eso el remedio manda a mirar el robot en vez de callarlo.
+     */
+    const c = causa(diagnosticar({ ...sano, paradaEmergencia: true, haySesion: true }), 'parada')
+    expect(c.estado).toBe('CONFIRMADA')      // el veredicto NO depende de la sesion
+    expect(c.remedio).toMatch(/liberarla desde aqu[ií]/i)
+    expect(c.remedio).toMatch(/mirarlo|ve a mirar/i)
+  })
+
+  it('el VEREDICTO no depende de la sesion, solo el remedio', () => {
+    // Si la sesion cambiara el estado, la pantalla estaria diciendo que un robot
+    // esta mas o menos parado segun quien lo mire.
+    const sin = causa(diagnosticar({ ...sano, paradaEmergencia: true }), 'parada')
+    const con = causa(diagnosticar({ ...sano, paradaEmergencia: true, haySesion: true }), 'parada')
+    expect(con.estado).toBe(sin.estado)
+    expect(con.evidencia).toBe(sin.evidencia)
+    expect(con.remedio).not.toBe(sin.remedio)
   })
 
   it('🔴 sin `/estado_robot` es NO_SE_SABE, nunca «descartada»', () => {

@@ -114,11 +114,26 @@ export const NOTA_SIN_DATOS =
  * lee como «todo bien».
  */
 export const LO_QUE_NO_SE_PUEDE_DECIR: readonly { que: string; porque: string }[] = [
+  /*
+   * 🔴 AQUÍ HABÍA UNA ENTRADA FALSA, y llevaba dos días siéndolo antes de que
+   *    nadie la mirara. Decía «si la parada de emergencia está puesta — el
+   *    driver no publica su bandera de parada»: el driver la publica desde el
+   *    2026-08-04 en `/estado_robot`, `BotonParada` ya la leía, y el flanco se
+   *    presenció con el robot en marcha desde los dos lados (evidencia 71).
+   *
+   *    O sea que esta lista —cuyo trabajo es declarar huecos para que ninguno se
+   *    quede callado— tenía anotado como hueco algo que ya estaba resuelto. Es
+   *    la deriva documental del proyecto, en el fichero que existe para evitarla.
+   *
+   * → Lo que la sustituye es un hueco DE VERDAD, y además el que más importa de
+   *   los tres ahora que se puede liberar la parada desde la web.
+   */
   {
-    que: 'si la parada de emergencia está puesta',
+    que: 'si el nodo `cancelar_nav2` está vivo en el robot',
     porque:
-      'el driver no publica su bandera de parada. La interfaz solo sabe si el mensaje salió por ' +
-      'el WebSocket, y eso es lo que dice.',
+      'no publica ningún topic ni expone ningún servicio que lo diga. Importa al liberar la ' +
+      'parada: sin ese nodo y con un objetivo de Nav2 en marcha, el robot reanuda la navegación ' +
+      'solo —34,7 cm medidos antes de que existiera, 0,0 con él—.',
   },
   {
     que: 'cuánto tarda una orden en llegar a los motores',

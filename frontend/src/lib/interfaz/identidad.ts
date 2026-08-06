@@ -11,7 +11,7 @@
 /** Los robots del laboratorio. No hay un robot 0 ni un robot 17. */
 export const TOTAL_ROBOTS = 16
 
-/** `[1, 2, ... 16]`, que es lo que pinta el muro del profesor. */
+/** `[1, 2, ... 16]`, que es lo que pinta el muro del administrador. */
 export const ROBOTS: readonly number[] = Array.from({ length: TOTAL_ROBOTS }, (_, i) => i + 1)
 
 export type DestinoRobot =
@@ -58,6 +58,22 @@ export function destinoParaTransporte(d: DestinoRobot): number | string {
 /** `rvr-07` para el numero 7. Es el nombre con el que el laboratorio llama al robot. */
 export function etiquetaRobot(d: DestinoRobot): string {
   return d.clase === 'NUMERO' ? `rvr-${String(d.numero).padStart(2, '0')}` : d.direccion
+}
+
+/**
+ * Lo mismo que `etiquetaRobot`, pero partiendo de lo que guarda el contexto
+ * (`number | string`) en vez de un `DestinoRobot`.
+ *
+ * ⚠️ Delega en `etiquetaRobot` a proposito, en vez de repetir el `padStart`.
+ *    Este nombre se usa como CONFIRMACION escrita para liberar la parada: si las
+ *    dos formas de escribirlo divergieran aunque fuera en un cero, la pantalla
+ *    pediria teclear un nombre distinto del que enseña, y el control se volveria
+ *    imposible de pasar sin que nadie entendiera por que.
+ */
+export function nombreDeRobot(robot: number | string): string {
+  return etiquetaRobot(
+    typeof robot === 'number' ? { clase: 'NUMERO', numero: robot } : { clase: 'DIRECCION', direccion: robot },
+  )
 }
 
 /** El segmento con el que se construyen los enlaces internos. */

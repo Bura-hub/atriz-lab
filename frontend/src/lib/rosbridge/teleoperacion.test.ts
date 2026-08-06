@@ -348,16 +348,51 @@ describe('Teleoperacion.paradaEmergencia()', () => {
     expect(() => tel.paradaEmergencia()).toThrowError(/emergency_stop/)
   })
 
-  it('no existe ningun metodo para liberar la parada', () => {
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 ESTA PRUEBA DECIA «no existe ningun metodo para liberar la parada».
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Desde el 2026-08-06 existe, detras de sesion, porque el peligro que motivaba
+   * la prohibicion esta CERRADO Y MEDIDO: liberar con un objetivo de Nav2 vivo
+   * hacia que el robot arrancara solo -34,7 cm-, y el nodo `cancelar_nav2` lo
+   * dejo en 0,0 con control.
+   *
+   * No se borra: se sustituye por el invariante que de verdad protege, que es
+   * mas fuerte y mas dificil de romper por accidente — **ninguna liberacion
+   * AUTOMATICA**. La superficie publica se sigue fijando entera.
+   */
+  it('la superficie publica es EXACTAMENTE esta: ocho metodos, ninguno mas', () => {
     const metodos = Object.getOwnPropertyNames(Teleoperacion.prototype)
       .filter((m) => m !== 'constructor')
       .sort()
-    // I2 añadio `alAviso` (mismo patron que Transporte.alAviso()) a la
-    // superficie publica exacta: se actualiza la lista, no se relaja la prueba.
-    expect(metodos).toEqual(
-      ['alAviso', 'arrancarBarrido', 'desmontar', 'detener', 'mover', 'parar', 'paradaEmergencia'].sort(),
-    )
-    expect(metodos.some((m) => /liberar/i.test(m))).toBe(false)
+    expect(metodos).toEqual([
+      'alAviso', 'arrancarBarrido', 'desmontar', 'detener',
+      'liberarParada', 'mover', 'parar', 'paradaEmergencia',
+    ].sort())
+  })
+
+  it('🔴🔴 NINGUN camino automatico llama a /release_emergency_stop', () => {
+    /*
+     * Es el invariante que sustituye a la prohibicion. Se ejercitan todos los
+     * caminos que corren SIN que un humano los pida: construir, conectar,
+     * reconectar, mover, parar, la parada de emergencia, cortar el bucle,
+     * desmontar, y que se caiga el enlace.
+     */
+    vi.useFakeTimers()
+    const { t, ws } = transporteConectado()
+    const tel = new Teleoperacion(t)
+    tel.mover(0.1, 0)
+    vi.advanceTimersByTime(1000)
+    tel.parar()
+    try { tel.paradaEmergencia() } catch { /* da igual: se mira el cable */ }
+    tel.detener()
+    ws.onclose?.()
+    t.conectar()
+    tel.desmontar()
+
+    const enviado = ws.enviados.join(' ')
+    expect(enviado).not.toContain('release_emergency_stop')
+    vi.useRealTimers()
   })
 })
 
@@ -524,5 +559,171 @@ describe('Teleoperacion — C3: el bucle de mando se corta al reconectar, pero e
     // el socket nuevo.
     expect(() => tel.paradaEmergencia()).not.toThrow()
     expect(publicaciones(nuevo, '/emergency_stop')).toHaveLength(1)
+  })
+})
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   liberarParada() — el testigo del robot
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/** Arranca la liberacion y responde al servicio, que es el preambulo de todas. */
+function liberacionEnCurso(plazoMs = 8000) {
+  const { t, ws } = transporteConectado()
+  const tel = new Teleoperacion(t)
+  const p = tel.liberarParada(plazoMs)
+  const llamada = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'call_service')
+  return { t, ws, tel, p, llamada }
+}
+
+const estado = (latido: number, parada: boolean) => ({
+  op: 'publish',
+  topic: '/estado_robot',
+  msg: { latido, parada_emergencia: parada, rvr_responde: true },
+})
+
+describe('Teleoperacion.liberarParada()', () => {
+  it('llama al servicio correcto, y se suscribe a /estado_robot ANTES de llamar', () => {
+    const { ws, llamada } = liberacionEnCurso()
+    expect(llamada?.service).toBe('/release_emergency_stop')
+
+    /*
+     * 🔴 EL ORDEN IMPORTA. Si se llamara primero, un robot rapido podria
+     *    publicar el estado nuevo mientras todavia no escucha nadie: el unico
+     *    testigo posible se perderia y la pantalla diria «no se pudo comprobar»
+     *    sobre una liberacion que si funciono.
+     */
+    const ops = ws.enviados.map((s) => JSON.parse(s))
+    const iSub = ops.findIndex((o) => o.op === 'subscribe' && o.topic === '/estado_robot')
+    const iCall = ops.findIndex((o) => o.op === 'call_service')
+    expect(iSub).toBeGreaterThanOrEqual(0)
+    expect(iSub).toBeLessThan(iCall)
+  })
+
+  it('🔴🔴 el PRIMER mensaje NO confirma, aunque traiga la bandera ya en false', async () => {
+    /*
+     * ESTA ES LA PRUEBA QUE JUSTIFICA TODO EL DISEÑO.
+     *
+     * `/estado_robot` va TRANSIENT_LOCAL: al suscribirse, el robot entrega de
+     * inmediato el ultimo valor ENLATADO, de antes de la llamada. Si ese
+     * enlatado trae `parada_emergencia: false` —porque la bandera nunca estuvo
+     * puesta, o porque es viejo— aceptarlo seria afirmar un efecto que no ha
+     * ocurrido. Es el `success=true` sin efecto que este proyecto persigue.
+     */
+    vi.useFakeTimers()
+    const { ws, p, llamada } = liberacionEnCurso(8000)
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+
+    ws.recibir(estado(100, false))       // ← el enlatado, con la bandera abajo
+    await Promise.resolve()
+    await Promise.resolve()
+
+    vi.advanceTimersByTime(8001)
+    const r = await p
+    // No confirma. Y ademas dice por que: hubo referencia, nada posterior.
+    expect(r).toEqual({ confirmada: false, motivo: 'SIN_TESTIGO' })
+    vi.useRealTimers()
+  })
+
+  it('confirma con un mensaje de latido ESTRICTAMENTE mayor y la bandera abajo', async () => {
+    const { ws, p, llamada } = liberacionEnCurso()
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+
+    ws.recibir(estado(100, true))   // referencia: la parada seguia puesta
+    ws.recibir(estado(101, false))  // testigo: el robot lo dice el mismo
+    expect(await p).toEqual({ confirmada: true })
+  })
+
+  it('un latido REPETIDO o atrasado no cuenta como testigo', async () => {
+    vi.useFakeTimers()
+    const { ws, p, llamada } = liberacionEnCurso(8000)
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+
+    ws.recibir(estado(100, true))
+    ws.recibir(estado(100, false))   // mismo latido: es el MISMO instante
+    ws.recibir(estado(99, false))    // atrasado: llego fuera de orden
+    await Promise.resolve()
+
+    vi.advanceTimersByTime(8001)
+    expect(await p).toEqual({ confirmada: false, motivo: 'SIN_TESTIGO' })
+    vi.useRealTimers()
+  })
+
+  it('🔴 «sigue puesta» y «no se sabe» son resultados DISTINTOS', async () => {
+    // Llegan mensajes frescos y la bandera no baja: eso es una NEGATIVA con
+    // evidencia, no un silencio. Meterlas en un solo «fallo» convertiria un
+    // «no se sabe» en un «no», que es la regla central del proyecto.
+    vi.useFakeTimers()
+    const { ws, p, llamada } = liberacionEnCurso(8000)
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+
+    ws.recibir(estado(100, true))
+    ws.recibir(estado(101, true))
+    ws.recibir(estado(102, true))
+    await Promise.resolve()
+
+    vi.advanceTimersByTime(8001)
+    expect(await p).toEqual({ confirmada: false, motivo: 'SIGUE_PUESTA' })
+    vi.useRealTimers()
+  })
+
+  it('sin NINGUN /estado_robot valido es SIN_REFERENCIA, no «sigue puesta»', async () => {
+    vi.useFakeTimers()
+    const { ws, p, llamada } = liberacionEnCurso(8000)
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+    // Un driver anterior al 2026-08-04 no trae estos campos: no vale de nada.
+    ws.recibir({ op: 'publish', topic: '/estado_robot', msg: { rvr_responde: true } })
+    await Promise.resolve()
+
+    vi.advanceTimersByTime(8001)
+    expect(await p).toEqual({ confirmada: false, motivo: 'SIN_REFERENCIA' })
+    vi.useRealTimers()
+  })
+
+  it('si se cae el enlace responde EN EL ACTO, sin agotar el plazo', async () => {
+    // Misma puerta que en arrancarBarrido: sin esto se esperan los 8 s enteros
+    // y se culpa al robot de un enlace que llevaba segundos caido.
+    vi.useFakeTimers()
+    const { ws, p, llamada } = liberacionEnCurso(8000)
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+    ws.onclose?.()
+    expect(await p).toEqual({ confirmada: false, motivo: 'SE_PERDIO_EL_ENLACE' })
+    vi.useRealTimers()
+  })
+
+  it('si la llamada al servicio falla, RECHAZA: la orden no salio', async () => {
+    const t = new Transporte('ws://x:9090', fabrica)   // nunca conectado
+    const tel = new Teleoperacion(t)
+    await expect(tel.liberarParada()).rejects.toThrow(/release_emergency_stop/)
+  })
+
+  it('se da de baja de /estado_robot por TODOS los caminos de salida', async () => {
+    // La mitad que se olvida: sin esto el topic queda pidiendose para siempre.
+    vi.useFakeTimers()
+    const { ws, p, llamada } = liberacionEnCurso(8000)
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+    ws.recibir(estado(1, true))
+    vi.advanceTimersByTime(8001)
+    await p
+
+    const ops = ws.enviados.map((s) => JSON.parse(s))
+    expect(ops.some((o) => o.op === 'unsubscribe' && o.topic === '/estado_robot')).toBe(true)
+    vi.useRealTimers()
+  })
+
+  it('🔴 NO reanuda el bucle de mando al confirmar', async () => {
+    // Soltar la parada devuelve el PERMISO de moverse. Ponerse a mover es otro
+    // gesto humano: un robot que arranca solo al liberar es justo el fallo que
+    // costo 34,7 cm medidos.
+    vi.useFakeTimers()
+    const { ws, p, llamada } = liberacionEnCurso()
+    ws.recibir({ op: 'service_response', id: llamada.id, values: {} })
+    ws.recibir(estado(1, true))
+    ws.recibir(estado(2, false))
+    expect(await p).toEqual({ confirmada: true })
+
+    const antes = publicaciones(ws, '/cmd_vel_raw').length
+    vi.advanceTimersByTime(1000)
+    expect(publicaciones(ws, '/cmd_vel_raw').length).toBe(antes)
+    vi.useRealTimers()
   })
 })

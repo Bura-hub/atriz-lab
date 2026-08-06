@@ -33,6 +33,42 @@ export const PERIODO_MS = 1000 / RITMO_HZ
  */
 export const PLAZO_ARRANQUE_SCAN_MS = 8000
 
+/**
+ * Plazo para que el robot ATESTIGÜE que la parada se soltó.
+ *
+ * El driver republica `/estado_robot` a **1 Hz**, y el testigo necesita DOS
+ * mensajes (uno de referencia y uno estrictamente posterior — ver
+ * `liberarParada`). O sea ~2 s en el caso bueno. 8 s deja margen de sobra para
+ * un WiFi de aula sin llegar a parecer que se ha colgado.
+ *
+ * ⚠️ Mismo acoplamiento que arriba: `liberarParada()` usa el plazo por defecto
+ * de `Transporte.llamar()` (5000 + margen local), que queda por debajo de este.
+ */
+export const PLAZO_TESTIGO_LIBERACION_MS = 8000
+
+/**
+ * Por que NO se pudo confirmar que la parada se soltara. Cada valor es una cosa
+ * distinta y la pantalla tiene que decirlas distintas.
+ *
+ * 🔴 `SIGUE_PUESTA` es una NEGATIVA con evidencia; los otros tres son «no se
+ *    sabe». Meterlos en un solo «fallo» seria convertir un silencio en un no,
+ *    que es la regla central de este proyecto.
+ */
+export type MotivoNoLiberada =
+  /** Llegaron mensajes frescos y la bandera seguia `true`. El robot dijo que no. */
+  | 'SIGUE_PUESTA'
+  /** Hubo referencia, pero ningun mensaje posterior. El robot se quedo mudo. */
+  | 'SIN_TESTIGO'
+  /** Ni un solo `/estado_robot` valido: no hay con que juzgar. */
+  | 'SIN_REFERENCIA'
+  /** El WebSocket se cayo mientras se esperaba. */
+  | 'SE_PERDIO_EL_ENLACE'
+
+/** Resultado de `liberarParada()`. `confirmada` SOLO lo dice el robot. */
+export type Liberacion =
+  | { confirmada: true }
+  | { confirmada: false; motivo: MotivoNoLiberada }
+
 /** geometry_msgs/Twist. Los seis campos, aunque solo se use v y w (robot diferencial). */
 export interface Twist {
   linear: { x: number; y: number; z: number }
@@ -262,16 +298,124 @@ export class Teleoperacion {
    * (quien pulso el boton), y tiene que saber que la parada NO se envio.
    * El llamante esta OBLIGADO a manejar el rechazo/excepcion.
    *
-   * NO existe ningun metodo para liberar esta parada. Liberarla es un acto
-   * humano deliberado, con confirmacion, y exige comprobar antes que no haya
-   * un objetivo de Nav2 activo -sin `cancelar_nav2` vivo el robot reanuda la
-   * navegacion solo: 34,7 cm medidos contra 0,0 con el arreglo. Esa
-   * comprobacion vive en el robot (`cancelar_nav2` en nav2.launch.py), no
-   * aqui.
+   * Liberarla es OTRA operacion, deliberada y con testigo: `liberarParada()`.
+   * Nunca es automatica — ni al conectar, ni al reconectar, ni al montar, ni al
+   * desmontar, ni en ningun camino de error. Esa propiedad la fija una prueba.
    */
   paradaEmergencia(): void {
     this.detener()
     this.#transporte.publicar('/emergency_stop', {})
+  }
+
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * LIBERAR LA PARADA, Y COMPROBARLO EN EL ROBOT.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 LA RESPUESTA DEL SERVICIO NO PRUEBA NADA. `/release_emergency_stop` es
+   *    `std_srvs/srv/Empty`: su respuesta esta VACIA, y `confirmaEfecto()` lo
+   *    clasifica como `'NINGUNA'`. Que la llamada no lance significa que el
+   *    mensaje llego a rosbridge — ni que el driver bajara la bandera, ni que el
+   *    robot pueda moverse. Decir «liberada» ahi seria exactamente el fallo que
+   *    este proyecto persigue: `success=true` sin efecto.
+   *
+   * → Lo que SI prueba es `/estado_robot.parada_emergencia` bajando a `false`.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 Y AHI HAY UNA TRAMPA QUE HAY QUE SORTEAR: `TRANSIENT_LOCAL`
+   * ═══════════════════════════════════════════════════════════════════════════
+   * `/estado_robot` va **latcheado**, asi que al suscribirse el robot entrega de
+   * inmediato **el ultimo valor enlatado, de ANTES de la llamada**. Un mensaje
+   * viejo con la bandera ya en `false` se leeria como «se libero» sin que haya
+   * pasado nada — la pantalla afirmando un efecto que no ocurrio.
+   *
+   * El testigo es el **`latido`**, que es monotono:
+   *
+   *   · el PRIMER mensaje que llega solo sirve de REFERENCIA, nunca de prueba
+   *     (da igual si es el enlatado o uno fresco: no se sabe cual es);
+   *   · cuenta como testigo un mensaje con `latido` **estrictamente mayor** que
+   *     esa referencia.
+   *
+   * Por eso hacen falta DOS mensajes y no uno. A 1 Hz son ~2 s, dentro del plazo.
+   *
+   * ⚠️ Y por eso tampoco vale «apuntar el latido antes de llamar»: cuando se
+   *    llama puede no haber llegado todavia ningun mensaje, y entonces el primero
+   *    —el enlatado— se colaria como prueba. La referencia se fija con el primer
+   *    mensaje QUE SEA, llegue cuando llegue.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * NO RESUELVE «no» POR SILENCIO
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Al vencer el plazo distingue dos cosas que no son la misma:
+   *   · `SIGUE_PUESTA`  — llegaron mensajes frescos y la bandera seguia `true`.
+   *                       Es una NEGATIVA con evidencia.
+   *   · SIN_TESTIGO / SIN_REFERENCIA — no llego nada con que juzgar. **No se
+   *                       sabe**, que no es lo mismo que «no».
+   *
+   * 🔴 NO reanuda el bucle de mando. Soltar la parada devuelve el permiso de
+   *    moverse; ponerse a mover es otro gesto humano.
+   *
+   * ⚠️ Si la llamada al servicio falla, la promesa RECHAZA (regla (b)): quien
+   *    pulso tiene que enterarse de que la orden no salio.
+   */
+  liberarParada(plazoMs: number = PLAZO_TESTIGO_LIBERACION_MS): Promise<Liberacion> {
+    return new Promise<Liberacion>((resolver, rechazar) => {
+      let terminado = false
+      /** Referencia: el `latido` del primer mensaje visto. `null` = aun ninguno. */
+      let referencia: number | null = null
+      /** ¿Ha llegado algun mensaje ESTRICTAMENTE posterior a la referencia? */
+      let huboFresco = false
+
+      const terminar = (fn: () => void): void => {
+        if (terminado) return
+        terminado = true
+        clearTimeout(plazo)
+        cancelarSuscripcion()
+        bajaCierre()
+        fn()
+      }
+
+      // 🔴 SUSCRIBIRSE **ANTES** DE LLAMAR. Al reves, un robot rapido podria
+      //    publicar el estado nuevo mientras todavia no escucha nadie, y el
+      //    unico testigo posible se perderia — la liberacion habria funcionado y
+      //    la pantalla diria que no se pudo comprobar.
+      const cancelarSuscripcion = this.#transporte.suscribir('/estado_robot', (m) => {
+        const msg = m as { latido?: unknown; parada_emergencia?: unknown }
+        // No se da por buena la forma del mensaje: un driver anterior al
+        // 2026-08-04 no trae estos campos, y `undefined > null` da resultados
+        // que parecen decisiones.
+        if (typeof msg.latido !== 'number' || typeof msg.parada_emergencia !== 'boolean') return
+
+        if (referencia === null) {
+          referencia = msg.latido
+          return          // ← el primero JAMAS es prueba. Es la trampa del latch.
+        }
+        if (msg.latido <= referencia) return   // repetido o atrasado: no aporta
+
+        huboFresco = true
+        if (!msg.parada_emergencia) {
+          terminar(() => resolver({ confirmada: true }))
+        }
+      })
+
+      const bajaCierre = this.#transporte.alCerrarse(() => {
+        // Misma puerta que en `arrancarBarrido`: sin esto se agota el plazo
+        // entero y se culpa al robot de un enlace que llevaba segundos caido.
+        terminar(() => resolver({ confirmada: false, motivo: 'SE_PERDIO_EL_ENLACE' }))
+      })
+
+      const plazo = setTimeout(() => {
+        terminar(() => resolver({
+          confirmada: false,
+          motivo: huboFresco ? 'SIGUE_PUESTA' : referencia === null ? 'SIN_REFERENCIA' : 'SIN_TESTIGO',
+        }))
+      }, plazoMs)
+
+      this.#transporte.llamar('/release_emergency_stop')
+        .catch((e: unknown) => {
+          // La orden no salio. Se propaga tal cual: regla (b).
+          terminar(() => rechazar(e instanceof Error ? e : new Error(String(e))))
+        })
+    })
   }
 
   /** Corta el bucle sin publicar nada. No falla nunca: solo limpia el temporizador. */

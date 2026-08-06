@@ -29,6 +29,9 @@ describe('exigirContextoRobot — usar el contexto sin proveedor', () => {
         parar: () => {},
         paradaEmergencia: () => {},
         arrancarBarrido: async () => {},
+        // El doble devuelve «no confirmada» y no `true`: un doble que afirma un
+        // efecto fisico es exactamente lo que esta prueba no debe normalizar.
+        liberarParada: async () => ({ confirmada: false as const, motivo: 'SIN_TESTIGO' as const }),
         ultimoAviso: null,
       },
     }

@@ -66,13 +66,39 @@ describe('LO_QUE_NO_SE_PUEDE_DECIR', () => {
     }
   })
 
-  it('están los cinco que el proyecto ha pagado: parada, tiempo de llegada, frenado, LED y avería', () => {
+  it('están los cinco que el proyecto ha pagado: cancelar_nav2, tiempo de llegada, frenado, LED y avería', () => {
     const todo = normalizar(LO_QUE_NO_SE_PUEDE_DECIR.map((h) => `${h.que} ${h.porque}`).join(' '))
-    expect(todo).toContain('parada de emergencia')
+    expect(todo).toContain('cancelar_nav2')
     expect(todo).toContain('no esta medido')
     expect(todo).toContain('collision_monitor_state')
     expect(todo).toContain('led')
     expect(todo).toContain('averia')
+  })
+
+  it('🔴🔴 «si la parada está puesta» YA NO es un hueco, y no puede volver a serlo', () => {
+    /*
+     * Esta prueba pedia `toContain('parada de emergencia')`, o sea que FIJABA
+     * como hueco algo que dejo de serlo el 2026-08-04: el driver publica
+     * `/estado_robot.parada_emergencia`, `BotonParada` ya la leia, y el flanco se
+     * presencio con el robot en marcha desde los dos lados (evidencia 71).
+     *
+     * O sea que la lista cuyo trabajo es declarar huecos tenia uno FALSO, y la
+     * prueba que la protege lo estaba sosteniendo. Es la deriva documental del
+     * proyecto con una prueba verde encima — el peor sitio donde puede estar.
+     *
+     * → Se sustituye por el invariante contrario, que es el que ahora protege:
+     *   si alguien vuelve a escribir que no se sabe si la parada esta puesta,
+     *   esto falla. Una pantalla que se declara ciega sobre algo que SI ve manda
+     *   a mirar el robot sin motivo, y gasta la credibilidad de los avisos que
+     *   si importan.
+     */
+    for (const h of LO_QUE_NO_SE_PUEDE_DECIR) {
+      const que = normalizar(h.que)
+      expect(
+        que.includes('parada') && (que.includes('puesta') || que.includes('activa')),
+        `«${h.que}» vuelve a declarar ciega a la interfaz sobre la bandera de parada, y la lee`,
+      ).toBe(false)
+    }
   })
 })
 
