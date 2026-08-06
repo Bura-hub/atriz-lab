@@ -1,0 +1,20 @@
+{
+  "_lee_esto": [
+    "Este fichero es una PLANTILLA. El de verdad se llama usuarios.json, está en",
+    "este mismo directorio y NO se versiona (mira .gitignore).",
+    "",
+    "No lo copies y edites a mano: el campo `clave` es «sal:hash» con scrypt y no",
+    "se puede escribir a ojo. La primera cuenta se crea así, desde la máquina que",
+    "sirve la aplicación:",
+    "",
+    "    node herramientas/crear-cuenta.mjs profesora una-contrasena-larga",
+    "",
+    "Las siguientes se crean desde la pantalla /usuarios, ya con sesión.",
+    "",
+    "Y hace falta ATRIZ_SECRETO en el entorno del servidor, o el inicio de sesión",
+    "responde 500 diciéndolo. Genera uno con:",
+    "",
+    "    node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
+  ],
+  "cuentas": []
+}

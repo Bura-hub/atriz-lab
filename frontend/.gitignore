@@ -40,3 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 parada_en_marcha.txt
+
+# las cuentas del laboratorio: hashes, nunca al repositorio
+usuarios.json
