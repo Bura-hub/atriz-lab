@@ -103,7 +103,11 @@ export const GENERALES: EntradaRail[] = [
        del muro, asi que desde que su cabecera tiene campo de color el rail decia
        COBALTO y la banda de la pantalla decia VIOLETA para el mismo sitio.
   */
-  { href: '/', texto: 'Portada', Icono: IconoPortada, color: '--seccion-portada' },
+  // 📝 «Inicio» y no «Portada» (decision del usuario, 2026-08-06). El nombre
+  //    interno del token —`--seccion-portada`— y el del componente se dejan: son
+  //    identificadores, no texto de pantalla, y renombrarlos moveria un fichero
+  //    de estilos entero para cambiar una etiqueta.
+  { href: '/', texto: 'Inicio', Icono: IconoPortada, color: '--seccion-portada' },
   { href: '/flota', texto: 'Flota', Icono: IconoFlota, color: '--seccion-flota' },
   { href: '/cuaderno', texto: 'Cuaderno', Icono: IconoCuaderno, color: '--seccion-cuaderno' },
 ]
