@@ -96,7 +96,11 @@
   --seccion-diagnostico: 130 44 96; /* ciruela */
   --seccion-flota: 30 58 210;     /* el muro se queda en cobalto */
   --seccion-cuaderno: 90 92 108;  /* grafito: no habla con ningún robot */
-  --seccion-portada: 91 46 168;   /* violeta: la portada no es el muro */
+  /* 🔴 Violeta PROFUNDO, y no el mismo `91 46 168` del taller. Nacio copiando
+        ese valor, asi que la portada y la pestaña Taller tenian banda identica:
+        dos sitios distintos con el mismo color es exactamente lo que este eje
+        existe para evitar. Nunca se ven a la vez, pero el eje se rompe igual. */
+  --seccion-portada: 67 32 132;
 
   /*
    * 🔴 EL VALOR POR DEFECTO, Y NO SOBRA. `--tono-seccion` lo pone `MarcoRobot`

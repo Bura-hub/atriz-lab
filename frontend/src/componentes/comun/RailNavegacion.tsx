@@ -82,7 +82,14 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
 const GENERALES: EntradaRail[] = [
   { href: '/flota', texto: 'Flota', Icono: IconoFlota, color: '--seccion-flota' },
   { href: '/cuaderno', texto: 'Cuaderno', Icono: IconoCuaderno, color: '--seccion-cuaderno' },
-  { href: '/', texto: 'Portada', Icono: IconoPortada, color: '--seccion-flota' },
+  /*
+    🔴 `--seccion-portada`, NO `--seccion-flota`. La portada llevaba el cobalto
+       del muro, asi que desde que su cabecera tiene campo de color el raiz decia
+       COBALTO y la banda de la pantalla decia VIOLETA para el mismo sitio — y las
+       dos se ven a la vez, una al lado de la otra. El eje de identidad solo vale
+       si un sitio tiene UN color; con dos deja de responder «¿donde estoy?».
+  */
+  { href: '/', texto: 'Portada', Icono: IconoPortada, color: '--seccion-portada' },
 ]
 
 /**
