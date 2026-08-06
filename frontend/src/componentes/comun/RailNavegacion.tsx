@@ -78,26 +78,33 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
   ]
 }
 
-/** Los tres destinos que existen siempre, haya robot o no. */
-const GENERALES: EntradaRail[] = [
+/**
+ * Los tres destinos que existen siempre, haya robot o no.
+ *
+ * 📝 Exportado para que `rail.test.ts` pueda comprobarlo. No lo usa ningún otro
+ *    componente: la navegación se dibuja aquí y solo aquí.
+ */
+export const GENERALES: EntradaRail[] = [
   /*
     🔴 LA PORTADA VA PRIMERA. Estaba la ULTIMA de las tres, asi que la puerta de
        entrada de la aplicacion aparecia debajo de todo y su pastilla activa se
        pintaba al final de la lista. El logotipo de arriba tambien lleva a la
        portada, pero un enlace ROTULADO no puede estar por debajo de los sitios a
        los que se llega desde el.
+
+    ⚠️ Y va UNA sola vez. Al subirla, la primera version la AÑADIO sin borrar la
+       de abajo: el rail salio con «Portada» dos veces, arriba y al final. Se vio
+       en la primera captura despues del cambio, no compilando — el HTML era
+       correcto y las pruebas pasaban. Un menu de navegacion que repite un destino
+       es de las cosas que un cliente ve antes que el contenido.
+
+    📝 Y su tono es `--seccion-portada`, no `--seccion-flota`: llevaba el cobalto
+       del muro, asi que desde que su cabecera tiene campo de color el rail decia
+       COBALTO y la banda de la pantalla decia VIOLETA para el mismo sitio.
   */
   { href: '/', texto: 'Portada', Icono: IconoPortada, color: '--seccion-portada' },
   { href: '/flota', texto: 'Flota', Icono: IconoFlota, color: '--seccion-flota' },
   { href: '/cuaderno', texto: 'Cuaderno', Icono: IconoCuaderno, color: '--seccion-cuaderno' },
-  /*
-    🔴 `--seccion-portada`, NO `--seccion-flota`. La portada llevaba el cobalto
-       del muro, asi que desde que su cabecera tiene campo de color el raiz decia
-       COBALTO y la banda de la pantalla decia VIOLETA para el mismo sitio — y las
-       dos se ven a la vez, una al lado de la otra. El eje de identidad solo vale
-       si un sitio tiene UN color; con dos deja de responder «¿donde estoy?».
-  */
-  { href: '/', texto: 'Portada', Icono: IconoPortada, color: '--seccion-portada' },
 ]
 
 /**
