@@ -3,6 +3,14 @@
 /**
  * EL CUADERNO DE MEDIDAS: lo que dijo el robot contra lo que midió la persona.
  *
+ * 🔴 DOS MARCAS DECIMALES EN LA MISMA PANTALLA, Y AQUI ERA PEOR QUE EN NINGUN
+ *    SITIO. El campo decia `30,2` y la tabla, una fila mas abajo, `30.2`, y la
+ *    diferencia `-0.20` con punto — mientras el resto de la aplicacion escribe
+ *    `0,48 kB/s` y `8,29 V` con coma, y `formato.ts` lleva la regla escrita
+ *    («coma decimal: es una interfaz en español»). En la pantalla cuyo asunto es
+ *    comparar dos numeros, los dos numeros se escribian de dos maneras.
+ *    Ahora todo pasa por `numero()` o por `conComa()`.
+ *
  * La aritmética y el formato viven en `lib/cuaderno/medidas.ts`, que es puro y
  * tiene 8 pruebas. Aquí solo se pinta y se guarda.
  *
@@ -16,13 +24,32 @@ import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AVISO_ALMACENAMIENTO, CLAVE_CUADERNO, Medida, aCSV, diferencia, leerMedidas,
 } from '@/lib/cuaderno/medidas'
+import { numero } from '@/lib/interfaz/formato'
 import { ROBOTS } from '@/lib/interfaz/identidad'
 import { Grupo } from '@/componentes/ui/Grupo'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
 const VACIA = { robot: 'rvr-01', que: '', robotValor: '', personaValor: '', unidad: 'cm', nota: '' }
 
-function numero(s: string): number | null {
+/**
+ * Lo que TECLEO el alumno, con coma decimal.
+ *
+ * ⚠️ NO pasa por `numero()` de `formato`: aquel FUERZA dos decimales, y aqui el
+ *    valor es del alumno — si escribio «30», la tabla no puede enseñar «30,00»
+ *    como si hubiera medido con esa precision. Solo se traduce el separador.
+ */
+function conComa(v: number): string {
+  return String(v).replace('.', ',')
+}
+
+/**
+ * Lo TECLEADO, convertido a numero.
+ *
+ * 📝 Se llamaba `numero()` y chocaba de frente con el `numero()` de `formato`,
+ *    que hace lo contrario -formatea un numero como texto-. Dos funciones con el
+ *    mismo nombre y sentidos opuestos en el mismo fichero es una trampa.
+ */
+function aNumero(s: string): number | null {
   const t = s.trim().replace(',', '.')
   if (t === '') return null
   const n = Number(t)
@@ -58,8 +85,8 @@ export function PanelCuaderno() {
       cuando: Date.now(),
       robot: f.robot,
       que: f.que.trim(),
-      robotValor: numero(f.robotValor),
-      personaValor: numero(f.personaValor),
+      robotValor: aNumero(f.robotValor),
+      personaValor: aNumero(f.personaValor),
       unidad: f.unidad.trim() || 'cm',
       nota: f.nota.trim(),
     }])
@@ -77,8 +104,8 @@ export function PanelCuaderno() {
    *    signo o el redondeo, se cambia en un sitio y las tres vistas coinciden.
    */
   const dPrevia = useMemo(() => {
-    const r = numero(f.robotValor)
-    const p = numero(f.personaValor)
+    const r = aNumero(f.robotValor)
+    const p = aNumero(f.personaValor)
     if (r === null || p === null) return null
     return diferencia({
       id: '', cuando: 0, robot: f.robot, que: f.que,
@@ -274,7 +301,11 @@ export function PanelCuaderno() {
                 </select>
               </label>
               <label>
-                <span className="microetiqueta mb-1.5 block">qué mediste</span>
+                {/* «obligatorio» escrito, no un asterisco: es el unico campo que
+                    bloquea el boton y nada lo decia. */}
+                <span className="microetiqueta mb-1.5 block">
+                  qué mediste <span className="opacity-60">· obligatorio</span>
+                </span>
                 <input
                   className={campo} value={f.que} placeholder="avance de 30 cm"
                   onChange={(e) => setF({ ...f, que: e.target.value })}
@@ -355,7 +386,7 @@ export function PanelCuaderno() {
                         /* La unidad al mismo tamaño que la de la tabla de abajo
                            y no con `.unidad` (0,42 em): sobre 18 px saldría a
                            7,5 px, que ya no se lee a 50 cm de la pantalla. */
-                        : <>{dPrevia > 0 ? '+' : ''}{dPrevia.toFixed(2)}
+                        : <>{dPrevia > 0 ? '+' : ''}{numero(dPrevia, 2)}
                           <span className="ml-1 text-[11px] text-muted-foreground">{f.unidad}</span></>}
                     </output>
                   </div>
@@ -387,8 +418,22 @@ export function PanelCuaderno() {
               >
                 Anotar
               </button>
+              {/*
+                🔴 LA AYUDA DECIA LO CONTRARIO DE LO QUE HACIA EL BOTON. Con el
+                   formulario vacío, «Anotar» está desactivado —«qué mediste» es
+                   el único campo obligatorio— y a su lado se leía «puedes dejar
+                   un lado vacío y completarlo después». Quien llega no tiene
+                   forma de saber qué le falta: el botón no responde y el texto
+                   le dice que no hace falta nada.
+
+                Las dos frases son ciertas, pero en momentos distintos: una
+                explica por qué NO se puede anotar todavía, la otra qué se puede
+                dejar a medias una vez se puede. Ahora sale la que toca.
+              */}
               <span className="text-xs text-muted-foreground">
-                Puedes dejar un lado vacío y completarlo después.
+                {f.que.trim() === ''
+                  ? 'Escribe qué mediste para poder anotar.'
+                  : 'Puedes dejar un lado vacío y completarlo después.'}
               </span>
             </div>
           </Tarjeta>
@@ -460,12 +505,12 @@ export function PanelCuaderno() {
                         <td className="px-3 py-3 text-right font-mono text-[15px]">
                           {m.robotValor === null
                             ? <span className="hueco" title="no se sabe">—</span>
-                            : <>{m.robotValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                            : <>{conComa(m.robotValor)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
                         </td>
                         <td className="px-3 py-3 text-right font-mono text-[15px]">
                           {m.personaValor === null
                             ? <span className="hueco" title="no se sabe">—</span>
-                            : <>{m.personaValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                            : <>{conComa(m.personaValor)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
                         </td>
                         {/*
                           🔴 La diferencia NO se colorea. Sin una tolerancia
@@ -475,7 +520,7 @@ export function PanelCuaderno() {
                         <td className="px-3 py-3 text-right font-mono text-[15px]">
                           {d === null
                             ? <span className="hueco" title="falta un lado">—</span>
-                            : <>{d > 0 ? '+' : ''}{d.toFixed(2)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                            : <>{d > 0 ? '+' : ''}{numero(d, 2)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
                         </td>
                         <td className="px-5 py-3 text-right">
                           <button
