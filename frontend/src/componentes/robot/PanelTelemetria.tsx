@@ -18,6 +18,7 @@ import { Grupo } from '@/componentes/ui/Grupo'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { Bateria } from './Bateria'
 import { EstadoMotores } from './EstadoMotores'
+import { PanelColor } from './PanelColor'
 import { PanelLeds } from './PanelLeds'
 import { PanelOrigenOdometria } from './PanelOrigenOdometria'
 import { useMuestreo } from './useMuestreo'
@@ -397,6 +398,21 @@ export function PanelTelemetria() {
         fuente="/motor_status · cada 30 s, así que un valor puede tener medio minuto"
       >
         <EstadoMotores />
+      </Grupo>
+
+      {/*
+        🔴 EL SENSOR OPTICO VA EN SU PROPIA BANDA, y no con el flujo del RVR.
+           No comparte naturaleza con `/odom` e `/imu`: aquellos llegan siempre y
+           este llega **a ceros en los 16 robots por defecto**, porque el sensor
+           no ve nada sin su luz y el driver solo la enciende con
+           `color_detection:=true`. Meterlo entre los que sí traen datos habria
+           hecho que su fila de ceros se leyera como una medida mas.
+      */}
+      <Grupo
+        titulo="Sensor óptico"
+        fuente="/color · llega apagado por defecto, y la pantalla lo distingue de ver negro"
+      >
+        <PanelColor />
       </Grupo>
 
       {/*

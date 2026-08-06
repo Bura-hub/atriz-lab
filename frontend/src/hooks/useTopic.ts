@@ -118,6 +118,29 @@ export interface MensajeImu {
 }
 
 /**
+ * `atriz_rvr_msgs/msg/Color`. Son **dos campos y nada más**:
+ * `int32[] rgb_color` y `float32 confidence`.
+ *
+ * 🔴 EL CANAL `clear` NO VIAJA, y es el que mejor discrimina: recorre 12,6×
+ *    entre negro (181) y blanco (2288). Quien quiera seguir una linea con este
+ *    topic tiene menos señal de la que caracterizo el robot.
+ *
+ * 🔴 Y en los 16 robots llega **a ceros** por defecto: el sensor no da nada sin
+ *    su propia luz (4 apagado contra 741 encendido), y el driver solo la
+ *    enciende con `color_detection:=true`, que es `false` porque deja un LED
+ *    blanco bajo el chasis. Medido en rvr-01: 13,1 Hz de
+ *    `{"rgb_color":[0,0,0],"confidence":0}`.
+ *
+ * ⚠️ `confidence` vale 0 SIEMPRE, y no por falta de configuracion: la paleta del
+ *    RVR tiene cinco colores cargados y activos (comprobado). Vale 0 porque las
+ *    superficies del laboratorio no se parecen a esos cinco.
+ */
+export interface MensajeColor {
+  rgb_color: number[]
+  confidence: number
+}
+
+/**
  * `atriz_rvr_msgs/msg/Encoder`. 🔴 `Encoder`, SINGULAR: `Encoders.msg` no existe,
  * y un tipo mal escrito da `InvalidClassException` en rosbridge con el sintoma
  * «ese topic no llega».
@@ -258,6 +281,7 @@ export interface MensajesPorTopic {
   '/motor_status': MensajeEstadoMotor
   '/odom': MensajeOdometria
   '/imu': MensajeImu
+  '/color': MensajeColor
   '/encoders': MensajeEncoder
   '/scan': MensajeScan
   '/estado_robot': MensajeEstadoRobot
