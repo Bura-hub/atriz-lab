@@ -10,7 +10,7 @@
  */
 
 import { useRobot } from '@/hooks/ContextoRobot'
-import { SIN_DATO, aGrados, grados, metros, metrosPorSegundo, numero, radianesPorSegundo, yawDeCuaternion } from '@/lib/interfaz/formato'
+import { SIN_DATO, aGrados, grados, metros, metrosPorSegundo, metrosPorSegundoCuadrado, numero, radianesPorSegundo, yawDeCuaternion } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
 import { Dato } from '@/componentes/ui/Dato'
 import { Contexto } from '@/componentes/ui/Contexto'
@@ -169,6 +169,110 @@ function Encoders() {
   )
 }
 
+/** `|g|` en reposo, si el sensor estuviera bien. Es la referencia de la tarjeta. */
+const GRAVEDAD = 9.80665
+
+/**
+ * EL ACELERÓMETRO. Y es lo ÚNICO de `/imu` que se pinta, a propósito.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 `/imu` Y `/odom` LLEVAN EL MISMO YAW Y EL MISMO GIRO — bit a bit.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Medido contra rvr-01 el 2026-08-06, los dos topics a la vez:
+ *
+ *     yaw de /imu   −8,507°          giro z de /imu    8,127e−9 rad/s
+ *     yaw de /odom  −8,507°          giro z de /odom   8,127e−9 rad/s
+ *
+ * El driver copia la misma fuente a los dos. Así que una tarjeta de IMU con
+ * «Rumbo» y «Velocidad angular» sería **el mismo hecho dos veces en la misma
+ * pantalla**, que es justo lo que `repeticionesEn()` vigila y lo que hace que
+ * alguien crea que tiene dos medidas independientes cuando tiene una.
+ *
+ * → Lo único que `/imu` aporta y no está en ningún otro sitio es la
+ *   **aceleración lineal**. Eso es esta tarjeta.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ⚠️ Y SE PINTA SABIENDO QUE EL SENSOR MIENTE, porque callarlo sería peor
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Con el robot QUIETO y en suelo plano, la lectura de hoy fue
+ * `x = −1,24 · y = −0,04 · z = 9,32`, o sea **|g| = 9,405** contra 9,80665: un
+ * **4 % corto**, y un sesgo de 1,24 m/s² en X que no debería existir. Es la
+ * medida que zanjó que la inclinación de 6,9° del RVR era del sensor y no del
+ * suelo — el error es fijo en el marco del robot.
+ *
+ * Por eso `|g|` se pinta como un dato más y con su desvío al lado: no es un
+ * adorno, es lo que impide leer estos tres números como si fueran buenos.
+ *
+ * 📝 Roll y pitch NO se pintan porque **no son una medida**: el driver publica
+ *    la orientación PLANA (`publicar_inclinacion: false`), así que llegan
+ *    `0.00` exactos siempre. Enseñar un cero constante como si fuera una lectura
+ *    es afirmar que el robot está horizontal, que es precisamente lo que este
+ *    proyecto no sabe.
+ */
+function Acelerometro() {
+  const { transporte } = useRobot()
+  const { ultimo } = useMuestreo(transporte, '/imu')
+
+  const a = ultimo?.linear_acceleration
+  const x = numeroValido(a?.x)
+  const y = numeroValido(a?.y)
+  const z = numeroValido(a?.z)
+  const modulo = x === null || y === null || z === null ? null : Math.hypot(x, y, z)
+  const desvio = modulo === null ? null : ((modulo - GRAVEDAD) / GRAVEDAD) * 100
+
+  return (
+    <Tarjeta
+      titulo="Acelerómetro"
+      subtitulo="Lo único de /imu que no está ya en la odometría: los dos comparten yaw y giro, bit a bit."
+      pie={ultimo === null ? (
+        <p>Todavía no ha llegado ningún <code>/imu</code>.</p>
+      ) : undefined}
+    >
+      {/* Cuatro celdas en una fila sobre pantalla ancha, igual que `EstadoMotores`:
+          es una tarjeta a ancho completo y la misma anatomia que su vecina de
+          abajo, asi que la pagina no cambia de rejilla a mitad de camino. */}
+      <div className="rejilla sm:grid-cols-2 xl:grid-cols-4">
+        <Dato etiqueta="Adelante (X)" valor={metrosPorSegundoCuadrado(x)} crudo={x ?? undefined} />
+        <Dato etiqueta="Lateral (Y)" valor={metrosPorSegundoCuadrado(y)} crudo={y ?? undefined} />
+        <Dato etiqueta="Vertical (Z)" valor={metrosPorSegundoCuadrado(z)} crudo={z ?? undefined} />
+        {/*
+          🔴 `|g|` NO ES UN DATO DEL ROBOT: es una comprobación de este sensor
+             contra una constante física. Va aquí y no en una nota porque es lo
+             que decide si los tres de arriba se pueden creer.
+        */}
+        <Dato
+          etiqueta="Módulo |g|"
+          valor={metrosPorSegundoCuadrado(modulo)}
+          crudo={modulo ?? undefined}
+          nota={desvio === null
+            ? undefined
+            : `${numero(desvio, 1)} % respecto a 9,81 — en reposo debería dar exactamente eso.`}
+        />
+      </div>
+
+      <Contexto>
+      <p>
+        Este acelerómetro está <strong>descalibrado</strong>, y no es una sospecha: con el robot
+        quieto sobre suelo plano medido con nivel, el módulo sale un 4 % corto y queda un sesgo
+        de ~1,2 m/s² en el eje de avance que no debería existir. Es la medida que zanjó que la
+        inclinación de 6,9° que reporta el RVR viene del sensor y no del suelo — el error es fijo
+        en el marco del robot, así que no gira con él.
+      </p>
+      <p>
+        No se pintan inclinación ni balanceo porque <strong>no son una medida</strong>: el driver
+        publica la orientación plana a propósito, así que llegarían ceros exactos siempre. Un cero
+        constante presentado como lectura afirmaría que el robot está horizontal, y eso es justo lo
+        que no se sabe.
+      </p>
+      <p>
+        Y el mensaje llega con <strong>todas las covarianzas a cero</strong>: el driver no las
+        rellena. Nada que consuma este topic puede ponderar cuánto fiarse de cada eje.
+      </p>
+      </Contexto>
+    </Tarjeta>
+  )
+}
+
 /**
  * 🔴🔴 LA PANTALLA SE PARTE POR EL RITMO DE LOS DATOS, NO POR EL ORDEN EN QUE SE
  *      ESCRIBIERON LAS TARJETAS.
@@ -237,9 +341,16 @@ export function PanelTelemetria() {
            grupo y se convierte en el texto que se lee. El motivo largo ya vive en
            el subtitulo de la tarjeta y en su «Por qué».
       */}
+      {/*
+        ⚠️ La `fuente` dice «~16,5 Hz» de `/odom` y `/encoders`, y **no pone
+           cifra para `/imu`** a propósito: su ritmo tiene un ±11 % de dispersión
+           sin explicar (13,3 · 16,3 · 16,5 Hz en tres tomas del mismo robot), y
+           este proyecto tiene escrito que no se cite un número suelto de `/imu`
+           como si fuera su frecuencia.
+      */}
       <Grupo
         titulo="Flujo continuo del RVR"
-        fuente="/odom y /encoders · ~16,5 Hz, leídos cada 500 ms"
+        fuente="/odom, /encoders e /imu · leídos cada 500 ms"
       >
         {/*
           🔴 2fr/1fr Y NO MITADES. La odometria son cinco medidas y los encoders
@@ -255,6 +366,23 @@ export function PanelTelemetria() {
           <div className={columna}><Odometria /></div>
           <div className={columna}><Encoders /></div>
         </div>
+
+        {/*
+          🔴 EL ACELEROMETRO VA A ANCHO COMPLETO, Y ANTES LO PUSE APILADO BAJO
+             LOS ENCODERS «para equilibrar la altura». Hizo lo contrario: medido
+             en captura a 1400 px, la columna derecha paso a sacarle ~200 px a la
+             izquierda y quedo un blanco de ~370 px bajo la odometria — el mismo
+             defecto que el comentario de esta banda documenta para el caso
+             opuesto.
+
+             A ancho completo sus cuatro celdas caben en una fila, la banda
+             recupera sus dos columnas parejas, y la anatomia coincide con la de
+             `EstadoMotores`, que ya usa ese patron en esta misma pagina.
+
+          📝 No lo vio ni tsc ni las pruebas: se vio mirando la captura con el
+             robot vivo.
+        */}
+        <div className="mt-4"><Acelerometro /></div>
       </Grupo>
 
       {/*

@@ -56,6 +56,19 @@ export function radianesPorSegundo(w: number | null | undefined): string {
   return t === SIN_DATO ? SIN_DATO : `${t} rad/s`
 }
 
+/**
+ * Aceleración. **Dos decimales y no tres**, al contrario que las velocidades.
+ *
+ * 📝 El acelerómetro de este RVR está descalibrado —`|g|` sale un 4 % corto,
+ *    medido— así que la tercera cifra no significa nada: escribirla daría a un
+ *    número inexacto el aspecto de uno preciso, que es la forma de mentir que
+ *    esta interfaz más persigue.
+ */
+export function metrosPorSegundoCuadrado(a: number | null | undefined): string {
+  const t = numero(a, 2)
+  return t === SIN_DATO ? SIN_DATO : `${t} m/s²`
+}
+
 export function grados(g: number | null | undefined): string {
   const t = numero(g, 1)
   return t === SIN_DATO ? SIN_DATO : `${t}°`

@@ -91,6 +91,33 @@ export interface MensajeOdometria {
 }
 
 /**
+ * `sensor_msgs/msg/Imu`.
+ *
+ * 🔴 SU `orientation` Y SU `angular_velocity` SON LOS MISMOS BITS QUE `/odom`.
+ *    Medido contra rvr-01 el 2026-08-06, los dos topics a la vez: yaw −8,507°
+ *    en los dos, giro z 8,127e−9 rad/s en los dos. El driver copia la misma
+ *    fuente. Quien pinte esto tiene que saberlo: enseñar los dos como si fueran
+ *    medidas independientes es afirmar que hay dos testigos donde hay uno.
+ *
+ * 🔴 Y `orientation.x` / `.y` valen **0 exactos**: el driver publica la
+ *    orientación PLANA (`publicar_inclinacion: false`), porque la inclinación de
+ *    6,9° que reporta el RVR es un artefacto de su acelerómetro descalibrado.
+ *    No son una lectura de que el robot esté horizontal.
+ *
+ * ⚠️ Las tres covarianzas llegan **a cero**, no rellenas. Nada puede ponderar
+ *    cuánto fiarse de cada eje.
+ */
+export interface MensajeImu {
+  header: Cabecera
+  orientation: Cuaternion
+  orientation_covariance: number[]
+  angular_velocity: Vector3
+  angular_velocity_covariance: number[]
+  linear_acceleration: Vector3
+  linear_acceleration_covariance: number[]
+}
+
+/**
  * `atriz_rvr_msgs/msg/Encoder`. 🔴 `Encoder`, SINGULAR: `Encoders.msg` no existe,
  * y un tipo mal escrito da `InvalidClassException` en rosbridge con el sintoma
  * «ese topic no llega».
@@ -230,6 +257,7 @@ export interface MensajesPorTopic {
   '/battery_state': MensajeBateria
   '/motor_status': MensajeEstadoMotor
   '/odom': MensajeOdometria
+  '/imu': MensajeImu
   '/encoders': MensajeEncoder
   '/scan': MensajeScan
   '/estado_robot': MensajeEstadoRobot
