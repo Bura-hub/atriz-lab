@@ -16,6 +16,7 @@
  * ignora.
  */
 
+import { ReactNode } from 'react'
 import Link from 'next/link'
 import { Baldosa } from '@/lib/flota/resumen'
 import { EstadoRobot } from '@/lib/rosbridge/salud'
@@ -71,6 +72,77 @@ const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
   IR: 'hay que ir',
 }
 
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 LA JERARQUÍA DE LA BALDOSA, Y POR QUÉ ESTABA DEL REVÉS
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Hasta el 2026-08-05 el NOMBRE iba a 32 px en tinta fuerte y el VOLTAJE a 20
+ * en gris. O sea: lo único legible a tres metros era lo único que ya se sabe
+ * -qué robot es lo dice su POSICIÓN en la rejilla 4x4, que no se mueve-.
+ *
+ * La maqueta acordada (`muro_de_flota_laboratorio_atriz/screen.png`) lo compone
+ * al revés: rótulo `VOLTAJE` en microetiqueta, el voltaje a ~40 px, y el nombre
+ * pequeño encima. Es lo que hace este bloque.
+ */
+/** El nombre del robot: presente, y por debajo del dato. */
+const TAMANO_NOMBRE = 'clamp(1.1rem, 1.8vw, 1.35rem)'
+
+/*
+ * 🔴 EL HUECO DEL DATO MIDE LO MISMO EN LOS DOS ESTADOS, Y ESO ES EL PUNTO.
+ *
+ * Antes el voltaje iba a `text-xl` (20 px) en la baldosa de vidrio y a 2,4rem
+ * (38,4) en la de bloque: la ficha **cambiaba de forma al conectarse**, así que
+ * bastaba con que un robot apareciera para que el muro entero se recompusiera
+ * -y el muro se mira mientras alguien camina hacia un robot-.
+ *
+ * El valor es `.cifra` con `line-height: 1`, así que su caja mide exactamente
+ * su tamaño de fuente: reservar ese mismo `min-height` deja el hueco idéntico
+ * aunque dentro solo haya una raya.
+ *
+ * ⚠️ Y la AUSENCIA sigue pintándose pequeña y apagada (`.hueco`): lo que se
+ *    iguala es el SITIO, no el peso. Una raya de 36 px repetida dieciséis veces
+ *    convierte el hueco en el contenido, que es la regla de `.hueco` entera.
+ */
+const ALTO_DEL_DATO = 'clamp(1.75rem, 2.6vw, 2.25rem)'
+
+/**
+ * El voltaje de una baldosa, con su rótulo. **La misma pieza en los dos
+ * estados** — de eso va: si vidrio y bloque la componen distinto, el muro se
+ * recoloca solo.
+ *
+ * `sobreBloque` no cambia la estructura, solo el color: `.microetiqueta` y
+ * `.hueco` tiñen con `--muted-foreground`, que es un gris calculado sobre el
+ * papel y sobre un bloque saturado no se lee. Ahí el color lo pone el propio
+ * bloque (`currentColor`), que contrasta por construcción.
+ */
+function VoltajeDeBaldosa({ v, sobreBloque, atenuado, children }: {
+  v: number | null
+  sobreBloque: boolean
+  /** Sin latido, lo de arriba es «lo último que se supo»: se atenúa entero. */
+  atenuado: boolean
+  /** El nivel de batería, en la misma línea base que la cifra. */
+  children?: ReactNode
+}) {
+  return (
+    <div className={atenuado ? 'opacity-60' : undefined}>
+      <p className={`microetiqueta ${sobreBloque ? '!text-current opacity-75' : ''}`}>Voltaje</p>
+      <div className="mt-1.5 flex items-end gap-2" style={{ minHeight: ALTO_DEL_DATO }}>
+        {v === null ? (
+          <span
+            className={`font-mono text-lg leading-none ${sobreBloque ? 'opacity-60' : 'hueco'}`}
+            title={SIN_DATO}
+          >
+            —
+          </span>
+        ) : (
+          <span className="cifra">{voltios(v)}</span>
+        )}
+        {children}
+      </div>
+    </div>
+  )
+}
+
 export interface PropsBaldosaRobot {
   baldosa: Baldosa
   /** A dónde lleva el clic. La baldosa es la puerta a la ficha del robot. */
@@ -98,13 +170,13 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
     return (
       <Link
         href={href}
-        className="vidrio pulsable focus-ring flex h-full flex-col justify-between rounded-ficha p-5"
+        className="vidrio pulsable focus-ring flex h-full flex-col rounded-ficha p-5"
       >
         {/* VIDRIO: no se llega a él, así que no pide nada. Sin color. */}
         <div className="flex items-start justify-between gap-2">
           <span
             className="font-semibold leading-none tracking-tight text-muted-foreground"
-            style={{ fontSize: 'clamp(1.35rem, 2.5vw, 2rem)' }}
+            style={{ fontSize: TAMANO_NOMBRE }}
           >
             {etiqueta}
           </span>
@@ -112,12 +184,14 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
             no llego
           </span>
         </div>
-        <div className="mt-6">
-          {/* Una raya, no la frase: se distingue de un cero al instante. */}
-          <span className="font-mono text-xl text-muted-foreground" title={SIN_DATO}>—</span>
-          <span className="mt-2 block text-[11.5px] text-muted-foreground">
-            último dato: nunca
-          </span>
+        {/*
+          El MISMO bloque que la baldosa de bloque, con el mismo hueco: es lo
+          que impide que la ficha se recomponga cuando el robot aparece. La
+          raya, no la frase — se distingue de un cero al instante.
+        */}
+        <div className="mt-auto pt-6">
+          <VoltajeDeBaldosa v={null} sobreBloque={false} atenuado={false} />
+          <p className="mt-2 text-[11.5px] text-muted-foreground">último dato: nunca</p>
         </div>
       </Link>
     )
@@ -157,8 +231,11 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
 
       <div className="relative flex flex-1 flex-col">
       {/*
-        ── LA DISTANCIA LARGA ──────────────────────────────────────────────
-        Lo que tiene que leerse a tres metros: QUE robot y CUANTA bateria.
+        ── QUÉ ROBOT ES ────────────────────────────────────────────────────
+        📝 Y va PEQUEÑO a propósito: a tres metros, «qué robot» ya lo dice su
+           POSICIÓN en la rejilla —que no se mueve, por eso el orden por
+           defecto es por número—. Lo que no se sabe sin leerlo es el voltaje,
+           y por eso manda el de abajo.
       */}
       <div className="flex items-start justify-between gap-2">
         <span
@@ -166,7 +243,7 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
           //    "technical" rather than for code, data, o measurement». Esto es un
           //    NOMBRE, no una medida.
           className="font-bold leading-none tracking-tight"
-          style={{ fontSize: 'clamp(1.5rem, 3.2vw, 2.4rem)' }}
+          style={{ fontSize: TAMANO_NOMBRE }}
         >
           {etiqueta}
         </span>
@@ -177,19 +254,33 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
         </span>
       </div>
 
-      <div className="mt-auto flex items-baseline gap-2 pt-6">
-        <span
-          className={`font-mono font-bold leading-none tracking-tighter ${
-            baldosa.voltios === null ? 'text-xl opacity-70' : 'text-[2.4rem]'
-          } ${baldosa.datosVigentes ? '' : 'opacity-60'}`}
+      {/*
+        ── LA DISTANCIA LARGA ──────────────────────────────────────────────
+        Lo que tiene que leerse a tres metros: CUÁNTA batería. Y se compone
+        con la misma pieza que la baldosa de vidrio, para que el muro no se
+        recomponga cuando este robot aparezca.
+      */}
+      <div className="mt-auto pt-6">
+        <VoltajeDeBaldosa
+          v={baldosa.voltios}
+          sobreBloque
+          atenuado={!baldosa.datosVigentes}
         >
-          {voltios(baldosa.voltios)}
-        </span>
-        {baldosa.bateria !== 'OK' && (
-          <span className="text-xs opacity-80">
-            {baldosa.bateria === 'DESCONOCIDO' ? SIN_DATO : baldosa.bateria.toLowerCase()}
-          </span>
-        )}
+          {/*
+            🔴 `DESCONOCIDO` NO PONE PALABRA, Y NO ES QUE SE ESCONDA: la raya de
+               arriba YA es «no se sabe» -lo lleva en su `title`-, así que
+               escribirlo al lado pinta el mismo hueco dos veces. Antes salía
+               «no se sabe no se sabe», porque el valor tambien lo imprimía.
+
+            ⚠️ Y sigue sin pintarse como `OK`, que es la regla: un hueco se ve
+               como hueco, no como una batería sana.
+          */}
+          {baldosa.bateria !== 'OK' && baldosa.bateria !== 'DESCONOCIDO' && (
+            <span className="pb-0.5 text-xs leading-none opacity-80">
+              {baldosa.bateria.toLowerCase()}
+            </span>
+          )}
+        </VoltajeDeBaldosa>
       </div>
 
       {/*

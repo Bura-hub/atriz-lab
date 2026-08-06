@@ -26,7 +26,7 @@ import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
 import { useLatido } from '@/hooks/useTransporte'
 import { NivelBateria, V_BAJA, V_CRITICA, nivelBateria } from '@/lib/rosbridge/contrato'
-import { SIN_DATO, milisegundos, numero, voltios } from '@/lib/interfaz/formato'
+import { SIN_DATO, milisegundos, numero, partirUnidad, voltios } from '@/lib/interfaz/formato'
 import { porcentajeDe, voltajeDe } from '@/lib/interfaz/lecturas'
 import { Dato } from '@/componentes/ui/Dato'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
@@ -46,6 +46,10 @@ const TEXTO: Readonly<Record<NivelBateria, string>> = {
   OK: 'por encima del umbral',
   BAJA: 'toca cargar',
   CRITICA: 'el RVR se va a apagar',
+  // 🔴 NO SE PINTA. La entrada existe porque el `Record` es total, pero el
+  //    veredicto de `DESCONOCIDO` no llega a la pantalla: bajo la raya del
+  //    voltaje decia «no se sabe», o sea la misma ausencia dos veces, en simbolo
+  //    y en prosa. La condicion que lo impide esta en la fila hero.
   DESCONOCIDO: SIN_DATO,
 }
 
@@ -117,35 +121,115 @@ export function Bateria() {
   const nivel: NivelBateria = v === null ? 'DESCONOCIDO' : nivelBateria(v)
   const pct = porcentajeDe(mensaje)
   const desde = transporte.msDesdeUltimo('/battery_state')
+  // La misma particion que hace `Dato`: el numero manda y la unidad acompaña.
+  const { numero: cifra, unidad } = partirUnidad(voltios(v))
 
   return (
     <Tarjeta
       titulo="Batería"
-      subtitulo="Se decide por voltios. El porcentaje del firmware dijo 100 % con la batería a 8,29 V."
-      // 🔴 La insignia solo sale cuando DICE algo. Con la tarjeta sin datos, sus
-      //    valores ya son rayas: repetir «no se sabe» arriba a la derecha era
-      //    decir dos veces lo mismo, y en la captura del muro esa repeticion era
-      //    justo lo que convertia el hueco en el contenido de la pantalla.
-      extremo={nivel === 'DESCONOCIDO' ? undefined : <Insignia tono={TONO[nivel]}>{nivel}</Insignia>}
+      /*
+        📝 El subtitulo dice la REGLA y nada mas. Antes traia la evidencia entera
+           —«el porcentaje del firmware dijo 100 % con la bateria a 8,29 V»— y
+           ocupaba dos lineas para dejar «V.» huerfano en la segunda, ademas de
+           repetir literalmente una frase que el «Por qué» de abajo ya da con su
+           contexto. La regla arriba, el aviso pegado al numero que se puede leer
+           mal, y la evidencia en el desplegable: tres sitios, tres funciones.
+      */
+      subtitulo="Se decide por voltios, nunca por el porcentaje del firmware."
+      /*
+        🔴 LA PROSA DE CIERRE VA AL PIE, QUE ES PARA LO QUE `Tarjeta` LO TIENE.
+           Colgaba del cuerpo como dos parrafos sueltos, sin regla que los
+           separase de los datos, asi que se leian como una fila mas de la
+           tarjeta. El pie trae su propia linea y su propio relleno.
+      */
+      pie={
+        (v === null && mensaje !== null) || mensaje === null ? (
+          <>
+            {v === null && mensaje !== null && (
+              <p>
+                Ha llegado un <code>/battery_state</code> sin un voltaje válido. El driver publica{' '}
+                <code>NaN</code> a propósito cuando la lectura falla —con el RVR apagado y la
+                Raspberry Pi viva, por ejemplo— porque 0,00 V sería un dato y esto es un hueco.
+              </p>
+            )}
+            {mensaje === null && (
+              <p>
+                Todavía no ha llegado ningún <code>/battery_state</code>. Llega cada 30,0 s, así que
+                puede tardar medio minuto en aparecer aunque el robot esté perfectamente.
+              </p>
+            )}
+          </>
+        ) : undefined
+      }
     >
-      <Dato
-        etiqueta="Voltaje"
-        valor={voltios(v)}
-        crudo={v ?? undefined}
-        antiguedad={desde === null ? SIN_DATO : `hace ${milisegundos(desde)}`}
-        grande
-        // 🔴 Solo el VEREDICTO va pegado al valor: cambia con lo que llega y
-        //    por tanto es estado. Los umbrales del firmware son constantes y
-        //    bajan al desplegable — antes ocupaban dos lineas bajo cada numero
-        //    y el ojo iba valor, parrafo, valor, parrafo.
-        nota={TEXTO[nivel]}
-      />
-      <Dato
-        etiqueta="Porcentaje que reporta el firmware (no decide nada)"
-        valor={pct === null ? SIN_DATO : `${numero(pct, 0)} %`}
-        crudo={pct ?? undefined}
+      {/*
+        🔴🔴 LA FILA HERO, Y POR QUE ESTA TARJETA ES LA UNICA DE LA PANTALLA QUE
+             LA TIENE.
 
-      />
+        Esto eran CUATRO lineas sueltas apiladas sin rejilla —rotulo, raya,
+        «no se sabe», rotulo, raya— donde «Voltaje» y «Porcentaje que reporta el
+        firmware (no decide nada)» pesaban lo mismo. Y el rotulo del que NO
+        decide nada era cuatro veces mas largo, asi que en `.microetiqueta`
+        -monoespaciada y espaciada- dominaba la tarjeta entera: el ojo aterrizaba
+        en el dato desautorizado.
+
+        El voltaje es el signo vital de este robot y el unico valido por regla del
+        proyecto, asi que se pinta con `.cifra-hero` (~56 px) a ancho completo,
+        con su veredicto y su antiguedad al lado, y el porcentaje baja a una fila
+        secundaria de la misma rejilla.
+
+        📝 Va a mano y no con `<Dato grande>` por una sola razon: `Dato` pone la
+           antiguedad DEBAJO del valor y no tiene sitio para la insignia. Aqui las
+           dos comparten la linea base de la cifra, que es lo que hace que se lean
+           como un solo enunciado —«8,23 V, correcto, de hace 12 s»— en vez de
+           como tres cosas. El `<data value>` se emite igual: es la regla del
+           proyecto y no se pierde por escribir el bloque a mano.
+      */}
+      <div className="rejilla">
+        <div className="px-5 pb-4 pt-4">
+          <div className="microetiqueta">Voltaje</div>
+          <div className="mt-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+            {/* La ausencia sigue siendo una raya pequeña: si creciera con la
+                cifra hero, un robot apagado —el estado mas frecuente— pintaria
+                un hueco de 56 px como si fuera una medida. */}
+            {v === null ? (
+              <span className="hueco text-2xl leading-none" title={SIN_DATO}>—</span>
+            ) : (
+              <data value={String(v)} className="cifra-hero">
+                {cifra}
+                {unidad !== null && <span className="unidad">{unidad}</span>}
+              </data>
+            )}
+            {nivel !== 'DESCONOCIDO' && <Insignia tono={TONO[nivel]}>{nivel}</Insignia>}
+            {v !== null && desde !== null && (
+              <span className="text-[11px] leading-tight text-muted-foreground">
+                hace {milisegundos(desde)}
+              </span>
+            )}
+          </div>
+          {/*
+            🔴 EL VEREDICTO NO SE PINTA CUANDO NO HAY NIVEL. Con `DESCONOCIDO`
+               el texto era «no se sabe», justo debajo de la raya que ya dice eso
+               mismo: la ausencia repetida dos veces, en prosa y en simbolo.
+          */}
+          {nivel !== 'DESCONOCIDO' && (
+            <p className="mt-2 max-w-prose text-[11px] leading-snug text-muted-foreground/80">
+              {TEXTO[nivel]}
+            </p>
+          )}
+        </div>
+
+        {/* 🔴 EL ROTULO, ACORTADO. «Porcentaje que reporta el firmware (no decide
+            nada)» son 51 caracteres en versalitas espaciadas; el matiz baja a la
+            nota, que es donde `Dato` documenta que va lo que el numero no dice. */}
+        <Dato
+          etiqueta="Porcentaje del firmware"
+          valor={pct === null ? SIN_DATO : `${numero(pct, 0)} %`}
+          crudo={pct ?? undefined}
+          nota="No decide nada: es una estimación gruesa. Se enseña para que nadie lo busque en otro sitio."
+        />
+      </div>
+
       <Contexto>
         <p>
           Umbrales del firmware: <strong>baja</strong> por debajo de {voltios(V_BAJA)} y{' '}
@@ -158,20 +242,6 @@ export function Bateria() {
           se enseña sin que decida nada.
         </p>
       </Contexto>
-
-      {v === null && mensaje !== null && (
-        <p className="text-xs text-muted-foreground mt-2 max-w-prose">
-          Ha llegado un <code>/battery_state</code> sin un voltaje válido. El driver publica{' '}
-          <code>NaN</code> a propósito cuando la lectura falla —con el RVR apagado y la Raspberry Pi
-          viva, por ejemplo— porque 0,00 V sería un dato y esto es un hueco.
-        </p>
-      )}
-      {mensaje === null && (
-        <p className="text-xs text-muted-foreground mt-2 max-w-prose">
-          Todavía no ha llegado ningún <code>/battery_state</code>. Llega cada 30,0 s, así que puede
-          tardar medio minuto en aparecer aunque el robot esté perfectamente.
-        </p>
-      )}
     </Tarjeta>
   )
 }

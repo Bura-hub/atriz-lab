@@ -12,7 +12,7 @@
  *    contra cinta, y eso solo se sabe porque alguien anotó las dos columnas.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AVISO_ALMACENAMIENTO, CLAVE_CUADERNO, Medida, aCSV, diferencia, leerMedidas,
 } from '@/lib/cuaderno/medidas'
@@ -65,6 +65,26 @@ export function PanelCuaderno() {
     setF({ ...VACIA, robot: f.robot, unidad: f.unidad })
   }
 
+  /*
+   * 🔴 LA RESTA, ANTES DE ANOTAR. La cabecera de esta pantalla promete que «la
+   *    resta la hace la página» y hasta ahora no habia ni un hueco donde verla:
+   *    aparecia solo despues de pulsar Anotar, en una tabla que ademas no
+   *    existia hasta la primera fila.
+   *
+   * 📝 Sale de `diferencia()`, la misma funcion pura que usa la tabla y el CSV
+   *    -no una resta escrita otra vez aqui-: si algun dia hay que cambiar el
+   *    signo o el redondeo, se cambia en un sitio y las tres vistas coinciden.
+   */
+  const dPrevia = useMemo(() => {
+    const r = numero(f.robotValor)
+    const p = numero(f.personaValor)
+    if (r === null || p === null) return null
+    return diferencia({
+      id: '', cuando: 0, robot: f.robot, que: f.que,
+      robotValor: r, personaValor: p, unidad: f.unidad, nota: '',
+    })
+  }, [f.robotValor, f.personaValor, f.robot, f.que, f.unidad])
+
   const csv = useMemo(() => aCSV(medidas), [medidas])
   const descargar = () => {
     const b = new Blob([csv], { type: 'text/csv;charset=utf-8' })
@@ -79,26 +99,66 @@ export function PanelCuaderno() {
   const campo = 'focus-ring w-full rounded-md border border-[rgb(var(--filo)/0.12)] '
     + 'bg-[rgb(var(--vidrio)/0.05)] px-3 py-2 text-sm placeholder:text-muted-foreground/60'
 
+  /*
+   * 🔴 LOS DOS CAMPOS QUE DAN NOMBRE A LA PANTALLA NO PUEDEN SER DEL TAMAÑO DE
+   *    «unidad». Eran dos cajas de 14 px entre otras tres iguales: nada decia
+   *    que fueran una pareja, ni que de ellas saliera la unica cifra que este
+   *    cuaderno calcula. Van en mono a 18 px, que es el tamaño con el que se
+   *    leen sus valores en el resto de la aplicacion.
+   */
+  const campoPar = 'focus-ring w-full rounded-md border border-[rgb(var(--filo)/0.12)] '
+    + 'bg-[rgb(var(--vidrio)/0.05)] px-3 py-2.5 font-mono text-lg '
+    + 'placeholder:text-muted-foreground/50'
+
+  /*
+    El tono de identidad de esta pantalla. `--seccion-cuaderno` es grafito
+    —«no habla con ningún robot»— y estaba declarado en `globals.css` sin que
+    nadie lo leyera: el cuaderno era papel blanco sobre papel blanco con un
+    titular flotando, mientras las seis pestañas del robot llegan con su campo
+    de color a sangre.
+
+    Va en la cabecera (lo consume `.campo-seccion`) y en el `<main>`, desde
+    donde baja por herencia a la `.capucha` y al `.filete-titulo` de las dos
+    tarjetas. Mismo mecanismo que `MarcoRobot`.
+  */
+  const tono = { '--tono-seccion': 'var(--seccion-cuaderno)' } as CSSProperties
+
   return (
     <div className="relative min-h-screen">
       <div className="luz-ambiente" aria-hidden="true" />
-      <main className="relative z-10 mx-auto max-w-5xl space-y-5 px-6 pb-16 pt-14">
-        <header>
+
+      {/*
+        🔴 EL TITULAR VA EN BLANCO LISO. Tenia un degradado tinta→gris con
+           `bg-clip-text`, que esta calculado para leerse sobre papel; sobre el
+           campo de color la parada gris se hunde en el fondo. Misma familia que
+           las paradas de degradado con blanco literal que dejaron tres
+           titulares invisibles al cambiar el tema.
+      */}
+      <header className="campo-seccion relative z-10" style={tono}>
+        <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-12 sm:px-6">
+          {/* Lo que esta pantalla NO hace, y es su rasgo definitorio: es lo
+              unico que funciona con los 16 robots apagados. */}
+          <p className="microetiqueta !text-white/80">No abre ninguna conexión</p>
           <h1
-            /* Tinta arriba, gris frio abajo. Iba al reves -`from-white`- y sobre
-               papel el titular era invisible. Motivo entero en `MuroFlota.tsx`. */
-            className="bg-gradient-to-b from-[rgb(var(--foreground))] to-[rgb(var(--estado-neutro))] bg-clip-text font-semibold leading-[0.94] tracking-[-0.05em] text-transparent"
+            className="mt-3 font-semibold leading-[0.94] tracking-[-0.05em] text-white"
             style={{ fontSize: 'clamp(2.25rem, 5.4vw, 3.75rem)' }}
           >
             Cuaderno<br />de medidas
           </h1>
-          <p className="mt-4 max-w-[56ch] text-base leading-relaxed text-muted-foreground">
+          <p className="mt-4 max-w-[56ch] text-base leading-relaxed text-white/80">
             Lo que dijo el robot, al lado de lo que mediste con la cinta. La resta la hace la
-            página; <strong className="text-foreground/85">si una medida está bien o no, lo
+            página; <strong className="font-semibold text-white">si una medida está bien o no, lo
             decides tú</strong> — aquí no hay tolerancias inventadas.
           </p>
-        </header>
+        </div>
+      </header>
 
+      {/*
+        🔴 `max-w-6xl` Y NO `max-w-5xl`: es el ancho de las seis pestañas del
+           robot y de la portada. Con el 5xl que tenia, el texto saltaba al
+           cambiar de pantalla.
+      */}
+      <main className="relative z-10 mx-auto max-w-6xl space-y-5 px-4 pb-16 pt-9 sm:px-6" style={tono}>
         {/*
           🔴 EL AVISO DE ALMACENAMIENTO VA ARRIBA Y SIEMPRE VISIBLE.
           Un alumno que crea que sus medidas están «en la nube» las perderá al
@@ -109,9 +169,10 @@ export function PanelCuaderno() {
         </p>
 
         <Tarjeta titulo="Anotar una medida">
-          <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-6">
-            <label className="lg:col-span-1">
-              <span className="mb-1 block text-[11px] uppercase tracking-wider text-muted-foreground">robot</span>
+          {/* Fila de contexto: de qué robot, qué se midió y en qué unidad. */}
+          <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-4">
+            <label>
+              <span className="microetiqueta mb-1.5 block !text-[11px]">robot</span>
               <select
                 className={campo}
                 value={f.robot}
@@ -124,40 +185,92 @@ export function PanelCuaderno() {
               </select>
             </label>
             <label className="lg:col-span-2">
-              <span className="mb-1 block text-[11px] uppercase tracking-wider text-muted-foreground">qué mediste</span>
+              <span className="microetiqueta mb-1.5 block !text-[11px]">qué mediste</span>
               <input
                 className={campo} value={f.que} placeholder="avance de 30 cm"
                 onChange={(e) => setF({ ...f, que: e.target.value })}
               />
             </label>
             <label>
-              <span className="mb-1 block text-[11px] uppercase tracking-wider text-muted-foreground">dijo el robot</span>
-              <input
-                className={`${campo} font-mono`} value={f.robotValor} inputMode="decimal" placeholder="30,2"
-                onChange={(e) => setF({ ...f, robotValor: e.target.value })}
-              />
-            </label>
-            <label>
-              <span className="mb-1 block text-[11px] uppercase tracking-wider text-muted-foreground">mediste tú</span>
-              <input
-                className={`${campo} font-mono`} value={f.personaValor} inputMode="decimal" placeholder="30"
-                onChange={(e) => setF({ ...f, personaValor: e.target.value })}
-              />
-            </label>
-            <label>
-              <span className="mb-1 block text-[11px] uppercase tracking-wider text-muted-foreground">unidad</span>
+              <span className="microetiqueta mb-1.5 block !text-[11px]">unidad</span>
               <input
                 className={campo} value={f.unidad}
                 onChange={(e) => setF({ ...f, unidad: e.target.value })}
               />
             </label>
           </div>
+
+          {/*
+            LA PAREJA, EN SU PROPIO RECINTO. Los tres van juntos porque son una
+            sola operación: dos lecturas y su resta. Repartidos entre «robot» y
+            «unidad» no habia nada que los emparejara.
+          */}
+          <div className="px-5 pb-4">
+            <div className="pozo-interior px-4 pb-4 pt-3.5">
+              <p className="microetiqueta">la pareja que importa</p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <label>
+                  <span className="microetiqueta mb-1.5 block !text-[11px]">dijo el robot</span>
+                  <input
+                    className={campoPar} value={f.robotValor} inputMode="decimal" placeholder="30,2"
+                    onChange={(e) => setF({ ...f, robotValor: e.target.value })}
+                  />
+                </label>
+                <label>
+                  <span className="microetiqueta mb-1.5 block !text-[11px]">mediste tú</span>
+                  <input
+                    className={campoPar} value={f.personaValor} inputMode="decimal" placeholder="30"
+                    onChange={(e) => setF({ ...f, personaValor: e.target.value })}
+                  />
+                </label>
+                {/*
+                  🔴 SOLO LECTURA, y sin color. La diferencia no se pinta de
+                     verde ni de rojo: sin una tolerancia medida por practica,
+                     un semaforo aqui seria un juicio que esta pantalla no puede
+                     emitir. Es la misma regla que ya cumple la tabla.
+                */}
+                <div>
+                  <span className="microetiqueta mb-1.5 block !text-[11px]">diferencia</span>
+                  <output
+                    className="block w-full rounded-md border border-dashed border-[rgb(var(--filo)/0.14)] px-3 py-2.5 font-mono text-lg"
+                  >
+                    {dPrevia === null
+                      /* `.hueco` y no un guion del tamaño del valor: falta un
+                         lado, y la ausencia no se pinta con el peso del dato. */
+                      ? <span className="hueco text-sm" title="falta un lado">—</span>
+                      /* La unidad al mismo tamaño que la de la tabla de abajo
+                         y no con `.unidad` (0,42 em): sobre 18 px saldría a
+                         7,5 px, que ya no se lee a 50 cm de la pantalla. */
+                      : <>{dPrevia > 0 ? '+' : ''}{dPrevia.toFixed(2)}
+                        <span className="ml-1 text-[11px] text-muted-foreground">{f.unidad}</span></>}
+                  </output>
+                </div>
+              </div>
+              <p className="mt-3 font-mono text-[11px] text-muted-foreground">
+                diferencia = mediste tú − dijo el robot
+              </p>
+            </div>
+          </div>
+
           <div className="flex flex-wrap items-center gap-3 border-t border-[rgb(var(--filo)/0.09)] px-5 py-3.5">
+            {/*
+              🔴 EL DESHABILITADO TIENE FORMA PROPIA, NO ES EL PRIMARIO
+                 TRANSPARENTADO. Con `opacity-40` el unico boton de la pantalla
+                 salia al cargar como un lila lavado, que no se lee como
+                 «todavia no» sino como «esto esta sin terminar». Ahora pierde
+                 el relleno y se queda en un contorno: la diferencia con el
+                 estado activo es de CATEGORIA, no de intensidad.
+
+              📝 El borde transparente esta SIEMPRE, no solo deshabilitado: si
+                 apareciera con el `disabled:`, el boton crecería 2 px al
+                 escribir la primera letra y daría un salto en el sitio donde
+                 esta el ojo.
+            */}
             <button
               type="button"
               onClick={anotar}
               disabled={f.que.trim() === ''}
-              className="pulsable focus-ring rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:opacity-40"
+              className="pulsable focus-ring rounded-full border border-transparent bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:cursor-not-allowed disabled:border-[rgb(var(--filo)/0.16)] disabled:bg-transparent disabled:text-muted-foreground"
             >
               Anotar
             </button>
@@ -178,72 +291,91 @@ export function PanelCuaderno() {
             </button>
           ) : undefined}
         >
-          {medidas.length === 0 ? (
-            /*
-              El estado vacio de PRIMER USO, que no es lo mismo que «sin
-              resultados» ni que «fallo». Dice como se llena.
-            */
-            <p className="px-5 py-8 text-center text-sm text-muted-foreground">
-              Anota la primera arriba. La pareja que importa es{' '}
-              <strong className="text-foreground/85">lo que dijo el robot</strong> junto a{' '}
-              <strong className="text-foreground/85">lo que mediste tú</strong>.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                    <th scope="col" className="px-5 py-2.5 font-medium">robot</th>
-                    <th scope="col" className="px-3 py-2.5 font-medium">qué</th>
-                    <th scope="col" className="px-3 py-2.5 text-right font-medium">robot</th>
-                    <th scope="col" className="px-3 py-2.5 text-right font-medium">tú</th>
-                    <th scope="col" className="px-3 py-2.5 text-right font-medium">diferencia</th>
-                    <th scope="col" className="px-5 py-2.5 font-medium"><span className="sr-only">quitar</span></th>
+          {/*
+            🔴🔴 LA TABLA NO DESAPARECE CUANDO ESTA VACIA, Y ESE ERA EL ESTADO
+               POR DEFECTO DE ESTA PANTALLA.
+
+            Antes el estado vacio BORRABA la tabla entera y la sustituia por una
+            franja de 120 px con una frase centrada: mas de media pantalla en
+            gris muerto, y el alumno no veia que se le iba a pedir hasta
+            escribir la primera fila. Y al anotarla la pagina cambiaba de forma
+            debajo del cursor.
+
+            Con el `<thead>` siempre montado, la pagina conserva su forma y las
+            cinco columnas —robot · qué · dijo el robot · mediste tú ·
+            diferencia— dicen de antemano cual es el trabajo. Es lo que hace la
+            maqueta de Stitch de esta pantalla, que deja la cabecera puesta y
+            mete la frase en una fila con `colspan` y `py-16`.
+          */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                {/* La línea bajo la cabecera es lo que hace que una tabla vacía
+                    siga leyéndose como una tabla: sin ella los rótulos flotan
+                    sobre el hueco. */}
+                <tr className="border-b border-[rgb(var(--filo)/0.09)] text-left text-muted-foreground">
+                  <th scope="col" className="microetiqueta px-5 py-3 !text-[11px]">robot</th>
+                  <th scope="col" className="microetiqueta px-3 py-3 !text-[11px]">qué</th>
+                  <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">dijo el robot</th>
+                  <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">mediste tú</th>
+                  <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">diferencia</th>
+                  <th scope="col" className="px-5 py-3"><span className="sr-only">quitar</span></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[rgb(var(--filo)/0.08)]">
+                {medidas.length === 0 ? (
+                  /*
+                    El estado vacio de PRIMER USO, que no es lo mismo que «sin
+                    resultados» ni que «fallo». Dice como se llena.
+                  */
+                  <tr>
+                    <td colSpan={6} className="px-5 py-16 text-center text-sm text-muted-foreground">
+                      Anota la primera arriba. La pareja que importa es{' '}
+                      <strong className="text-foreground/85">lo que dijo el robot</strong> junto a{' '}
+                      <strong className="text-foreground/85">lo que mediste tú</strong>.
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[rgb(var(--filo)/0.08)]">
-                  {medidas.map((m) => {
-                    const d = diferencia(m)
-                    return (
-                      <tr key={m.id}>
-                        <td className="px-5 py-3 font-mono text-[13px] text-muted-foreground">{m.robot}</td>
-                        <td className="px-3 py-3">{m.que}</td>
-                        <td className="px-3 py-3 text-right font-mono">
-                          {m.robotValor === null
-                            ? <span className="text-muted-foreground" title="no se sabe">—</span>
-                            : <>{m.robotValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
-                        </td>
-                        <td className="px-3 py-3 text-right font-mono">
-                          {m.personaValor === null
-                            ? <span className="text-muted-foreground" title="no se sabe">—</span>
-                            : <>{m.personaValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
-                        </td>
-                        {/*
-                          🔴 La diferencia NO se colorea. Sin una tolerancia
-                             medida por práctica, un verde o un rojo aquí serían
-                             un juicio que esta pantalla no puede emitir.
-                        */}
-                        <td className="px-3 py-3 text-right font-mono">
-                          {d === null
-                            ? <span className="text-muted-foreground" title="falta un lado">—</span>
-                            : <>{d > 0 ? '+' : ''}{d.toFixed(2)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
-                        </td>
-                        <td className="px-5 py-3 text-right">
-                          <button
-                            type="button"
-                            onClick={() => guardar(medidas.filter((x) => x.id !== m.id))}
-                            className="focus-ring rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            quitar
-                          </button>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                ) : medidas.map((m) => {
+                  const d = diferencia(m)
+                  return (
+                    <tr key={m.id}>
+                      <td className="px-5 py-3 font-mono text-[13px] text-muted-foreground">{m.robot}</td>
+                      <td className="px-3 py-3">{m.que}</td>
+                      <td className="px-3 py-3 text-right font-mono text-[15px]">
+                        {m.robotValor === null
+                          ? <span className="hueco" title="no se sabe">—</span>
+                          : <>{m.robotValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                      </td>
+                      <td className="px-3 py-3 text-right font-mono text-[15px]">
+                        {m.personaValor === null
+                          ? <span className="hueco" title="no se sabe">—</span>
+                          : <>{m.personaValor}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                      </td>
+                      {/*
+                        🔴 La diferencia NO se colorea. Sin una tolerancia
+                           medida por práctica, un verde o un rojo aquí serían
+                           un juicio que esta pantalla no puede emitir.
+                      */}
+                      <td className="px-3 py-3 text-right font-mono text-[15px]">
+                        {d === null
+                          ? <span className="hueco" title="falta un lado">—</span>
+                          : <>{d > 0 ? '+' : ''}{d.toFixed(2)}<span className="ml-1 text-[11px] text-muted-foreground">{m.unidad}</span></>}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => guardar(medidas.filter((x) => x.id !== m.id))}
+                          className="focus-ring rounded px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          quitar
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </Tarjeta>
       </main>
     </div>

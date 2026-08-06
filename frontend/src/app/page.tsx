@@ -17,106 +17,187 @@
  */
 
 import Link from 'next/link'
+import { CSSProperties } from 'react'
 import { ROBOTS, TOTAL_ROBOTS } from '@/lib/interfaz/identidad'
+import { Grupo } from '@/componentes/ui/Grupo'
+import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
 export default function Portada() {
+  /*
+    🔴 EL TONO DE IDENTIDAD DE ESTA PANTALLA, Y ANTES NO SE USABA EN NINGUNA
+       PARTE. `--seccion-portada` existe en `globals.css` desde que se escribio
+       el eje de identidad —«violeta: la portada no es el muro»— y ni la
+       cabecera ni las tarjetas lo leian: la portada era papel blanco sobre
+       papel blanco con un titular flotando, mientras las seis pestañas del
+       robot llegan con su campo de color a sangre.
+
+    Va en dos sitios y hacen falta los dos: en la cabecera lo consume
+    `.campo-seccion`, y en el `<main>` baja por herencia a la `.capucha` y al
+    `.filete-titulo` de cada `Tarjeta` y al rotulo de cada `Grupo`. Es el mismo
+    mecanismo que usa `MarcoRobot`, no uno nuevo.
+  */
+  const tono = { '--tono-seccion': 'var(--seccion-portada)' } as CSSProperties
+
   return (
     <div className="relative min-h-screen">
     {/* La misma luz que el resto: continuidad de mundo. */}
     <div className="luz-ambiente" aria-hidden="true" />
-    <main className="relative z-10 mx-auto max-w-4xl space-y-6 px-6 pb-16 pt-14">
-      <header>
+
+    {/*
+      LA BANDA DE IDENTIDAD, A SANGRE.
+
+      🔴 EL TITULAR VA EN BLANCO LISO, NO EN EL DEGRADADO TINTA→GRIS QUE TENIA.
+         Ese degradado esta calculado para leerse sobre papel; sobre un campo
+         violeta saturado la parada gris se hunde en el fondo y la palabra se
+         parte por la mitad. Es la misma familia de fallo que las paradas de
+         degradado con blanco literal que dejaron tres titulares invisibles al
+         cambiar el tema: una tinta que no mira el fondo sobre el que cae.
+    */}
+    <header className="campo-seccion relative z-10" style={tono}>
+      {/* Textura, no contenido —de ahi el `aria-hidden`—, y el numero no es
+          decorativo: es el mismo 16 que dice el parrafo de debajo. */}
+      <span aria-hidden="true" className="cifra-fantasma">{TOTAL_ROBOTS}</span>
+      {/*
+        📝 SIN ANTE-TITULO. Iba a llevar «Laboratorio de robótica presencial»,
+           que es **literalmente** lo que ya dice el raíl bajo la marca, tres
+           centímetros a la izquierda y en la misma caja alta monoespaciada. Una
+           repetición así no informa: enseña a saltarse las microetiquetas.
+      */}
+      <div className="relative mx-auto max-w-6xl px-4 pb-10 pt-14 sm:px-6">
         <h1
-          /* Tinta arriba, gris frio abajo. Iba al reves -`from-white`- y sobre
-             papel el titular era invisible. Motivo entero en `MuroFlota.tsx`. */
-          className="bg-gradient-to-b from-[rgb(var(--foreground))] to-[rgb(var(--estado-neutro))] bg-clip-text font-semibold leading-[0.94] tracking-[-0.05em] text-transparent"
+          className="font-semibold leading-[0.94] tracking-[-0.05em] text-white"
           style={{ fontSize: 'clamp(2.5rem, 6.4vw, 4.5rem)' }}
         >
           Laboratorio<br />Atriz
         </h1>
-        <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-muted-foreground">
+        <p className="mt-4 max-w-[54ch] text-base leading-relaxed text-white/80">
           {TOTAL_ROBOTS} robots Sphero RVR, cada uno con su Raspberry Pi y su LIDAR. Esta
           aplicación habla con ellos por rosbridge, un WebSocket por robot.
         </p>
-      </header>
+      </div>
+    </header>
 
-      <section className="vidrio rounded-ficha p-6">
-        <h2 className="text-lg font-semibold tracking-tight">Para el profesor</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Los {TOTAL_ROBOTS} de un vistazo: batería en voltios y estado de motores. Solo se suscribe
-          a los dos topics baratos, así que cuesta unos 7,7 kB/s en total.
-        </p>
-        <Link
-          href="/flota"
-          className="pulsable focus-ring mt-4 inline-flex items-center gap-2.5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-        >
-          Ver el muro de flota →
-        </Link>
-      </section>
+    {/*
+      🔴 `max-w-6xl` Y NO `max-w-4xl`. Es el ancho de las seis pestañas del
+         robot; con el 4xl que tenia, el texto SALTABA 116 px al pasar de esta
+         pantalla a cualquier otra. Un ancho por pantalla no es composicion, es
+         una diferencia que el ojo lee como que la pagina se ha movido.
+    */}
+    <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-9 sm:px-6" style={tono}>
+      {/*
+        🔴 LA REJILLA DE ROBOTS SUBE A BANDA PROPIA, Y ESO ERA EL DEFECTO DE
+           ESTRUCTURA DE ESTA PANTALLA.
 
-      <section className="vidrio rounded-ficha p-6">
-        <h2 className="text-lg font-semibold tracking-tight">Un robot</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Abre <strong>una</strong> conexión con ese robot, y la cierra al salir. Cada uno se busca
-          por su nombre <code>rvr-NN.local</code>; también vale escribir una IP en la URL.
-        </p>
-        <ul className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-8">
+        Antes habia cuatro `vidrio rounded-ficha p-6` identicas apiladas con un
+        `space-y-6` uniforme: «los 16 robots» pesaba exactamente lo mismo que un
+        aviso de que algo no esta escrito. Con todas las cajas iguales la unica
+        jerarquia posible es el ORDEN, y el orden no se ve.
+
+        Aqui el destino principal —entrar en un robot— deja de ser una caja y
+        pasa a ser una banda a ancho completo con su rotulo de seccion. Las dos
+        secundarias van en dos columnas, y el aviso se separa con aire en vez de
+        con otra caja del mismo peso.
+      */}
+      <Grupo titulo="Los 16 robots" fuente="una conexión por robot, y se cierra al salir">
+        <ul className="grid grid-cols-4 gap-2.5 sm:grid-cols-8">
           {ROBOTS.map((n) => (
             <li key={n}>
               <Link
                 href={`/robot/${n}`}
-                className="pulsable focus-ring block rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.04)] py-2.5 text-center font-mono text-sm transition-colors duration-[var(--t-estado)] hover:border-[rgb(var(--filo)/0.28)] hover:bg-[rgb(var(--vidrio)/0.09)]"
+                className="pulsable focus-ring block rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.04)] py-3.5 text-center font-mono text-base transition-colors duration-[var(--t-estado)] hover:border-[rgb(var(--filo)/0.28)] hover:bg-[rgb(var(--vidrio)/0.09)]"
               >
                 {String(n).padStart(2, '0')}
               </Link>
             </li>
           ))}
         </ul>
-      </section>
-
-      {/*
-        🔴 Este bloque es el que impide que esta portada se convierta en otra
-           maqueta optimista. Si algo se desbloquea, se quita de aqui — y si
-           algo se rompe, se añade.
-      */}
-      <section className="vidrio rounded-ficha p-6">
-        <h2 className="text-lg font-semibold tracking-tight">Cuaderno de medidas</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Lo que dijo el robot al lado de lo que mediste con la cinta. Es lo único que funciona
-          con los robots apagados: se guarda en este navegador.
+        <p className="max-w-prose text-sm leading-relaxed text-muted-foreground">
+          Cada uno se busca por su nombre <code>rvr-NN.local</code>; también vale escribir una IP
+          en la URL.
         </p>
-        <Link
-          href="/cuaderno"
-          className="pulsable focus-ring mt-4 inline-flex items-center gap-2.5 rounded-full border border-[rgb(var(--filo)/0.16)] px-5 py-2.5 text-sm font-semibold"
+      </Grupo>
+
+      {/* Igual alto por la rejilla: los dos destinos secundarios son hermanos,
+          no una pila. */}
+      <div className="mt-11 grid gap-5 sm:grid-cols-2">
+        <Tarjeta titulo="Para el profesor" subtitulo="El muro dice a cuál hay que levantarse.">
+          <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
+            Los {TOTAL_ROBOTS} de un vistazo: batería en voltios y estado de motores. Solo se
+            suscribe a los dos topics baratos, así que cuesta unos 7,7 kB/s en total.
+          </p>
+          <div className="px-5 pb-5 pt-4">
+            <Link
+              href="/flota"
+              className="pulsable focus-ring inline-flex items-center gap-2.5 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+            >
+              Ver el muro de flota →
+            </Link>
+          </div>
+        </Tarjeta>
+
+        <Tarjeta
+          titulo="Cuaderno de medidas"
+          subtitulo="Lo que dijo el robot al lado de lo que mediste con la cinta."
         >
-          Abrir el cuaderno
-        </Link>
-      </section>
+          <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
+            Es lo único que funciona con los robots apagados: se guarda en este navegador, no en
+            ningún servidor.
+          </p>
+          <div className="px-5 pb-5 pt-4">
+            <Link
+              href="/cuaderno"
+              className="pulsable focus-ring inline-flex items-center gap-2.5 rounded-full border border-[rgb(var(--filo)/0.16)] px-5 py-2.5 text-sm font-semibold"
+            >
+              Abrir el cuaderno
+            </Link>
+          </div>
+        </Tarjeta>
+      </div>
 
       {/*
         🔴 EL BLOQUE AMBAR ES PERMANENTE, NO UN AVISO TEMPORAL.
         La portada dice lo que la aplicacion NO sabe hacer, porque la version
         anterior decia «Sistema operacional» sin haber hablado con un robot.
+
+        📝 Se separa con `mt-14` y no con otra caja igual: lo que lo distingue
+           de lo de arriba es que NO es un destino. Si algo se desbloquea, se
+           quita de aqui — y si algo se rompe, se añade.
       */}
-      <section className="rounded-ficha border border-warning/40 bg-warning/[0.08] p-6">
-        <h2 className="text-lg font-semibold tracking-tight">Lo que todavía no funciona</h2>
-        <ul className="mt-3 space-y-2.5 text-sm leading-relaxed text-muted-foreground">
-          <li>
-            <strong>El terminal</strong> —escribir y ejecutar código en el robot desde aquí— no
-            existe. Va por otro canal, un agente de sesión que aún no está escrito, y ese diseño
-            depende de medir primero el punto de acceso del aula.
-          </li>
-          <li>
-            <strong>No hay autenticación.</strong> rosbridge no la trae, así que cualquiera en la
-            misma red puede hablar con cualquier robot. Es un taller presencial y está asumido, pero
-            no se disimula con un inicio de sesión que no protegería nada.
-          </li>
-          <li>
-            <strong>Nada de esta aplicación confirma un efecto físico.</strong> Cuando mandas una
-            orden, la interfaz dice que se envió — nunca que el robot la haya cumplido, porque
-            ningún servicio del robot devuelve esa información.
-          </li>
-        </ul>
+      <section className="mt-14 rounded-ficha border border-warning/40 bg-warning/[0.08] p-6 sm:p-7">
+        {/*
+          Dos columnas y no una: `max-w-prose` a ancho completo dejaba 450 px de
+          ámbar vacío a la derecha. Con el título en su propia columna el texto
+          cae en su medida **y** el bloque ocupa el ancho que tiene.
+        */}
+        <div className="grid gap-x-10 gap-y-4 sm:grid-cols-3">
+          <div>
+            <h2 className="text-[19px] font-semibold leading-tight tracking-tight">
+              Lo que todavía no funciona
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              Permanente, no un aviso de paso: si algo se desbloquea, se quita de aquí.
+            </p>
+          </div>
+          {/* `max-w-prose` y no libre: a ancho completo estas tres lineas corrian
+              a ~120 caracteres, justo en el texto que mas importa de la pagina. */}
+          <ul className="max-w-prose space-y-3 text-sm leading-relaxed text-muted-foreground sm:col-span-2">
+            <li>
+              <strong>El terminal</strong> —escribir y ejecutar código en el robot desde aquí— no
+              existe. Va por otro canal, un agente de sesión que aún no está escrito, y ese diseño
+              depende de medir primero el punto de acceso del aula.
+            </li>
+            <li>
+              <strong>No hay autenticación.</strong> rosbridge no la trae, así que cualquiera en la
+              misma red puede hablar con cualquier robot. Es un taller presencial y está asumido,
+              pero no se disimula con un inicio de sesión que no protegería nada.
+            </li>
+            <li>
+              <strong>Nada de esta aplicación confirma un efecto físico.</strong> Cuando mandas una
+              orden, la interfaz dice que se envió — nunca que el robot la haya cumplido, porque
+              ningún servicio del robot devuelve esa información.
+            </li>
+          </ul>
+        </div>
       </section>
     </main>
     </div>

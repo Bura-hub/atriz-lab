@@ -81,14 +81,26 @@ const REQUISITOS: readonly { titulo: string; porque: string }[] = [
   },
 ]
 
-/** Una caja vacía con su motivo dentro. **Nunca con contenido simulado.** */
+/**
+ * Una caja vacía con su motivo dentro. **Nunca con contenido simulado.**
+ *
+ * 🔴 EL RÓTULO VA DENTRO DE LA CAJA, Y LA CAJA MIDE 300 px.
+ *
+ * Antes el rótulo flotaba encima y la caja medía 190 px: el terminal —que es el
+ * ASUNTO de esta pantalla— eran dos rectángulos punteados más bajos que
+ * cualquiera de las tarjetas de texto que tenían debajo, y el rótulo se leía
+ * como un párrafo suelto entre dos bloques en vez de como la cabecera de uno.
+ * La maqueta de Stitch lo pinta al revés: un bloque alto con `EDITOR · TU
+ * CÓDIGO` **dentro**, separado por su propia línea. Eso es lo que hace que el
+ * hueco se lea como un chasis y no como un espacio que sobró.
+ */
 function Hueco({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <div>
-      <p className="mb-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+    <div className="flex min-h-[300px] flex-col rounded-md border border-dashed border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
+      <p className="microetiqueta border-b border-[rgb(var(--filo)/0.12)] px-4 py-2.5">
         {etiqueta}
       </p>
-      <div className="flex min-h-[190px] items-center rounded-md border border-dashed border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)] p-5">
+      <div className="flex flex-1 items-center px-4 py-5">
         <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">{children}</p>
       </div>
     </div>
@@ -99,33 +111,37 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
 
   return (
     <div className="space-y-4">
+      {/*
+        🔴 EL PORQUÉ DE LA PARADA, EN EL PIE Y EN UNA LÍNEA — Y ANTES ABRÍA LA
+           TARJETA CON CUATRO.
+
+        Era un párrafo de cuatro líneas **antes del editor**, así que el asunto de
+        la pantalla —el terminal— empezaba por debajo de la mitad del alto. Y
+        decía dos cosas que ya están dichas 200 px más arriba, en la franja del
+        marco: que la parada está ahí, y por qué no hay botón para liberarla (su
+        propio desplegable lo explica con casi las mismas palabras). Repetirlo
+        aquí no añadía nada y costaba el sitio del terminal.
+
+        Lo que NO estaba dicho en ningún otro sitio se queda, porque es lo único
+        que ata esta pantalla al robot de verdad: hoy los guiones se lanzan por
+        SSH, así que el robot se mueve mientras esto está abierto sin que esta
+        pantalla haya mandado nada.
+      */}
       <Tarjeta
         titulo={`Terminal · ${etiqueta}`}
         subtitulo="Aquí todavía no se puede escribir ni ejecutar código: esto es la forma que tendrá, sin nada detrás."
         extremo={<Insignia tono="NEUTRO">no construido</Insignia>}
-      >
-        {/*
-          🔴 LA PARADA YA NO ESTÁ AQUÍ: subió al MARCO, y por eso ahora sale en
-          las seis pestañas. Era exigencia del documento de diseño (§4), y
-          además cierra un hueco real — con la parada solo en esta pantalla y en
-          Conducir, quien estuviera mirando la telemetría o el LIDAR con el robot
-          en marcha tenía que CAMBIAR DE PANTALLA para pararlo.
-
-          Lo que sí se queda es el porqué de que aquí importe tanto: el alumno
-          lanza sus guiones por SSH, así que el robot se mueve de verdad mientras
-          esta pantalla está abierta y sin que ella haya mandado nada.
-        */}
-        <div className="px-5 py-5">
-          <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">
-            La parada está arriba, en la franja del marco, y sale en las seis pestañas. Para el
-            robot <strong className="text-foreground/85">venga la orden de donde venga</strong>,
-            incluido un guion que hayas lanzado por SSH. No hay botón para liberarla: soltarla es
-            un acto presencial, junto al robot.
+        pie={(
+          <p>
+            La parada de arriba para el robot{' '}
+            <strong className="text-foreground/85">venga la orden de donde venga</strong>, incluido
+            un guion que hayas lanzado por SSH — que es como se lanzan hoy, con esta pantalla
+            abierta y sin que ella haya mandado nada.
           </p>
-        </div>
-
+        )}
+      >
         {/* EL CHASIS. Dos columnas que se apilan en móvil. */}
-        <div className="grid gap-5 border-t border-[rgb(var(--filo)/0.09)] px-5 py-5 lg:grid-cols-5">
+        <div className="grid gap-5 px-5 py-5 lg:grid-cols-5">
           <div className="lg:col-span-3">
             <Hueco etiqueta="Editor · tu código">
               No hay editor. <strong className="text-foreground/85">Y tampoco hay uno de
@@ -143,9 +159,13 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
 
         {/* LA LÍNEA DE ENTRADA: visible y desactivada, con el motivo debajo. */}
         <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 py-5">
+          {/* En `.microetiqueta`, como los rótulos de las dos cajas de arriba: al
+              meterlos DENTRO de su caja, este se quedó siendo el único rótulo del
+              terminal en otra tipografía. Un rótulo no puede pertenecer a dos
+              familias en la misma pieza. */}
           <label
             htmlFor="stdin-taller"
-            className="mb-1.5 block text-[11px] uppercase tracking-wider text-muted-foreground"
+            className="microetiqueta mb-2 block"
           >
             Lo que le contestas al programa
           </label>
@@ -164,18 +184,24 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
             <code className="font-mono">99_test_ctrl_c.py</code>.
           </p>
 
+          {/*
+            🔴 `rounded-md`, NO `rounded-full`. Eran las dos únicas píldoras de la
+               aplicación: `Tarjeta` lleva escrito que «un instrumento no
+               redondea», y una píldora al lado de una ficha troquelada se lee
+               como un botón de otra interfaz. La forma también es vocabulario.
+          */}
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button
               type="button"
               disabled
-              className="cursor-not-allowed rounded-full bg-[rgb(var(--vidrio)/0.07)] px-5 py-2 text-sm font-semibold text-muted-foreground"
+              className="cursor-not-allowed rounded-md bg-[rgb(var(--vidrio)/0.07)] px-5 py-2 text-sm font-semibold text-muted-foreground"
             >
               Ejecutar
             </button>
             <button
               type="button"
               disabled
-              className="cursor-not-allowed rounded-full border border-[rgb(var(--filo)/0.12)] px-5 py-2 text-sm font-medium text-muted-foreground"
+              className="cursor-not-allowed rounded-md border border-[rgb(var(--filo)/0.12)] px-5 py-2 text-sm font-medium text-muted-foreground"
             >
               Parar el programa
             </button>
@@ -192,26 +218,36 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
         titulo="Qué falta, en orden"
         subtitulo="Tres casillas, no un avance medido: ninguna se puede saltar y ninguna está a medias."
       >
-        <ol className="divide-y divide-[rgb(var(--filo)/0.09)]">
-          {CADENA.map((c) => (
-            <li key={c.paso} className="flex gap-4 px-5 py-4">
-              <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[rgb(var(--filo)/0.16)] font-mono text-xs text-muted-foreground">
-                {c.paso}
-              </span>
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-baseline gap-x-2.5">
-                  <h3 className="text-[15px] font-semibold tracking-tight">{c.titulo}</h3>
-                  <span className="text-[11px] uppercase tracking-wider text-estado-mirar">
-                    {c.estado}
-                  </span>
+        {/*
+          🔴 TRES FICHAS EN FILA, NO UNA LISTA VERTICAL.
+
+          Debajo del terminal había tres tarjetas seguidas con la MISMA anatomía
+          —lista vertical de título, estado en versalitas y párrafo—, así que la
+          pantalla era la misma forma repetida cuatro veces y nada decía cuál de
+          ellas importaba. Estas tres son **casillas**, no pasos de una lectura:
+          en fila se ven las tres a la vez y se cuentan de un vistazo, que es lo
+          que el propio subtítulo promete.
+
+          En un `div` con su relleno: el cuerpo de `Tarjeta` va a sangre.
+        */}
+        <div className="px-5 py-5">
+          <ol className="grid gap-4 md:grid-cols-3">
+            {CADENA.map((c) => (
+              <li key={c.paso} className="pozo-interior flex flex-col p-4">
+                <div className="flex items-baseline gap-3">
+                  <span className="cifra-menor text-muted-foreground/45">{c.paso}</span>
+                  <span className="microetiqueta text-estado-mirar">{c.estado}</span>
                 </div>
-                <p className="mt-1.5 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+                <h3 className="mt-3 text-base font-semibold leading-snug tracking-tight">
+                  {c.titulo}
+                </h3>
+                <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
                   {c.porque}
                 </p>
-              </div>
-            </li>
-          ))}
-        </ol>
+              </li>
+            ))}
+          </ol>
+        </div>
       </Tarjeta>
 
       <Tarjeta
@@ -221,7 +257,7 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
         <ul className="divide-y divide-[rgb(var(--filo)/0.09)]">
           {REQUISITOS.map((r) => (
             <li key={r.titulo} className="px-5 py-4">
-              <h3 className="text-[15px] font-semibold tracking-tight">{r.titulo}</h3>
+              <h3 className="text-base font-semibold tracking-tight">{r.titulo}</h3>
               <p className="mt-1.5 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
                 {r.porque}
               </p>
@@ -269,13 +305,18 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
             </tbody>
           </table>
         </div>
-        <ul className="space-y-2 border-t border-[rgb(var(--filo)/0.09)] px-5 py-4">
-          {AVISOS_ESPACIO.map((a) => (
-            <li key={a} className="max-w-prose text-[13px] leading-relaxed text-estado-mirar">
-              · {a}
-            </li>
-          ))}
-        </ul>
+        {/* Mismo arreglo que en «no obedece»: los topos son de CSS, no un `·`
+            tecleado dentro del texto —que se lleva el sangrado por delante y no
+            lo ve ningún lector de pantalla—. */}
+        <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 py-4">
+          <ul className="list-disc space-y-2 pl-5 marker:text-estado-mirar/50">
+            {AVISOS_ESPACIO.map((a) => (
+              <li key={a} className="max-w-prose text-[13px] leading-relaxed text-estado-mirar">
+                {a}
+              </li>
+            ))}
+          </ul>
+        </div>
       </Tarjeta>
     </div>
   )

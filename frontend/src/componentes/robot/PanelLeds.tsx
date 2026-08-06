@@ -120,8 +120,24 @@ export function PanelLeds() {
     <Tarjeta
       titulo="LEDs"
       subtitulo="Acción física: enciende luces en el aula y gasta batería del RVR."
+      /*
+        🔴 LA PROSA DE CIERRE, AL PIE. Colgaba del cuerpo sin ninguna regla que
+           la separase de los botones, asi que se leia como una fila mas del
+           control. `Tarjeta.pie` le da su propia linea y el relleno de la
+           columna del titulo — que es para lo que existe ese slot.
+      */
+      pie={
+        <p>
+          Estas órdenes van a <code>all_lights</code>. Aquí no aparece el LED blanco de los bajos
+          (<code>led_id 10</code>) aunque el robot lo acepte: se midió que responde igual que los
+          demás y no se enciende —lo controla <code>enable_color_detection</code>, que es otro
+          comando—. Es el motivo de que esta pantalla nunca diga más que «{ORDEN_ENVIADA}».
+        </p>
+      }
     >
-      <div className="flex flex-wrap gap-2">
+      {/* `px-5 pt-4`: el cuerpo de `Tarjeta` va a sangre para que las rejillas
+          lleguen al canto, asi que lo que no es rejilla pone su relleno. */}
+      <div className="flex flex-wrap gap-2 px-5 pt-4">
         {ORDENES.map((o) => (
           <button
             key={o.nombre}
@@ -140,25 +156,18 @@ export function PanelLeds() {
       </div>
 
       {!conectado && (
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="mt-2 px-5 pb-4 text-xs text-muted-foreground">
           Sin enlace no se puede llamar a ningún servicio, así que los botones están desactivados.
         </p>
       )}
 
       {resultado !== null && (
-        <div className="mt-3">
+        <div className="mt-3 px-5 pb-4">
           <Aviso nivel={resultado.malo ? 'ERROR' : 'ATENCION'} titulo={`${resultado.cabecera} · ${resultado.hora}`}>
             {resultado.detalle}
           </Aviso>
         </div>
       )}
-
-      <p className="text-xs text-muted-foreground mt-3 max-w-prose">
-        Estas órdenes van a <code>all_lights</code>. Aquí no aparece el LED blanco de los bajos
-        (<code>led_id 10</code>) aunque el robot lo acepte: se midió que responde igual que los
-        demás y no se enciende —lo controla <code>enable_color_detection</code>, que es otro
-        comando—. Es el motivo de que esta pantalla nunca diga más que «{ORDEN_ENVIADA}».
-      </p>
     </Tarjeta>
   )
 }

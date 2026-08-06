@@ -95,9 +95,36 @@ export function EstadoMotores() {
     <Tarjeta
       titulo="Motores"
       subtitulo="Cada valor con la antigüedad de SU fuente: llegan por caminos distintos y refrescan a ritmos distintos."
-      // Misma regla que en Bateria: si no se sabe, los valores de dentro ya son
-      // rayas y la insignia no añade nada. `null` es «no se sabe».
+      // Si no se sabe, los valores de dentro ya son rayas y la insignia no
+      // añade nada. `null` es «no se sabe».
       extremo={atascado === null ? undefined : insigniaDeHecho(atascado, 'atasco', 'sin atasco')}
+      /*
+        🔴 LA PROSA DE CIERRE, AL PIE. Los dos parrafos de abajo colgaban del
+           cuerpo sin ninguna regla que los separase de los datos, asi que se
+           leian como una fila mas de la tarjeta. `Tarjeta.pie` les da su propia
+           linea y el relleno de la columna del titulo.
+      */
+      pie={
+        <>
+          {fTermico.conocido && fTermico.antiguedadS > 35 && (
+            <p>
+              La temperatura tiene {numero(fTermico.antiguedadS, 0)} s. El sondeo va cada 30 s, así
+              que por encima de 35 s lo que se ve es el <strong>mismo dato repetido</strong>, no una
+              temperatura que se mantenga.
+            </p>
+          )}
+          {m === null ? (
+            <p>
+              Todavía no ha llegado ningún <code>/motor_status</code>. El driver lo republica a 1 Hz
+              desde su estado cacheado, así que debería aparecer en un segundo si hay enlace.
+            </p>
+          ) : (
+            <p>
+              Último <code>/motor_status</code> hace {desde === null ? SIN_DATO : milisegundos(desde)}.
+            </p>
+          )}
+        </>
+      }
     >
       {/*
         🔴 LOS ROTULOS SON CORTOS A PROPOSITO, Y LO QUE SOBRABA BAJO A `nota`.
@@ -106,7 +133,8 @@ export function EstadoMotores() {
            escribio una persona». Con eso, un rotulo de 50 caracteres como
            «Estado termico izquierdo (en crudo)» deja de ser una etiqueta y pasa a
            ser un bloque de mayusculas de dos lineas que grita mas que su propio
-           valor. El matiz no se pierde: baja a la nota, que es su sitio.
+           valor. El matiz no se pierde: baja al «Por qué» del final, que es el
+           unico sitio donde cabe sin descuadrar una fila de la rejilla.
       */}
       <div className="rejilla sm:grid-cols-2">
         <Dato
@@ -123,17 +151,29 @@ export function EstadoMotores() {
           antiguedad={antiguedad(fTermico)}
           referencia="28,3 °C en reposo"
         />
+        {/*
+          🔴🔴 SIN `nota`, Y LA REGLA GENERAL QUE SALE DE AQUI.
+
+          «Térmico izquierdo» llevaba una nota de tres lineas y su gemela una de
+          una: en una `.rejilla` las dos celdas de una fila tienen la misma
+          altura, asi que la nota larga estiraba la fila y bajo «Térmico derecho»
+          quedaba un rectangulo vacio de mas de cien pixeles. No parece aire,
+          parece una celda rota — y no lo veia ninguna prueba, porque el HTML es
+          correcto.
+
+          → **En una `.rejilla`, una `nota` va en las DOS celdas de un par o en
+            ninguna.** La explicacion de que estos dos numeros van en crudo no
+            pertenece a una celda: es de las dos, y esta abajo en «Por qué».
+        */}
         <Dato
           etiqueta="Térmico izquierdo"
           valor={numero(m?.estado_termico_izquierdo, 0)}
           crudo={m?.estado_termico_izquierdo}
-          nota="En crudo. 0 es normal; los demás valores los define el RVR y este proyecto no los ha caracterizado, así que se enseñan sin traducir."
         />
         <Dato
           etiqueta="Térmico derecho"
           valor={numero(m?.estado_termico_derecho, 0)}
           crudo={m?.estado_termico_derecho}
-          nota="En crudo, igual que el izquierdo."
         />
       </div>
 
@@ -158,34 +198,28 @@ export function EstadoMotores() {
         </p>
       )}
 
-      {!fAtasco.conocido && (
-        <Contexto><p>
-          La antigüedad del atasco vale <code>-1.0</code>, que significa <em>nunca se ha sabido nada
-          de eso</em>: no ha llegado ninguna notificación desde que arrancó el driver. Las banderas
-          que hay debajo valen <code>false</code> porque es su valor inicial, no porque nadie haya
-          comprobado nada — por eso aquí pone «{SIN_DATO}» y no «sin atasco».
-        </p></Contexto>
-      )}
-
-      {fTermico.conocido && fTermico.antiguedadS > 35 && (
-        <p className="text-xs text-muted-foreground mt-2 max-w-prose">
-          La temperatura tiene {numero(fTermico.antiguedadS, 0)} s. El sondeo va cada 30 s, así que
-          por encima de 35 s lo que se ve es el <strong>mismo dato repetido</strong>, no una
-          temperatura que se mantenga.
+      {/*
+        🔴 UN SOLO «Por qué» POR TARJETA. Al sacar de las celdas la nota de los
+           estados termicos, su explicacion tenia que ir a algun sitio — y meterla
+           en un `Contexto` propio habria dejado DOS desplegables seguidos, que se
+           leen como ruido y no como dos explicaciones distintas. Van juntos: el
+           primer parrafo es cierto siempre, el segundo solo cuando aplica.
+      */}
+      <Contexto>
+        <p>
+          Los dos estados térmicos se enseñan <strong>en crudo</strong>. El <code>0</code> es
+          normal; los demás valores los define el RVR y este proyecto no los ha caracterizado, así
+          que traducirlos sería inventarles un significado.
         </p>
-      )}
-
-      {m === null && (
-        <p className="text-xs text-muted-foreground mt-3 max-w-prose">
-          Todavía no ha llegado ningún <code>/motor_status</code>. El driver lo republica a 1 Hz
-          desde su estado cacheado, así que debería aparecer en un segundo si hay enlace.
-        </p>
-      )}
-      {m !== null && (
-        <p className="text-xs text-muted-foreground mt-2">
-          Último <code>/motor_status</code> hace {desde === null ? SIN_DATO : milisegundos(desde)}.
-        </p>
-      )}
+        {!fAtasco.conocido && (
+          <p>
+            La antigüedad del atasco vale <code>-1.0</code>, que significa <em>nunca se ha sabido
+            nada de eso</em>: no ha llegado ninguna notificación desde que arrancó el driver. Las
+            banderas que hay arriba valen <code>false</code> porque es su valor inicial, no porque
+            nadie haya comprobado nada — por eso aquí pone «{SIN_DATO}» y no «sin atasco».
+          </p>
+        )}
+      </Contexto>
     </Tarjeta>
   )
 }

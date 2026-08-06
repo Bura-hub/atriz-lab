@@ -38,6 +38,7 @@ import {
 import { interpretarSeguridad } from '@/lib/interfaz/seguridad'
 import { numero } from '@/lib/interfaz/formato'
 import { Aviso } from '@/componentes/ui/Aviso'
+import { Contexto } from '@/componentes/ui/Contexto'
 import { Insignia } from '@/componentes/ui/Insignia'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
@@ -139,6 +140,74 @@ function pintar(cv: HTMLCanvasElement, puntos: Punto[], col: ColoresLienzo): voi
   ctx.stroke()
 }
 
+/**
+ * Una celda de la franja de lecturas: rótulo arriba, valor debajo.
+ *
+ * ⚠️ NO usa `Dato` a propósito. `Dato` pinta en `.cifra` —28-36 px— porque es
+ * la malla principal de una pantalla de telemetría; esto es la franja
+ * SUBORDINADA de un dibujo que ya manda, y ahí la escala es `.cifra-menor`.
+ * La regla de la ausencia sí es la misma: una raya pequeña, nunca del tamaño
+ * del valor, porque con el robot apagado casi todo son rayas.
+ */
+function Lectura({ etiqueta, valor, unidad, nota }: {
+  etiqueta: string
+  /** Ya formateado. `null` es «no se sabe». */
+  valor?: string | null
+  unidad?: string
+  nota?: string
+}) {
+  return (
+    <div className="px-5 py-4">
+      <div className="microetiqueta">{etiqueta}</div>
+      <div className="mt-1.5">
+        {valor === null || valor === undefined ? (
+          <span className="hueco text-lg leading-none" title="no se sabe">—</span>
+        ) : (
+          <span className="cifra-menor">
+            {valor}
+            {unidad !== undefined && <span className="unidad">{unidad}</span>}
+          </span>
+        )}
+      </div>
+      {nota !== undefined && (
+        <p className="mt-1.5 max-w-prose text-[11px] leading-snug text-muted-foreground">{nota}</p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Una celda de la tira de coste: la cifra arriba y su rótulo DEBAJO.
+ *
+ * 📝 El orden invertido respecto a `Lectura` no es un descuido: aquí la cifra
+ * es la razón de que la tira exista —83 %, ~67 kB/s— y el rótulo la explica.
+ * Es la disposición de las maquetas de Stitch para una medida de cabecera.
+ */
+function Coste({ cifra, unidad, etiqueta, nota }: {
+  /** Sin cifra se pinta una raya: un coste que nadie ha medido es un hueco. */
+  cifra?: string
+  unidad?: string
+  etiqueta: string
+  nota: string
+}) {
+  return (
+    <div className="px-5 py-4">
+      <div>
+        {cifra === undefined ? (
+          <span className="hueco text-lg leading-none" title="no se sabe">—</span>
+        ) : (
+          <span className="cifra-menor">
+            {cifra}
+            {unidad !== undefined && <span className="unidad">{unidad}</span>}
+          </span>
+        )}
+      </div>
+      <div className="microetiqueta mt-1.5">{etiqueta}</div>
+      <p className="mt-1.5 max-w-prose text-[11px] leading-snug text-muted-foreground">{nota}</p>
+    </div>
+  )
+}
+
 export function PanelLidar() {
   const { transporte } = useRobot()
   const scan = useTopic(transporte, '/scan')
@@ -159,9 +228,28 @@ export function PanelLidar() {
     return () => mq.removeEventListener('change', leer)
   }, [])
 
+  /*
+   * 🔴🔴 EL LIENZO SE PINTA SIEMPRE, TAMBIEN SIN BARRIDO.
+   *
+   * Antes el dibujo colgaba de `scan !== null`, asi que con el robot apagado
+   * —que es el estado mas frecuente del laboratorio, y el de un robot
+   * cargando— esta pantalla entera eran un aviso, una tarjeta de 220 px y un
+   * boton: medido en una captura de 1800 px de alto, **el 64 % era papel en
+   * blanco**. El instrumento desaparecia justo cuando hacia falta explicar
+   * que no estaba roto.
+   *
+   * Los anillos y la silueta del robot **no dependen de ningun dato**: son la
+   * escala del dibujo. Reservarlos siempre da a la pantalla el area que le
+   * corresponde, deja el «no llega /scan» DENTRO del instrumento en vez de
+   * flotando en una caja aparte, y hace que encender el barrido sea rellenar
+   * un marco que ya esta ahi.
+   *
+   * ⚠️ Es un dibujo ESTATICO —se repinta cuando llega un barrido y nada mas—,
+   *    asi que no choca con la regla de no animar la llegada de un dato.
+   */
   useEffect(() => {
-    if (lienzo.current === null || scan === null || colores === null) return
-    pintar(lienzo.current, puntosDelBarrido(scan), colores)
+    if (lienzo.current === null || colores === null) return
+    pintar(lienzo.current, scan === null ? [] : puntosDelBarrido(scan), colores)
   }, [scan, colores])
 
   const seguridad = interpretarSeguridad(monitor)
@@ -182,21 +270,6 @@ export function PanelLidar() {
 
   return (
     <div className="space-y-4">
-      {/* 🔴 El coste, en pantalla. Un tope silencioso se escribe. */}
-      {/* 🔴 Este aviso INFRADECLARABA: solo mencionaba `/scan`, y esta pantalla
-          abre DOS suscripciones. Un aviso de coste que se deja una fuera es
-          justo el tipo de tope silencioso que la regla del proyecto obliga a
-          escribir — y peor aún, porque suena a que ya lo ha contado todo. */}
-      <Aviso nivel="NOTA" titulo="Esta pantalla consume ancho de banda">
-        <code>/scan</code> es el <strong>83 % del tráfico</strong> de un robot (~67 kB/s):
-        todas las demás pantallas juntas cuestan menos que esta. Y hay una segunda
-        suscripción, <code>/collision_monitor_state</code>, <strong>cuyo caudal no está
-        medido</strong> — publica al cambiar y no de forma periódica, así que en reposo
-        no cuesta nada, pero nadie ha medido cuánto cuesta conduciendo.
-        <br />
-        Las dos se cierran solas al salir de esta pantalla.
-      </Aviso>
-
       {seguridad.efecto !== 'DESCONOCIDO' && (
         <Aviso
           nivel={seguridad.efecto === 'BLOQUEA' ? 'ATENCION' : 'NOTA'}
@@ -215,49 +288,167 @@ export function PanelLidar() {
             ? <Insignia tono="NEUTRO">sin barrido</Insignia>
             : <Insignia tono="BIEN">{cuenta.validos} de {cuenta.total} puntos</Insignia>
         }
+        pie={
+          /* 🔴 Este aviso es tan importante como el dibujo. */
+          <p>
+            Los puntos que faltan <strong>no son obstáculos ausentes</strong>: el X2 devuelve
+            ~89&nbsp;% de lecturas válidas y el resto se descartan. Y un objeto fino de 5&nbsp;cm
+            da 2-3 puntos a 0,68&nbsp;m, así que <strong>en un barrido suelto puede
+            desaparecer</strong>. Sirve para orientarse, no para decidir que el paso está libre.
+          </p>
+        }
       >
-        {scan === null ? (
-          <div className="space-y-3 py-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              No está llegando <code>/scan</code>. <strong>No es una avería</strong>: el barrido
-              arranca apagado a propósito en los 16 robots, porque si no el LIDAR giraría a
-              11,8&nbsp;Hz las 24&nbsp;horas.
-            </p>
-            <button
-              type="button"
-              onClick={encender}
-              disabled={encendiendo}
-              className="border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 focus-ring transition-transform duration-150 active:scale-[0.97]"
-            >
-              {encendiendo ? 'esperando un barrido real…' : 'Encender el barrido'}
-            </button>
-            <p className="text-xs text-muted-foreground">
-              Espera a que llegue un <code>/scan</code> de verdad, no a que el servicio responda:
-              <code>/start_scan</code> ha devuelto éxito con el puerto del LIDAR muerto.
-            </p>
-            {fallo !== null && <Aviso nivel="ERROR" titulo="No se encendió">{fallo}</Aviso>}
-          </div>
-        ) : (
-          <div className="space-y-3">
+        {/* `px-5`: el lienzo no es una `.rejilla`, asi que pone su propio
+            relleno. Es el defecto recurrente que documenta `Tarjeta`. */}
+        <div className="px-5 pb-5 pt-5">
+          <div className="relative mx-auto w-full max-w-[560px]">
             <canvas
               ref={lienzo}
               width={LADO}
               height={LADO}
-              className="mx-auto block max-w-full rounded-md border border-border"
+              role="img"
+              aria-label={
+                cuenta === null
+                  ? 'Marco del barrido: los anillos de referencia cada medio metro y la silueta '
+                    + 'del robot. Sin puntos, porque no está llegando /scan.'
+                  : `Barrido del LIDAR con ${cuenta.validos} puntos válidos de ${cuenta.total}, `
+                    + 'dibujado en el marco del robot.'
+              }
+              className="block h-auto w-full rounded-md border border-border"
             />
-            <p className="text-center text-xs text-muted-foreground">
-              lo más cercano: <strong>{minima === null ? 'no se sabe' : `${numero(minima, 2)} m`}</strong>
-              {' · '}anillos cada 0,5 m
-            </p>
-            {/* 🔴 Este aviso es tan importante como el dibujo. */}
-            <p className="mx-auto max-w-prose text-xs text-muted-foreground">
-              Los puntos que faltan <strong>no son obstáculos ausentes</strong>: el X2 devuelve
-              ~89&nbsp;% de lecturas válidas y el resto se descartan. Y un objeto fino de 5&nbsp;cm
-              da 2-3 puntos a 0,68&nbsp;m, así que <strong>en un barrido suelto puede
-              desaparecer</strong>. Sirve para orientarse, no para decidir que el paso está libre.
-            </p>
+
+            {/*
+              El «no llega /scan» va CENTRADO SOBRE el instrumento, no en lugar
+              de él: lo que se está diciendo es que este marco está vacío, y
+              enseñarlo vacío lo dice mejor que una tarjeta aparte.
+
+              El velo de `--card` es para que el texto no se lea encima de los
+              anillos. Sale del token, así que sigue al tema.
+            */}
+            {/*
+              🔴 ANCLADO ABAJO, NO CENTRADO — y esto se vio en una captura. Con
+                 `items-center` el recuadro caía justo encima del centro del
+                 lienzo, que es donde está dibujada la silueta del robot: el
+                 marco quedaba con sus anillos y **sin el robot**, o sea sin la
+                 única referencia de tamaño del dibujo. Y tapaba además la
+                 etiqueta del anillo de 1,0 m. Todas las etiquetas se pintan por
+                 encima del centro, así que abajo no estorba a ninguna.
+            */}
+            {scan === null && (
+              <div className="absolute inset-0 flex items-end justify-center p-6">
+                <div className="max-w-sm space-y-3 border border-border bg-[rgb(var(--card)/0.93)] px-5 py-4 text-center">
+                  <p className="text-sm">
+                    No está llegando <code>/scan</code>. <strong>No es una avería</strong>: el
+                    barrido arranca apagado a propósito en los 16 robots, porque si no el LIDAR
+                    giraría a 11,8&nbsp;Hz las 24&nbsp;horas.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={encender}
+                    disabled={encendiendo}
+                    className="border border-border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50 focus-ring transition-transform duration-150 active:scale-[0.97]"
+                  >
+                    {encendiendo ? 'esperando un barrido real…' : 'Encender el barrido'}
+                  </button>
+                  <p className="text-xs text-muted-foreground">
+                    Espera a que llegue un <code>/scan</code> de verdad, no a que el servicio
+                    responda: <code>/start_scan</code> ha devuelto éxito con el puerto del LIDAR
+                    muerto.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* El fallo va FUERA del velo: puede ser un mensaje largo y ahí no
+            cabría sin tapar el dibujo entero. */}
+        {fallo !== null && (
+          <div className="px-5 pb-4">
+            <Aviso nivel="ERROR" titulo="No se encendió">{fallo}</Aviso>
           </div>
         )}
+
+        {/*
+          🔴 LA FRANJA DE LECTURAS BAJA SIEMPRE, CON RAYAS CUANDO NO HAY DATO.
+             Antes solo existía con barrido, así que la pantalla apagada no
+             enseñaba ni la escala del dibujo que tiene encima. La ausencia se
+             pinta como raya —pequeña y apagada—, nunca del tamaño del valor.
+        */}
+        <div className="rejilla sm:grid-cols-3">
+          <Lectura
+            etiqueta="Puntos válidos"
+            valor={cuenta === null ? null : String(cuenta.validos)}
+            nota={
+              cuenta === null
+                ? 'entre el 83 y el 89 % de los rayos de un barrido: lo normal, no una avería'
+                : `de ${cuenta.total} rayos · el 83-89 % es lo normal`
+            }
+          />
+          <Lectura
+            etiqueta="Lo más cercano"
+            valor={minima === null ? null : numero(minima, 2)}
+            unidad="m"
+            nota="del centro del robot, en línea recta"
+          />
+          {/* La escala del dibujo. No es una lectura del robot y por eso está
+              siempre: es lo que hace legible el marco cuando está vacío. */}
+          <Lectura
+            etiqueta="Escala"
+            valor="0,5"
+            unidad="m"
+            nota="entre anillo y anillo · el borde está a 2,5 m"
+          />
+        </div>
+      </Tarjeta>
+
+      {/*
+        🔴 EL COSTE, EN PANTALLA — PERO DEBAJO DEL INSTRUMENTO Y COMO DATOS.
+           Esto era un `Aviso` de cinco líneas a 12 px: el bloque más grande de
+           la pantalla, el único con fondo de color, y colocado ENCIMA del
+           dibujo. Sus dos cifras —el 83 % y los ~67 kB/s— iban en negrita
+           dentro del párrafo, cuando son exactamente lo que justifica el aviso.
+           Ahora son cifras con su rótulo, y la explicación larga se pliega.
+
+        ⚠️ Lo que NO se pliega es que hay una segunda suscripción y que su
+           caudal NO está medido: un coste sin medir es un hueco, y un hueco
+           callado se lee como «no cuesta nada».
+      */}
+      <Tarjeta
+        titulo="Lo que cuesta esta pantalla"
+        subtitulo="Es la única que gasta de verdad. Las dos suscripciones se cierran solas al salir de aquí."
+      >
+        <div className="rejilla sm:grid-cols-3">
+          <Coste
+            cifra="83"
+            unidad="%"
+            etiqueta="Parte del tráfico"
+            nota="de los 80,7 kB/s de un robot navegando, medidos en el robot y en el navegador"
+          />
+          <Coste
+            cifra="≈67"
+            unidad="kB/s"
+            etiqueta="Coste de /scan"
+            nota="todas las demás pantallas juntas cuestan menos que esta sola"
+          />
+          <Coste
+            etiqueta="Coste sin medir"
+            nota="/collision_monitor_state publica al cambiar, no cada tanto: en reposo no cuesta nada y nadie ha medido cuánto cuesta conduciendo"
+          />
+        </div>
+
+        <Contexto>
+          <p>
+            Por eso la suscripción vive en esta pantalla y no en el marco del robot: al salir de
+            la ruta se da de baja, y la baja llega al robot de verdad. Dejarla puesta por descuido
+            en las dieciséis pestañas serían ~8,6&nbsp;Mbit/s sobre la única antena del aula.
+          </p>
+          <p>
+            Un tope silencioso se escribe: quien mira esto tiene que saber que no sale gratis. Un
+            robot cuesta 13,6&nbsp;kB/s en reposo y 80,7 navegando, y de esos 80,7 el barrido es
+            el 83&nbsp;%.
+          </p>
+        </Contexto>
       </Tarjeta>
     </div>
   )

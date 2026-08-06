@@ -47,6 +47,33 @@ import { useMuestreo } from './useMuestreo'
  */
 const TOPICS: readonly TopicModelado[] = ['/odom', '/encoders', '/motor_status', '/battery_state']
 
+/**
+ * Un ritmo en hercios, con la escala de las cifras y no con la del texto.
+ *
+ * 🔴 LAS UNICAS CIFRAS REALES DE ESTA PANTALLA ERAN LO MAS PEQUEÑO QUE HABIA.
+ *    Las cinco columnas iban a `text-sm` monoespaciada, asi que la tabla se leia
+ *    como una hoja de calculo: 16,53 / 16,57 / 1,00 / 0,03 Hz —los cuatro
+ *    numeros medidos contra el robot, y con el robot apagado los UNICOS numeros
+ *    de la pantalla— pesaban lo mismo que el nombre del topic y menos que el
+ *    parrafo de debajo.
+ *
+ * ⚠️ La AUSENCIA no crece con el dato: sigue en `.hueco`, pequeña y apagada. Es
+ *    la regla de `Dato`, y aqui importa mas que en ningun sitio — con el robot
+ *    apagado ocho de las diez celdas de ritmo son huecos, y pintarlos a 22 px
+ *    llenaria la tabla de rayas enormes.
+ */
+function Hercios({ valor }: { valor: number | null | undefined }) {
+  if (valor === null || valor === undefined) {
+    return <span className="hueco text-sm italic">{SIN_DATO}</span>
+  }
+  return (
+    <span className="cifra-menor">
+      {numero(valor, 2)}
+      <span className="unidad">Hz</span>
+    </span>
+  )
+}
+
 function FilaTopic({ topic }: { topic: TopicModelado }) {
   const { transporte } = useRobot()
   const { llegadas } = useMuestreo(transporte, topic)
@@ -56,18 +83,28 @@ function FilaTopic({ topic }: { topic: TopicModelado }) {
 
   return (
     <tr className="border-t border-border">
-      <td className="py-2 pr-4 font-mono text-sm">{topic}</td>
-      <td className="py-2 pr-4 text-right font-mono tabular-nums text-sm">{llegadas.n}</td>
-      <td className="py-2 pr-4 text-right font-mono tabular-nums text-sm">
-        {desde === null ? <span className="italic text-muted-foreground">{SIN_DATO}</span> : milisegundos(desde)}
+      {/* `text-base`: el nombre del topic es la clave de la fila y no puede ser
+          del tamaño de la contabilidad que lleva al lado. */}
+      <td className="py-4 pr-4 font-mono text-base">{topic}</td>
+      {/* Estas dos columnas son contabilidad del enlace, no medidas del robot:
+          se quedan en el cuerpo pequeño a proposito, y eso es lo que hace que
+          los dos ritmos de la derecha destaquen. */}
+      <td className="py-4 pr-4 text-right font-mono tabular-nums text-sm">{llegadas.n}</td>
+      <td className="py-4 pr-4 text-right font-mono tabular-nums text-sm">
+        {desde === null ? <span className="hueco italic">{SIN_DATO}</span> : milisegundos(desde)}
       </td>
-      <td className="py-2 pr-4 text-right font-mono tabular-nums text-sm">
-        {observado === null
-          ? <span className="italic text-muted-foreground">{SIN_DATO}</span>
-          : `${numero(observado, 2)} Hz`}
+      <td className="py-4 pr-4 text-right">
+        <Hercios valor={observado} />
       </td>
-      <td className="py-2 text-right font-mono tabular-nums text-sm text-muted-foreground">
-        {medido === undefined ? SIN_DATO : `${numero(medido, 2)} Hz`}
+      {/*
+        🔴 SIN `text-muted-foreground`, Y ES UNA DECISION, NO UN DESCUIDO.
+           Esta columna era la mas pequeña, la mas a la derecha y la unica
+           atenuada — o sea lo mas apagado del cuadro— cuando es el PATRON DE
+           COMPARACION: el valor medido contra el robot, que no depende del
+           enlace y que con el robot apagado es lo unico que se puede leer.
+      */}
+      <td className="py-4 text-right">
+        <Hercios valor={medido} />
       </td>
     </tr>
   )
@@ -136,13 +173,40 @@ export function PanelDiagnostico() {
         titulo="Lo que esta interfaz no puede decir"
         subtitulo="Un hueco declarado es honesto; un hueco callado se lee como «todo bien»."
       >
-        {/* Mismo motivo que en `PanelEnlace`: el cuerpo de la tarjeta va a
-            sangre, asi que la lista pone su propio relleno. */}
-        <dl className="space-y-3 px-5 py-4">
-          {LO_QUE_NO_SE_PUEDE_DECIR.map((h) => (
-            <div key={h.que}>
-              <dt className="text-sm font-medium">{h.que}</dt>
-              <dd className="text-xs text-muted-foreground max-w-prose">{h.porque}</dd>
+        {/*
+          🔴 EL ROTULO Y SU EXPLICACION SE LEIAN COMO LA MISMA COSA. El `dt` iba
+             en `text-sm font-medium` minuscula y el `dd` en `text-xs`: dos
+             tamaños de la misma fuente separados por 2 px, asi que la lista era
+             una mancha de prosa de ~350 px sin una sola cifra ni un solo
+             escalon. En `.microetiqueta` —monoespaciada, versalitas, espaciada—
+             el hueco declarado se distingue de su motivo sin leer ninguno de los
+             dos, que es exactamente para lo que existe esa clase.
+
+          📝 Y NUMERADOS: son cinco cosas concretas que esta interfaz no puede
+             decir, no un parrafo. El numero las hace contables — «cinco», y se
+             ve— y da a cada una un nombre para citarla.
+
+          ⚠️ `.rejilla` y no una pila: en dos columnas ocupan la mitad del alto.
+             La quinta entrada abarca las dos, porque con cinco celdas en una
+             malla de dos la ultima fila dejaria medio hueco con el fondo de la
+             rejilla asomando — una banda de color solido sin nada dentro.
+             Ademas la rejilla va A SANGRE, que es lo que `Tarjeta` espera de
+             ella; el relleno lo pone cada celda.
+        */}
+        <dl className="rejilla sm:grid-cols-2">
+          {LO_QUE_NO_SE_PUEDE_DECIR.map((h, i) => (
+            <div
+              key={h.que}
+              className={`px-5 py-4${
+                i === LO_QUE_NO_SE_PUEDE_DECIR.length - 1 ? ' sm:col-span-2' : ''
+              }`}
+            >
+              <dt className="microetiqueta">
+                {String(i + 1).padStart(2, '0')} · {h.que}
+              </dt>
+              <dd className="mt-2 max-w-prose text-sm leading-snug text-muted-foreground">
+                {h.porque}
+              </dd>
             </div>
           ))}
         </dl>

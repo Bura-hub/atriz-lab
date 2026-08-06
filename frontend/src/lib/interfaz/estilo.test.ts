@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeTransicion, esComentario,
-  ficherosDeEstilo, globsMuertos, gruposDeClases, partirEnComas, transicionesDeClases,
+  ficherosDeEstilo, globsMuertos, gruposDeClases, lineasDeCodigo, partirEnComas,
+  transicionesDeClases,
 } from './estilo'
 
 const RAIZ = dirname(fileURLToPath(import.meta.url))
@@ -50,6 +51,52 @@ describe('buscarProhibiciones', () => {
     for (const p of PROHIBICIONES) {
       expect(p.porque.length, `«${p.nombre}» sin motivo`).toBeGreaterThan(30)
     }
+  })
+})
+
+describe('🔴🔴 lineasDeCodigo: el falso positivo que mordio tres veces en un dia', () => {
+  it('salta las lineas INTERIORES de un comentario JSX, que no empiezan por *', () => {
+    /*
+     * Esta es la forma que mordio: `{(barra)*` abre, las lineas de dentro no
+     * llevan ningun marcador, y `esComentario()` -que mira una linea aislada-
+     * las daba por codigo. Explicar por que algo esta prohibido disparaba la
+     * prohibicion, que es lo contrario de lo que la cabecera de `estilo.ts`
+     * promete.
+     */
+    const fuente = [
+      '{/*',
+      '  🔴 EL DEGRADADO IBA DE `from-white` A UN GRIS FIJO y era invisible.',
+      '     Por eso ahora las paradas salen de variables.',
+      '*/}',
+      '<h1 className="text-foreground">Flota</h1>',
+    ].join('\n')
+    expect(buscarProhibiciones(fuente)).toEqual([])
+    expect(lineasDeCodigo(fuente)).toEqual(['<h1 className="text-foreground">Flota</h1>'])
+  })
+
+  it('y las de un comentario de bloque normal', () => {
+    const fuente = '/*\n  antes ponia shadow-xl y se quito\n*/\nconst x = 1'
+    expect(buscarProhibiciones(fuente)).toEqual([])
+  })
+
+  it('🔴 pero NO deja de mirar el codigo que viene despues del bloque', () => {
+    // La comprobacion que impide que este arreglo se convierta en un agujero:
+    // si el estado «dentro de un bloque» no se cerrara, la guardia se apagaria
+    // desde el primer comentario del fichero hasta el final.
+    const fuente = '/*\n  explico shadow-xl\n*/\n<div className="shadow-xl" />'
+    expect(buscarProhibiciones(fuente)).toEqual(['shadow-lg / shadow-xl / drop-shadow'])
+  })
+
+  it('🔴 un `/*` a media linea NO abre bloque: podria ser una cadena', () => {
+    // Conservador a proposito. Un falso NEGATIVO -dejar de vigilar codigo real-
+    // es peor que un falso positivo, asi que solo se abre al principio de linea.
+    const fuente = 'const r = "/*"\n<div className="shadow-xl" />'
+    expect(buscarProhibiciones(fuente)).toEqual(['shadow-lg / shadow-xl / drop-shadow'])
+  })
+
+  it('un bloque que abre y cierra en la misma linea no traga lo que sigue', () => {
+    const fuente = '/* nada */\n<div className="shadow-xl" />'
+    expect(buscarProhibiciones(fuente)).toEqual(['shadow-lg / shadow-xl / drop-shadow'])
   })
 })
 

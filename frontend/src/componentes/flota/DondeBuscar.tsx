@@ -122,18 +122,50 @@ export function DondeBuscar({ direcciones, poner }: {
   const puestas = cuantasPuestas(direcciones)
 
   return (
-    <details className="group border border-border bg-card">
-      <summary className="focus-ring flex cursor-pointer list-none items-center gap-2 px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
-        <span
-          aria-hidden="true"
-          className="inline-block transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-open:rotate-90"
-        >
-          ▸
-        </span>
-        Dónde buscar a los robots
+    /*
+      🔴 `vidrio rounded-ficha`, COMO TODO LO DEMÁS DE ESTA PANTALLA. Era la
+         única caja de esquinas vivas del muro —`border` + `bg-card` a pelo—
+         entre dieciséis fichas redondeadas y dos pastillas de vidrio, así que
+         se leía como algo pegado de otro sitio.
+
+      ⚠️ `overflow-hidden` no es adorno: sin él la lista de dieciséis filas y
+         sus separadores de 1 px salen por las esquinas redondeadas.
+    */
+    <details className="vidrio group overflow-hidden rounded-ficha">
+      <summary className="focus-ring flex cursor-pointer list-none items-center gap-2 rounded-ficha px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground">
+        {/*
+          📝 El ` · ` entre etiqueta y valor. Sin él se leía «Dónde buscar a los
+             robots todos por nombre», que es una frase rota: dos cosas
+             distintas —el nombre del cuadro y su estado— pegadas en una línea.
+        */}
+        <span>Dónde buscar a los robots</span>
+        <span aria-hidden="true" className="opacity-50">·</span>
         <span className="font-mono">
           {puestas === 0 ? 'todos por nombre' : `${puestas} con dirección puesta`}
         </span>
+        {/*
+          El chevron, DIBUJADO y a la derecha. Antes era un `▸` Unicode a la
+          izquierda: un glifo de fuente, que `craft-floor` prohíbe como icono y
+          que además cambia de forma y de peso según qué fuente lo resuelva.
+          A la derecha porque es donde el ojo espera el gesto de plegar, y en el
+          extremo de la caja, no pegado al texto.
+        */}
+        <svg
+          width="13"
+          height="13"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+          className="ml-auto shrink-0 transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-open:rotate-180"
+        >
+          <path
+            d="M4 6.25 8 10.25 12 6.25"
+            stroke="currentColor"
+            strokeWidth="1.4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       </summary>
 
       <div className="border-t border-border">

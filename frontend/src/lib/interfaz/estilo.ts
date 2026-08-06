@@ -160,7 +160,7 @@ export const PROHIBICIONES: readonly Prohibicion[] = [
  * documentar sus propias reglas.
  */
 export function buscarProhibiciones(fuente: string): string[] {
-  const lineas = fuente.split('\n').filter((l) => !esComentario(l))
+  const lineas = lineasDeCodigo(fuente)
   /*
    * 🔴 LA EXENCION SE COMPRUEBA **LINEA A LINEA**, y esto no es un detalle.
    *
@@ -179,6 +179,65 @@ export function buscarProhibiciones(fuente: string): string[] {
 export function esComentario(linea: string): boolean {
   const l = linea.trim()
   return l.startsWith('//') || l.startsWith('*') || l.startsWith('/*') || l.startsWith('#')
+}
+
+/**
+ * Las lineas de FUENTE, quitando los comentarios — **incluidas las lineas de
+ * dentro de un bloque que no empiezan por `*`**.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 POR QUE `esComentario()` SOLA NO BASTA, Y A QUIEN MORDIO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `esComentario()` mira una linea AISLADA y reconoce cuatro formas: `//`, `*`,
+ * `/*` y `#`. Pero en este repositorio abundan los comentarios JSX asi:
+ *
+ *     {(barra)*
+ *       🔴 EL DEGRADADO IBA DE `from-white` A UN GRIS FIJO...
+ *          y sobre papel el titular era invisible.
+ *     *(barra)}
+ *
+ * Las lineas interiores **no empiezan por `*`**, asi que `esComentario()` dice
+ * que son codigo — y si explican una prohibicion, la disparan. La guardia acusa
+ * a quien esta documentando por que algo esta prohibido, que es exactamente lo
+ * que la cabecera de este fichero promete que se puede hacer.
+ *
+ * 📝 No es teorico: mordio tres veces en un mismo dia. A mi al escribir el
+ *    comentario del degradado de los titulares, y a DOS agentes distintos
+ *    trabajando en ficheros distintos, que informaron del mismo falso positivo
+ *    sin saber el uno del otro. Un falso positivo que se repite convierte la
+ *    guardia en algo que se salta, y una guardia que se salta no protege.
+ *
+ * ⚠️ **SE ABRE SOLO AL PRINCIPIO DE LINEA**, y es deliberado: un `/*` en mitad
+ *    de una linea puede estar dentro de una cadena o de una expresion regular,
+ *    y tratarlo como comentario haria que la guardia dejara de mirar codigo de
+ *    verdad. Un falso NEGATIVO es peor que un falso positivo, asi que la regla
+ *    se queda en el caso conservador — que ademas es el unico que aparece aqui.
+ */
+export function lineasDeCodigo(fuente: string): string[] {
+  const salida: string[] = []
+  let dentroDeBloque = false
+
+  for (const linea of fuente.split('\n')) {
+    const l = linea.trim()
+
+    if (dentroDeBloque) {
+      // La linea que CIERRA tampoco es codigo: lo que venga detras de `*​/` en
+      // esa misma linea es un caso que este repositorio no usa.
+      if (l.includes('*/')) dentroDeBloque = false
+      continue
+    }
+
+    // `{/*` es la forma JSX; `/*` la de JS y CSS. Un bloque que abre y cierra
+    // en la misma linea no deja nada dentro que vigilar.
+    if ((l.startsWith('/*') || l.startsWith('{/*')) && !l.includes('*/')) {
+      dentroDeBloque = true
+      continue
+    }
+
+    if (!esComentario(l)) salida.push(linea)
+  }
+
+  return salida
 }
 
 /** Todos los `.ts`, `.tsx` y `.css` de un arbol. */
