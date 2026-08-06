@@ -121,10 +121,15 @@ export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
     */
     <nav
       aria-label="Navegación principal"
-      className="relative z-20 flex shrink-0 flex-col gap-5 border-b border-[rgb(var(--filo)/0.08)] bg-pozo-alto/80 px-4 py-4 backdrop-blur-xl lg:h-screen lg:w-[272px] lg:border-b-0 lg:border-r lg:px-5 lg:py-6"
+      // El raíl es una SUPERFICIE PROPIA (`--rail`), no el fondo ni una barra: se
+      // separa del contenido por su tono, sin necesitar una línea gruesa. Sobre
+      // papel eso es blanco puro contra el papel más cálido del lienzo.
+      className="relative z-20 flex shrink-0 flex-col gap-5 border-b border-[rgb(var(--filo)/0.08)] bg-[rgb(var(--rail))] px-4 py-4 lg:h-screen lg:w-[272px] lg:border-b-0 lg:border-r lg:px-5 lg:py-6"
     >
       <Link href="/" className="focus-ring shrink-0 rounded-md">
-        <span className="block text-[1.6rem] font-extrabold leading-[0.9] tracking-[-0.05em] text-foreground">
+        {/* La marca en el azul de la identidad, no en el color del texto: es lo
+            que hace que se lea como logotipo y no como un titular más. */}
+        <span className="block text-[1.6rem] font-extrabold leading-[0.9] tracking-[-0.05em] text-[rgb(var(--marca))]">
           Plataforma<br />Atriz
         </span>
         {/*

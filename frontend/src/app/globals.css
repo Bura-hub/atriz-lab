@@ -35,20 +35,74 @@
  */
 
 :root {
-  /* ── EL POZO ────────────────────────────────────────────────────────────── */
-  --pozo: 7 8 13;
-  --pozo-alto: 12 14 22;          /* cabeceras y barras fijas */
+  /*
+   * ── EL PAPEL ─────────────────────────────────────────────────────────────
+   * 🔴 ESTO ERA UN POZO CASI NEGRO Y AHORA ES PAPEL. El nombre de la variable se
+   *    conserva porque está usado en toda la aplicación; lo que cambia es lo que
+   *    significa.
+   *
+   * El criterio no es gusto, es la ESCENA DE USO: un aula iluminada, el alumno
+   * sentado con el robot delante y midiendo con cinta, y a veces un proyector.
+   * Sobre eso, el oscuro jugaba en contra por lo mismo que ya estaba medido para
+   * el modo proyección — y el modo proyección era la prueba de que en claro esta
+   * aplicación se lee mejor.
+   *
+   * 📝 Y la causa real de que se viera «apagada» no era el fondo: era que una
+   *    tarjeta de vidrio es **blanco al 4,5 % sobre casi negro**, así que la
+   *    superficie apenas se separaba y TODO el contraste lo cargaba el texto.
+   *    En papel la tarjeta es opaca y se lee sola. Ver `.vidrio`.
+   */
+  --pozo: 246 245 243;            /* el papel */
+  --pozo-alto: 255 255 255;       /* cabeceras y barras: más claro, no más oscuro */
 
-  /* ── EL VIDRIO ──────────────────────────────────────────────────────────── */
-  --vidrio: 255 255 255;          /* se usa siempre con alfa: /.045, /.075 */
-  --filo: 255 255 255;            /* el borde de 1 px, con alfa /.09 */
+  /*
+   * ── LA TINTA ─────────────────────────────────────────────────────────────
+   * Lo que antes era luz sobre negro ahora es tinta sobre papel. Mismos alfas,
+   * sentido invertido.
+   */
+  --vidrio: 15 16 32;
+  --filo: 15 16 32;
 
-  /* ── LOS BLOQUES ────────────────────────────────────────────────────────── */
-  --bloque-vivo: 43 75 242;       /* cobalto */
-  --bloque-mirar: 182 224 30;     /* lima */
-  --bloque-ir: 255 92 57;         /* coral */
+  /*
+   * ── LOS BLOQUES ──────────────────────────────────────────────────────────
+   * 🔴 EL IDIOMA DE LA APLICACIÓN, y NO se toca: vidrio = este robot no pide
+   *    nada, bloque a plena saturación = pide algo. Su fuerza viene de que son
+   *    ESCASOS. Son las variantes que aguantan luz ambiente, las mismas que el
+   *    modo proyección ya usaba.
+   */
+  --bloque-vivo: 30 58 210;       /* cobalto */
+  --bloque-mirar: 132 163 12;     /* lima */
+  --bloque-ir: 214 62 30;         /* coral */
 
-  /* ── LA LUZ AMBIENTE ────────────────────────────────────────────────────── */
+  /*
+   * ── EL EJE DE IDENTIDAD ──────────────────────────────────────────────────
+   * 🔴 UN SEGUNDO EJE DE COLOR, Y ES SEPARADO DEL DE ESTADO A PROPÓSITO.
+   *
+   * Los `--bloque-*` significan «este robot reclama algo». Si esos mismos tres
+   * colores se repartieran por la aplicación como adorno, dejarían de
+   * significarlo: «si todas fueran de color la pantalla gritaría entera y no
+   * diría nada» (`BaldosaRobot.tsx`).
+   *
+   * Así que el color que da identidad a cada pantalla va por su propio eje, con
+   * hues que NO son los tres del estado. Responde a «¿dónde estoy?», nunca a
+   * «¿qué pasa?».
+   */
+  --seccion-taller: 91 46 168;    /* violeta */
+  --seccion-conducir: 6 118 140;  /* teal */
+  --seccion-porque: 166 78 8;     /* ámbar quemado */
+  --seccion-telemetria: 13 108 84;/* verde profundo */
+  --seccion-lidar: 39 78 176;     /* azul */
+  --seccion-diagnostico: 130 44 96; /* ciruela */
+  --seccion-flota: 30 58 210;     /* el muro se queda en cobalto */
+  --seccion-cuaderno: 90 92 108;  /* grafito: no habla con ningún robot */
+
+  /*
+   * ── LA LUZ AMBIENTE ──────────────────────────────────────────────────────
+   * Se CONSERVA sobre papel, que es lo que el modo proyección apagaba por
+   * «ensuciar». Ensuciaba con los alfas de antes (0,36 y 0,20), calculados para
+   * teñir un pozo negro. Sobre papel el mismo gesto necesita un tercio de eso:
+   * lo que queda es una variación del fondo que se nota y no se mira.
+   */
   --luz-a: 91 140 255;
   --luz-b: 34 211 238;
 
@@ -60,46 +114,53 @@
    *   · y la marca va en un azul claro, no en blanco. Es lo que hace que el
    *     logotipo se lea como identidad y no como un titular más
    */
-  --rail: 30 31 41;
-  --marca: 187 195 255;
+  --rail: 255 255 255;
+  --marca: 30 58 210;
 
   /* ── Ranuras de Tailwind ────────────────────────────────────────────────── */
-  --background: 7 8 13;
-  --foreground: 237 239 245;
-  --card: 18 20 28;               /* el fallback opaco del vidrio */
-  --card-foreground: 237 239 245;
-  --muted: 26 29 40;
-  --muted-foreground: 139 144 163;
-  --border: 42 46 60;
-  --input: 18 20 28;
-  --secondary: 26 29 40;
-  --secondary-foreground: 237 239 245;
-  --accent: 32 36 50;
-  --accent-foreground: 237 239 245;
+  --background: 246 245 243;
+  --foreground: 15 16 32;
+  --card: 255 255 255;
+  --card-foreground: 15 16 32;
+  --muted: 228 226 222;
+  --muted-foreground: 74 76 94;   /* 6,4:1 sobre el papel: pasa AA holgado */
+  --border: 202 199 194;
+  --input: 255 255 255;
+  --secondary: 228 226 222;
+  --secondary-foreground: 15 16 32;
+  --accent: 236 234 230;
+  --accent-foreground: 15 16 32;
 
-  --sombra: 0 0 0;
+  /* La sombra se tiñe con la tinta, no con negro puro: sobre papel el negro
+     puro se ve sucio y delata el borde de la caja. */
+  --sombra: 15 16 32;
 
   /*
    * ── EL VOCABULARIO DE ESTADOS ────────────────────────────────────────────
    * Los tonos para TEXTO sobre el pozo. Los bloques usan `--bloque-*`, que son
    * los mismos colores subidos de saturación para funcionar como campo.
    */
-  --estado-neutro: 139 144 163;   /* NO SE SABE. Ni bueno ni malo */
-  --estado-vivo: 74 222 128;      /* solo desde un dato RECIENTE y concreto */
-  --estado-mirar: 251 191 36;
-  --estado-ir: 251 106 90;        /* reservado a un hecho confirmado */
-  --estado-frenando: 91 140 255;  /* ⚠️ DECLARADO Y SIN USAR: ver abajo */
+  /* 🔴 Recalculados para TEXTO SOBRE PAPEL. Los de antes -verde 74 222 128,
+     ámbar 251 191 36- estaban calculados para brillar sobre un pozo negro y
+     sobre papel bajan de 2:1: serían ilegibles, no «suaves». */
+  --estado-neutro: 90 92 108;     /* NO SE SABE. Ni bueno ni malo */
+  --estado-vivo: 21 122 61;       /* solo desde un dato RECIENTE y concreto */
+  --estado-mirar: 158 92 8;
+  --estado-ir: 190 42 22;         /* reservado a un hecho confirmado */
+  --estado-frenando: 30 58 210;   /* ⚠️ DECLARADO Y SIN USAR: ver abajo */
 
-  --primary: 91 140 255;
-  --primary-foreground: 7 8 13;
-  --destructive: 251 106 90;
-  --destructive-foreground: 7 8 13;
-  --warning: 251 191 36;
-  --warning-foreground: 7 8 13;
-  --success: 74 222 128;
-  --success-foreground: 7 8 13;
+  --primary: 30 58 210;
+  --primary-foreground: 255 255 255;
+  --destructive: 190 42 22;
+  --destructive-foreground: 255 255 255;
+  --warning: 158 92 8;
+  --warning-foreground: 255 255 255;
+  --success: 21 122 61;
+  --success-foreground: 255 255 255;
 
-  --radio: 20px;
+  /* 20px estaba por encima del suelo de calidad, que fija los radios de tarjeta
+     en 12-16 px; por encima la ficha empieza a leerse como pastilla. */
+  --radio: 16px;
 
   /*
    * ── LAS CURVAS ───────────────────────────────────────────────────────────
@@ -189,21 +250,42 @@
    *    contenido detrás. Aquí son tarjetas pequeñas sobre un fondo fijo, que es
    *    el caso barato.
    */
+  /*
+   * 🔴 LA FICHA DE PAPEL — y aquí estaba la causa real de que la aplicación se
+   *    viera «apagada», que no era el fondo.
+   *
+   * Antes: blanco al **4,5 %** sobre un pozo casi negro, con desenfoque de 20 px.
+   * Esa superficie apenas se separaba del fondo, así que **todo el contraste lo
+   * cargaba el texto** y la pantalla entera se leía plana. Es exactamente lo que
+   * el modo proyección ya arreglaba —y por eso «se veía mejor» allí—.
+   *
+   * Ahora es papel opaco sobre papel más cálido: la superficie se lee sola.
+   *
+   * 📝 Y la ELEVACIÓN SE DECLARA UNA VEZ: sombra, no sombra + borde marcado. Un
+   *    borde de 1 px bajo una sombra ancha es la «ficha fantasma». El borde se
+   *    queda en un filo tenue que solo define el canto.
+   *
+   * 📝 Fuera el `backdrop-filter`: sobre papel no tiene nada que desenfocar, y
+   *    costaba GPU por dieciséis baldosas en el muro.
+   */
   .vidrio {
-    background: rgb(var(--vidrio) / 0.045);
-    border: 1px solid rgb(var(--filo) / 0.09);
-    backdrop-filter: blur(20px);
+    background: rgb(var(--card));
+    border: 1px solid rgb(var(--filo) / 0.08);
     box-shadow:
-      inset 0 1px 0 rgb(var(--filo) / 0.10),
-      0 18px 40px -22px rgb(var(--sombra) / 0.70);
-    transition: background-color var(--t-hover) var(--curva-mov),
+      0 1px 2px -1px rgb(var(--sombra) / 0.10),
+      0 12px 28px -18px rgb(var(--sombra) / 0.22);
+    transition: box-shadow var(--t-hover) var(--curva-mov),
                 border-color var(--t-hover) var(--curva-mov),
                 transform var(--t-hover) var(--curva-mov);
   }
 
+  /* En papel el hover sube la ficha, no la aclara: sobre blanco no hay margen
+     para aclarar, y la sombra sí puede crecer. */
   .vidrio:hover {
-    background: rgb(var(--vidrio) / 0.075);
-    border-color: rgb(var(--filo) / 0.18);
+    border-color: rgb(var(--filo) / 0.16);
+    box-shadow:
+      0 2px 4px -2px rgb(var(--sombra) / 0.13),
+      0 18px 36px -20px rgb(var(--sombra) / 0.28);
   }
 
   /*
@@ -224,27 +306,24 @@
    * algo»— y en claro siguen siendo los mismos tres, con las variantes oscuras
    * de cada tono para que el texto blanco de encima siga contrastando.
    */
+  /*
+   * 🔴 ESTE MODO YA NO INVIERTE NADA. Cuando la base era un pozo negro, aquí
+   *    había que redefinir la paleta entera; ahora la aplicación ya es papel, así
+   *    que proyección se queda solo con lo que de verdad cambia a TRES METROS:
+   *
+   *   · el papel sube a blanco puro y la tinta secundaria se oscurece, porque un
+   *     proyector aplana el rango y come los medios tonos;
+   *   · desaparece la sombra —un proyector no la reproduce— y el canto pasa a
+   *     ser un borde de verdad, que sí sobrevive;
+   *   · y se apaga la luz ambiente, que a esa distancia solo resta contraste a
+   *     la única pantalla que no puede permitírselo.
+   *
+   * Los bloques NO cambian: ya son las variantes que aguantan luz ambiente.
+   */
   .proyeccion {
-    --background: 246 245 243;
-    --foreground: 15 16 32;
-    --card: 255 255 255;
-    --card-foreground: 15 16 32;
-    --muted: 228 226 222;
-    --muted-foreground: 74 76 94;
-    --border: 202 199 194;
-    --vidrio: 15 16 32;   /* el «vidrio» pasa a ser tinta muy diluida */
-    --filo: 15 16 32;
-    --sombra: 15 16 32;
-
-    /* Los mismos tres bloques, en su version que aguanta luz ambiente. */
-    --bloque-vivo: 30 58 210;
-    --bloque-mirar: 132 163 12;
-    --bloque-ir: 214 62 30;
-
-    --estado-neutro: 90 92 108;
-    --estado-vivo: 21 122 61;
-    --estado-mirar: 158 92 8;
-    --estado-ir: 190 42 22;
+    --background: 255 255 255;
+    --muted-foreground: 52 54 70;
+    --border: 186 183 178;
   }
 
   /*
@@ -252,16 +331,16 @@
    * verdad y sobre blanco. Mantener el `backdrop-filter` aquí costaría GPU por
    * dieciséis y restaría el contraste que este modo existe para ganar.
    */
+  /* Sin sombra: un proyector no la reproduce, y lo que queda de ella es un
+     halo sucio. El canto lo lleva el borde, que sí sobrevive a tres metros. */
   .proyeccion .vidrio {
-    background: rgb(var(--card));
-    border-color: rgb(var(--filo) / 0.14);
-    backdrop-filter: none;
-    box-shadow: 0 1px 2px -1px rgb(var(--sombra) / 0.18);
+    border-color: rgb(var(--filo) / 0.22);
+    box-shadow: none;
   }
 
   .proyeccion .vidrio:hover {
-    background: rgb(var(--card));
-    border-color: rgb(var(--filo) / 0.28);
+    border-color: rgb(var(--filo) / 0.34);
+    box-shadow: none;
   }
 
   /* Y la luz ambiente se apaga: sobre fondo claro solo ensucia. */
@@ -295,14 +374,46 @@
     filter: blur(100px);
   }
 
+  /*
+   * ── LA RESPIRACIÓN ───────────────────────────────────────────────────────
+   * Los dos orbes suben y bajan muy despacio, en contrafase y con periodos que
+   * no son múltiplos —23 s y 31 s—, así que el patrón no se repite a la vista y
+   * el fondo nunca se queda quieto del todo.
+   *
+   * 🔴 SE ANIMAN **SOLO** `transform` Y `opacity`, jamás el radio del desenfoque.
+   *    Un `blur(100px)` recalculado en cada fotograma hunde el rendimiento —el
+   *    comentario de arriba ya lo advierte para el desplazamiento—; estas dos
+   *    propiedades las mueve el compositor sin repintar.
+   *
+   * 📝 Es el ÚNICO movimiento continuo de la aplicación, y es deliberado: los
+   *    datos NO se animan, porque `/odom` llega a 16,5 Hz y animar su llegada
+   *    sería un estroboscopio sobre las cifras que alguien está leyendo. Aquí se
+   *    mueve el fondo, que no es información.
+   *
+   * 📝 El bloque `prefers-reduced-motion` del final lo apaga solo.
+   */
   .luz-ambiente::before {
     width: 660px; height: 660px; left: -180px; top: -240px;
-    background: radial-gradient(circle, rgb(var(--luz-a) / 0.36), transparent 70%);
+    /* Sobre papel, un tercio del alfa que teñía el pozo negro. Más que esto no
+       es «luz»: es una mancha. */
+    background: radial-gradient(circle, rgb(var(--luz-a) / 0.16), transparent 70%);
+    animation: respirar-a 23s var(--curva-mov) infinite;
   }
 
   .luz-ambiente::after {
     width: 600px; height: 600px; right: -160px; top: 80px;
-    background: radial-gradient(circle, rgb(var(--luz-b) / 0.20), transparent 70%);
+    background: radial-gradient(circle, rgb(var(--luz-b) / 0.11), transparent 70%);
+    animation: respirar-b 31s var(--curva-mov) infinite;
+  }
+
+  @keyframes respirar-a {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); opacity: 1; }
+    50%      { transform: translate3d(0, 46px, 0) scale(1.08); opacity: 0.72; }
+  }
+
+  @keyframes respirar-b {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1.06); opacity: 0.78; }
+    50%      { transform: translate3d(0, -38px, 0) scale(1); opacity: 1; }
   }  /*
    * El foco, visible siempre. Quien navega con teclado tiene que ver dónde
    * está, y en un instrumento eso no es una preferencia.

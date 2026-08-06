@@ -175,9 +175,35 @@ describe('🔴 la exencion de degradado, y por que no puede ensancharse', () => 
     expect(buscarProhibiciones(fichero)).toEqual(['gradientes'])
   })
 
-  it('solo UNA prohibicion tiene exencion, y es esa', () => {
-    // Si alguien añade otra, que sea un acto deliberado y visible en el diff.
+  it('SOLO DOS prohibiciones tienen exencion, y son estas', () => {
+    /*
+     * Si alguien añade otra, que sea un acto deliberado y visible en el diff.
+     * Esta lista ES ese registro, y por eso la prueba nombra las dos:
+     *
+     *  · «gradientes» — la de siempre.
+     *  · «animation: … infinite» — añadida al pasar el tema a papel claro, y
+     *    acotada a `respirar-a` / `respirar-b`, los dos orbes de `.luz-ambiente`.
+     *    El motivo de la prohibicion es que sobre un INDICADOR DE ESTADO un
+     *    bucle infinito es indistinguible de un latido real; esos dos orbes
+     *    estan en el fondo fijo, desenfocados 100 px, y no cuelgan de ningun
+     *    dato ni de ningun robot, asi que no hay nada que puedan afirmar en
+     *    falso. Donde el motivo si aplica, la prohibicion sigue entera.
+     *
+     * 🔴 Y la exencion es POR NOMBRE, no por fichero ni por regla: cualquier
+     *    otra animacion infinita en `globals.css` sigue fallando.
+     */
+    // En el orden en que estan DECLARADAS, no alfabetico: si alguien reordena
+    // la lista, esta prueba lo dice y obliga a mirar por que.
     const conExencion = PROHIBICIONES.filter((p) => p.exime !== undefined).map((p) => p.nombre)
-    expect(conExencion).toEqual(['gradientes'])
+    expect(conExencion).toEqual(['animation: … infinite', 'gradientes'])
+  })
+
+  it('🔴 la exencion del bucle NO absuelve a cualquier animacion infinita', () => {
+    // La prueba que impide que la exencion se ensanche sola: otro nombre de
+    // animacion en la misma forma tiene que seguir cayendo.
+    expect(buscarProhibiciones('animation: latido 2s ease infinite;')).toEqual([
+      'animation: … infinite',
+    ])
+    expect(buscarProhibiciones('animation: respirar-a 23s ease infinite;')).toEqual([])
   })
 })

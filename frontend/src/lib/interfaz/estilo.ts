@@ -57,6 +57,28 @@ export const PROHIBICIONES: readonly Prohibicion[] = [
   },
   {
     patron: /animation:\s*[a-z-]+[^;]*\binfinite\b/i,
+    /*
+     * ⚠️ LA ÚNICA EXENCIÓN DE ESTE FICHERO, y va nombrada una por una para que
+     *    no se pueda ensanchar sin tocar esta línea.
+     *
+     * El motivo de la prohibición es concreto: **sobre un INDICADOR DE ESTADO**
+     * un bucle infinito es indistinguible de un latido real, y esta interfaz
+     * vigila 16 robots que pueden estar mudos. Los dos orbes de `.luz-ambiente`
+     * no son un indicador: están en el fondo fijo, detrás de todo, desenfocados
+     * 100 px, y **no cuelgan de ningún dato ni de ningún robot**. No hay nada
+     * que puedan afirmar en falso.
+     *
+     * 🔴 Y donde el motivo SÍ aplica, la prohibición sigue entera: nada que
+     *    represente un valor, un enlace o una salud puede animarse en bucle. La
+     *    regla de al lado —no animar la llegada de un dato, porque `/odom` llega
+     *    a 16,5 Hz y sería un estroboscopio sobre cifras que alguien está
+     *    leyendo— no se toca.
+     *
+     * 📝 Decisión del usuario, pedida dos veces: el movimiento del fondo es lo
+     *    que hace que la aplicación no se lea como una hoja quieta. Se apaga
+     *    solo con `prefers-reduced-motion`.
+     */
+    exime: /\brespirar-[ab]\b/,
     nombre: 'animation: … infinite',
     porque: 'lo mismo, escrito en CSS a mano en vez de con una utilidad',
   },
