@@ -146,9 +146,24 @@ export function PanelCuaderno() {
            portada y la flota. Media 60 px contra 72 y 78, con otro factor `vw`:
            tres tamaños no son una escala.
       */}
+      {/*
+        📐 LA MISMA ANATOMIA QUE LA PORTADA Y LA FLOTA. Medido el 2026-08-06 a
+           1400 px, las tres bandas median 235, 310 y 340 px con tres
+           composiciones distintas. Ahora las tres llevan las mismas cuatro
+           ranuras, el mismo `pt-12 pb-10` y la misma `min-h-[16rem]` en la
+           columna izquierda, asi que la linea donde empieza el contenido no se
+           mueve al cambiar de pantalla.
+
+           ⚠️ Esta es la que fijaba el alto: su columna izquierda es la unica que
+              llena las cuatro ranuras, y `min-h-[16rem]` es su altura natural.
+              O sea que la unificacion no la estira a ella — sube a las otras dos.
+      */}
       <header className="campo-seccion relative z-10" style={tono}>
-        <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-6 px-4 pb-10 pt-12 sm:px-6">
-          <div>
+        {/* `xl:flex-nowrap` + `xl:flex-1`: el mismo mecanismo que la portada y
+            la flota, para que la altura unificada aguante tambien a 1280 y 1366.
+            Ver el comentario largo en `MuroFlota`, que es donde se midio. */}
+        <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-6 px-4 pb-10 pt-12 sm:px-6 xl:flex-nowrap">
+          <div className="flex min-h-[16rem] min-w-0 max-w-[56ch] flex-col justify-end xl:flex-1">
             {/* Lo que esta pantalla NO hace, y es su rasgo definitorio: es lo
                 unico que funciona con los 16 robots apagados. */}
             <p className="microetiqueta !text-white/80">No abre ninguna conexión</p>
@@ -158,7 +173,7 @@ export function PanelCuaderno() {
             >
               Cuaderno<br />de medidas
             </h1>
-            <p className="mt-4 max-w-[56ch] text-base leading-relaxed text-white/80">
+            <p className="mt-4 text-base leading-relaxed text-white/80">
               Lo que dijo el robot, al lado de lo que mediste con la cinta. La resta la hace la
               página; <strong className="font-semibold text-white">si una medida está bien o no, lo
               decides tú</strong> — aquí no hay tolerancias inventadas.
@@ -166,12 +181,27 @@ export function PanelCuaderno() {
           </div>
 
           <div className="flex flex-col items-start gap-4 sm:items-end">
-            <div className="sm:text-right">
-              <p className="microetiqueta !text-white/70">anotadas</p>
-              {/* Un cero es un VALOR, no un hueco: la pantalla arranca vacia a
-                  proposito y decirlo con una cifra es exacto. */}
-              <p className="cifra mt-1.5 text-white">{medidas.length}</p>
-            </div>
+            {/*
+              🔴 EN PASTILLA, COMO EL CAUDAL DE LA FLOTA. Iba suelto sobre el
+                 campo: `justify-between` lo empujaba al canto derecho y dejaba
+                 ~450 px de pizarra muerta en medio, con la etiqueta y la cifra
+                 flotando sin caja. Es el MISMO papel que «POR ROBOT / LOS 16» en
+                 el muro —la cifra que define la pantalla— y ahora tiene la misma
+                 forma: mismo radio, mismo borde al 25 %, mismo relleno al 10 %,
+                 misma pareja microetiqueta + cifra.
+
+              📝 El valor se queda en `.cifra` y no baja a `.cifra-menor`: en el
+                 muro son dos pastillas comparandose entre si, aqui es la unica
+                 cifra que esta pantalla produce.
+            */}
+            <dl className="grid">
+              <div className="rounded-md border border-white/25 bg-white/10 px-[18px] py-[13px]">
+                <dt className="microetiqueta !text-white/70">anotadas</dt>
+                {/* Un cero es un VALOR, no un hueco: la pantalla arranca vacia a
+                    proposito y decirlo con una cifra es exacto. */}
+                <dd className="cifra mt-1.5 text-white">{medidas.length}</dd>
+              </div>
+            </dl>
             {medidas.length > 0 && (
               <button
                 type="button" onClick={descargar}
@@ -231,7 +261,7 @@ export function PanelCuaderno() {
             */}
             <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
               <label>
-                <span className="microetiqueta mb-1.5 block !text-[11px]">robot</span>
+                <span className="microetiqueta mb-1.5 block">robot</span>
                 <select
                   className={campo}
                   value={f.robot}
@@ -244,14 +274,14 @@ export function PanelCuaderno() {
                 </select>
               </label>
               <label>
-                <span className="microetiqueta mb-1.5 block !text-[11px]">qué mediste</span>
+                <span className="microetiqueta mb-1.5 block">qué mediste</span>
                 <input
                   className={campo} value={f.que} placeholder="avance de 30 cm"
                   onChange={(e) => setF({ ...f, que: e.target.value })}
                 />
               </label>
               <label>
-                <span className="microetiqueta mb-1.5 block !text-[11px]">unidad</span>
+                <span className="microetiqueta mb-1.5 block">unidad</span>
                 <input
                   className={campo} value={f.unidad}
                   onChange={(e) => setF({ ...f, unidad: e.target.value })}
@@ -272,17 +302,36 @@ export function PanelCuaderno() {
                  tres verticales.
             */}
             <div className="pozo-interior rounded-none border-x-0 px-5 pb-4 pt-3.5">
-                <p className="microetiqueta">la pareja que importa</p>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {/*
+                  🔴 EL ROTULO DEL RECINTO NO PUEDE SER UNA `.microetiqueta`, QUE
+                     ES LO MISMO QUE SUS PROPIOS CAMPOS. «la pareja que importa»
+                     nombra a un grupo de tres cosas; «dijo el robot» nombra a
+                     una. Las dos iban en versalitas monoespaciadas de 11,5 px:
+                     el contenedor se leia igual que su contenido, asi que la
+                     unica pista de que uno agrupa al otro era su posicion.
+
+                     Mismo tratamiento que el rotulo de `Grupo` —13 px semibold,
+                     caja baja, tono de la pantalla—, un peldaño por debajo de
+                     sus 17 porque esto agrupa TRES CAMPOS, no una seccion de
+                     pagina. La escalera queda: pantalla > grupo > tarjeta >
+                     recinto > rotulo de dato.
+                */}
+                <p
+                  className="text-[13px] font-semibold leading-none tracking-tight"
+                  style={{ color: 'rgb(var(--tono-seccion))' }}
+                >
+                  La pareja que importa
+                </p>
+                <div className="mt-3.5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   <label>
-                    <span className="microetiqueta mb-1.5 block !text-[11px]">dijo el robot</span>
+                    <span className="microetiqueta mb-1.5 block">dijo el robot</span>
                     <input
                       className={campoPar} value={f.robotValor} inputMode="decimal" placeholder="30,2"
                       onChange={(e) => setF({ ...f, robotValor: e.target.value })}
                     />
                   </label>
                   <label>
-                    <span className="microetiqueta mb-1.5 block !text-[11px]">mediste tú</span>
+                    <span className="microetiqueta mb-1.5 block">mediste tú</span>
                     <input
                       className={campoPar} value={f.personaValor} inputMode="decimal" placeholder="30"
                       onChange={(e) => setF({ ...f, personaValor: e.target.value })}
@@ -295,7 +344,7 @@ export function PanelCuaderno() {
                        emitir. Es la misma regla que ya cumple la tabla.
                   */}
                   <div>
-                    <span className="microetiqueta mb-1.5 block !text-[11px]">diferencia</span>
+                    <span className="microetiqueta mb-1.5 block">diferencia</span>
                     <output
                       className="block w-full rounded-md border border-dashed border-[rgb(var(--filo)/0.14)] px-3 py-2.5 font-mono text-lg"
                     >
@@ -381,11 +430,11 @@ export function PanelCuaderno() {
                       siga leyéndose como una tabla: sin ella los rótulos flotan
                       sobre el hueco. */}
                   <tr className="border-b border-[rgb(var(--filo)/0.09)] text-left text-muted-foreground">
-                    <th scope="col" className="microetiqueta px-5 py-3 !text-[11px]">robot</th>
-                    <th scope="col" className="microetiqueta px-3 py-3 !text-[11px]">qué</th>
-                    <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">dijo el robot</th>
-                    <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">mediste tú</th>
-                    <th scope="col" className="microetiqueta px-3 py-3 text-right !text-[11px]">diferencia</th>
+                    <th scope="col" className="microetiqueta px-5 py-3">robot</th>
+                    <th scope="col" className="microetiqueta px-3 py-3">qué</th>
+                    <th scope="col" className="microetiqueta px-3 py-3 text-right">dijo el robot</th>
+                    <th scope="col" className="microetiqueta px-3 py-3 text-right">mediste tú</th>
+                    <th scope="col" className="microetiqueta px-3 py-3 text-right">diferencia</th>
                     <th scope="col" className="px-5 py-3"><span className="sr-only">quitar</span></th>
                   </tr>
                 </thead>

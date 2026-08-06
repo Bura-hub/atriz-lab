@@ -130,11 +130,34 @@ const ALTO_DEL_DATO = 'clamp(1.75rem, 2.6vw, 2.25rem)'
  * papel y sobre un bloque saturado no se lee. Ahí el color lo pone el propio
  * bloque (`currentColor`), que contrasta por construcción.
  */
-function VoltajeDeBaldosa({ v, sobreBloque, atenuado, children }: {
+function VoltajeDeBaldosa({ v, sobreBloque, atenuado, anclarAbajo = false, children }: {
   v: number | null
   sobreBloque: boolean
   /** Sin latido, lo de arriba es «lo último que se supo»: se atenúa entero. */
   atenuado: boolean
+  /**
+   * 🔴 LA RAYA AL FONDO DEL HUECO RESERVADO, Y SOLO DONDE NO HAY NADA DEBAJO.
+   *
+   * Medido el 2026-08-06 con los DIECISEIS apagados —el estado mas frecuente
+   * del laboratorio—: la ficha media 147 px y la raya del voltaje moria a ~38
+   * del canto inferior, contra los 20 del relleno. O sea que el tercio bajo de
+   * cada ficha era papel muerto, y por dieciseis a la vez el hueco reservado se
+   * leia como un error de maquetacion del muro entero, no como la ausencia de
+   * un dato.
+   *
+   * ⚠️ **El alto reservado NO cambia** (`ALTO_DEL_DATO` sigue igual): lo que se
+   *    mueve es donde cuelga la raya DENTRO de el, asi que la ficha sigue sin
+   *    recomponerse cuando el robot aparece — que es la garantia entera de
+   *    reservar ese hueco.
+   *
+   * 🔴 Y NO se aplica en la baldosa de bloque, a proposito. Ahi debajo van los
+   *    motivos y las frases de aviso: pegar la raya al fondo la separa ~24 px
+   *    de su propio `VOLTAJE` y la deja a ~10 de la linea siguiente, o sea
+   *    agrupada con lo que NO la nombra. Es el defecto que la ronda anterior
+   *    arreglo cambiando `items-end` por `items-baseline`, y no se reabre: en
+   *    la baldosa de vidrio no hay nada debajo, asi que la ambigüedad no existe.
+   */
+  anclarAbajo?: boolean
   /** El nivel de batería, en la misma línea base que la cifra. */
   children?: ReactNode
 }) {
@@ -142,18 +165,18 @@ function VoltajeDeBaldosa({ v, sobreBloque, atenuado, children }: {
     <div className={atenuado ? 'opacity-60' : undefined}>
       <p className={`microetiqueta ${sobreBloque ? '!text-current opacity-75' : ''}`}>Voltaje</p>
       {/*
-        🔴 `items-baseline`, Y ANTES ERA `items-end`. La caja reserva el alto de
-           la cifra conectada (`ALTO_DEL_DATO`), asi que con solo una raya dentro
-           el alineado al fondo la empujaba a ~20 px de su propio rotulo y a ~8
-           de la linea siguiente: la ausencia se leia agrupada con la frase de
-           debajo, no con el `VOLTAJE` que la nombra.
-
         📝 Alineado a la linea base, la raya cuelga de su rotulo **y** la palabra
            de nivel de bateria comparte base con la cifra cuando el robot si
-           llega -que es lo que `items-end` aproximaba a ojo-. Con un solo hijo
-           el resultado es el mismo que `items-start`.
+           llega. Con un solo hijo el resultado es el mismo que `items-start`.
+
+        📐 Con valor, `.cifra` mide exactamente `ALTO_DEL_DATO` (`line-height: 1`),
+           asi que llena la caja y las tres alineaciones dan el mismo pixel: el
+           anclaje de abajo solo tiene efecto sobre la raya.
       */}
-      <div className="mt-1.5 flex items-baseline gap-2" style={{ minHeight: ALTO_DEL_DATO }}>
+      <div
+        className={`mt-1.5 flex gap-2 ${anclarAbajo && v === null ? 'items-end' : 'items-baseline'}`}
+        style={{ minHeight: ALTO_DEL_DATO }}
+      >
         {v === null ? (
           <span
             className={`font-mono text-lg leading-none ${sobreBloque ? 'opacity-60' : 'hueco'}`}
@@ -223,8 +246,16 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
              veces, es decirlo UNA vez arriba — que es lo que hace ahora
              `MuroFlota`.
         */}
-        <div className="mt-auto pt-6">
-          <VoltajeDeBaldosa v={null} sobreBloque={false} atenuado={false} />
+        {/*
+          📐 `pt-4` Y NO `pt-6`. Con la raya ya anclada al fondo del hueco, los
+             24 px de separacion contra el nombre eran el ultimo tramo de papel
+             muerto de la ficha: dejandolo en 16 la baldosa cierra con 20 px
+             arriba y 20 abajo, que es su propio relleno. Va igual en las dos
+             ramas -vidrio y bloque- para que la ficha no cambie de alto al
+             conectarse el robot.
+        */}
+        <div className="mt-auto pt-4">
+          <VoltajeDeBaldosa v={null} sobreBloque={false} atenuado={false} anclarAbajo />
         </div>
       </Link>
     )
@@ -293,7 +324,8 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
         con la misma pieza que la baldosa de vidrio, para que el muro no se
         recomponga cuando este robot aparezca.
       */}
-      <div className="mt-auto pt-6">
+      {/* `pt-4`, el mismo que la rama de vidrio: ver el comentario de alla. */}
+      <div className="mt-auto pt-4">
         <VoltajeDeBaldosa
           v={baldosa.voltios}
           sobreBloque

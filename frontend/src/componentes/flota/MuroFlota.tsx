@@ -29,7 +29,7 @@ import { ControlesMuro } from './ControlesMuro'
 import { ROBOTS, TOTAL_ROBOTS } from '@/lib/interfaz/identidad'
 import { destinoDe } from '@/lib/interfaz/direcciones'
 import { numero } from '@/lib/interfaz/formato'
-import { Tarjeta } from '@/componentes/ui/Tarjeta'
+import { Grupo } from '@/componentes/ui/Grupo'
 import { AlResumir, BaldosaConectada } from './BaldosaConectada'
 import { DondeBuscar, useDirecciones } from './DondeBuscar'
 
@@ -118,9 +118,44 @@ export function MuroFlota() {
            restricción que gobierna el diseño de este muro, así que va donde va
            el nombre de la pantalla.
       */}
+      {/*
+        📐 LA ANATOMIA COMUN DE LAS TRES BANDAS DE IDENTIDAD, y antes eran tres.
+           Medido el 2026-08-06 a 1400 px: portada 235 px, flota 310 y cuaderno
+           340. La portada ponia el parrafo AL LADO del titular y las otras dos
+           debajo; solo el cuaderno llevaba microetiqueta encima. Cambiar de
+           pantalla movia 105 px la linea donde empieza el contenido.
+
+           Las tres llevan ahora las mismas cuatro ranuras -ante-titulo, titular,
+           parrafo, columna de cifras y controles-, el mismo relleno
+           (`pt-12 pb-10`) y la misma altura minima de columna izquierda
+           (`min-h-[16rem]`). Con `justify-end` la holgura se va ARRIBA, asi que
+           el parrafo de las tres acaba a la misma altura aunque una no use el
+           ante-titulo.
+      */}
       <header className="campo-seccion relative z-10" style={tono}>
-        <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-8 gap-y-6 px-4 pb-9 pt-12 sm:px-6">
-          <div>
+        {/*
+          🔴 `xl:flex-nowrap` Y LA COLUMNA IZQUIERDA `flex-1`, Y NO ES UN ADORNO
+             RESPONSIVE: sin ello la unificacion de altura **solo valia a partir
+             de ~1400 px**. Medido a 1280 y a 1366 -que es el portatil de aula-,
+             esta banda salia de **498 px** contra 344 las otras dos, porque los
+             controles y el caudal no cabian al lado del parrafo y saltaban de
+             linea. Y en un contenedor que envuelve, un hijo **no se encoge
+             antes de saltar**: se coloca a su tamaño maximo o se va abajo. Con
+             `flex-1` la columna izquierda cede el ancho que haga falta y las
+             tres bandas vuelven a medir lo mismo desde 1280.
+
+          ⚠️ Por debajo de `xl` si envuelve, a proposito: en tableta y movil la
+             banda entera pasa a una columna y estirar el parrafo a 250 px seria
+             peor que una banda mas alta.
+        */}
+        <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-6 px-4 pb-10 pt-12 sm:px-6 xl:flex-nowrap">
+          <div className="flex min-h-[16rem] min-w-0 max-w-[56ch] flex-col justify-end xl:flex-1">
+            {/*
+              A QUIEN SIRVE ESTA PANTALLA, que es lo que ni el raíl ni el titular
+              dicen: el raíl pone «Flota» y el titular «Flota Atriz». Corto, que
+              es la regla de `.microetiqueta`.
+            */}
+            <p className="microetiqueta !text-white/75">El muro del profesor</p>
             {/*
               A DOS LINEAS, como lo compuso Stitch. No es capricho: proyectado, un
               titular de una sola linea se come el ancho que necesitan las cifras
@@ -143,15 +178,21 @@ export function MuroFlota() {
                  factores `vw` distintos — tres tamaños no son una escala.
             */}
             <h1
-              className="font-semibold leading-[0.92] tracking-[-0.05em] text-white"
+              className="mt-3 font-semibold leading-[0.94] tracking-[-0.05em] text-white"
               style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}
             >
               Flota<br />Atriz
             </h1>
-            <p className="mt-4 max-w-[52ch] text-base leading-relaxed text-white/80">
+            {/*
+              📝 LOS NOMBRES DE LOS TOPICS SE VAN AL ROTULO DE SU GRUPO. Estaban
+                 aqui **y** los volvia a decir el `fuente` de «Los 16 robots»,
+                 tres centimetros mas abajo: el mismo hecho dos veces. Y su sitio
+                 es el rotulo, que es lo que `Grupo` existe para hacer — decir de
+                 donde sale lo que hay debajo, pegado a lo que hay debajo.
+            */}
+            <p className="mt-4 text-base leading-relaxed text-white/80">
               {TOTAL_ROBOTS} Sphero RVR en el aula. Los que están en color piden algo; los de
-              vidrio, no. Cada ficha abre su propio WebSocket y escucha solo{' '}
-              <code className="font-mono text-white">{TOPICS_MURO.join(' + ')}</code>.
+              vidrio, no. Cada ficha abre su propio WebSocket y lo cierra al salir.
             </p>
           </div>
 
@@ -159,7 +200,7 @@ export function MuroFlota() {
             El presupuesto de red. No es adorno: es el número que decide a qué
             topics puede suscribirse este muro.
           */}
-          <div className="flex flex-col items-start gap-3 sm:items-end">
+          <div className="flex flex-col items-start gap-4 sm:items-end">
           <ControlesMuro
             proyeccion={proyeccion}
             alCambiarProyeccion={setProyeccion}
@@ -212,17 +253,6 @@ export function MuroFlota() {
       */}
       <main className="relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-8 sm:px-6" style={tono}>
         {/*
-          🔴 El cuadro de direcciones va ANTES de la losa y CERRADO. Es
-             configuracion, no estado: no cambia con lo que hace el robot, asi
-             que se pliega. Los motivos de una baldosa NO se pliegan nunca —esa
-             es la regla— pero esto no es un motivo, es un ajuste de red de
-             ESTE navegador.
-        */}
-        <div className="mb-4">
-          <DondeBuscar direcciones={direcciones} poner={poner} />
-        </div>
-
-        {/*
           ── EL HECHO, UNA VEZ ────────────────────────────────────────────────
           🔴 FONDO OPACO. `--aviso-atencion` es ese mismo tinte ya resuelto
              sobre la ficha blanca. Con un `bg-warning/[0.08]` la franja pasaria
@@ -234,12 +264,53 @@ export function MuroFlota() {
              un robot esta vivo. Dice el hecho -no llega ninguno- y las dos
              causas que estan al alcance de quien lo lee.
         */}
+        {/*
+          🔴 Y VA EL PRIMERO, ANTES DEL CUADRO DE DIRECCIONES. Estaba debajo:
+             lo primero bajo la banda de un muro que se proyecta era un ajuste de
+             red de ESTE navegador, y con el mismo alto y el mismo radio que la
+             alarma. Dos barras iguales seguidas no tienen jerarquia, asi que la
+             alarma no ganaba nada por ser una alarma.
+        */}
         {nadieResponde && (
-          <p className="mb-3 rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">
+          <p className="rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">
             Ningún robot responde — comprueba que estén encendidos y en la red.
           </p>
         )}
 
+        {/*
+          🔴 EL CUADRO DE DIRECCIONES SALE DEL ANCHO COMPLETO. Era una barra de
+             1080 px con 430 de texto y 640 de vacio, o sea que un ajuste de red
+             pesaba en la pagina lo mismo que los dieciseis robots. A `max-w-md`
+             y a la derecha se lee como lo que es -un control-, y queda debajo de
+             los controles de la banda, que es donde ya vive el resto de lo que
+             se toca en esta pantalla.
+
+          ⚠️ Se queda ARRIBA y no al final: cuando el aviso de «ningún robot
+             responde» tiene razon, esto es justo lo que hay que abrir. Enterrarlo
+             bajo dieciseis fichas seria esconder el remedio debajo del sintoma.
+        */}
+        <div className={`${nadieResponde ? 'mt-3' : ''} mb-7 flex justify-end`}>
+          <div className="w-full max-w-md">
+            <DondeBuscar direcciones={direcciones} poner={poner} />
+          </div>
+        </div>
+
+        <div className="space-y-11">
+        {/*
+          ── LOS DIECISEIS, CON SU ROTULO ────────────────────────────────────
+          🔴 `Grupo` ESTABA APLICADO A MEDIAS EN LA APLICACION Y EL MURO NO LO
+             USABA EN NINGUNA PARTE: la pantalla que mas se mira era la unica
+             sin una sola division declarada. Aqui el rotulo no es adorno — dice
+             de donde sale lo que hay debajo, que en este muro es la restriccion
+             que lo gobierna: **solo dos topics baratos**, y por eso no puede
+             saber si un robot esta vivo.
+        */}
+        {/*
+          ⚠️ El `fuente` va CORTO: `.microetiqueta` es versalita espaciada, y una
+             linea de 55 caracteres asi grita mas que el titulo que acompaña.
+             Solo los dos topics, que es el dato que gobierna este muro.
+        */}
+        <Grupo titulo="Los 16 robots" fuente={TOPICS_MURO.join(' + ')}>
         {/*
           ── EL ÚNICO MOMENTO DE MOVIMIENTO ORQUESTADO DE LA APLICACIÓN ───────
           Las dieciséis fichas suben 20 px y aparecen al entrar, con 60 ms entre
@@ -275,6 +346,7 @@ export function MuroFlota() {
             </div>
           ))}
         </div>
+        </Grupo>
 
         {/*
           ── CÓMO SE LEE EL MURO, A DOS COLUMNAS ─────────────────────────────
@@ -296,18 +368,22 @@ export function MuroFlota() {
              puede y esto se proyecta.
         */}
         {/*
-          🔴 Y ES UNA `Tarjeta`, NO UNA `<section>` A MANO. Era la unica caja de
-             esta pantalla sin capucha ni filete: un rectangulo blanco con un
-             `<h2>` de 19 px suelto encima, o sea la misma decision que `Tarjeta`
-             ya toma, tomada otra vez y sin el tono de la pantalla. Con la
-             tarjeta hereda el cobalto del `<main>` y se ata al muro.
+          🔴 EL TITULO LO PONE `Grupo`, NO UNA `Tarjeta`. Aqui habia una
+             `Tarjeta titulo="Cómo leer este muro"`, y meterla dentro de un grupo
+             habria apilado DOS cabeceras -el rotulo del grupo y la capucha de la
+             tarjeta- diciendo lo mismo. Es el mismo defecto que el cuaderno ya
+             evita con su tabla, y se resuelve igual: el rotulo de la division lo
+             pone el grupo, y debajo va la superficie a secas.
 
-          ⚠️ El cuerpo de `Tarjeta` va A SANGRE -para que una `.rejilla` llegue
-             al canto-, asi que este `div` pone su propio relleno. Es el defecto
-             que ya ha aparecido en cinco paneles de este repositorio.
+          ⚠️ El cobalto no se pierde: el `<h2>` de `Grupo` lo lee de
+             `--tono-seccion`, que baja del `<main>`.
         */}
-        <div className="mt-8">
-          <Tarjeta titulo="Cómo leer este muro">
+        <Grupo titulo="Cómo se lee este muro" fuente="referencia · no cambia con los robots">
+          {/* Las mismas tres clases con las que `Tarjeta` monta su superficie
+              (`vidrio overflow-hidden rounded-ficha text-card-foreground`), para
+              que en modo proyeccion se comporte igual que las demas cajas: es
+              `.proyeccion .vidrio` quien le quita el desenfoque y le pone borde. */}
+          <div className="vidrio overflow-hidden rounded-ficha text-card-foreground">
             <div className="grid gap-x-10 gap-y-7 px-5 pb-6 pt-5 md:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
               <ul className="list-disc space-y-2 pl-5 text-sm leading-relaxed text-muted-foreground">
                 <li>
@@ -365,7 +441,8 @@ export function MuroFlota() {
                 </dl>
               </div>
             </div>
-          </Tarjeta>
+          </div>
+        </Grupo>
         </div>
       </main>
     </div>

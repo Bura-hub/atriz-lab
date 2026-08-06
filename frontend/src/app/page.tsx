@@ -53,37 +53,64 @@ export default function Portada() {
          degradado con blanco literal que dejaron tres titulares invisibles al
          cambiar el tema: una tinta que no mira el fondo sobre el que cae.
     */}
-    <header className="campo-seccion relative z-10" style={tono}>
-      {/* Textura, no contenido —de ahi el `aria-hidden`—, y el numero no es
-          decorativo: es el mismo 16 que dice el parrafo de debajo. */}
-      <span aria-hidden="true" className="cifra-fantasma">{TOTAL_ROBOTS}</span>
-      {/*
-        📝 SIN ANTE-TITULO. Iba a llevar «Laboratorio de robótica presencial»,
-           que es **literalmente** lo que ya dice el raíl bajo la marca, tres
-           centímetros a la izquierda y en la misma caja alta monoespaciada. Una
-           repetición así no informa: enseña a saltarse las microetiquetas.
-      */}
-      {/*
-        🔴 A DOS COLUMNAS, Y NO POR ADORNO: medido a 1920 px, con el titular y el
-           parrafo apilados a la izquierda la banda dejaba ~740 px de violeta
-           vacio a su derecha. La banda es lo mas grande de la pantalla y estaba
-           medio sin usar.
+    {/*
+      📐 LA MISMA ANATOMIA QUE LA FLOTA Y EL CUADERNO, y antes eran tres
+         distintas. Medido el 2026-08-06 a 1400 px: esta banda media 235 px, la
+         de flota 310 y la del cuaderno 340 — o sea que cambiar de pantalla movia
+         **105 px** la linea donde empieza el contenido. Y las anatomias tampoco
+         coincidian: aqui el parrafo iba AL LADO del titular y en las otras dos
+         debajo.
 
-        📐 Y el tamaño del titular es `clamp(2.5rem, 6vw, 4.5rem)`, el MISMO de
-           la flota y del cuaderno. Antes las tres cabeceras median 72, 78 y 60 px
-           con factores `vw` distintos — tres tamaños no son una escala.
-      */}
-      <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-5 px-4 pb-10 pt-14 sm:px-6">
-        <h1
-          className="font-semibold leading-[0.94] tracking-[-0.05em] text-white"
-          style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}
-        >
-          Laboratorio<br />Atriz
-        </h1>
-        <p className="max-w-[46ch] pb-1.5 text-base leading-relaxed text-white/80">
-          {TOTAL_ROBOTS} robots Sphero RVR, cada uno con su Raspberry Pi y su LIDAR. Esta
-          aplicación habla con ellos por rosbridge, un WebSocket por robot.
-        </p>
+         Cuatro ranuras iguales en las tres —ante-titulo, titular, parrafo,
+         columna de cifras—, el mismo `pt-12 pb-10` y la misma
+         `min-h-[16rem]` en la columna izquierda. `justify-end` manda la holgura
+         ARRIBA, asi que el parrafo de las tres acaba a la misma altura aunque
+         esta no use el ante-titulo.
+
+      📝 SIN ANTE-TITULO, y la razon sigue en pie: iba a llevar «Laboratorio de
+         robótica presencial», que es **literalmente** lo que ya dice el raíl
+         bajo la marca, tres centímetros a la izquierda y en la misma caja alta
+         monoespaciada. Una repetición así no informa: enseña a saltarse las
+         microetiquetas. La ranura existe y se queda vacia a proposito — con
+         `justify-end` eso no descuadra nada.
+
+      🔴 Y AQUI HABIA UNA `.cifra-fantasma` CON EL 16. Se va: la columna derecha
+         pasa a decir ese mismo 16 como DATO, y el fantasma lo habria repetido a
+         un tercer tamaño en la misma banda. Lo que sostenia al fantasma era que
+         la mitad derecha estaba vacia; ya no lo esta.
+    */}
+    <header className="campo-seccion relative z-10" style={tono}>
+      {/* `xl:flex-nowrap` + `xl:flex-1`: el mismo mecanismo que la flota y el
+          cuaderno, para que la altura unificada aguante tambien a 1280 y 1366.
+          Ver el comentario largo en `MuroFlota`, que es donde se midio. */}
+      <div className="relative mx-auto flex max-w-6xl flex-wrap items-end justify-between gap-x-10 gap-y-6 px-4 pb-10 pt-12 sm:px-6 xl:flex-nowrap">
+        <div className="flex min-h-[16rem] min-w-0 max-w-[56ch] flex-col justify-end xl:flex-1">
+          <h1
+            className="font-semibold leading-[0.94] tracking-[-0.05em] text-white"
+            style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}
+          >
+            Laboratorio<br />Atriz
+          </h1>
+          {/* Sin el «16» al principio: lo dice la cifra de la derecha, y
+              repetirlo a dos tamaños en la misma banda es el mismo hecho dos
+              veces. */}
+          <p className="mt-4 text-base leading-relaxed text-white/80">
+            Robots Sphero RVR, cada uno con su Raspberry Pi y su LIDAR. Esta aplicación habla
+            con ellos por rosbridge, un WebSocket por robot.
+          </p>
+        </div>
+
+        {/*
+          LA CUARTA RANURA, la misma que la flota llena con el caudal y el
+          cuaderno con las medidas anotadas: la cifra que define la pantalla,
+          dentro de la misma pastilla. Sale de `TOTAL_ROBOTS`, no de un literal.
+        */}
+        <dl className="grid">
+          <div className="rounded-md border border-white/25 bg-white/10 px-[18px] py-[13px]">
+            <dt className="microetiqueta !text-white/70">robots en el aula</dt>
+            <dd className="cifra mt-1.5 text-white">{TOTAL_ROBOTS}</dd>
+          </div>
+        </dl>
       </div>
     </header>
 
@@ -140,9 +167,21 @@ export default function Portada() {
         </p>
       </Grupo>
 
-      {/* Igual alto por la rejilla: los dos destinos secundarios son hermanos,
-          no una pila. */}
-      <div className="mt-11 grid gap-5 sm:grid-cols-2">
+      {/*
+        🔴 Y ESTAS DOS TAMBIEN VAN EN UN `Grupo`. `Grupo` estaba aplicado a
+           medias: de las tres divisiones de esta pantalla solo la primera lo
+           usaba, asi que las dos tarjetas hermanas y el bloque ambar flotaban
+           sin rotulo — y una pantalla con una seccion nombrada y dos sin nombrar
+           no tiene estructura declarada, tiene una excepcion.
+
+        📝 Igual alto por la rejilla: los dos destinos secundarios son hermanos,
+           no una pila.
+      */}
+      <div className="mt-12">
+      {/* ⚠️ El `fuente` corto: `.microetiqueta` es versalita espaciada y una
+             linea larga ahi grita mas que el titulo al que acompaña. */}
+      <Grupo titulo="Las otras dos pantallas" fuente="una para mirar · otra para anotar">
+      <div className="grid gap-5 sm:grid-cols-2">
         <Tarjeta titulo="Para el profesor" subtitulo="El muro dice a cuál hay que levantarse.">
           <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
             Los {TOTAL_ROBOTS} de un vistazo: batería en voltios y estado de motores. Solo se
@@ -176,15 +215,24 @@ export default function Portada() {
           </div>
         </Tarjeta>
       </div>
+      </Grupo>
+      </div>
 
       {/*
         🔴 EL BLOQUE AMBAR ES PERMANENTE, NO UN AVISO TEMPORAL.
         La portada dice lo que la aplicacion NO sabe hacer, porque la version
         anterior decia «Sistema operacional» sin haber hablado con un robot.
 
-        📝 Se separa con `mt-14` y no con otra caja igual: lo que lo distingue
-           de lo de arriba es que NO es un destino. Si algo se desbloquea, se
-           quita de aqui — y si algo se rompe, se añade.
+        🔴 Y SU `<h2>` SE HA MUDADO AL ROTULO DEL `Grupo`. Tenia titulo propio de
+           19 px dentro de la caja ambar, asi que esta pagina llegaba a usar TRES
+           dispositivos distintos para decir «esto es una seccion»: el rotulo de
+           `Grupo` arriba, la capucha de `Tarjeta` en medio, y un `<h2>` suelto
+           aqui. Con el titulo fuera, la caja ambar es solo lo que dice —el
+           contenido— y quien la nombra es el mismo mecanismo que nombra a las
+           otras dos divisiones.
+
+        📝 Y la linea de «permanente, no un aviso de paso» pasa a `fuente`, que
+           es exactamente su papel: decir de que naturaleza es lo de dentro.
       */}
       {/*
         🔴 FONDO OPACO, por lo mismo que las pastillas de arriba: un `warning` al
@@ -193,42 +241,38 @@ export default function Portada() {
            propia caja. `--aviso-atencion` es ese tinte ya resuelto sobre la
            ficha blanca — el mismo que usa `Aviso`.
       */}
-      <section className="mt-14 rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] p-6 sm:p-7">
+      <div className="mt-12">
+      <Grupo titulo="Lo que todavía no funciona" fuente="permanente, no un aviso de paso">
+      <section className="rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] p-6 sm:p-7">
         {/*
-          Dos columnas y no una: `max-w-prose` a ancho completo dejaba 450 px de
-          ámbar vacío a la derecha. Con el título en su propia columna el texto
-          cae en su medida **y** el bloque ocupa el ancho que tiene.
+          🔴 TRES COLUMNAS, UNA POR CARENCIA, Y ANTES ERAN DOS BLOQUES. La
+             primera columna la ocupaba el titulo; al mudarse al rotulo del
+             grupo, dejar la lista en dos tercios habria devuelto los ~450 px de
+             ámbar vacío que la ronda anterior quito. Y las tres carencias son
+             hermanas —ninguna manda sobre las otras—, asi que se leen mejor a la
+             par que apiladas.
         */}
-        <div className="grid gap-x-10 gap-y-4 sm:grid-cols-3">
-          <div>
-            <h2 className="text-[19px] font-semibold leading-tight tracking-tight">
-              Lo que todavía no funciona
-            </h2>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Permanente, no un aviso de paso: si algo se desbloquea, se quita de aquí.
-            </p>
-          </div>
-          {/* `max-w-prose` y no libre: a ancho completo estas tres lineas corrian
-              a ~120 caracteres, justo en el texto que mas importa de la pagina. */}
-          <ul className="max-w-prose space-y-3 text-sm leading-relaxed text-muted-foreground sm:col-span-2">
-            <li>
-              <strong>El terminal</strong> —escribir y ejecutar código en el robot desde aquí— no
-              existe. Va por otro canal, un agente de sesión que aún no está escrito, y ese diseño
-              depende de medir primero el punto de acceso del aula.
-            </li>
-            <li>
-              <strong>No hay autenticación.</strong> rosbridge no la trae, así que cualquiera en la
-              misma red puede hablar con cualquier robot. Es un taller presencial y está asumido,
-              pero no se disimula con un inicio de sesión que no protegería nada.
-            </li>
-            <li>
-              <strong>Nada de esta aplicación confirma un efecto físico.</strong> Cuando mandas una
-              orden, la interfaz dice que se envió — nunca que el robot la haya cumplido, porque
-              ningún servicio del robot devuelve esa información.
-            </li>
-          </ul>
-        </div>
+        <ul className="grid gap-x-10 gap-y-5 text-sm leading-relaxed text-muted-foreground sm:grid-cols-3">
+          <li>
+            <strong className="text-foreground">El terminal</strong> —escribir y ejecutar código en
+            el robot desde aquí— no existe. Va por otro canal, un agente de sesión que aún no está
+            escrito, y ese diseño depende de medir primero el punto de acceso del aula.
+          </li>
+          <li>
+            <strong className="text-foreground">No hay autenticación.</strong> rosbridge no la
+            trae, así que cualquiera en la misma red puede hablar con cualquier robot. Es un taller
+            presencial y está asumido, pero no se disimula con un inicio de sesión que no
+            protegería nada.
+          </li>
+          <li>
+            <strong className="text-foreground">Nada de esta aplicación confirma un efecto
+            físico.</strong> Cuando mandas una orden, la interfaz dice que se envió — nunca que el
+            robot la haya cumplido, porque ningún servicio del robot devuelve esa información.
+          </li>
+        </ul>
       </section>
+      </Grupo>
+      </div>
     </main>
     </div>
   )
