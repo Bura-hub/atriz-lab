@@ -4,10 +4,11 @@
 
 /*
  * ═══════════════════════════════════════════════════════════════════════════
- * ÓRBITA + BLOQUES
+ * PAPEL + BLOQUES
  * ═══════════════════════════════════════════════════════════════════════════
- * Pozo oscuro azulado con dos orbes de luz ambiente fijos. Encima, dos clases
- * de superficie y **la diferencia entre ellas ES el idioma de la aplicación**:
+ * Papel cálido con dos orbes de luz ambiente fijos que respiran muy despacio
+ * detrás de todo. Encima, dos clases de superficie y **la diferencia entre
+ * ellas ES el idioma de la aplicación**:
  *
  *   VIDRIO    superficie normal. Sin novedad, o no se llega al robot.
  *   BLOQUE    color a plena saturación. **Este robot pide algo.**
@@ -171,12 +172,36 @@
   --curva-salida: cubic-bezier(0.23, 1, 0.32, 1);
   --curva-mov: cubic-bezier(0.32, 0.72, 0, 1);
 
-  /* ── DURACIONES ─────────────────────────────────────────────────────────── */
-  --t-pulsacion: 140ms;   /* 100-160 */
+  /*
+   * ── DURACIONES ───────────────────────────────────────────────────────────
+   * La tabla de `emil-design-eng`, y **el techo duro es 300 ms** para cualquier
+   * cosa de interfaz: «a 180ms dropdown feels more responsive than a 400ms one».
+   */
+  --t-pulsacion: 140ms;   /* realimentación de pulsación: 100-160 */
   --t-estado: 200ms;      /* cambio de color legible sin parpadeo */
-  --t-entrada: 720ms;     /* la entrada escalonada */
-  --t-hover: 500ms;
+  --t-hover: 180ms;       /* 🔴 eran 500 ms: ver `.vidrio:hover` */
+  --t-aviso: 180ms;       /* un aviso apareciendo sobre texto que se está leyendo */
+  --t-entrada: 320ms;     /* la entrada escalonada del muro, y SOLO esa */
 }
+
+/*
+ * 🔴 POR QUÉ `--t-aviso` Y `--t-entrada` SON DOS VARIABLES Y ANTES ERAN UNA.
+ *
+ * Eran los mismos **720 ms** para dos cosas que no se parecen:
+ *
+ *   · `.aparece` — un aviso que surge SOBRE texto que alguien está leyendo. Su
+ *     único trabajo es evitar el cambio brusco. 720 ms ahí es medio segundo de
+ *     cosa moviéndose delante de una frase a medio leer.
+ *   · `animate-entrar` — la entrada escalonada de las dieciséis fichas, que es
+ *     el único momento orquestado de la aplicación y se ve una vez por carga.
+ *
+ * ⚠️ Y había una **deriva medida**: `Aviso.tsx` documentaba «150 ms de opacidad
+ *    y 2 px, UNA vez y nunca más» mientras la variable valía 720. El comentario
+ *    describía un valor que el código no tenía desde hacía tiempo.
+ *
+ * 📝 De paso arregla el muro: 16 × 60 ms de escalonado + 720 de duración eran
+ *    **1,62 s** hasta que la última ficha se quedaba quieta. Ahora son 1,22.
+ */
 
 /*
  * ⚠️ `--estado-frenando` está declarado y NO se usa en ningún sitio, y es
@@ -189,17 +214,23 @@
 
 /*
  * ── EL TEMA ──────────────────────────────────────────────────────────────────
- * 🔴 LA BASE ES OSCURA, Y NO SE HEREDA DEL SISTEMA OPERATIVO.
+ * 🔴 LA BASE ES CLARA, Y NO SE HEREDA DEL SISTEMA OPERATIVO.
  *
  * `craft-floor`: «Light or dark picked by category. Pick it from the use scene».
- * La escena que manda es la del ALUMNO: sentado, a 50 cm de la pantalla, dos
- * horas seguidas, con su robot delante. Eso pide oscuro.
+ * La escena que manda es la del ALUMNO: **un aula iluminada**, sentado a 50 cm
+ * de la pantalla, dos horas seguidas, con el robot delante y una cinta métrica
+ * en la mano. Y a veces un proyector encendido en la misma sala.
  *
- * ⏳ PENDIENTE, y está identificado: el MURO DEL PROFESOR se proyecta, y un
- *    proyector lava los negros. Necesita un modo claro de alto contraste **solo
- *    en esa pantalla**, con un botón — no con `prefers-color-scheme`, porque la
- *    decisión la toma quien proyecta, no su sistema operativo. El gancho
- *    `[data-tema]` se conserva para eso.
+ * 📝 Este párrafo decía lo contrario —«eso pide oscuro»— y sostuvo la paleta
+ *    durante todo el desarrollo. Lo que lo desmintió no fue una opinión: fue
+ *    que el MODO PROYECCIÓN, escrito como excepción, se veía mejor que el modo
+ *    normal en la escena normal. Cuando la excepción gana a la regla, la regla
+ *    estaba mal.
+ *
+ * ✅ Y el modo proyección sigue existiendo, ahora reducido a lo que de verdad
+ *    cambia a tres metros: ya no invierte nada. Sigue accionándose con un botón
+ *    y no con `prefers-color-scheme`, porque la decisión la toma quien proyecta,
+ *    no su sistema operativo.
  */
 
 
@@ -245,10 +276,6 @@
    * La superficie NORMAL. Un robot sin novedad, o al que no se llega, vive
    * aquí. Lo que la distingue de un bloque de color no es el estilo: es que
    * **no pide nada**.
-   *
-   * ⚠️ `backdrop-filter` solo sobre superficies que NO se desplazan con mucho
-   *    contenido detrás. Aquí son tarjetas pequeñas sobre un fondo fijo, que es
-   *    el caso barato.
    */
   /*
    * 🔴 LA FICHA DE PAPEL — y aquí estaba la causa real de que la aplicación se
@@ -274,18 +301,35 @@
     box-shadow:
       0 1px 2px -1px rgb(var(--sombra) / 0.10),
       0 12px 28px -18px rgb(var(--sombra) / 0.22);
-    transition: box-shadow var(--t-hover) var(--curva-mov),
-                border-color var(--t-hover) var(--curva-mov),
-                transform var(--t-hover) var(--curva-mov);
+    /*
+     * 🔴 SIN `transform` EN ESTA LISTA, Y SIN LA CURVA DE CAJÓN.
+     *
+     * `.vidrio` no mueve nada: quien escala es `.pulsable`. Tener aquí un
+     * `transform` que nadie usa era lo que hacía difícil de ver la colisión de
+     * abajo. Y la curva era `--curva-mov` —la de cajón de iOS, para algo que
+     * se desliza—: el árbol de decisión de `emil-design-eng` manda `ease` para
+     * un hover o un cambio de color.
+     */
+    transition: box-shadow var(--t-hover) ease,
+                border-color var(--t-hover) ease;
   }
 
-  /* En papel el hover sube la ficha, no la aclara: sobre blanco no hay margen
-     para aclarar, y la sombra sí puede crecer. */
-  .vidrio:hover {
-    border-color: rgb(var(--filo) / 0.16);
-    box-shadow:
-      0 2px 4px -2px rgb(var(--sombra) / 0.13),
-      0 18px 36px -20px rgb(var(--sombra) / 0.28);
+  /*
+   * En papel el hover sube la ficha, no la aclara: sobre blanco no hay margen
+   * para aclarar, y la sombra sí puede crecer.
+   *
+   * 🔴 CON GUARDA DE PUNTERO FINO, y no es teórico: la escena de uso incluye
+   *    tabletas en el aula. En un dispositivo táctil el toque dispara `:hover`
+   *    y **la ficha se queda elevada** hasta que se toca otra cosa — o sea, un
+   *    muro de dieciséis con una permanentemente resaltada sin motivo.
+   */
+  @media (hover: hover) and (pointer: fine) {
+    .vidrio:hover {
+      border-color: rgb(var(--filo) / 0.16);
+      box-shadow:
+        0 2px 4px -2px rgb(var(--sombra) / 0.13),
+        0 18px 36px -20px rgb(var(--sombra) / 0.28);
+    }
   }
 
   /*
@@ -351,7 +395,8 @@
   /*
    * ── LA LUZ AMBIENTE ──────────────────────────────────────────────────────
    * Dos orbes desenfocados que tiñen la pantalla entera. Es lo que impide que
-   * el fondo oscuro se lea como «apagado» en vez de como «profundo».
+   * el papel se lea como una hoja en blanco quieta: da profundidad al fondo sin
+   * poner nada encima que compita con un dato.
    *
    * 🔴 `position: fixed` y `pointer-events: none`, y esto NO es un detalle:
    *    un desenfoque de 100 px dentro de un contenedor que se desplaza obliga
@@ -434,11 +479,33 @@
     font-variant-numeric: normal;
   }
 
-  /* Realimentacion de pulsacion. Emil: 0.95-0.98, y 100-160 ms. */
+  /*
+   * ── LA PULSACIÓN ─────────────────────────────────────────────────────────
+   * Realimentacion de pulsacion. Emil: 0.95-0.98, y 100-160 ms.
+   *
+   * ═══════════════════════════════════════════════════════════════════════
+   * 🔴🔴 POR QUÉ `box-shadow` ESTÁ AQUÍ SI PERTENECE A `.vidrio`
+   * ═══════════════════════════════════════════════════════════════════════
+   * Porque `transition` es una **propiedad abreviada**, y dos clases de la
+   * misma capa y la misma especificidad que la declaran no se suman: **gana la
+   * última escrita, y la otra se pierde entera.** `.pulsable` va después de
+   * `.vidrio` en este fichero, así que toda baldosa `vidrio pulsable` —las
+   * dieciséis del muro y el botón de proyección— se quedaba **sin transición de
+   * elevación**: la sombra del hover aparecía de golpe.
+   *
+   * Y no lo delata ninguna herramienta: las dos reglas son correctas por
+   * separado y el navegador no avisa. Solo se ve mirando **qué clases viajan
+   * juntas en el mismo `className`** — que es lo que ahora comprueba
+   * `estilo.test.ts` («colisiones de `transition`»), para que no vuelva.
+   *
+   * Un `box-shadow` en un elemento que no tiene sombra no cuesta nada: no hay
+   * nada que transicionar.
+   */
   .pulsable {
     transition: transform var(--t-pulsacion) var(--curva-salida),
                 background-color var(--t-estado) ease,
-                border-color var(--t-estado) ease;
+                border-color var(--t-estado) ease,
+                box-shadow var(--t-hover) ease;
   }
 
   .pulsable:active:not(:disabled) {
@@ -480,7 +547,7 @@
    * texto que alguien está leyendo. 150 ms, una vez, y nunca más.
    */
   .aparece {
-    animation: aparecer var(--t-entrada) var(--curva-salida);
+    animation: aparecer var(--t-aviso) var(--curva-salida);
   }
 
   /*
@@ -566,8 +633,20 @@
    * «la tarjeta» de «el dato que la tarjeta contiene» sin gastar otra línea
    * ni otra sombra, y es el patrón que más se repite en la maqueta.
    */
+  /*
+   * 🔴 EL VALOR ERA `rgb(0 0 0 / 0.2)` — NEGRO AL 20 %, DEL TEMA OSCURO. Dentro
+   *    de una tarjeta blanca eso no es un hueco: es un **bloque gris medio**
+   *    (#CCC) en mitad de la ficha. Sobre el pozo casi negro de antes era un
+   *    rebaje sutil; al pasar a papel se quedó al revés.
+   *
+   * ⚠️ NO SE VIO PORQUE ESTA CLASE NO SE USA EN NINGÚN SITIO. Es la última de
+   *    las cuatro piezas de CSS que se subieron sin consumidor, y por eso el
+   *    cambio de tema no la tocó: no hay pantalla donde mirarla. Se corrige el
+   *    valor —sigue sin usarse— porque una regla muerta con el color del tema
+   *    anterior es una trampa para quien la estrene.
+   */
   .pozo-interior {
-    background: rgb(0 0 0 / 0.2);
+    background: rgb(var(--vidrio) / 0.04);
     border: 1px solid rgb(var(--filo) / 0.05);
     border-radius: 12px;
   }
@@ -609,7 +688,11 @@
     /* Nada de movimiento: ni desplazamientos ni escalas animadas. */
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-property: color, background-color, border-color, fill, stroke !important;
+    /* `opacity` entra en la lista: NO es movimiento. Emil: «reduced motion
+       means fewer and gentler animations, not zero — keep opacity and color
+       transitions that aid comprehension». Quitarla devolvía el corte seco
+       justo a quien pidió que las cosas se movieran menos. */
+    transition-property: color, background-color, border-color, fill, stroke, opacity !important;
     transition-duration: 200ms !important;
     scroll-behavior: auto !important;
   }

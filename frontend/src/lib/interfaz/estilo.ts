@@ -185,6 +185,127 @@ export function globsMuertos(configTailwind: string, existe: (ruta: string) => b
   })
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴🔴 LA COLISION DE `transition`, QUE NO LA VE NINGUNA HERRAMIENTA
+// ═══════════════════════════════════════════════════════════════════════════
+/**
+ * `transition` es una propiedad ABREVIADA. Dos clases de la misma capa y la
+ * misma especificidad que la declaran **no se suman: gana la ultima escrita y la
+ * otra se pierde entera**, incluidas las propiedades que la ganadora ni menciona.
+ *
+ * Paso de verdad, y estuvo asi desde que se escribio el tema:
+ *
+ *   .vidrio   { transition: box-shadow …, border-color …; }   <- declarada antes
+ *   .pulsable { transition: transform …, background-color …; }
+ *   <Link className="vidrio pulsable …">                       <- las dieciseis
+ *
+ * Resultado: **la elevacion del hover aparecia de golpe** en todo el muro. Ni el
+ * navegador avisa, ni el linter, ni la comprobacion de tipos: las dos reglas son
+ * correctas por separado. Solo se ve mirando **que clases viajan juntas**.
+ *
+ * ⚠️ Y la regla NO es «dos clases no pueden declarar `transition`»: eso seria
+ *    falso. Es que **la perdedora no puede transicionar nada que la ganadora no
+ *    transicione tambien**. Con `box-shadow` añadida a `.pulsable`, el par
+ *    `vidrio pulsable` es correcto y esta comprobacion lo deja pasar.
+ *
+ * ⚠️ Limite conocido: solo mira selectores de UNA clase escueta (`.x {`). Los
+ *    pseudoelementos y los descendientes (`.proyeccion .vidrio`) quedan fuera —
+ *    ahi la especificidad distinta es intencionada, no un accidente.
+ */
+export interface TransicionDeClase {
+  clase: string
+  /** Posicion en el fichero. **La mayor gana**, que es la regla de la cascada. */
+  orden: number
+  /** Las propiedades que lista su `transition`, en orden. */
+  propiedades: string[]
+}
+
+/**
+ * Parte por comas de PRIMER NIVEL.
+ *
+ * 🔴 Un `split(',')` a secas no vale: `cubic-bezier(0.23, 1, 0.32, 1)` lleva
+ *    tres comas dentro, asi que trocearia una sola transicion en cuatro y las
+ *    tres ultimas empezarian por un numero. La lista de propiedades saldria
+ *    vacia y la comprobacion aprobaria sin mirar nada.
+ */
+export function partirEnComas(valor: string): string[] {
+  const partes: string[] = []
+  let nivel = 0
+  let actual = ''
+  for (const ch of valor) {
+    if (ch === '(') nivel += 1
+    else if (ch === ')') nivel -= 1
+    if (ch === ',' && nivel === 0) {
+      partes.push(actual)
+      actual = ''
+    } else actual += ch
+  }
+  partes.push(actual)
+  return partes
+}
+
+/** Las clases de un CSS que declaran la abreviada `transition`, con su orden. */
+export function transicionesDeClases(css: string): TransicionDeClase[] {
+  const salida: TransicionDeClase[] = []
+  // `(^|\})` ancla en un limite de regla; `\s*\{` justo tras el nombre descarta
+  // `.a .b`, `.a:hover` y `.a::before`, que no son colisiones accidentales.
+  for (const m of css.matchAll(/(?:^|\})\s*\.([a-z][\w-]*)\s*\{([^{}]*)\}/gim)) {
+    const decl = /(?:^|[;\s])transition\s*:([^;]*)/i.exec(m[2])
+    if (decl === null) continue
+    const propiedades = partirEnComas(decl[1])
+      .map((p) => p.trim().split(/\s+/)[0])
+      .filter((p) => /^[a-z][a-z-]*$/.test(p))
+    salida.push({ clase: m[1], orden: m.index ?? 0, propiedades })
+  }
+  return salida
+}
+
+/**
+ * Los conjuntos de clases que viajan juntas en un mismo `className`.
+ *
+ * ⚠️ Las interpolaciones `${…}` se BORRAN, no se intentan resolver: lo que traen
+ *    depende de datos en ejecucion. Perder una clase produce un falso negativo,
+ *    que es el lado seguro; inventarla produciria una alarma sobre codigo sano.
+ */
+export function gruposDeClases(fuente: string): string[][] {
+  const grupos: string[][] = []
+  for (const m of fuente.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\}|\{'([^']*)'\})/g)) {
+    const clases = (m[1] ?? m[2] ?? m[3] ?? '')
+      .replace(/\$\{[^}]*\}/g, ' ')
+      .split(/\s+/)
+      .filter((c) => c !== '')
+    if (clases.length > 1) grupos.push(clases)
+  }
+  return grupos
+}
+
+/**
+ * Los pares que se pisan de verdad: la clase PERDEDORA transiciona algo que la
+ * ganadora no. Devuelve una linea por par, nombrando lo que se pierde.
+ */
+export function colisionesDeTransicion(
+  transiciones: readonly TransicionDeClase[],
+  grupos: readonly string[][],
+): string[] {
+  const porNombre = new Map(transiciones.map((t) => [t.clase, t]))
+  const salida = new Set<string>()
+  for (const g of grupos) {
+    const enJuego = [...new Set(g)]
+      .map((c) => porNombre.get(c))
+      .filter((t): t is TransicionDeClase => t !== undefined)
+      .sort((a, b) => a.orden - b.orden)
+    if (enJuego.length < 2) continue
+    const gana = enJuego[enJuego.length - 1]
+    for (const pierde of enJuego.slice(0, -1)) {
+      const perdidas = pierde.propiedades.filter((p) => !gana.propiedades.includes(p))
+      if (perdidas.length > 0) {
+        salida.add(`«${pierde.clase}» pierde ${perdidas.join(', ')} frente a «${gana.clase}»`)
+      }
+    }
+  }
+  return [...salida].sort()
+}
+
 /**
  * 🔴 LA TIPOGRAFIA NO PUEDE VENIR DE LA RED.
  *

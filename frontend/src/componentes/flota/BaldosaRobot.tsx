@@ -126,7 +126,22 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
   return (
     <Link
       href={href}
-      className={`pulsable focus-ring relative flex h-full flex-col overflow-hidden rounded-ficha p-5 transition-transform duration-[var(--t-hover)] ease-[cubic-bezier(0.32,0.72,0,1)] ${BLOQUE[baldosa.atencion]}`}
+      /*
+        🔴 AQUI HABIA `transition-transform duration-[var(--t-hover)]
+           ease-[cubic-bezier(0.32,0.72,0,1)]`, Y ERA UN DEFECTO SILENCIOSO.
+
+        Las utilidades de Tailwind viven en `@layer utilities`, que va DESPUES
+        de `@layer components`: ese `transition-transform` no se sumaba a la
+        transicion de `.pulsable`, la **sustituia entera**. Resultado: la
+        pulsacion de las dieciseis baldosas duraba `--t-hover` -entonces 500 ms-
+        en vez de los 140 que `.pulsable` fija, y con la curva de cajon de iOS.
+        Una ficha que se hunde medio segundo al tocarla no se lee como respuesta.
+
+        No hacia falta para nada mas: nadie declara un `transform` de hover en
+        esta baldosa. Lo unico que se mueve aqui es la pulsacion, y de eso ya se
+        encarga `.pulsable` con su duracion y su curva.
+      */
+      className={`pulsable focus-ring relative flex h-full flex-col overflow-hidden rounded-ficha p-5 ${BLOQUE[baldosa.atencion]}`}
     >
       {/*
         LA CIFRA FANTASMA. El número del robot, enorme y recortado por el canto

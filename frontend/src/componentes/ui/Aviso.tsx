@@ -31,10 +31,15 @@ export interface PropsAviso {
 }
 
 /**
- * 📝 `.aparece` son 150 ms de opacidad y 2 px, UNA vez y nunca mas. No es
- *    decoracion: los avisos llegan de forma asincrona sobre texto que alguien
- *    esta leyendo, y un cambio brusco en mitad de una frase se lee peor que una
- *    aparicion suave. Con `prefers-reduced-motion` cae a 0 ms.
+ * 📝 `.aparece` son `--t-aviso` -180 ms- de opacidad y 3 px, UNA vez y nunca
+ *    mas. No es decoracion: los avisos llegan de forma asincrona sobre texto que
+ *    alguien esta leyendo, y un cambio brusco en mitad de una frase se lee peor
+ *    que una aparicion suave. Con `prefers-reduced-motion` cae a 0 ms.
+ *
+ * ⚠️ Este comentario decia «150 ms» y la variable valia **720**, compartida con
+ *    la entrada escalonada del muro. Eran dos usos distintos con una sola
+ *    duracion, y el numero escrito aqui era el de ninguno de los dos. Hoy son
+ *    `--t-aviso` y `--t-entrada`, separadas y documentadas en `globals.css`.
  */
 export function Aviso({ nivel, titulo, children }: PropsAviso) {
   return (

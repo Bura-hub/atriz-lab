@@ -3,8 +3,8 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
-  FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, esComentario, ficherosDeEstilo,
-  globsMuertos,
+  FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeTransicion, esComentario,
+  ficherosDeEstilo, globsMuertos, gruposDeClases, partirEnComas, transicionesDeClases,
 } from './estilo'
 
 const RAIZ = dirname(fileURLToPath(import.meta.url))
@@ -81,6 +81,90 @@ describe('globsMuertos', () => {
 })
 
 // ═══════════════════════════════════════════════════════════════════════════
+// La colision de `transition`
+// ═══════════════════════════════════════════════════════════════════════════
+
+describe('partirEnComas', () => {
+  it('🔴 no parte por las comas de dentro de un cubic-bezier', () => {
+    // Con `split(',')` a secas esto darian CUATRO trozos y tres empezarian por
+    // un numero, asi que la lista de propiedades saldria vacia y la guardia
+    // aprobaria sin haber mirado nada. Es la misma forma que `globsMuertos`
+    // parseando a cero: un aprobado sobre una comprobacion que no miro.
+    expect(partirEnComas('transform 140ms cubic-bezier(0.23, 1, 0.32, 1), opacity 200ms ease'))
+      .toEqual(['transform 140ms cubic-bezier(0.23, 1, 0.32, 1)', ' opacity 200ms ease'])
+  })
+})
+
+describe('transicionesDeClases', () => {
+  const css = `
+    .vidrio { box-shadow: 0 1px 2px red; transition: box-shadow 180ms ease, border-color 180ms ease; }
+    .pulsable { transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 180ms ease; }
+    .quieta { color: red; }
+  `
+
+  it('lee la clase, su orden y las propiedades que transiciona', () => {
+    const t = transicionesDeClases(css)
+    expect(t.map((x) => x.clase)).toEqual(['vidrio', 'pulsable'])
+    expect(t[0].propiedades).toEqual(['box-shadow', 'border-color'])
+    expect(t[1].propiedades).toEqual(['transform', 'box-shadow'])
+    // El orden es la posicion en el fichero, que es la regla de la cascada.
+    expect(t[1].orden).toBeGreaterThan(t[0].orden)
+  })
+
+  it('🔴 ignora pseudoclases y descendientes: ahi la especificidad es intencionada', () => {
+    const otro = '.a:hover { transition: color 1ms; }\n.b .c { transition: color 1ms; }'
+    expect(transicionesDeClases(otro)).toEqual([])
+  })
+})
+
+describe('gruposDeClases', () => {
+  it('saca las clases de las tres formas que usa este repositorio', () => {
+    expect(gruposDeClases('<div className="vidrio pulsable p-5" />')).toEqual([
+      ['vidrio', 'pulsable', 'p-5'],
+    ])
+    expect(gruposDeClases('<div className={`vidrio pulsable ${X[y]}`} />')).toEqual([
+      ['vidrio', 'pulsable'],
+    ])
+  })
+
+  it('🔴 borra la interpolacion en vez de adivinarla', () => {
+    // Lo que trae `${…}` depende de datos en ejecucion. Perder una clase da un
+    // falso NEGATIVO, que es el lado seguro; inventarla daria una alarma sobre
+    // codigo sano, y una guardia que grita sin motivo se acaba ignorando.
+    expect(gruposDeClases("<div className={`a ${b ? 'pulsable' : ''} c`} />"))
+      .toEqual([['a', 'c']])
+  })
+})
+
+describe('colisionesDeTransicion', () => {
+  const vidrio = { clase: 'vidrio', orden: 10, propiedades: ['box-shadow', 'border-color'] }
+  const juntas = [['vidrio', 'pulsable']]
+
+  it('🔴 delata a la clase que pierde una propiedad que la ganadora no cubre', () => {
+    // Este es EXACTAMENTE el defecto que estuvo en el repositorio: `.pulsable`
+    // gana por ir despues y no menciona `box-shadow`, asi que la elevacion del
+    // hover de las dieciseis baldosas aparecia de golpe.
+    const pulsable = { clase: 'pulsable', orden: 20, propiedades: ['transform', 'border-color'] }
+    expect(colisionesDeTransicion([vidrio, pulsable], juntas))
+      .toEqual(['«vidrio» pierde box-shadow frente a «pulsable»'])
+  })
+
+  it('🔴 y NO se queja cuando la ganadora las cubre todas', () => {
+    // La regla no es «dos clases no pueden declarar transition»: eso prohibiria
+    // el arreglo correcto. Es que la perdedora no pierda nada.
+    const pulsable = {
+      clase: 'pulsable', orden: 20,
+      propiedades: ['transform', 'border-color', 'box-shadow'],
+    }
+    expect(colisionesDeTransicion([vidrio, pulsable], juntas)).toEqual([])
+  })
+
+  it('una sola clase con transicion no colisiona con nadie', () => {
+    expect(colisionesDeTransicion([vidrio], juntas)).toEqual([])
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
 // La guardia sobre el arbol de verdad
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -129,6 +213,34 @@ describe('la guardia visual sobre el codigo real', () => {
     // exclusion que crece en silencio convierte la guardia en decoracion.
     expect(PROPIOS).toHaveLength(2)
     expect(ficherosDeEstilo(join(SRC, 'lib', 'interfaz')).length).toBeGreaterThan(8)
+  })
+
+  it('🔴🔴 ninguna clase pierde su `transition` frente a otra que viaja con ella', () => {
+    /*
+     * La guardia contra el defecto que estuvo vivo todo el desarrollo y que no
+     * ve ninguna herramienta: `.vidrio` y `.pulsable` declaraban las dos la
+     * ABREVIADA, iban juntas en las dieciseis baldosas del muro, y la segunda
+     * borraba la primera. La elevacion del hover aparecia de golpe.
+     *
+     * ⚠️ Se recorren `componentes` Y `app`: el defecto vivia en una baldosa,
+     *    pero la combinacion puede escribirse en cualquier pantalla.
+     */
+    const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+    const transiciones = transicionesDeClases(css)
+    // Si esto baja de 2 no hay ninguna colision POSIBLE y la prueba no mira
+    // nada: seria un aprobado vacio, como el `content` que parsea a 0 globs.
+    expect(transiciones.length, 'el parseo del CSS no encontro transiciones').toBeGreaterThan(1)
+
+    const grupos: string[][] = []
+    for (const dir of [join(SRC, 'componentes'), join(SRC, 'app')]) {
+      for (const f of ficherosDeEstilo(dir)) {
+        if (f.endsWith('.css')) continue
+        grupos.push(...gruposDeClases(readFileSync(f, 'utf8')))
+      }
+    }
+    expect(grupos.length, 'no se leyo ningun className').toBeGreaterThan(20)
+
+    expect(colisionesDeTransicion(transiciones, grupos)).toEqual([])
   })
 
   it('🔴 la tipografia no se descarga de la red', () => {
