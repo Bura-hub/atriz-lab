@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { MensajeScan } from '../../hooks/useTopic'
-import { LASER_X, contarValidos, distanciaMinima, escala, puntosDelBarrido } from './barrido'
+import {
+  LASER_X, MARGEN_LIENZO_PX, contarValidos, distanciaMinima, escala, puntosDelBarrido,
+} from './barrido'
 
 /** Un barrido con los parametros reales del X2 medidos en este robot. */
 const barrido = (ranges: number[]): MensajeScan => ({
@@ -100,7 +102,23 @@ describe('distanciaMinima', () => {
 })
 
 describe('escala', () => {
-  it('mete el radio pedido en la mitad del lienzo', () => {
-    expect(escala(400, 2)).toBe(100)          // 2 m -> 200 px -> centro en 200
+  it('mete el radio pedido en la mitad del lienzo, menos el margen', () => {
+    // 400 px -> 200 de radio disponible, menos 14 de margen = 186 para 2 m.
+    expect(escala(400, 2)).toBe((200 - MARGEN_LIENZO_PX) / 2)
+  })
+
+  it('🔴 DEJA MARGEN: el anillo exterior no puede ser tangente al marco', () => {
+    // Antes devolvia lado/2 / radio, asi que el anillo exterior caia sobre el
+    // borde del lienzo y su trazo quedaba medio recortado por los cuatro lados.
+    const lado = 700
+    const radioDibujado = escala(lado, 2.5) * 2.5
+    expect(radioDibujado).toBeLessThan(lado / 2)
+    expect(lado / 2 - radioDibujado).toBe(MARGEN_LIENZO_PX)
+  })
+
+  it('con un lienzo mas pequeño que el margen da 0, nunca un valor negativo', () => {
+    // Puede pasar en el instante en que el navegador aun no ha repartido el
+    // ancho. Una escala negativa dibujaria los anillos del reves.
+    expect(escala(10, 2.5)).toBe(0)
   })
 })

@@ -87,14 +87,30 @@ const TOPICS: readonly TopicModelado[] = ['/odom', '/encoders', '/motor_status',
  *    apagado ocho de las diez celdas de ritmo son huecos, y pintarlos a 36 px
  *    llenaria la tabla de rayas enormes.
  */
+/**
+ * EL HUECO DE ESTA TABLA, UNO SOLO PARA LAS CUATRO COLUMNAS QUE PUEDEN VACIARSE.
+ *
+ * 🔴 ANTES ERAN DOS, Y SE VEÍAN LOS DOS A LA VEZ EN LA MISMA FILA. «no se sabe»
+ *    salía en **monoespaciada** bajo «Último hace» —porque su `<td>` lleva
+ *    `font-mono` y el hueco lo heredaba— y en **proporcional cursiva** bajo
+ *    «Observado aquí», a 200 px de distancia. La misma ausencia, dicha con dos
+ *    letras distintas, en columnas contiguas y con el robot apagado, que es el
+ *    estado más frecuente del laboratorio: ocho de las diez celdas son huecos.
+ *
+ * `font-sans` va explícito y no heredado: es lo único que impide que la celda
+ * que lo envuelva vuelva a decidir por él. Un hueco no es una medida, así que no
+ * puede llevar la letra de las medidas.
+ */
+function Hueco() {
+  return <span className="hueco font-sans text-sm italic">{SIN_DATO}</span>
+}
+
 function Hercios({ valor, patron }: {
   valor: number | null | undefined
   /** `true` = es la constante del laboratorio, no una medida de este robot. */
   patron?: boolean
 }) {
-  if (valor === null || valor === undefined) {
-    return <span className="hueco text-sm italic">{SIN_DATO}</span>
-  }
+  if (valor === null || valor === undefined) return <Hueco />
   return (
     <span className={patron === true ? 'cifra-menor text-muted-foreground' : 'cifra'}>
       {numero(valor, 2)}
@@ -120,7 +136,7 @@ function FilaTopic({ topic }: { topic: TopicModelado }) {
           los dos ritmos de la derecha destaquen. */}
       <td className="py-4 pr-4 text-right font-mono tabular-nums text-sm">{llegadas.n}</td>
       <td className="py-4 pr-4 text-right font-mono tabular-nums text-sm">
-        {desde === null ? <span className="hueco italic">{SIN_DATO}</span> : milisegundos(desde)}
+        {desde === null ? <Hueco /> : milisegundos(desde)}
       </td>
       {/* LA MEDIDA. Es lo único de esta tabla que depende del robot de ahora. */}
       <td className="py-4 pr-4 text-right">
@@ -223,14 +239,33 @@ export function PanelDiagnostico() {
               linea que la separa del titulo. */}
           <div className="overflow-x-auto px-5 pb-1 pt-3">
             <table className="w-full text-left">
+              {/*
+                🔴 LAS CINCO CABECERAS PESAN LO MISMO, Y ANTES UNA NO.
+
+                «Observado aquí» iba en tinta plena y «Medido en el robot» en
+                gris, «para que la cabecera acompañase a la escala de su
+                columna». Sobre el papel eso se invierte justo en el estado que
+                hay que diseñar: con el robot apagado la columna de tinta plena
+                está **vacía** y la gris lleva los `16,53 · 16,57 · 1,00 · 0,03
+                Hz`, que son lo más grande de la pantalla. La cabecera decía una
+                jerarquía y sus valores la contraria, en la misma fila.
+
+                🔴 Y la salida NO es invertirlas. Poner «Medido en el robot» en
+                   tinta plena promovería la CONSTANTE del laboratorio por encima
+                   de la única medida de verdad de la tabla — que es el fallo que
+                   ya se corrigió una vez y está escrito entero en `Hercios`.
+
+                Una cabecera nombra su columna; no puede además codificar el peso
+                de un valor que cambia entre presente y ausente. El peso lo dicen
+                los valores —`.cifra` en tinta plena contra `.cifra-menor` en
+                secundaria—, y esa distinción sigue intacta.
+              */}
               <thead>
                 <tr className="text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="pb-2 pr-4 font-medium">Topic</th>
                   <th className="pb-2 pr-4 font-medium text-right">Mensajes</th>
                   <th className="pb-2 pr-4 font-medium text-right">Último hace</th>
-                  {/* La cabecera acompaña a la escala de su columna: la medida en
-                      tinta plena, el patrón de comparación en secundaria. */}
-                  <th className="pb-2 pr-4 font-medium text-right text-foreground">Observado aquí</th>
+                  <th className="pb-2 pr-4 font-medium text-right">Observado aquí</th>
                   <th className="pb-2 font-medium text-right">Medido en el robot</th>
                 </tr>
               </thead>
@@ -302,27 +337,51 @@ export function PanelDiagnostico() {
             subtitulo="Si algo de arriba no cuadra, el robot se mira así."
           >
             {/*
-              🔴 A TRES COLUMNAS, Y NO POR DENSIDAD. Con `max-w-prose` esta lista
-                 medía ~490 px debajo de una tarjeta de 1040: dejaba una columna
-                 muerta de ~550 px a su derecha, el mismo defecto que los párrafos
-                 de la tabla de arriba. Son tres comprobaciones independientes, así
-                 que una por columna es además lo que son.
+              🔴🔴 UN SOLO VOCABULARIO DE MÓDULO, Y ANTES HABÍA DOS PEGADOS.
+
+              El 60 % inferior de esta pantalla eran dos gramáticas distintas una
+              debajo de la otra: «los cinco huecos» es una `.rejilla` con líneas
+              de 1 px y rótulos numerados en versalitas, y justo debajo estas tres
+              comprobaciones eran tres columnas de lista con topos, sin borde y
+              sin rótulo, flotando en el cuerpo de la tarjeta. Dos formas para dos
+              cosas del mismo rango se leen como dos aplicaciones.
+
+              Pasan a celdas de rejilla con su rótulo en `.microetiqueta`, igual
+              que los huecos. Los rótulos son CORTOS a propósito: la clase es
+              monoespaciada, versalitas y espaciada, y una frase entera ahí grita
+              más que su propio contenido.
+
+              ⚠️ La rejilla va A SANGRE, que es lo que `Tarjeta` espera de ella;
+                 el relleno lo pone cada celda.
+
+              📝 SIN numerar, y es deliberado: los huecos de arriba van 01…05 y
+                 numerar estos tres los haría leerse como su continuación. Son
+                 otra cosa —cómo se mira el robot desde fuera—, no el sexto hueco.
             */}
-            <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-3 md:grid md:grid-cols-3 md:gap-x-8 md:space-y-0">
-              <li>
-                Que el proceso exista no prueba nada: <code>ros2 topic list</code> conserva topics
-                de nodos muertos, y el driver puede tener sus topics registrados y estar mudo.
-              </li>
-              <li>
-                Si llega <code>/scan</code> y no llega <code>/odom</code>, sospecha de una excepción
-                dentro de un manejador de telemetría del driver: el detector de silencio no salta,
-                porque mide desde la última muestra del RVR, no desde la última publicación.
-              </li>
-              <li>
-                Un robot cargando —RVR apagado con la Raspberry Pi viva— es el estado cotidiano del
-                laboratorio y se ve exactamente igual que uno dormido.
-              </li>
-            </ul>
+            <dl className="rejilla md:grid-cols-3">
+              <div className="px-5 py-4">
+                <dt className="microetiqueta">El proceso existe</dt>
+                <dd className="mt-2 text-sm leading-snug text-muted-foreground">
+                  No prueba nada: <code>ros2 topic list</code> conserva topics de nodos muertos, y
+                  el driver puede tener sus topics registrados y estar mudo.
+                </dd>
+              </div>
+              <div className="px-5 py-4">
+                <dt className="microetiqueta">/scan sí, /odom no</dt>
+                <dd className="mt-2 text-sm leading-snug text-muted-foreground">
+                  Sospecha de una excepción dentro de un manejador de telemetría del driver: el
+                  detector de silencio no salta, porque mide desde la última muestra del RVR, no
+                  desde la última publicación.
+                </dd>
+              </div>
+              <div className="px-5 py-4">
+                <dt className="microetiqueta">Un robot cargando</dt>
+                <dd className="mt-2 text-sm leading-snug text-muted-foreground">
+                  RVR apagado con la Raspberry Pi viva. Es el estado cotidiano del laboratorio y se
+                  ve exactamente igual que uno dormido.
+                </dd>
+              </div>
+            </dl>
           </Tarjeta>
         </div>
       </Grupo>

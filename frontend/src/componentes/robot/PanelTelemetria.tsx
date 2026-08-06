@@ -207,12 +207,19 @@ export function PanelTelemetria() {
     se apila bajo la de arriba en vez de estirarse, y el dia que una banda gane
     una tarjeta nueva no hay que tocar el reparto.
 
-    🔴 `[&>section]:flex-1`: sin esto las dos tarjetas de la banda **cerraban a
-       alturas distintas** —la de encoders acababa 46 px antes que la de
-       odometria— y la banda se leia rota por abajo. Con el, las dos llegan a la
-       misma linea.
+    🔴 SIN `[&>section]:flex-1`, Y LO LLEVABA. Se puso porque las dos tarjetas
+       de la banda cerraban a alturas distintas —encoders acababa 46 px antes que
+       odometria— y la banda se leia rota por abajo. Pero estirar la corta no
+       quita el desnivel: lo mete DENTRO de la tarjeta. Medido en captura, dejaba
+       ~110 px de papel en blanco bajo el «Por qué» de encoders.
+
+       Se cambio un desnivel de 46 px por un vacio de 110. Dos alturas distintas
+       bajo la misma cabecera de grupo se leen bien —es lo que hace cualquier
+       maqueta a dos columnas—; 110 px de blanco dentro de una ficha se leen como
+       una celda rota, que es justo el defecto que este proyecto ya se encontro
+       en la rejilla de motores.
   */
-  const columna = 'flex flex-col gap-4 [&>section]:flex-1'
+  const columna = 'flex flex-col gap-4'
 
   return (
     <div className="space-y-8">
@@ -241,7 +248,10 @@ export function PanelTelemetria() {
              de tres de la odometria y los encoders apilados, las dos columnas
              cierran casi a la misma altura.
         */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+        {/* `items-start`: las dos columnas se alinean por ARRIBA, que es donde
+            comparten la cabecera del grupo. Sin el, la celda corta se estira a
+            la altura de la larga y el vacio reaparece un nivel mas abajo. */}
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
           <div className={columna}><Odometria /></div>
           <div className={columna}><Encoders /></div>
         </div>

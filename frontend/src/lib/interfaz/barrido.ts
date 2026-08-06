@@ -92,9 +92,32 @@ export function distanciaMinima(s: MensajeScan): number | null {
 }
 
 /**
+ * 🔴 EL MARGEN DEL LIENZO, Y POR QUE NO PUEDE VALER CERO.
+ *
+ * `escala()` devolvia `lado/2 / radio`, o sea que el anillo exterior caia
+ * EXACTAMENTE sobre el borde del lienzo: tangente al marco por los cuatro lados
+ * y con su trazo **medio recortado** —la mitad de un trazo de 1 px queda fuera
+ * del bufer—. Se ve en cualquier captura de la pantalla de LIDAR: los cuatro
+ * puntos cardinales del anillo de 2,5 m tocan la caja.
+ *
+ * Y no es solo estetica: el anillo exterior es la referencia de «hasta aqui
+ * llega este dibujo», asi que un punto a 2,49 m y otro a 2,51 m caen los dos
+ * sobre la misma linea del borde. Con margen, el de dentro se ve dentro.
+ *
+ * ⚠️ Son PIXELES CSS, no del bufer. `pintar()` dibuja en unidades CSS y el
+ *    contexto llega ya escalado por `devicePixelRatio`.
+ */
+export const MARGEN_LIENZO_PX = 14
+
+/**
  * Escala metros -> pixeles para que quepa `radioM` metros en un lienzo de
- * `ladoPx` pixeles, con el robot en el centro.
+ * `ladoPx` pixeles, con el robot en el centro y `MARGEN_LIENZO_PX` de aire
+ * entre el anillo exterior y el marco.
+ *
+ * ⚠️ Nunca devuelve un valor negativo: con un lienzo mas pequeño que el margen
+ *    —que solo puede pasar en un instante de reparto del ancho— la escala se
+ *    queda en 0 y el dibujo sale vacio, en vez de dibujarse del reves.
  */
 export function escala(ladoPx: number, radioM: number): number {
-  return (ladoPx / 2) / radioM
+  return Math.max(0, ladoPx / 2 - MARGEN_LIENZO_PX) / radioM
 }

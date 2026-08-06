@@ -26,11 +26,31 @@
  *   2. LAS TRES SEÑALES DE VIDA —enlace, `/odom`, `/scan`— que son las entradas
  *      de `diagnosticar()`. Enseñarlas separadas del veredicto es lo que deja
  *      ver **por qué** dice lo que dice.
- *   3. LAS CAUSAS y EL LÍMITE, a dos columnas. El límite al lado y no debajo:
- *      es la mitad del diseño, no un apéndice.
+ *   3. LAS CAUSAS, la lista entera de lo que se ha mirado.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 Y LA JERARQUÍA ESTABA INVERTIDA, MEDIDA EN PÍXELES
+ * ═══════════════════════════════════════════════════════════════════════════
+ * En una captura de 1400×1800 con el robot apagado: la banda del VEREDICTO
+ * —la razón de existir de esta pantalla— medía **172 px**, y el descargo «Lo
+ * que esta pantalla no puede ver» medía **343, el doble exacto**. Un límite
+ * escrito para no dar falsa tranquilidad se había comido a lo que limita.
+ *
+ * Y la página terminaba al 55 % del alto: **806 px de fondo vacío**, la única
+ * de las nueve con ese hueco (taller 10 px, telemetría 2, diagnóstico 20). El
+ * hueco no se rellena con adorno — se cierra subiendo lo que importa:
+ *
+ *   · el veredicto pasa a `clamp(2.2rem, 4vw, 3rem)`, y **la causa que encaja
+ *     y qué hacer entran EN la propia banda**. Antes vivían 400 px más abajo,
+ *     fuera del golpe de vista de alguien que mira esto proyectado.
+ *   · el descargo baja a un aviso PLEGADO. Su frase —«que ninguna causa encaje
+ *     no prueba que el robot obedezca»— sigue visible siempre, que es la parte
+ *     que no se puede callar; los tres ejemplos se abren de un clic.
+ *
+ * Con eso las tres señales de vida suben al pliegue.
  */
 
-import { useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
 import { useLatido } from '@/hooks/useTransporte'
@@ -40,6 +60,42 @@ import {
 import { SIN_DATO, milisegundos, partirUnidad, segundos } from '@/lib/interfaz/formato'
 import { Grupo } from '@/componentes/ui/Grupo'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
+
+/**
+ * EL DESCARGO, PLEGADO. Un aviso de nivel «NOTA» que además se abre.
+ *
+ * ⚠️ NO usa `<Aviso>`, y el motivo es de marcado, no de estilo: `Aviso` mete
+ *    sus hijos en un `<span>`, cuyo modelo de contenido es texto —un `<details>`
+ *    ahí dentro es HTML inválido—. Así que aquí se reproducen sus tres tokens
+ *    (`--aviso-nota`, `--luz-a`, `.aparece`) sobre un `<details>` de verdad.
+ *
+ * 🔴 La frase que NO se pliega es la que no se puede callar: que ninguna causa
+ *    encaje no prueba que el robot obedezca. Lo que se pliega son los ejemplos,
+ *    que son contexto de fondo y valen igual con el robot encendido o apagado.
+ */
+function Descargo({ children }: { children: ReactNode }) {
+  return (
+    <details className="aparece group rounded-ficha border border-[rgb(var(--luz-a)/0.30)] bg-[rgb(var(--aviso-nota))] px-4 py-3 text-sm text-foreground">
+      <summary className="focus-ring flex cursor-pointer list-none items-start gap-2">
+        {/* El triángulo gira 90° al abrir, como en `Contexto`: dice si está
+            abierto o cerrado, que es información y no adorno. */}
+        <span
+          aria-hidden="true"
+          className="mt-0.5 inline-block shrink-0 text-muted-foreground transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-open:rotate-90"
+        >
+          ▸
+        </span>
+        <span className="max-w-prose leading-relaxed">
+          <strong className="font-semibold">Lo que esta pantalla no puede ver: </strong>
+          que ninguna causa encaje no prueba que el robot obedezca — prueba que no es ninguna de
+          las que aquí se saben mirar.{' '}
+          <span className="text-muted-foreground">Tres ejemplos, de un clic.</span>
+        </span>
+      </summary>
+      {children}
+    </details>
+  )
+}
 
 const TONO: Readonly<Record<EstadoCausa, string>> = {
   CONFIRMADA: 'text-estado-ir',
@@ -72,7 +128,20 @@ function Marca({ estado }: { estado: EstadoCausa }) {
   )
 }
 
-function FilaCausa({ causa }: { causa: Causa }) {
+/**
+ * Una causa de la lista.
+ *
+ * 🔴 `remedioArriba` EXISTE PARA NO DECIR LO MISMO DOS VECES EN LA MISMA
+ *    PANTALLA. La banda del veredicto ya pinta el «qué hacer» de la primera
+ *    causa confirmada, y con el robot apagado `diagnosticar()` devuelve **una
+ *    sola causa**: sin esto, la tarjeta entera era una copia literal de la banda
+ *    que tiene 300 px encima. Con enlace hay cuatro o cinco causas y solo una
+ *    lleva la bandera, así que la lista sigue siendo la lista.
+ */
+function FilaCausa({ causa, remedioArriba = false }: {
+  causa: Causa
+  remedioArriba?: boolean
+}) {
   return (
     <li className="flex gap-3.5 px-5 py-4">
       <Marca estado={causa.estado} />
@@ -86,9 +155,14 @@ function FilaCausa({ causa }: { causa: Causa }) {
         <p className="mt-1.5 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
           {causa.evidencia}
         </p>
-        {causa.remedio !== '' && (
+        {causa.remedio !== '' && !remedioArriba && (
           <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-foreground/85">
             {causa.remedio}
+          </p>
+        )}
+        {causa.remedio !== '' && remedioArriba && (
+          <p className="mt-2 text-[11px] italic leading-relaxed text-muted-foreground/80">
+            Qué hacer, arriba en el veredicto.
           </p>
         )}
       </div>
@@ -193,28 +267,32 @@ export function PanelNoObedece() {
            personas no distingue el coral del lima, y esto se proyecta.
       */}
       {/*
-        🔴 DOS COLUMNAS, Y LA DERECHA NO ES RELLENO. La banda ocupaba el ancho
-           entero con su contenido en el 45 % izquierdo -~600×150 px de blanco a
-           la derecha- y, peor, decía «una causa encaja» **sin decir cuál**: la
-           causa vivía 400 px más abajo, fuera del golpe de vista de alguien que
-           mira esto proyectado. El hueco se cierra con la única información que
-           faltaba, no con adorno.
+        🔴 EL VEREDICTO ES UN BLOQUE PROTAGONISTA, NO UNA FRANJA. Medido en una
+           captura: 172 px de banda contra 343 del descargo que la contradecía.
+           El titular sube a `clamp(2.2rem, 4vw, 3rem)` —el escalón de un dato
+           hero, que es lo que esta frase es en esta pantalla— y con él entran
+           las dos cosas que vivían 400 px más abajo: CUÁL encaja y QUÉ HACER.
       */}
-      <section className="vidrio flex flex-wrap items-baseline justify-between gap-x-8 gap-y-4 rounded-ficha px-6 py-7 sm:px-8">
-        <div className="min-w-0">
+      <section className="vidrio rounded-ficha px-6 py-8 sm:px-9 sm:py-10">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1">
           <p className="microetiqueta">Veredicto</p>
-          <h2
-            className={`mt-3 font-semibold leading-[1.12] tracking-tight ${
-              hayConfirmada ? 'text-estado-ir' : 'text-foreground'
-            }`}
-            style={{ fontSize: 'clamp(1.5rem, 2.6vw, 2rem)' }}
-          >
-            {resumen(causas)}
-          </h2>
-          <p className="mt-3.5 max-w-prose text-sm leading-relaxed text-muted-foreground">
-            En orden de probabilidad. No se elige una causa: se enseñan todas las que encajan.
+          {/* «cuántas hay» y «cuántas encajan» son dos números distintos, y
+              confundirlos es afirmar de más. */}
+          <p className="microetiqueta">
+            {confirmadas.length} de {causas.length} miradas
           </p>
         </div>
+        <h2
+          className={`mt-3 font-semibold leading-[1.05] tracking-tight ${
+            hayConfirmada ? 'text-estado-ir' : 'text-foreground'
+          }`}
+          style={{ fontSize: 'clamp(2.2rem, 4vw, 3rem)' }}
+        >
+          {resumen(causas)}
+        </h2>
+        <p className="mt-4 max-w-prose text-sm leading-relaxed text-muted-foreground">
+          En orden de probabilidad. No se elige una causa: se enseñan todas las que encajan.
+        </p>
 
         {/*
           🔴 LA PRIMERA CONFIRMADA, NO LA PRIMERA DE LA LISTA. `diagnosticar()`
@@ -227,16 +305,34 @@ export function PanelNoObedece() {
           Y si no hay ninguna confirmada no se pinta nada aquí: el veredicto ya
           dice «ninguna de las causas conocidas encaja», y añadir una «más
           probable» sería justo la elección que esta pantalla se niega a hacer.
+
+          ⚠️ La columna de «Qué hacer» solo existe si HAY remedio: `Causa.remedio`
+             viene vacío cuando no hay nada que hacer, y una columna vacía al
+             lado de la que encaja se leería como que no se sabe qué hacer.
         */}
-        {confirmadas.length > 0 && (
-          <div className="min-w-[13rem] shrink-0 sm:text-right">
-            <p className="microetiqueta">La primera que encaja</p>
-            <p className="mt-2 text-[19px] font-semibold leading-snug text-estado-ir">
-              {confirmadas[0].titulo}
-            </p>
-            <p className="microetiqueta mt-2">
-              {confirmadas.length} de {causas.length} miradas
-            </p>
+        {hayConfirmada && (
+          <div
+            className={`mt-7 grid gap-x-10 gap-y-5 border-t border-[rgb(var(--filo)/0.09)] pt-6 ${
+              confirmadas[0].remedio !== '' ? 'sm:grid-cols-2' : ''
+            }`}
+          >
+            {/* Sin la EVIDENCIA: esa se queda en la lista de causas, que es lo
+                que la lista aporta sobre esta banda. Aquí van las dos cosas que
+                se leen de lejos —cuál encaja y qué hacer— y nada más. */}
+            <div className="min-w-0">
+              <p className="microetiqueta">La causa que encaja</p>
+              <p className="mt-2.5 text-[21px] font-semibold leading-snug tracking-tight text-estado-ir">
+                {confirmadas[0].titulo}
+              </p>
+            </div>
+            {confirmadas[0].remedio !== '' && (
+              <div className="min-w-0">
+                <p className="microetiqueta">Qué hacer</p>
+                <p className="mt-2.5 max-w-prose text-[15px] font-medium leading-relaxed text-foreground/90">
+                  {confirmadas[0].remedio}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </section>
@@ -249,97 +345,99 @@ export function PanelNoObedece() {
         al mismo ritmo**, y confundirlos es lo que hace que alguien lea como
         «de ahora» un dato de hace medio minuto.
       */}
-      <Grupo
-        titulo="Señales de vida"
-        fuente="el enlace y el barrido los mide este navegador; la antigüedad de /odom la manda el robot en su estado"
-      >
+      {/*
+        🔴 LA `fuente` MEDÍA 103 CARACTERES Y SE PINTA EN `.microetiqueta`
+           —monoespaciada, versalitas, espaciada—: una cinta gris de ~860 px que
+           pesaba más que el título de dos palabras al que acompaña. Los otros
+           ocho `fuente` de la aplicación no pasan de 61.
+
+        `.microetiqueta` es para rótulos CORTOS, y esa regla ya estaba escrita.
+        El matiz no se pierde: baja a la `nota` de cada señal, que es donde vive
+        lo que el número no dice por sí mismo — y allí además es específico de
+        SU señal en vez de una frase con punto y coma para las tres.
+      */}
+      <Grupo titulo="Señales de vida" fuente="dos las mide el navegador; /odom lo dice el robot">
         <div className="grid gap-4 sm:grid-cols-3">
           <Senal
             etiqueta="Enlace"
             valor={conectado ? 'abierto' : 'cerrado'}
             alarma={!conectado}
             nota={conectado
-              ? 'WebSocket abierto con el robot.'
-              : 'Socket cerrado. Sin él no se sabe nada de las otras dos.'}
+              ? 'WebSocket abierto con el robot, medido por este navegador.'
+              : 'Socket cerrado, medido por este navegador. Sin él no se sabe nada de las otras dos.'}
           />
           <Senal
             etiqueta="/odom"
             valor={odomConocida ? segundos(antiguedadOdomS) : null}
             alarma={odomConocida && (antiguedadOdomS ?? 0) > UMBRAL_ODOM_MUERTA_S}
             nota={odomConocida
-              ? 'Antigüedad de la última muestra. Con el driver sano llega a 16,5 Hz.'
-              : 'No ha llegado el estado del robot, así que no hay antigüedad que leer.'}
+              ? 'Esta antigüedad la manda el robot en su estado, no la mide el navegador. Con el driver sano llega a 16,5 Hz.'
+              : 'No ha llegado el estado del robot, y esa antigüedad la manda él: aquí no hay nada que leer.'}
           />
           <Senal
             etiqueta="/scan"
             valor={msDesdeBarrido === null ? null : milisegundos(msDesdeBarrido)}
             alarma={msDesdeBarrido !== null && msDesdeBarrido >= UMBRAL_BARRIDO_MS}
             nota={msDesdeBarrido === null
-              ? 'No ha llegado ningún barrido. Sin él la capa de seguridad bloquea el movimiento.'
-              : 'Antigüedad del último barrido del LIDAR, medida aquí.'}
+              ? 'No ha llegado ningún barrido a este navegador. Sin él la capa de seguridad bloquea el movimiento.'
+              : 'Antigüedad del último barrido del LIDAR, medida por este navegador.'}
           />
         </div>
       </Grupo>
 
       {/*
         ═════════════════════════════════════════════════════════════════════
-        3 · LAS CAUSAS Y EL LÍMITE, a dos columnas.
+        3 · LAS CAUSAS, y debajo EL LÍMITE plegado.
         ═════════════════════════════════════════════════════════════════════
-        `items-start` para que la columna corta no se estire hasta la altura de
-        la larga: con el robot apagado hay UNA causa y tres límites, y una
-        tarjeta con medio metro de blanco dentro se lee como un fallo.
+        A ancho completo, y no a dos columnas con el descargo al lado: medido en
+        captura, el descargo pesaba el doble que el veredicto. Aquí la lista es
+        el trabajo de la pantalla y el descargo es su nota al pie — que es el
+        orden que tenían invertido.
       */}
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Tarjeta
-          titulo="Causas"
-          subtitulo="Cada una con lo que se ha mirado para decirlo, y con lo que hay que hacer."
-        >
-          <ul className="divide-y divide-[rgb(var(--filo)/0.09)]">
-            {causas.map((c) => <FilaCausa key={c.id} causa={c} />)}
-          </ul>
-        </Tarjeta>
+      <Tarjeta
+        titulo="Causas"
+        subtitulo="Cada una con lo que se ha mirado para decirlo, y con lo que hay que hacer."
+      >
+        <ul className="divide-y divide-[rgb(var(--filo)/0.09)]">
+          {causas.map((c) => (
+            <FilaCausa key={c.id} causa={c} remedioArriba={c.id === confirmadas[0]?.id} />
+          ))}
+        </ul>
+      </Tarjeta>
 
-        {/*
-          🔴 EL LÍMITE DE ESTA PANTALLA, EN LA PANTALLA.
-          Que ninguna causa encaje no prueba que el robot obedezca. Callarlo
-          convertiría esta pantalla en la falsa tranquilidad que existe para
-          evitar.
-        */}
-        <Tarjeta
-          titulo="Lo que esta pantalla no puede ver"
-          subtitulo="Que ninguna causa encaje no prueba que el robot obedezca: prueba que no es ninguna de las que aquí se saben mirar."
-        >
-          {/*
-            En un `div` con su propio `px-5`: el cuerpo de `Tarjeta` va a sangre
-            para que las rejillas lleguen al canto, y una lista suelta que herede
-            eso se pega al borde izquierdo. Y los topos son de CSS —`list-disc`—,
-            no un `·` tecleado dentro del texto, que se lleva el sangrado por
-            delante y no lo ve ningún lector de pantalla.
-          */}
-          <div className="px-5 py-4">
-            <ul className="list-disc space-y-3 pl-5 text-[13px] leading-relaxed text-muted-foreground marker:text-muted-foreground/50">
-              <li className="max-w-prose">
-                Que el <strong className="text-foreground/85">descriptor del LIDAR</strong> esté
-                muerto tras apagar y encender el RVR con la Pi viva. El nodo sigue vivo y sus
-                servicios contestan; se ve por SSH con{' '}
-                <code className="font-mono">ls -l /proc/…/fd | grep tty</code>, y dice{' '}
-                <code className="font-mono">(deleted)</code>.
-              </li>
-              <li className="max-w-prose">
-                Que el robot esté <strong className="text-foreground/85">contra una pared</strong>:
-                el polígono de precaución frena al 40 % aunque se esté alejando, y un retroceso de
-                30 cm puede hacer 14.
-              </li>
-              <li className="max-w-prose">
-                Que otra pestaña esté publicando en <code className="font-mono">cmd_vel_raw</code> a
-                la vez. No hay autenticación, así que <strong className="text-foreground/85">nadie
-                puede saberlo</strong>: dos bucles a 10 Hz producen un movimiento que no es el de
-                ninguno de los dos.
-              </li>
-            </ul>
-          </div>
-        </Tarjeta>
-      </div>
+      {/*
+        🔴 EL LÍMITE DE ESTA PANTALLA, EN LA PANTALLA.
+        Que ninguna causa encaje no prueba que el robot obedezca. Callarlo
+        convertiría esta pantalla en la falsa tranquilidad que existe para
+        evitar — por eso esa frase va en el `summary`, siempre visible, y solo
+        los tres ejemplos se pliegan.
+
+        Los topos son de CSS —`list-disc`—, no un `·` tecleado dentro del texto,
+        que se lleva el sangrado por delante y no lo ve ningún lector de
+        pantalla.
+      */}
+      <Descargo>
+        <ul className="mt-3 list-disc space-y-2.5 pl-9 text-[13px] leading-relaxed text-muted-foreground marker:text-muted-foreground/50">
+          <li className="max-w-prose">
+            Que el <strong className="text-foreground/85">descriptor del LIDAR</strong> esté
+            muerto tras apagar y encender el RVR con la Pi viva. El nodo sigue vivo y sus
+            servicios contestan; se ve por SSH con{' '}
+            <code className="font-mono">ls -l /proc/…/fd | grep tty</code>, y dice{' '}
+            <code className="font-mono">(deleted)</code>.
+          </li>
+          <li className="max-w-prose">
+            Que el robot esté <strong className="text-foreground/85">contra una pared</strong>:
+            el polígono de precaución frena al 40 % aunque se esté alejando, y un retroceso de
+            30 cm puede hacer 14.
+          </li>
+          <li className="max-w-prose">
+            Que otra pestaña esté publicando en <code className="font-mono">cmd_vel_raw</code> a
+            la vez. No hay autenticación, así que <strong className="text-foreground/85">nadie
+            puede saberlo</strong>: dos bucles a 10 Hz producen un movimiento que no es el de
+            ninguno de los dos.
+          </li>
+        </ul>
+      </Descargo>
     </div>
   )
 }

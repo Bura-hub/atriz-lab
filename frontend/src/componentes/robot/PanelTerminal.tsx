@@ -34,11 +34,20 @@ const CADENA: readonly { paso: string; titulo: string; estado: string; porque: s
   {
     paso: '1',
     titulo: 'F0 · medir el punto de acceso del aula',
+    /*
+     * 🔴 RECORTADO, y el motivo es de FORMA. Las tres fichas medían 300 / 235 /
+     *    150 px —una escalera descendente con la tercera flotando sobre 150 px
+     *    de fondo—, y eso no era un problema de rejilla: era de longitud de
+     *    texto. 203 caracteres contra 134 y 48.
+     *
+     * Lo que se fue es la valoración («el único experimento que puede tirar un
+     * diseño completo»), que además ya está dicha en la portada. Lo que decide
+     * —qué falla si el AP aísla, y que se mide en diez minutos— se queda.
+     */
     estado: 'sin medir',
     porque:
       'Si el AP aísla a sus clientes entre sí, el navegador no puede hablar con el robot y el '
-      + 'transporte se replantea entero. Diez minutos en el aula, y es el único experimento que '
-      + 'puede tirar un diseño completo.',
+      + 'transporte se replantea entero. Diez minutos en el aula.',
   },
   {
     paso: '2',
@@ -240,11 +249,21 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
           En un `div` con su relleno: el cuerpo de `Tarjeta` va a sangre.
         */}
         <div className="px-5 py-5">
-          {/* `items-start`: sin el, las tres fichas se estiran a la altura de la
-              mas larga y la tercera -una linea- se quedaba con ~210 px de blanco
-              dentro. `PanelNoObedece` ya resuelve este mismo caso asi, con su
-              motivo escrito: una pantalla hacia bien lo que la otra hacia mal. */}
-          <ol className="grid items-start gap-4 md:grid-cols-3">
+          {/*
+            🔴 SIN `items-start`, Y ANTES LO LLEVABA A PROPÓSITO.
+
+            Con él las tres fichas medían 300 / 235 / 150 px: una escalera
+            descendente, con la tercera flotando sobre 150 px de fondo. El
+            comentario que lo justificaba decía que sin él la tercera se
+            quedaría con ~210 px de blanco dentro — y era cierto **con el texto
+            de entonces**: 203 caracteres en la primera contra 48 en la tercera.
+
+            Recortada la primera a la medida de la segunda, la causa desaparece
+            y el remedio sobra: tres cajas iguales se cuentan de un vistazo, que
+            es lo que el subtítulo promete («tres casillas»), y una escalera
+            sugiere un avance que aquí no existe.
+          */}
+          <ol className="grid gap-4 md:grid-cols-3">
             {CADENA.map((c) => (
               <li key={c.paso} className="pozo-interior flex flex-col p-4">
                 <div className="flex items-baseline gap-3">

@@ -85,6 +85,12 @@ export interface ColoresLienzo {
   texto: string
   punto: string
   robot: string
+  /**
+   * El fondo de la ficha. Se usa para BORRAR el trozo de anillo o de eje que
+   * queda justo detras de un rotulo: sin eso, cada etiqueta se pinta encima de
+   * su propia linea y las dos se estorban.
+   */
+  fondo: string
 }
 
 /**
@@ -107,6 +113,7 @@ export function coloresDelTema(): ColoresLienzo {
     texto: t('--muted-foreground'),
     punto: t('--foreground'),
     robot: t('--muted-foreground'),
+    fondo: t('--card'),
   }
 }
 
@@ -123,29 +130,98 @@ function pintar(
 ): void {
   const k = escala(lado, RADIO_M)
   const c = lado / 2
+  const rMax = RADIO_M * k
 
   ctx.clearRect(0, 0, lado, lado)
 
-  // Anillos de referencia cada medio metro, con su etiqueta.
   // 🔴 EL CUERPO DE LA ETIQUETA CRECE CON EL LIENZO. Estaba clavado en 10 px
   //    cuando el dibujo medía 560; al llegar a 700 esos 10 px son la única cosa
   //    de la pantalla que NO creció, y a 50 cm ya no se leen. Se acota entre 10 y
   //    13: es una leyenda, no puede competir con las lecturas del raíl.
   const cuerpo = Math.min(13, Math.max(10, Math.round(lado / 56)))
-  ctx.strokeStyle = col.linea
-  ctx.fillStyle = col.texto
   ctx.font = `${cuerpo}px system-ui, sans-serif`
+
+  /*
+   * Escribe un rótulo BORRANDO antes lo que hay detrás. Sin esto, cada etiqueta
+   * se pinta encima de la línea que describe y las dos se estorban — que es
+   * exactamente lo que hacían las cinco etiquetas de los anillos.
+   */
+  const rotular = (texto: string, x: number, y: number) => {
+    const ancho = ctx.measureText(texto).width
+    ctx.fillStyle = col.fondo
+    ctx.fillRect(x - ancho / 2 - 3, y - cuerpo / 2 - 2, ancho + 6, cuerpo + 4)
+    ctx.fillStyle = col.texto
+    ctx.fillText(texto, x, y)
+  }
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  /*
+   * 🔴🔴 LOS CUATRO EJES, Y ES LA MITAD DEL ARREGLO.
+   *
+   * El subtítulo de la tarjeta dice «arriba es adelante» y el dibujo no lo
+   * decía por ninguna parte: con el robot apagado —el estado más frecuente del
+   * laboratorio— este lienzo son cinco círculos concéntricos y un rectángulo de
+   * 6 px, y nada en él explica qué se está mirando. Dibujados, el vacío explica
+   * el instrumento en vez de esperar a que llegue un dato que lo haga.
+   *
+   * Van punteados y hasta el anillo exterior: son referencia, no medida, y no
+   * pueden pesar lo que un anillo.
+   */
+  ctx.strokeStyle = col.linea
   ctx.lineWidth = 1
+  ctx.setLineDash([2, 5])
+  ctx.beginPath()
+  ctx.moveTo(c, c - rMax)
+  ctx.lineTo(c, c + rMax)
+  ctx.moveTo(c - rMax, c)
+  ctx.lineTo(c + rMax, c)
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  // Anillos de referencia cada medio metro.
   for (let m = 0.5; m <= RADIO_M; m += 0.5) {
     ctx.beginPath()
     ctx.arc(c, c, m * k, 0, Math.PI * 2)
     ctx.stroke()
-    ctx.fillText(`${m.toFixed(1)} m`, c + 3, c - m * k + cuerpo + 1)
   }
+
+  /*
+   * 🔴 LAS ETIQUETAS DE LOS ANILLOS, SOBRE LA DIAGONAL DE 45°.
+   *
+   * Estaban las cinco APILADAS en el meridiano de las 12, o sea que la leyenda
+   * del dibujo ocupaba **el eje de «adelante»** — el único eje que este dibujo
+   * tiene que dejar claro—, y cada rótulo cortaba la cresta de su propio anillo.
+   * En la diagonal no estorban a ningún eje y quedan repartidas.
+   */
+  const diag = Math.SQRT1_2
+  for (let m = 0.5; m <= RADIO_M; m += 0.5) {
+    // Coma decimal: `toFixed` da punto, y el pie de este mismo lienzo dice
+    // «0,5 m entre anillo y anillo». Con las etiquetas apiladas y recortadas no
+    // se leía; en la diagonal sí, y ahí el punto canta.
+    rotular(`${m.toFixed(1).replace('.', ',')} m`, c + m * k * diag, c - m * k * diag)
+  }
+
+  /*
+   * Y los cuatro rumbos, por dentro del anillo exterior. `izq.` y `der.` son las
+   * del ROBOT: la `y` de REP-103 crece hacia su izquierda, y aquí el dibujo está
+   * girado para que «adelante» se vea arriba — que es como lo mira una persona
+   * que tiene el robot delante.
+   */
+  const dentro = rMax - cuerpo
+  rotular('adelante', c, c - dentro)
+  rotular('atrás', c, c + dentro)
+  rotular('izq.', c - dentro, c)
+  rotular('der.', c + dentro, c)
 
   // Los puntos. 🔴 x del robot va hacia ARRIBA en pantalla, e y hacia la
   // IZQUIERDA: es REP-103 (x adelante, y a la izquierda) girado para que
   // «adelante» se vea arriba, que es como lo mira una persona.
+  //
+  // ⚠️ DESPUÉS de los rótulos, y a propósito: `rotular()` borra el fondo que
+  //    tiene detrás, así que pintarlos antes haría desaparecer los puntos que
+  //    cayeran ahí. Un punto es un dato y un rótulo no: en un solape, gana el
+  //    dato.
   ctx.fillStyle = col.punto
   for (const p of puntos) {
     ctx.fillRect(c - p.y * k - 1.5, c - p.x * k - 1.5, 3, 3)
@@ -201,14 +277,33 @@ function Lectura({ etiqueta, valor, unidad, nota }: {
 }
 
 /**
- * Una celda de la tira de coste: la cifra arriba y su rótulo DEBAJO.
+ * Una celda de la tira de coste. MISMA ANATOMÍA QUE `Lectura`: rótulo arriba,
+ * valor debajo.
  *
- * 📝 El orden invertido respecto a `Lectura` no es un descuido: aquí la cifra
- * es la razón de que la tira exista —83 %, ~67 kB/s— y el rótulo la explica.
- * Es la disposición de las maquetas de Stitch para una medida de cabecera.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 ESTA PIEZA ROMPÍA TRES CONVENCIONES DE GOLPE, Y ERA LA ÚNICA
+ * ═══════════════════════════════════════════════════════════════════════════
+ *   1. La constante iba en `.cifra-menor` a TINTA PLENA. En las otras dos
+ *      pantallas esa misma clase, para lo mismo —un patrón que no es medida de
+ *      este robot ahora—, va en secundaria: los umbrales del firmware en
+ *      `Bateria` y el «medido en el robot» en `PanelDiagnostico`. Aquí el 83 % y
+ *      los ~67 kB/s son igual de constantes: se midieron una vez, en otro robot
+ *      y en otro momento.
+ *   2. El rótulo iba DEBAJO del valor. En toda la aplicación va encima —`Dato`,
+ *      `Lectura`, `Bateria`—, y el argumento de que «aquí la cifra es la razón
+ *      de que la tira exista» no basta para tener una anatomía propia en una
+ *      sola celda de una sola pantalla.
+ *   3. 🔴 Y la peor: el «—» de «coste sin medir» era **el mismo glifo** que el
+ *      «—» de «no ha llegado» que hay 300 px más arriba, en las dos `Lectura`.
+ *      En un producto cuyo argumento es que un hueco declarado es honesto, el
+ *      glifo del hueco significaba dos cosas distintas en la misma pantalla.
+ *
+ * → Lo que NUNCA se ha medido se escribe con la PALABRA —`sin medir`—, y la raya
+ *   queda reservada a «no ha llegado». Son dos ausencias distintas: la primera
+ *   no cambia porque el robot se encienda, la segunda sí.
  */
 function Coste({ cifra, unidad, etiqueta, nota }: {
-  /** Sin cifra se pinta una raya: un coste que nadie ha medido es un hueco. */
+  /** Sin cifra se escribe «sin medir»: nadie lo ha medido nunca. */
   cifra?: string
   unidad?: string
   etiqueta: string
@@ -216,17 +311,17 @@ function Coste({ cifra, unidad, etiqueta, nota }: {
 }) {
   return (
     <div className="px-5 py-4">
-      <div>
+      <div className="microetiqueta">{etiqueta}</div>
+      <div className="mt-1.5">
         {cifra === undefined ? (
-          <span className="hueco text-lg leading-none" title="no se sabe">—</span>
+          <span className="hueco text-sm italic">sin medir</span>
         ) : (
-          <span className="cifra-menor">
+          <span className="cifra-menor text-muted-foreground">
             {cifra}
             {unidad !== undefined && <span className="unidad">{unidad}</span>}
           </span>
         )}
       </div>
-      <div className="microetiqueta mt-1.5">{etiqueta}</div>
       <p className="mt-1.5 max-w-prose text-[11px] leading-snug text-muted-foreground">{nota}</p>
     </div>
   )
@@ -414,8 +509,12 @@ export function PanelLidar() {
                 */}
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-t border-border px-4 py-2">
                   <span className="microetiqueta">Escala</span>
+                  {/* «el anillo exterior», no «el borde»: desde que `escala()`
+                      reserva margen, el anillo de 2,5 m ya no toca el marco —y
+                      decir «el borde» mandaría a medir contra la caja, que ahora
+                      está un poco más lejos. */}
                   <span className="text-[11px] leading-tight text-muted-foreground">
-                    0,5&nbsp;m entre anillo y anillo · el borde está a 2,5&nbsp;m
+                    0,5&nbsp;m entre anillo y anillo · el exterior está a 2,5&nbsp;m
                   </span>
                 </div>
               </div>
@@ -542,8 +641,12 @@ export function PanelLidar() {
               etiqueta="Coste de /scan"
               nota="todas las demás pantallas juntas cuestan menos que esta sola"
             />
+            {/* El rótulo dice QUÉ es y el valor dice que nadie lo ha medido.
+                Antes el rótulo era «Coste sin medir» y el valor una raya: el
+                rótulo cargaba con la ausencia y la raya no decía cuál de las dos
+                era. */}
             <Coste
-              etiqueta="Coste sin medir"
+              etiqueta="Segunda suscripción"
               nota="/collision_monitor_state publica al cambiar, no cada tanto: en reposo no cuesta nada y nadie ha medido cuánto cuesta conduciendo"
             />
           </div>
