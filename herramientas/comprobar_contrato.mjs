@@ -190,8 +190,12 @@ try {
   console.log(
     `⚠️  ACCIONES (${accionesWeb.length} en contrato.ts: ${accionesWeb.join(', ')}) NO se compara ` +
     'contra robot.launch.py: alli el glob de acciones va inline en el launch, sin una constante ' +
-    'NOMBRE = [...] que extraer con este mismo patron. Sin soporte de acciones en la web hoy, esto ' +
-    'no bloquea nada -pero el ✅ de arriba es de TRES globs (LEER/ESCRIBIR/SERVICIOS), no cuatro.'
+    'NOMBRE = [...] que extraer con este mismo patron. El ✅ de arriba es de TRES globs ' +
+    '(LEER/ESCRIBIR/SERVICIOS), no cuatro.\n' +
+    '   🔴 Y DESDE EL 2026-08-06 ESTO SI IMPORTA: la web ya manda objetivos de accion ' +
+    '(Transporte.enviarObjetivo), asi que una divergencia entre esta lista y la del robot dejaria ' +
+    'de ser teorica. El sintoma seria SILENCIO —medido: rosbridge deniega sin mandar un solo ' +
+    'op=status—, o sea «la navegacion no responde» buscandose en el sitio equivocado.'
   )
 } catch (e) {
   fallos++

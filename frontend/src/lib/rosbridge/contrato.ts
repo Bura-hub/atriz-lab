@@ -21,17 +21,18 @@ export const SERVICIOS = [
 ] as const
 
 /**
- * 🔴 Punto 4 del encargo: esta constante estaba exportada y no la usaba ni la
- * comprobaba nadie -`grep ACCIONES` en todo el repositorio solo encontraba su
- * propia declaracion-. Hoy `teleoperacion.ts` no tiene soporte de acciones
- * (Nav2 / `/navigate_to_pose` se maneja fuera de este cliente por ahora), asi
- * que no hay ningun `permitidoAccion()` que llamar todavia -pero dejarla muda
- * es exactamente el "tope silencioso" que este proyecto ya ha pagado caro en
- * otros sitios: quien lea `ACCIONES` sin este comentario asume que algo la
- * usa. `permitidoAccion()`, justo debajo, existe para que el dia que se
- * implemente el soporte de acciones YA HAYA una comprobacion contra la lista
- * blanca -el mismo patron que `permitidoSuscribir`/`permitidoPublicar`/
- * `permitidoLlamar`- en vez de tener que acordarse de añadirla.
+ * ✅ YA SE USA, desde el 2026-08-06. `Transporte.enviarObjetivo()` la comprueba
+ * a traves de `permitidoAccion()`, y el cliente habla el protocolo de acciones
+ * de rosbridge —verificado contra el rosbridge REAL de rvr-01, no solo contra
+ * un doble: `accion_real.test.ts`—.
+ *
+ * 📝 Texto anterior, conservado porque su leccion vale: «esta constante estaba
+ *    exportada y no la usaba ni la comprobaba nadie —`grep ACCIONES` en todo el
+ *    repositorio solo encontraba su propia declaracion—. `permitidoAccion()`
+ *    existe para que el dia que se implemente el soporte de acciones YA HAYA una
+ *    comprobacion contra la lista blanca, en vez de tener que acordarse de
+ *    añadirla.» Ese dia llego, y la comprobacion estaba puesta: no hubo que
+ *    acordarse de nada.
  *
  * ⚠️ Y `comprobar_contrato.mjs` NO compara este glob contra robot.launch.py
  * como hace con LEER/ESCRIBIR/SERVICIOS: en el launch, el glob de acciones va
@@ -83,7 +84,7 @@ const enLista = (lista: readonly string[], x: string) => lista.includes(x)
 export const permitidoSuscribir = (topic: string) => enLista(TOPICS_LECTURA, topic)
 export const permitidoPublicar = (topic: string) => enLista(TOPICS_ESCRITURA, topic)
 export const permitidoLlamar = (servicio: string) => enLista(SERVICIOS, servicio)
-/** Ver el comentario de ACCIONES: nadie la llama todavia, es para cuando exista soporte de acciones. */
+/** La llama `opSendActionGoal()`. 🔴 `opCancelActionGoal()` NO: cancelar es la salida de emergencia. */
 export const permitidoAccion = (accion: string) => enLista(ACCIONES, accion)
 export const tipoDe = (topic: string): string | undefined => TIPOS[topic]
 

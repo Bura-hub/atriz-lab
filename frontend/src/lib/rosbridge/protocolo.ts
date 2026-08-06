@@ -1,4 +1,6 @@
-import { permitidoLlamar, permitidoPublicar, permitidoSuscribir, tipoDe } from './contrato'
+import {
+  permitidoAccion, permitidoLlamar, permitidoPublicar, permitidoSuscribir, tipoDe,
+} from './contrato'
 
 export interface OpSalida {
   op: string
@@ -95,6 +97,62 @@ export function opCallService(service: string, args: unknown, id: string, timeou
   exigir(permitidoLlamar(service), service, 'servicios')
   return { op: 'call_service', service, args, id, timeout: timeoutS }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCIONES — medido contra rvr-01 el 2026-08-06, no leido de una especificacion
+   ═══════════════════════════════════════════════════════════════════════════
+   Este bloque existia como hueco declarado desde la Tarea 5 («hoy no hay soporte
+   de acciones»). Antes de escribirlo se le pregunto al rosbridge REAL:
+
+     -> {"op":"send_action_goal", id:"act1", action:"/navigate_to_pose",
+         action_type:"nav2_msgs/action/NavigateToPose", args:{...}, feedback:true}
+
+     <- {"op":"action_result","action":"/navigate_to_pose",
+         "values":"No action server available","status":0,"result":false,"id":"act1"}
+
+   Tres hechos que salieron de ahi y que el codigo de abajo usa:
+
+   1. rosbridge 2.7.0 **si** entiende `send_action_goal`. No hacia falta suponerlo.
+
+   2. 🔴 CUANDO FALLA, `values` ES UNA **CADENA**, no el objeto de resultado.
+      «No action server available» llego como string suelto. Un cliente que
+      hiciera `values.result.pose` sobre eso reventaria, o peor: leeria
+      `undefined` y lo pintaria como un dato. Es la misma forma que ya tienen
+      los `service_response` con `result:false` en este proyecto.
+
+   3. 🔴🔴 UN `op` QUE ROSBRIDGE NO ENTIENDE **NO PRODUCE NADA**. Se mando
+      `{"op":"esto_no_existe"}` como control y hubo **silencio absoluto en 4 s**:
+      ni `status`, ni error, ni cierre. O sea que «no contesto» NO distingue
+      «denegado por la lista blanca» de «op mal escrito» de «sigue trabajando».
+      Por eso las acciones de aqui llevan **plazo local propio**, igual que
+      `llamar()`: sin el, un `send_action_goal` con una errata deja una promesa
+      colgada para siempre. */
+
+/**
+ * Manda un objetivo de accion.
+ *
+ * ⚠️ `feedback: true` se manda SIEMPRE. Sin el, rosbridge no reenvia el
+ *    `action_feedback` y lo unico que llega es el resultado final — para Nav2
+ *    eso significa quedarse a ciegas durante toda la navegacion, que es
+ *    justamente cuando hace falta saber si el robot avanza.
+ */
+export function opSendActionGoal(
+  accion: string, tipo: string, args: unknown, id: string,
+): OpSalida {
+  exigir(permitidoAccion(accion), accion, 'acciones')
+  return { op: 'send_action_goal', action: accion, action_type: tipo, args, id, feedback: true }
+}
+
+/**
+ * Cancela un objetivo en marcha.
+ *
+ * 🔴 NO valida contra la lista blanca, y es deliberado — misma razon que
+ *    `opUnsubscribe`: **cancelar es la salida de emergencia**. Si por lo que sea
+ *    se colo un objetivo hacia una accion que hoy no esta permitida, lo ultimo
+ *    que debe hacer el cliente es negarse a cancelarlo.
+ */
+export const opCancelActionGoal = (accion: string, id: string): OpSalida =>
+  ({ op: 'cancel_action_goal', action: accion, id })
 
 /** Empareja respuestas con llamadas, y pone el plazo que rosbridge no pone. */
 export class RegistroPendientes {

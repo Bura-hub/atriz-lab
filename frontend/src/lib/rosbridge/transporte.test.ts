@@ -827,3 +827,115 @@ describe('🔴 plazo de conexion — un socket colgado NO da error nunca', () =>
     expect(PLAZO_CONEXION_MS).toBeGreaterThanOrEqual(7300)
   })
 })
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ACCIONES — lo medido contra rvr-01 el 2026-08-06, fijado aqui
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const fabrica = (u: string) => new WSFalso(u) as unknown as WebSocket
+
+/** Un transporte ya conectado y abierto. Las de arriba lo hacen a mano. */
+function transporteConectado(): { t: Transporte; ws: WSFalso } {
+  const t = new Transporte('ws://x:9090', fabrica)
+  t.conectar()
+  const ws = WSFalso.ultimo
+  ws.abrir()
+  return { t, ws }
+}
+
+describe('Transporte — acciones', () => {
+  it('manda `send_action_goal` con el tipo y `feedback: true`', () => {
+    const { t, ws } = transporteConectado()
+    t.enviarObjetivo('/navigate_to_pose', 'nav2_msgs/action/NavigateToPose', { pose: {} })
+    const op = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'send_action_goal')
+    expect(op.action).toBe('/navigate_to_pose')
+    expect(op.action_type).toBe('nav2_msgs/action/NavigateToPose')
+    // Sin `feedback` rosbridge no reenvia el avance, y para Nav2 eso es navegar
+    // a ciegas: solo llegaria el resultado final.
+    expect(op.feedback).toBe(true)
+  })
+
+  it('🔴 una accion FUERA de la lista blanca lanza, y NO deja promesa huerfana', () => {
+    const { t, ws } = transporteConectado()
+    expect(() => t.enviarObjetivo('/inventada', 'x/action/Y', {})).toThrowError(/acciones/i)
+    // Y no se mando nada por el cable.
+    expect(ws.enviados.some((s) => s.includes('send_action_goal'))).toBe(false)
+  })
+
+  it('el avance NO resuelve: puede haber decenas antes del resultado', async () => {
+    const { t, ws } = transporteConectado()
+    const avances: unknown[] = []
+    const { id, resultado } = t.enviarObjetivo(
+      '/navigate_to_pose', 'nav2_msgs/action/NavigateToPose', {},
+      { alAvance: (v) => avances.push(v) },
+    )
+    let cerrado = false
+    void resultado.then(() => { cerrado = true }, () => { cerrado = true })
+
+    for (const d of [3.1, 2.4, 1.0]) {
+      ws.recibir({ op: 'action_feedback', id, values: { distance_remaining: d } })
+    }
+    await Promise.resolve(); await Promise.resolve()
+    expect(avances).toHaveLength(3)
+    // Confundir avance con resultado cerraria la navegacion en el primer parte.
+    expect(cerrado).toBe(false)
+
+    ws.recibir({ op: 'action_result', id, values: { result: {} }, result: true })
+    await expect(resultado).resolves.toEqual({ result: {} })
+  })
+
+  it('🔴🔴 al fallar, `values` llega como CADENA — medido en el robot', async () => {
+    /*
+     * Contra rvr-01, con Nav2 parado:
+     *   {"op":"action_result","values":"No action server available",
+     *    "status":0,"result":false,"id":"act1"}
+     * `values` NO es el objeto de resultado. Resolverlo como exito pondria esa
+     * frase donde la pantalla espera una pose.
+     */
+    const { t, ws } = transporteConectado()
+    const { id, resultado } = t.enviarObjetivo('/navigate_to_pose', 'nav2_msgs/action/NavigateToPose', {})
+    ws.recibir({
+      op: 'action_result', id, action: '/navigate_to_pose',
+      values: 'No action server available', status: 0, result: false,
+    })
+    await expect(resultado).rejects.toThrow(/No action server available/)
+  })
+
+  it('cancelar manda el op y NO cierra la promesa: la cierra el action_result', async () => {
+    const { t, ws } = transporteConectado()
+    const { id, resultado } = t.enviarObjetivo('/navigate_to_pose', 'nav2_msgs/action/NavigateToPose', {})
+    let cerrado = false
+    void resultado.then(() => { cerrado = true }, () => { cerrado = true })
+
+    t.cancelarObjetivo('/navigate_to_pose', id)
+    const op = ws.enviados.map((s) => JSON.parse(s)).find((o) => o.op === 'cancel_action_goal')
+    expect(op.id).toBe(id)
+    await Promise.resolve(); await Promise.resolve()
+    // Cerrarla aqui dejaria sin dueño al `action_result` que rosbridge manda igual.
+    expect(cerrado).toBe(false)
+
+    ws.recibir({ op: 'action_result', id, values: {}, result: true, status: 5 })
+    await expect(resultado).resolves.toEqual({})
+  })
+
+  it('sin enlace RECHAZA en el acto y no lanza', async () => {
+    const t = new Transporte('ws://x:9090', fabrica)   // nunca conectado
+    const { resultado } = t.enviarObjetivo('/navigate_to_pose', 'nav2_msgs/action/NavigateToPose', {})
+    await expect(resultado).rejects.toThrow(/NO se ha enviado/)
+  })
+
+  it('si se cae el enlace, el objetivo se rechaza y su oyente se suelta', async () => {
+    const { t, ws } = transporteConectado()
+    const avances: unknown[] = []
+    const { id, resultado } = t.enviarObjetivo(
+      '/navigate_to_pose', 'nav2_msgs/action/NavigateToPose', {}, { alAvance: (v) => avances.push(v) },
+    )
+    const espera = expect(resultado).rejects.toThrow(/WebSocket/)
+    t.cerrar()
+    await espera
+    // Un avance de una reconexion no puede llegarle a un objetivo que ya nadie
+    // espera: el oyente se solto al cerrar.
+    ws.recibir({ op: 'action_feedback', id, values: { tarde: true } })
+    expect(avances).toHaveLength(0)
+  })
+})

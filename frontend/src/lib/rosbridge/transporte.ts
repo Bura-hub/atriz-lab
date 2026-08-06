@@ -1,5 +1,6 @@
 import {
-  RegistroPendientes, opAdvertise, opCallService, opPublish, opSubscribe, opUnsubscribe,
+  RegistroPendientes, opAdvertise, opCallService, opCancelActionGoal, opPublish,
+  opSendActionGoal, opSubscribe, opUnsubscribe,
 } from './protocolo'
 
 /**
@@ -33,6 +34,24 @@ export function esperaReconexion(intento: number, aleatorio: () => number = Math
  * que es el unico caso en que es cierto.
  */
 export const MARGEN_PLAZO_LOCAL_MS = 2000
+
+/**
+ * Plazo por defecto de un objetivo de accion. **Cinco minutos, y es largo a
+ * proposito.**
+ *
+ * Una navegacion de verdad tarda: a 0,20 m/s, cruzar un aula de 6 m rodeando un
+ * obstaculo son decenas de segundos, y Nav2 reintenta. Un plazo corto no
+ * protegeria de nada —cancelaria la ESPERA, no el objetivo, asi que el robot
+ * seguiria navegando mientras la pantalla se da por vencida—: exactamente el
+ * estado engañoso que este proyecto evita.
+ *
+ * 🔴 Pero el plazo tiene que EXISTIR, porque el `op` de accion **no lleva campo
+ *    `timeout`** —al contrario que `call_service`— y porque un `op` que
+ *    rosbridge no entiende no produce ni un byte (medido: silencio absoluto en
+ *    4 s con un `op` inventado). Sin plazo, una errata en el nombre de la
+ *    accion deja la promesa colgada para siempre.
+ */
+export const PLAZO_ACCION_MS = 5 * 60 * 1000
 
 type Manejador = (msg: unknown) => void
 type FabricaWS = (url: string) => WebSocket
@@ -89,6 +108,8 @@ export class Transporte {
   private pendientes = new RegistroPendientes()
   private oyentesCierre = new Set<() => void>()
   private oyentesAviso = new Set<(a: Aviso) => void>()
+  /** Un oyente de avance por objetivo vivo. Se borra al llegar su resultado. */
+  private oyentesAvance = new Map<string, (v: unknown) => void>()
   private contador = 0
   private intentos = 0
   private reconexionProgramada: ReturnType<typeof setTimeout> | null = null
@@ -357,6 +378,10 @@ export class Transporte {
     if (this.ws !== null) {
       this.ws.close()
       this.pendientes.cancelarTodas('se cerro el WebSocket')
+      // Sus promesas ya se rechazaron arriba; dejar los oyentes vivos seria una
+      // fuga y, peor, un avance de una reconexion podria llegarle a un objetivo
+      // que ya nadie espera.
+      this.oyentesAvance.clear()
       for (const cb of this.oyentesCierre) cb()
       this.ws = null
     }
@@ -391,6 +416,84 @@ export class Transporte {
       this.pendientes.resolver(m.id, m.values)
       return
     }
+
+    /*
+     * ── ACCIONES ────────────────────────────────────────────────────────────
+     * El avance NO resuelve nada: solo avisa. Una accion puede mandar decenas
+     * de `action_feedback` antes del unico `action_result`, y confundirlos
+     * cerraria la navegacion en el primer parte de progreso.
+     */
+    if (m.op === 'action_feedback' && m.id) {
+      this.oyentesAvance.get(m.id)?.(m.values)
+      return
+    }
+    if (m.op === 'action_result' && m.id) {
+      this.oyentesAvance.delete(m.id)
+      // 🔴 MISMA FORMA QUE `service_response`, y medida contra el robot: al
+      //    fallar, `values` llega como CADENA («No action server available»),
+      //    no como el objeto de resultado. Resolverlo como exito pondria esa
+      //    frase donde la pantalla espera una pose.
+      if (m.result === false) {
+        this.pendientes.rechazar(m.id, `la accion fallo: ${String(m.values)}`)
+        return
+      }
+      this.pendientes.resolver(m.id, m.values)
+      return
+    }
+  }
+
+  /**
+   * Manda un objetivo de accion y espera su RESULTADO. Los avances llegan por
+   * `alAvance`, que se registra antes de enviar.
+   *
+   * 🔴 LLEVA PLAZO LOCAL, Y NO ES SIMETRICO CON `llamar()`. En un servicio el
+   *    plazo lo negocia rosbridge; aqui **no hay campo `timeout`** en el `op`,
+   *    asi que si el objetivo nunca termina la promesa se queda colgada. Y
+   *    medido: un `op` que rosbridge no entiende **no produce ni un byte de
+   *    respuesta** —silencio absoluto en 4 s—, o sea que una errata en el nombre
+   *    de la accion es indistinguible de «sigue navegando».
+   *
+   * ⚠️ El plazo por defecto es LARGO a proposito (5 min): una navegacion de
+   *    verdad tarda, y un plazo corto cancelaria la espera de un robot que va
+   *    bien. Quien llame puede acortarlo.
+   */
+  enviarObjetivo(
+    accion: string,
+    tipo: string,
+    args: unknown,
+    opciones: { ms?: number; alAvance?: (v: unknown) => void } = {},
+  ): { id: string; resultado: Promise<unknown> } {
+    const ms = opciones.ms ?? PLAZO_ACCION_MS
+    if (!this.conectado) {
+      return {
+        id: '',
+        resultado: Promise.reject(
+          new Error(`sin conexion con el robot: el objetivo de «${accion}» NO se ha enviado`),
+        ),
+      }
+    }
+    const id = `atriz-act-${++this.contador}`
+    // Mismo orden que en `llamar()`, y por el mismo fallo ya pagado: la op se
+    // construye ANTES de registrar la pendiente, porque `opSendActionGoal`
+    // lanza si la accion no esta en la lista blanca — y una promesa registrada
+    // antes del throw queda huerfana y se autorrechaza sola minutos despues.
+    const op = opSendActionGoal(accion, tipo, args, id)
+    if (opciones.alAvance) this.oyentesAvance.set(id, opciones.alAvance)
+    const resultado = this.pendientes.registrar(id, ms)
+    this.enviar(op)
+    return { id, resultado }
+  }
+
+  /**
+   * Cancela un objetivo en marcha.
+   *
+   * ⚠️ NO resuelve ni rechaza la promesa: rosbridge contesta igualmente con un
+   *    `action_result` —con `status` de cancelado—, y es ese el que cierra la
+   *    espera. Cerrarla aqui dejaria la respuesta real sin dueño.
+   */
+  cancelarObjetivo(accion: string, id: string): void {
+    if (!this.conectado) return
+    this.enviar(opCancelActionGoal(accion, id))
   }
 
   suscribir(topic: string, cb: Manejador): () => void {
