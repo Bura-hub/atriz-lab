@@ -9,7 +9,7 @@
  * el círculo por algún sitio. La salida habitual —permitir crear la PRIMERA sin
  * sesión— abre una ventana en la que **quien llegue primero se queda la
  * aplicación**, y esto vive en la red de un aula con dieciséis personas y sus
- * portátiles. Bastaría con que el servidor arrancara antes de que el profesor
+ * portátiles. Bastaría con que el servidor arrancara antes de que el administrador
  * abriera el navegador.
  *
  * Un guion que se ejecuta en la propia máquina no tiene esa ventana: para

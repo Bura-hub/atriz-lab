@@ -1,5 +1,5 @@
 /**
- * Una baldosa del muro del profesor. **Solo dibuja.**
+ * Una baldosa del muro del administrador. **Solo dibuja.**
  *
  * 🔴 LA DECISION DE QUE DECIR NO ES DE ESTE COMPONENTE: es de `resumirBaldosa()`
  * en `lib/flota/resumen.ts`, que es puro y tiene 28 pruebas detras -incluida una
@@ -52,7 +52,7 @@ const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
  *   BLOQUE  →  color a plena saturación. **Este robot pide algo.**
  *
  * El color saturado se lo gana el ESTADO, no la decoración. Con trece fichas de
- * vidrio y tres bloques, el ojo del profesor va solo. Si todas fueran de color
+ * vidrio y tres bloques, el ojo del administrador va solo. Si todas fueran de color
  * la pantalla gritaría entera y no diría nada; si todas fueran de vidrio, el que
  * importa se perdería entre los quince que no.
  *

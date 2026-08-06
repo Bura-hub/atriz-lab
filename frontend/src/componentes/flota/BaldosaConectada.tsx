@@ -2,7 +2,7 @@
 
 /**
  * Una baldosa CON su conexion. Un `ProveedorRobot` por baldosa, y eso son
- * **16 WebSockets** en el muro del profesor.
+ * **16 WebSockets** en el muro del administrador.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴🔴 ESTA BALDOSA SOLO PAGA DOS TOPICS, Y ES LA DECISION QUE SOSTIENE EL MURO
@@ -15,7 +15,7 @@
  * `subscribe.py:225` hace `self.throttle_rate = min(...)` sobre TODOS los
  * clientes suscritos a ese topic, y rosbridge mantiene UNA sola suscripcion ROS
  * por topic, compartida. **Gana el cliente mas rapido, y su ritmo se impone a
- * todos los demas.** Un profesor que pida 1 Hz recibira a 16,5 en cuanto un
+ * todos los demas.** Un administrador que pida 1 Hz recibira a 16,5 en cuanto un
  * alumno abra una pestaña sobre ese robot sin limite -y sin ningun aviso, porque
  * rosbridge no manda `status` por el socket. Lo unico que sostiene un presupuesto
  * es NO SUSCRIBIRSE.

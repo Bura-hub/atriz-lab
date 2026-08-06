@@ -12,7 +12,7 @@ Raspberry Pi y LIDAR, gobernados por WebSocket a través de rosbridge.
 
 **No es un panel de administración ni un producto de consumo: es un instrumento de
 laboratorio.** Los alumnos están **en la misma sala que el robot**, midiendo con cinta métrica
-y transportador. El profesor mira los 16 desde el otro lado del aula, a veces proyectado.
+y transportador. El administrador mira los 16 desde el otro lado del aula, a veces proyectado.
 
 El contexto de ingeniería —todo lo medido sobre estos robots— vive en el repositorio hermano
 `atriz_migracion`. Su `CLAUDE.md` gobierna lo que la interfaz **puede afirmar**, y este fichero
@@ -175,7 +175,7 @@ renderiza un componente**, y `vitest.config.ts` documenta que `jsdom` no se inst
   presencia**, o es una comprobación muerta que cuenta como aprobada.
 → Lo que sigue sin cubrirse: colores, espaciado y si algo se lee a tres metros. **Eso exige una
   persona mirando.**
-→ Y para el muro del profesor, el criterio de aceptación es **una persona a tres metros**.
+→ Y para el muro del administrador, el criterio de aceptación es **una persona a tres metros**.
 
 ### El texto pintado sí se comprueba ya — `lib/interfaz/repeticion.ts`
 

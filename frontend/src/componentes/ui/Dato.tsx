@@ -55,7 +55,7 @@ export interface PropsDato {
   referencia?: string
   /** Una nota corta. Para lo que el numero no dice por si mismo. */
   nota?: ReactNode
-  /** Numeros grandes para mirar de lejos (el muro del profesor). */
+  /** Numeros grandes para mirar de lejos (el muro del administrador). */
   grande?: boolean
 }
 

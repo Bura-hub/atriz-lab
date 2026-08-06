@@ -1,5 +1,5 @@
 /**
- * El modelo de UNA baldosa del muro del profesor: 16 robots a la vez, de un
+ * El modelo de UNA baldosa del muro del administrador: 16 robots a la vez, de un
  * vistazo. Funcion PURA -sin React y sin red-: aqui se decide QUE dice cada
  * baldosa, y la interfaz solo lo pinta.
  *
@@ -168,7 +168,7 @@ export interface Baldosa {
   /** 🔴 `null` = no se sabe. Se propaga tal cual: no se colapsa a `false`. */
   atascado: boolean | null
   /**
-   * 🔴 `true` = el robot NO aceptara ordenes de movimiento. El profesor tiene
+   * 🔴 `true` = el robot NO aceptara ordenes de movimiento. El administrador tiene
    * que verlo: un alumno con la parada puesta dice «no funciona», y desde fuera
    * es indistinguible de una averia. `null` = no se sabe.
    */
@@ -256,7 +256,7 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
     // 🔴 `atascado: null` no genera frase: que no se sepa no es que no lo haya,
     //    y tampoco es un atasco. Solo `true` afirma algo.
     // 🔴 La parada va PRIMERA de los motivos: explica por si sola que el robot
-    //    no obedezca, y sin ella el profesor busca una averia que no existe.
+    //    no obedezca, y sin ella el administrador busca una averia que no existe.
     if (paradaEmergencia === true) {
       anota(
         'parada puesta',

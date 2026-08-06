@@ -61,7 +61,7 @@ export const TIPOS: Readonly<Record<string, string>> = {
   // 🔴 Y `antiguedad_odom_s`, que cubre un tercer estado que no veia nadie:
   //    llegan 4 de los 5 componentes de /odom -> el latido avanza y
   //    `rvr_responde` dice true con /odom a 0 Hz. Sin ese campo, el muro del
-  //    profesor pinta VERDE un robot con la odometria muerta.
+  //    administrador pinta VERDE un robot con la odometria muerta.
   '/estado_robot': 'atriz_rvr_msgs/msg/EstadoRobot',
   '/map': 'nav_msgs/msg/OccupancyGrid',
   '/tf': 'tf2_msgs/msg/TFMessage',

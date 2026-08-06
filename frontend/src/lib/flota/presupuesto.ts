@@ -1,5 +1,5 @@
 /**
- * El presupuesto de ancho de banda del muro del profesor: lo que impide que
+ * El presupuesto de ancho de banda del muro del administrador: lo que impide que
  * dieciseis baldosas tumben el WiFi del aula.
  *
  * Los caudales son MEDIDOS (evidencia 68, robot real, con el barrido apagado),
@@ -20,7 +20,7 @@
  * Es un MINIMO sobre TODOS los clientes suscritos a ese topic en ese robot, y
  * rosbridge mantiene UNA sola suscripcion ROS por topic, compartida. O sea:
  * **gana el cliente mas rapido, y su ritmo se le impone a todos los demas**. Un
- * profesor que pida 1 Hz sobre `/scan` recibira a 16,5 en cuanto un alumno abra
+ * administrador que pida 1 Hz sobre `/scan` recibira a 16,5 en cuanto un alumno abra
  * una pestaña suscrita a ese mismo robot sin limite -sin ningun aviso, porque
  * rosbridge no manda `status` por el socket.
  *
@@ -54,7 +54,7 @@ export const CAUDAL_KBS: Readonly<Record<string, number>> = {
 }
 
 /**
- * Los dos unicos topics del muro del profesor: **0,48 kB/s por robot**, 7,7 kB/s
+ * Los dos unicos topics del muro del administrador: **0,48 kB/s por robot**, 7,7 kB/s
  * con los 16. Con `/odom` dentro se pasaria de 200 kB/s, que sobre una sola AP
  * compartida con los portatiles del aula es otra conversacion.
  *

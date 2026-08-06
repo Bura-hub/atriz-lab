@@ -12,15 +12,15 @@ function testigoDe(usuario: string, ahora = AHORA, secreto = SECRETO): string {
 
 describe('el testigo de sesión', () => {
   it('un testigo recién firmado se abre y devuelve su usuario', () => {
-    const t = testigoDe('profesora')
+    const t = testigoDe('administradora')
     const r = abrir(t, SECRETO, AHORA)
     expect(r.valido).toBe(true)
-    expect(r.valido && r.carga.usuario).toBe('profesora')
+    expect(r.valido && r.carga.usuario).toBe('administradora')
   })
 
   it('🔴 con OTRO secreto no se abre', () => {
     // El caso base: quien no tiene el secreto no puede fabricar un testigo.
-    const t = testigoDe('profesora')
+    const t = testigoDe('administradora')
     expect(abrir(t, 'otro-secreto', AHORA)).toEqual({ valido: false, motivo: 'FIRMA_NO_CUADRA' })
   })
 
@@ -36,7 +36,7 @@ describe('el testigo de sesión', () => {
     const t = testigoDe('monitor')
     const [cuerpo, firma] = t.split('.')
     const otroCuerpo = Buffer.from(
-      JSON.stringify({ usuario: 'profesora', exp: AHORA + DURACION_SESION_MS }),
+      JSON.stringify({ usuario: 'administradora', exp: AHORA + DURACION_SESION_MS }),
       'utf8',
     ).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
@@ -48,10 +48,10 @@ describe('el testigo de sesión', () => {
   it('🔴 y con la CADUCIDAD manipulada tampoco', () => {
     // El mismo argumento con el otro campo: `exp` va firmado, así que no se
     // puede estirar una sesión editando la cookie.
-    const t = firmar({ usuario: 'profesora', exp: AHORA - 1 }, SECRETO)
+    const t = firmar({ usuario: 'administradora', exp: AHORA - 1 }, SECRETO)
     const [, firma] = t.split('.')
     const cuerpoEstirado = Buffer.from(
-      JSON.stringify({ usuario: 'profesora', exp: AHORA + 999_999 }), 'utf8',
+      JSON.stringify({ usuario: 'administradora', exp: AHORA + 999_999 }), 'utf8',
     ).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 
     expect(abrir(`${cuerpoEstirado}.${firma}`, SECRETO, AHORA))
@@ -59,7 +59,7 @@ describe('el testigo de sesión', () => {
   })
 
   it('caducado no se abre, aunque la firma sea buena', () => {
-    const t = firmar({ usuario: 'profesora', exp: AHORA }, SECRETO)
+    const t = firmar({ usuario: 'administradora', exp: AHORA }, SECRETO)
     // `exp <= ahora`: justo en el instante de caducar ya no vale.
     expect(abrir(t, SECRETO, AHORA)).toEqual({ valido: false, motivo: 'CADUCADO' })
     expect(abrir(t, SECRETO, AHORA - 1).valido).toBe(true)
@@ -72,7 +72,7 @@ describe('el testigo de sesión', () => {
      * que corta una cabecera larga— tumbaría la petición con un 500 en vez de
      * mandar a la pantalla de entrar.
      */
-    const t = testigoDe('profesora')
+    const t = testigoDe('administradora')
     expect(() => abrir(`${t.split('.')[0]}.abc`, SECRETO, AHORA)).not.toThrow()
     expect(abrir(`${t.split('.')[0]}.abc`, SECRETO, AHORA).valido).toBe(false)
   })
@@ -102,7 +102,7 @@ describe('el testigo de sesión', () => {
   it('el testigo no lleva la contraseña ni nada que no sea usuario y caducidad', () => {
     // Una cookie se puede leer con las herramientas del navegador. Lo que no
     // esté aquí dentro no se puede filtrar por aquí.
-    const t = testigoDe('profesora')
+    const t = testigoDe('administradora')
     const cuerpo = JSON.parse(
       Buffer.from(t.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8'),
     ) as Record<string, unknown>

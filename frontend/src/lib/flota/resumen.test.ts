@@ -285,7 +285,7 @@ describe('resumirBaldosa — el tercer estado: /odom muerto con el enlace vivo',
 describe('resumirBaldosa — la parada de emergencia en el muro', () => {
   const parado = resumirBaldosa(sana({ estadoRobot: estadoSano({ paradaEmergencia: true }) }))
 
-  it('se propaga, para que el profesor no busque una averia que no existe', () => {
+  it('se propaga, para que el administrador no busque una averia que no existe', () => {
     expect(parado.paradaEmergencia).toBe(true)
     expect(parado.motivos.some((m) => m.includes('parada de emergencia esta puesta'))).toBe(true)
   })

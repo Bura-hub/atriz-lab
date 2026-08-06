@@ -41,7 +41,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * No es una prueba visual. No mira colores, ni espaciado, ni si algo se lee a
  * tres metros. **Eso sigue exigiendo una persona mirando**, y el muro del
- * profesor tiene ese criterio escrito en `CLAUDE.md`. Lo que esto cubre es lo
+ * administrador tiene ese criterio escrito en `CLAUDE.md`. Lo que esto cubre es lo
  * comprobable por maquina: texto que se repite, huecos afirmados como datos, y
  * frases que este proyecto tiene prohibidas por haber costado algo.
  */

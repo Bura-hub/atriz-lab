@@ -68,7 +68,7 @@ export function segundos(s: number | null | undefined): string {
 
 /**
  * Milisegundos como texto legible. Por encima del segundo pasa a segundos: un
- * «43128 ms» no se lee de un vistazo, y el muro del profesor se mira de lejos.
+ * «43128 ms» no se lee de un vistazo, y el muro del administrador se mira de lejos.
  */
 export function milisegundos(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || !Number.isFinite(ms)) return SIN_DATO

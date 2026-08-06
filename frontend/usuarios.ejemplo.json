@@ -7,7 +7,7 @@
     "se puede escribir a ojo. La primera cuenta se crea así, desde la máquina que",
     "sirve la aplicación:",
     "",
-    "    node herramientas/crear-cuenta.mjs profesora una-contrasena-larga",
+    "    node herramientas/crear-cuenta.mjs administradora una-contrasena-larga",
     "",
     "Las siguientes se crean desde la pantalla /usuarios, ya con sesión.",
     "",

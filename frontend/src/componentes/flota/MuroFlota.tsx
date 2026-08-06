@@ -155,7 +155,7 @@ export function MuroFlota() {
               dicen: el raíl pone «Flota» y el titular «Flota Atriz». Corto, que
               es la regla de `.microetiqueta`.
             */}
-            <p className="microetiqueta !text-white/75">El muro del profesor</p>
+            <p className="microetiqueta !text-white/75">El muro del administrador</p>
             {/*
               A DOS LINEAS, como lo compuso Stitch. No es capricho: proyectado, un
               titular de una sola linea se come el ancho que necesitan las cifras
@@ -324,7 +324,7 @@ export function MuroFlota() {
              robot volviera. Una animación CSS corre **al montar y nunca más**,
              que es exactamente la garantía que hace falta.
 
-          📌 `4x4` es la forma que pide el encargo: el profesor mira los
+          📌 `4x4` es la forma que pide el encargo: el administrador mira los
              dieciséis a la vez, a veces proyectados. Las columnas de móvil se
              conservan porque un teléfono no puede con cuatro.
         */}
@@ -362,7 +362,7 @@ export function MuroFlota() {
           ⚠️ Las tres muestras van juntas en «bloque de color» a propósito, y no
              una por tono: la regla del muro es **bloque = pide algo**, y cuál de
              los tres tonos sea lo dice la PALABRA de cada baldosa, no la
-             leyenda. Repartirlas aquí sugeriría que el profesor tiene que
+             leyenda. Repartirlas aquí sugeriría que el administrador tiene que
              distinguir lima de coral para entender el muro — que es exactamente
              lo que este proyecto evita, porque una de cada doce personas no
              puede y esto se proyecta.
