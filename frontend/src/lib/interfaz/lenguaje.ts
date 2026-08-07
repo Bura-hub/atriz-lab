@@ -129,7 +129,10 @@ export const LO_QUE_NO_SE_PUEDE_DECIR: readonly { que: string; porque: string }[
    *   los tres ahora que se puede liberar la parada desde la web.
    */
   {
-    que: 'si el nodo `cancelar_nav2` está vivo en el robot',
+    // 🔴 SIN BACKTICKS: esto se pinta como texto plano —y en `/diagnostico` va
+    //    además en versalitas—, así que salía «SI EL NODO `CANCELAR_NAV2` ESTÁ
+    //    VIVO». Lo destapó la guardia de markdown de `pantallas_reales`.
+    que: 'si el nodo cancelar_nav2 está vivo en el robot',
     porque:
       'no publica ningún topic ni expone ningún servicio que lo diga. Importa al liberar la ' +
       'parada: sin ese nodo y con un objetivo de Nav2 en marcha, el robot reanuda la navegación ' +

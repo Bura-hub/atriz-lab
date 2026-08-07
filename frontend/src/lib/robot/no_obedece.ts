@@ -1,3 +1,13 @@
+/*
+ * 🔴 AQUI NO SE ESCRIBE MARKDOWN. Estas cadenas se pintan como TEXTO PLANO, no
+ *    como JSX ni como markdown: un backtick sale como backtick y un `**` sale
+ *    como dos asteriscos. Llevaban asi desde que se escribio la pantalla, en la
+ *    que mas importa —la que lee un alumno cuyo robot no obedece—, y no lo vio
+ *    ninguna de las 538 pruebas: ninguna miraba lo que se VE.
+ *    Lo destapo la guardia de `pantallas_reales.test.ts`, el 2026-08-07.
+ *    → Para enfatizar, MAYUSCULAS. Para citar un comando, «comillas».
+ */
+
 /**
  * POR QUÉ NO OBEDECE. PURO: sin React y sin red.
  *
@@ -102,7 +112,7 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
       id: 'parada',
       titulo: 'La parada de emergencia',
       estado: 'NO_SE_SABE',
-      evidencia: '`/estado_robot` no ha traído nada, así que la bandera del driver no se conoce.',
+      evidencia: 'El topic /estado_robot no ha traído nada, así que la bandera del driver no se conoce.',
       remedio: '',
     }
     : e.paradaEmergencia
@@ -152,10 +162,10 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
       titulo: 'El barrido del LIDAR está parado',
       estado: 'CONFIRMADA',
       evidencia:
-        'No llega `/scan`. Sin él la capa de seguridad **bloquea el movimiento por '
-        + 'completo**: medido, 0,0 cm contra 9,9 del control. Y el barrido arranca '
+        'No llega /scan. Sin él la capa de seguridad BLOQUEA EL MOVIMIENTO POR '
+        + 'COMPLETO: medido, 0,0 cm contra 9,9 del control. Y el barrido arranca '
         + 'apagado a propósito en los 16 robots.',
-      remedio: 'Enciéndelo en la pestaña Conducir, o con `atriz-escaneo on` en el robot.',
+      remedio: 'Enciéndelo en la pestaña Conducir, o con «atriz-escaneo on» en el robot.',
     })
 
   // ── 3 · El RVR contesta ────────────────────────────────────────────────────
@@ -164,7 +174,7 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
       id: 'rvr',
       titulo: 'Si el RVR contesta',
       estado: 'NO_SE_SABE',
-      evidencia: '`/estado_robot` no ha traído nada.',
+      evidencia: 'El topic /estado_robot no ha traído nada.',
       remedio: '',
     })
   } else if (!e.rvrResponde) {
@@ -202,7 +212,7 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
       titulo: 'La odometría',
       estado: 'NO_SE_SABE',
       evidencia: a === null
-        ? '`/estado_robot` no ha traído nada.'
+        ? 'El topic /estado_robot no ha traído nada.'
         : 'La antigüedad vale `-1`, que significa *nunca se ha sabido nada de eso*.',
       remedio: '',
     }

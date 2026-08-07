@@ -91,6 +91,10 @@ describe('lista blanca', () => {
     // `color_activo` de /estado_robot.
     expect(confirmaEfecto('/enable_color')).toBe('SOLO_QUE_NO_LANZO')
     expect(confirmaEfecto('/get_rgbc_sensor_values')).toBe('SOLO_QUE_NO_LANZO')
+    // Añadidos el 2026-08-07. `SetBool`: su `success` dice que el supervisor
+    // acepto la peticion, no que SLAM o Nav2 esten FUNCIONANDO.
+    expect(confirmaEfecto('/pedir_slam')).toBe('SOLO_QUE_NO_LANZO')
+    expect(confirmaEfecto('/pedir_nav')).toBe('SOLO_QUE_NO_LANZO')
   })
 
   /*
@@ -101,12 +105,12 @@ describe('lista blanca', () => {
    *    si mismo: obliga a que alguien MIRE las de arriba al añadir un servicio.
    */
   it('🔴 si esto falla, actualiza tambien las DOS enumeraciones de arriba', () => {
-    expect(SERVICIOS).toHaveLength(10)
+    expect(SERVICIOS).toHaveLength(12)
   })
 
   // Los DIEZ de SERVICIOS estan cubiertos entre las dos pruebas de arriba:
   // ninguno se queda sin comprobar, y las dos listas fuente no se solapan.
-  it('las dos listas cubren los diez servicios sin solapar', () => {
+  it('las dos listas cubren los doce servicios sin solapar', () => {
     const cubiertos = [...SERVICIOS_SIN_CONFIRMACION, ...SERVICIOS_SOLO_NO_LANZO]
     expect(cubiertos.sort()).toEqual([...SERVICIOS].sort())
     expect(SERVICIOS_SIN_CONFIRMACION.some((s) => (SERVICIOS_SOLO_NO_LANZO as readonly string[]).includes(s)))

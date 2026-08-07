@@ -10,6 +10,13 @@ export const TOPICS_LECTURA = [
   '/odom', '/imu', '/scan', '/battery_state', '/motor_status', '/encoders',
   '/color', '/estado_robot', '/map', '/tf', '/tf_static', '/collision_monitor_state',
   '/amcl_pose',
+  /*
+   * 🔴 `/estado_navegacion` es el TOPIC PARA SABER, y su pareja son los servicios
+   *    `/pedir_slam` y `/pedir_nav` de abajo. El reparto es deliberado: se PIDE
+   *    por servicio y se SABE por topic, porque un servicio contesta una vez y
+   *    arrancar Nav2 tarda decenas de segundos.
+   */
+  '/estado_navegacion',
 ] as const
 
 /** 🔴 /cmd_vel NO esta y no debe estar: es la SALIDA del collision_monitor. */
@@ -35,6 +42,14 @@ export const SERVICIOS = [
   '/start_scan', '/stop_scan', '/release_emergency_stop', '/set_pos_and_yaw',
   '/set_led_rgb', '/set_multiple_leds', '/set_leds', '/trigger_led_event',
   '/enable_color', '/get_rgbc_sensor_values',
+  /*
+   * 🔴 SE PIDE, NO SE ORDENA — y el nombre lo dice a proposito. Estos dos no
+   *    arrancan nada por si mismos: le dicen al supervisor del robot lo que se
+   *    QUIERE, y el decide. Su `success` NO confirma que SLAM o Nav2 esten
+   *    funcionando; eso lo dice `/estado_navegacion`, igual que `color_activo`
+   *    confirma `enable_color`.
+   */
+  '/pedir_slam', '/pedir_nav',
 ] as const
 
 /**
@@ -91,6 +106,7 @@ export const TIPOS: Readonly<Record<string, string>> = {
   //    absoluto es el correcto.
   '/collision_monitor_state': 'nav2_msgs/msg/CollisionMonitorState',
   '/amcl_pose': 'geometry_msgs/msg/PoseWithCovarianceStamped',
+  '/estado_navegacion': 'atriz_rvr_msgs/msg/EstadoNavegacion',
   '/cmd_vel_raw': 'geometry_msgs/msg/Twist',
   '/emergency_stop': 'std_msgs/msg/Empty',
   '/initialpose': 'geometry_msgs/msg/PoseWithCovarianceStamped',
@@ -176,6 +192,14 @@ export const SERVICIOS_SIN_CONFIRMACION = [
 export const SERVICIOS_SOLO_NO_LANZO = [
   '/set_pos_and_yaw', '/set_led_rgb', '/set_multiple_leds', '/trigger_led_event',
   '/enable_color', '/get_rgbc_sensor_values',
+  /*
+   * 🔴 SE PIDE, NO SE ORDENA — y el nombre lo dice a proposito. Estos dos no
+   *    arrancan nada por si mismos: le dicen al supervisor del robot lo que se
+   *    QUIERE, y el decide. Su `success` NO confirma que SLAM o Nav2 esten
+   *    funcionando; eso lo dice `/estado_navegacion`, igual que `color_activo`
+   *    confirma `enable_color`.
+   */
+  '/pedir_slam', '/pedir_nav',
 ] as const
 
 export function confirmaEfecto(servicio: string): ConfirmacionServicio {

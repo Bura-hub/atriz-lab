@@ -58,6 +58,7 @@ import {
   cuaternionDeYaw, fronteraAbierta, mundoAPixel, pixelAMundo, pixelesDeMapa, recuentoDeCeldas,
 } from '@/lib/robot/mapa'
 import { Aviso } from '@/componentes/ui/Aviso'
+import { ControlNavegacion } from '@/componentes/robot/ControlNavegacion'
 import { Contexto } from '@/componentes/ui/Contexto'
 import { Dato } from '@/componentes/ui/Dato'
 import { Grupo } from '@/componentes/ui/Grupo'
@@ -191,6 +192,16 @@ export function PanelNavegar() {
 
   return (
     <div className="space-y-8" style={tono}>
+      {/*
+        🔴 PRIMERO EL CONTROL, DESPUES EL DIBUJO. Quien entra aquí sin Nav2
+           corriendo ve un canvas vacío, y un canvas vacío se lee como «la
+           interfaz está rota». Poner el arranque arriba convierte la pantalla en
+           lo que es: primero se enciende, luego se mira.
+      */}
+      <Grupo titulo="Arrancar" fuente="/estado_navegacion · lo publica el supervisor del robot, a 1 Hz">
+        <ControlNavegacion />
+      </Grupo>
+
       <Grupo titulo="El mapa" fuente="/map y /amcl_pose · los dos vienen de Nav2, que hoy no arranca solo">
         {!hayMapa && !hayPose ? (
           <Tarjeta titulo="Nav2 no está corriendo" subtitulo="Y no es una avería: está así a propósito.">
@@ -198,7 +209,7 @@ export function PanelNavegar() {
               No llega ni <code>/map</code> ni <code>/amcl_pose</code>. El servicio de navegación
               está <strong>instalado y sin habilitar</strong> en los robots: Nav2 cuesta ~58 % de un
               núcleo y la Pi se alimenta de la batería del RVR, cuya autonomía (~2 h) ya no cubre
-              una clase. Se arranca en el robot con <code>systemctl start atriz-nav</code>.
+              una clase. Se arranca <strong>desde el panel de arriba</strong>, sin entrar al robot.
             </Aviso>
             <div className="mt-3">
               <Aviso nivel="ATENCION" titulo="Y aunque se arranque, falta el mapa del aula">
@@ -381,10 +392,34 @@ export function PanelNavegar() {
               de rumbo, y se ha medido que el robot llega girado <strong>10-14°</strong> respecto a
               lo pedido. Si el rumbo final importa para lo que estés midiendo, corrígelo a mano.
             </p>
+            {/*
+              🔴 ESTE PÁRRAFO DECÍA «el error medido al llegar es de 8-10 cm, que
+                 es la tolerancia configurada», y el robot lo desmintió el
+                 2026-08-07. Era una cifra de un día bueno presentada como si
+                 fuera una propiedad de Nav2.
+
+                 Medido navegando al mismo objetivo con dos mapas del MISMO
+                 cuarto, sin tocar un solo parámetro de AMCL:
+
+                   mapa viejo   error de AMCL 45,0 cm · distancia real 41,3 cm
+                   remapeado    error de AMCL  8,9 cm · distancia real  6,1 cm
+
+                 Nav2 dijo SUCCEEDED **las dos veces**, con la tolerancia en
+                 10 cm. O sea que en la primera declaró éxito a 41,3 cm: no es
+                 que el error sea de 8-10 cm, es que el error DEPENDE DEL MAPA y
+                 Nav2 no lo sabe —cree estar donde AMCL le dice—.
+
+                 Es exactamente lo que este párrafo ya advertía por otro motivo,
+                 así que el aviso se queda y gana el número que lo demuestra.
+            */}
             <p>
-              Y que la acción termine <strong>no dice dónde terminó</strong>. El error de posición
-              medido al llegar es de 8-10 cm, que es la tolerancia configurada. Para saber si el
-              robot está donde querías, míralo.
+              Y que la acción termine <strong>no dice dónde terminó</strong>. Con un mapa viejo del
+              mismo cuarto, Nav2 dio un objetivo por <strong>cumplido a 41 cm</strong> de donde se
+              le pidió, teniendo la tolerancia en 10 — y con el cuarto remapeado, sin cambiar nada
+              más, el mismo objetivo acabó a 6 cm. El error no es una propiedad de Nav2:{' '}
+              <strong>depende de lo viejo que sea el mapa</strong>, y Nav2 no puede saberlo porque
+              se cree lo que le dice su localización. Para saber si el robot está donde querías,
+              míralo.
             </p>
             </Contexto>
           </Tarjeta>

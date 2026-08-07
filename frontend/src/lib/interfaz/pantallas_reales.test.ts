@@ -278,6 +278,36 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
     expect(halladas, JSON.stringify(halladas)).toEqual([])
   })
 
+  it.each(RUTAS.map(([n]) => n))('%s: ninguna marca de markdown SIN RENDERIZAR', (nombre) => {
+    /*
+     * 🔴 ESTO PASO EL 2026-08-07, Y SOLO SE VE MIRANDO LA PANTALLA.
+     *
+     * `ControlNavegacion` escribia el remedio del estado bloqueado asi:
+     *
+     *     'hace falta `systemctl reset-failed` desde el robot'
+     *
+     * Ese texto se pinta como TEXTO PLANO —no es markdown, no es JSX—, asi que
+     * los backticks salieron como caracteres en la captura. `tsc`, `eslint` y
+     * las 538 pruebas estaban las tres en verde: ninguna mira lo que se ve.
+     *
+     * Es la misma familia que el `--estado-bien` inventado del mismo dia: el
+     * codigo es valido y la pantalla esta mal. Por eso la guardia va AQUI, en
+     * la prueba que abre el navegador de verdad, y no en un `grep` del fuente
+     * —donde un backtick es sintaxis legitima de plantilla y no se distingue—.
+     *
+     * ⚠️ Se mira SOLO el texto visible, nunca el HTML: el payload de
+     *    hidratacion de Next.js lleva backticks propios, y mirarlo produciria
+     *    el falso positivo que ya mordio a `repeticionesEn`.
+     */
+    const inf = informes.get(nombre)!
+    const sospechosas = inf.hojas.filter((h) => (
+      h.includes('`')
+      // `**negrita**` y `_cursiva_` sin renderizar, que es el mismo descuido.
+      || /\*\*\S/.test(h)
+    ))
+    expect(sospechosas, JSON.stringify(sospechosas, null, 2)).toEqual([])
+  })
+
   it('🔴 el taller NO finge: ni codigo ni salida inventados', () => {
     /*
      * El criterio de esa pantalla es una sola pregunta: ¿alguien podria creer

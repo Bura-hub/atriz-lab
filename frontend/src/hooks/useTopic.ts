@@ -348,12 +348,80 @@ export interface MensajeEstadoMonitor {
   polygon_name: string
 }
 
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `/estado_navegacion` — SEIS ESTADOS, Y NO ES UN CAPRICHO
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 **`active` NO ES «funcionando», y esta medido.** `systemctl is-active` dice
+ *    `active` sobre un `slam_toolbox` que sobrevivio a un reinicio del driver
+ *    con el bufer TF roto: deja de procesar y **el mapa sale identico celda a
+ *    celda tras mover el robot 80 cm**. Un booleano `slam: on|off` pintaria
+ *    VERDE justo ese caso, que es el que existe para detectar.
+ *
+ * Los dos del medio son los que un booleano esconde:
+ *   CIEGO  la unidad esta `active`, el ciclo de vida en `active`… y NO llega
+ *          `/scan`. Sin barrido el `collision_monitor` bloquea el movimiento
+ *          (0,0 cm contra 9,9 con el mismo comando) y **el robot parece
+ *          averiado** sin que nada informe de una averia.
+ *   MUDO   llega `/scan`, los procesos estan, y SLAM no procesa.
+ */
+export const ESTADO_NAV = {
+  APAGADO: 0,
+  ARRANCANDO: 1,
+  FUNCIONANDO: 2,
+  CIEGO: 3,
+  MUDO: 4,
+  FALLO: 5,
+  DESCONOCIDO: 6,
+} as const
+
+export interface MensajeEstadoNavegacion {
+  header: Cabecera
+  /**
+   * 🔴 Monotono, +1 por publicacion. **Si no avanza, todo lo demas de este
+   * mensaje es viejo** y la pantalla pinta «no se sabe», no el ultimo valor.
+   * Misma convencion que `latido` de `/estado_robot`, y por la misma razon: un
+   * topic que existe no prueba que haya alguien detras. `/estado_navegacion` va
+   * ademas TRANSIENT_LOCAL, asi que el primer mensaje puede ser un enlatado.
+   */
+  latido: number
+  slam: number
+  nav: number
+  /** Texto para la persona, TAL CUAL. Vacio salvo rechazo o fallo. */
+  slam_detalle: string
+  nav_detalle: string
+  /**
+   * Segundos desde que se acepto la peticion. 🔴 **-1.0 = no aplica**, que en
+   * este proyecto significa siempre «no se sabe», nunca «cero».
+   * 📊 Nav2 tarda **24,3 s** en aceptar objetivos (n=2, σ 0,44). → Se pintan los
+   *    SEGUNDOS TRANSCURRIDOS, no un porcentaje: esa cifra es en reposo y nadie
+   *    la ha medido con 16 robots y la bateria baja.
+   */
+  slam_arrancando_s: number
+  nav_arrancando_s: number
+  /** Sin mapa legible Nav2 no arranca: el boton se deshabilita, no se deja intentar. */
+  hay_mapa: boolean
+  /**
+   * 🔴 EL CAMPO QUE EVITA UNA LLAMADA DE TELEFONO. `Restart=on-failure` +
+   * `StartLimitBurst=3`: **un solo `start` sin mapa agota el presupuesto** —el
+   * arranque mas dos reintentos son ya los tres, en ~40 s— y la unidad queda
+   * `failed`. De ahi solo se sale con `systemctl reset-failed`, o sea con
+   * PRIVILEGIO, que nadie tiene desde el navegador (medido dos veces).
+   *
+   * Sin este campo «no arranco» y «bloqueado hasta que alguien entre por SSH»
+   * son indistinguibles desde la web: los dos son un boton que no hace nada.
+   */
+  slam_latcheado: boolean
+  nav_latcheado: boolean
+}
+
 /**
  * Los topics que esta web MODELA. Es a proposito un subconjunto de
  * `TOPICS_LECTURA`: modelar un topic significa haber leido su `.msg` y saber
- * que campos trae. Los que faltan (`/map`, `/tf`, `/color`, `/amcl_pose`,
- * `/imu`) estan permitidos por el robot pero **no tienen tipo aqui todavia**, y
- * añadirlos exige leer su definicion, no adivinarla.
+ * que campos trae. Los que faltan (`/tf`, `/tf_static`) estan permitidos por el
+ * robot pero **no tienen tipo aqui todavia**, y añadirlos exige leer su
+ * definicion, no adivinarla.
  */
 export interface MensajesPorTopic {
   '/battery_state': MensajeBateria
@@ -366,6 +434,7 @@ export interface MensajesPorTopic {
   '/encoders': MensajeEncoder
   '/scan': MensajeScan
   '/estado_robot': MensajeEstadoRobot
+  '/estado_navegacion': MensajeEstadoNavegacion
   '/collision_monitor_state': MensajeEstadoMonitor
 }
 
