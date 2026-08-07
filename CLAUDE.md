@@ -166,8 +166,13 @@ renderiza un componente**, y `vitest.config.ts` documenta que `jsdom` no se inst
   desde el principio: una comprobación que no mira nada y cuenta como aprobada.
 → ✅ **Y desde el 2026-08-04 hay una prueba que sí las mira**:
   `lib/interfaz/pantallas_reales.test.ts`, guardada tras `ATRIZ_ROBOT=1`. Arranca un navegador
-  headless por CDP —sin instalar nada: node 22 trae `WebSocket` global—, abre las seis rutas
-  contra el robot real y comprueba el HTML **ya hidratado**. 19 comprobaciones, ~56 s.
+  headless por CDP —sin instalar nada: node 22 trae `WebSocket` global—, abre las **nueve
+  rutas** contra el robot real y comprueba el HTML **ya hidratado**. **32 comprobaciones**, ~86 s.
+  🔴 **Y necesita `ATRIZ_WEB` si sirves fuera del puerto 3118**, que es su valor por defecto.
+  Equivocarlo NO da un error claro: el navegador abre la página de «no se puede conectar» de
+  Edge y **27 de las 29 comprobaciones pasan igual** —es la misma trampa que el propio fichero
+  documenta dos líneas más abajo, y ha vuelto a morder—. Si pasa demasiado rápido y demasiado
+  limpio, mira el puerto.
 → 🔴 **Y su primera ejecución enseñó la lección más útil del día: 18 de sus 19 comprobaciones
   pasaron sobre seis páginas 404.** Repetición, hueco disfrazado de dato y frase prohibida son
   todas de **ausencia**, y una página vacía las cumple. Solo la que exige que los datos
