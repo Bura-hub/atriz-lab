@@ -483,3 +483,80 @@ export function colisionesDeColor(
   }
   return salida
 }
+
+/* ═════════════════════════════════════════════════════════════════════════
+ * TOKENS QUE NO PINTAN NADA
+ * ═════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴 EL 2026-08-07 ESCRIBI `text-[color:var(--estado-bien)]` EN UN COMPONENTE
+ *    NUEVO. `--estado-bien` **no existe** —el vocabulario dice `--estado-vivo`—
+ *    y los tokens de color de este proyecto son **tripletes RGB**
+ *    (`--estado-vivo: 21 122 61`), asi que ademas hay que envolverlos en
+ *    `rgb()`. Las dos cosas fallan igual: Tailwind genera la clase, el navegador
+ *    descarta la declaracion, y el texto sale del color heredado.
+ *
+ *    Consecuencia medida en la captura: los estados CIEGO y BLOQUEADO —los dos
+ *    mas graves de la pantalla de navegacion— salieron en negro, indistinguibles
+ *    de un parrafo cualquiera. **No lo vio `tsc`, ni `eslint`, ni las 538
+ *    pruebas**, porque un token inexistente es CSS perfectamente valido.
+ *
+ * ⚠️ Y ESTA GUARDIA NACIO CON OCHO FALSOS POSITIVOS, que es la razon de que su
+ *    codigo parezca retorcido. La primera version acusaba a seis componentes
+ *    sanos. Dos cosas hay que hacer, y ninguna es opcional:
+ *
+ *    1. **RESOLVER LA INDIRECCION.** `--tono-seccion: var(--estado-neutro)` no
+ *       es un color: hay que seguir la cadena hasta el literal para saber si es
+ *       triplete. Sin esto, `rgb(var(--tono-seccion))` parece un error y es
+ *       correcto.
+ *    2. **DISTINGUIR ASIGNAR DE PINTAR.** `{'--tono-seccion': 'var(--seccion-navegar)'}`
+ *       PASA un valor; no lo pinta, asi que no necesita `rgb()`. Es el patron
+ *       que usan las seis pantallas para teñirse.
+ *
+ *    📝 Un verificador con falsos positivos se acaba ignorando, y eso es peor
+ *       que no tenerlo. Esta regla la tiene escrita este proyecto por el
+ *       verificador del robot, que llego a acumular ocho fallos propios.
+ */
+
+/** Un triplete `R G B` como los que declara `globals.css`. No un color CSS. */
+const TRIPLETE = /^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/
+
+/** `--x: 12 34 56;` de una hoja de estilos, en un mapa. */
+export function tokensDeclarados(css: string): Map<string, string> {
+  const m = new Map<string, string>()
+  for (const t of css.matchAll(/^\s*(--[\w-]+)\s*:\s*([^;]+);/gm)) m.set(t[1], t[2].trim())
+  return m
+}
+
+/** Sigue `var(--a)` -> `var(--b)` -> `"21 122 61"`. `undefined` si no existe. */
+export function resolverToken(
+  nombre: string, decl: Map<string, string>, saltos = 0,
+): string | undefined {
+  const v = decl.get(nombre)
+  if (v === undefined || saltos > 6) return undefined
+  const indirecto = v.match(/^var\((--[\w-]+)\)$/)
+  return indirecto === null ? v : resolverToken(indirecto[1], decl, saltos + 1)
+}
+
+/**
+ * Los usos de tokens que **no pintan nada** en un fuente. Tres formas:
+ * el token no existe · es triplete y no lleva `rgb()` · lleva `rgb()` sin serlo.
+ */
+export function tokensQueNoPintan(fuente: string, decl: Map<string, string>): string[] {
+  const malos: string[] = []
+  fuente.split('\n').forEach((linea, i) => {
+    if (esComentario(linea)) return
+    // 🔴 Fuera las ASIGNACIONES antes de mirar: ver el punto 2 de arriba.
+    const sinAsignar = linea.replace(/'--[\w-]+'\s*:\s*'[^']*'/g, '')
+    for (const m of sinAsignar.matchAll(/(rgb\(\s*)?var\((--[\w-]+)\)/g)) {
+      const envuelto = m[1] !== undefined
+      const val = resolverToken(m[2], decl)
+      if (val === undefined) malos.push(`linea ${i + 1}: ${m[2]} NO EXISTE`)
+      else if (TRIPLETE.test(val) && !envuelto) {
+        malos.push(`linea ${i + 1}: ${m[2]} es el triplete «${val}» y le falta rgb()`)
+      } else if (!TRIPLETE.test(val) && envuelto) {
+        malos.push(`linea ${i + 1}: ${m[2]} ya es «${val}»; el rgb() sobra`)
+      }
+    }
+  })
+  return malos
+}

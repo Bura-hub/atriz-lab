@@ -45,11 +45,20 @@ export function ProveedorSesion({ children }: { children: ReactNode }) {
   const refrescar = useCallback(async () => {
     try {
       const r = await fetch('/api/sesion/quien', { cache: 'no-store' })
+      /*
+       * 🔴 `quien` contesta **200 con `usuario: null`** cuando no hay sesión, no
+       *    401. Antes devolvía 401 y este bloque lo trataba como el caso normal
+       *    —lo decía un comentario aquí mismo—, pero el navegador no lee
+       *    comentarios: pintaba una línea roja en la consola en cada carga de
+       *    cada página, para el estado en el que están los alumnos siempre.
+       *
+       * El `else` NO sobra: un 500 por falta de `ATRIZ_SECRETO` sigue cayendo
+       * ahí, y ahí sí no hay sesión posible.
+       */
       if (r.ok) {
-        const d = (await r.json()) as { usuario: string }
-        setUsuario(d.usuario)
+        const d = (await r.json()) as { usuario: string | null }
+        setUsuario(typeof d.usuario === 'string' ? d.usuario : null)
       } else {
-        // 401 es la respuesta normal de quien no ha entrado: no es un error.
         setUsuario(null)
       }
     } catch {

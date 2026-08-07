@@ -29,7 +29,9 @@ import { SIN_DATO, voltios } from '@/lib/interfaz/formato'
  *    bloque y por tanto contrasta siempre.
  */
 const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
-  SIN_CONEXION: 'no llego',
+  // 🔴 CON TILDE. Sin ella «no llego» es «yo no llego», presente y primera
+  //    persona: la baldosa hablaría de sí misma en vez del robot.
+  SIN_CONEXION: 'no llegó',
   EN_LINEA: 'en línea',
   SIN_DATOS: 'sin telemetría',
 }
@@ -231,7 +233,7 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
             {etiqueta}
           </span>
           <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[10.5px] uppercase tracking-wider text-muted-foreground">
-            no llego
+            no llegó
           </span>
         </div>
         {/*

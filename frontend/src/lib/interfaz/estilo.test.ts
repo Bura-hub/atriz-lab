@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import {
   FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeColor, colisionesDeTransicion,
   esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases, lineasDeCodigo, partirEnComas,
-  tokensDeColor, transicionesDeClases,
+  resolverToken, tokensDeColor, tokensDeclarados, tokensQueNoPintan, transicionesDeClases,
 } from './estilo'
 
 const RAIZ = dirname(fileURLToPath(import.meta.url))
@@ -328,6 +328,86 @@ describe('la guardia visual sobre el codigo real', () => {
     const config = readFileSync(join(FRONTEND, 'tailwind.config.ts'), 'utf8')
     const muertos = globsMuertos(config, (r) => existsSync(join(FRONTEND, r)))
     expect(muertos, `globs que no casan con ningun directorio: ${muertos.join(' ')}`).toEqual([])
+  })
+})
+
+describe('🔴 tokensQueNoPintan — la guardia que nacio con OCHO falsos positivos', () => {
+  const CSS = [
+    ':root {',
+    '  --estado-vivo: 21 122 61;',
+    '  --estado-neutro: 90 92 108;',
+    '  --tono-seccion: var(--estado-neutro);',   // indirecto: resuelve a triplete
+    '  --radio: 16px;',                          // no es un color
+    '}',
+  ].join(String.fromCharCode(10))
+  const decl = tokensDeclarados(CSS)
+
+  it('resolverToken sigue la cadena hasta el literal', () => {
+    expect(resolverToken('--estado-vivo', decl)).toBe('21 122 61')
+    expect(resolverToken('--tono-seccion', decl)).toBe('90 92 108')
+    expect(resolverToken('--no-existe', decl)).toBeUndefined()
+  })
+
+  it('🔴 pilla el token INVENTADO, que es el fallo que la creo', () => {
+    const malas = tokensQueNoPintan("class=\"text-[color:var(--estado-bien)]\"", decl)
+    expect(malas).toHaveLength(1)
+    expect(malas[0]).toContain('NO EXISTE')
+  })
+
+  it('🔴 pilla el triplete SIN rgb(), que no pinta nada y es CSS valido', () => {
+    const malas = tokensQueNoPintan("class=\"text-[color:var(--estado-vivo)]\"", decl)
+    expect(malas[0]).toContain('le falta rgb()')
+  })
+
+  it('acepta el triplete bien envuelto', () => {
+    expect(tokensQueNoPintan("class=\"text-[rgb(var(--estado-vivo))]\"", decl)).toEqual([])
+  })
+
+  /* ── Los dos FALSOS POSITIVOS que tuvo la primera version ──────────────── */
+  it('🔴 NO acusa a la INDIRECCION: --tono-seccion resuelve a un triplete', () => {
+    // La primera version decia «el rgb() sobra» porque miraba el valor literal
+    // `var(--estado-neutro)` sin seguirlo. Acuso a `Grupo.tsx`, que esta bien.
+    expect(tokensQueNoPintan("style={{ color: 'rgb(var(--tono-seccion))' }}", decl)).toEqual([])
+  })
+
+  it('🔴 NO acusa a una ASIGNACION: pasar un valor no es pintarlo', () => {
+    // Es el patron con el que las seis pantallas se tiñen. La primera version
+    // acuso a las seis: `--seccion-navegar` es un triplete, luego «falta rgb()».
+    // Pero ahi no se pinta nada, se PASA — y el que pinta ya lo envuelve.
+    const linea = "const tono = { '--tono-seccion': 'var(--estado-vivo)' } as CSSProperties"
+    expect(tokensQueNoPintan(linea, decl)).toEqual([])
+  })
+
+  it('no mira dentro de los comentarios', () => {
+    expect(tokensQueNoPintan('  // usa var(--estado-bien) para nada', decl)).toEqual([])
+  })
+
+  /* ── Y EL EFECTO, sobre el arbol de verdad ─────────────────────────────── */
+  it('🔴 ningun componente real usa un token que no pinte', () => {
+    const decl = tokensDeclarados(readFileSync(join(SRC, 'app', 'globals.css'), 'utf8'))
+    const culpables: string[] = []
+    for (const dir of [join(SRC, 'componentes'), join(SRC, 'app'), join(SRC, 'hooks')]) {
+      for (const f of ficherosDeEstilo(dir)) {
+        /*
+         * 🔴 SOLO CODIGO DE COMPONENTE, NO LA HOJA DE ESTILOS — y no es pereza:
+         *    aplicada a `globals.css` esta guardia da TRES falsos positivos, y
+         *    los tres son usos legitimos que en CSS no se pueden distinguir de
+         *    un error:
+         *
+         *      · `--tono-seccion: var(--estado-neutro);` es una ASIGNACION
+         *      · `--filo-estado` lo INYECTA un componente por `style`, asi que
+         *        no esta declarado en `:root` y no tiene por que estarlo
+         *      · `--font-geist-mono` lo inyecta el paquete `geist` al arrancar
+         *
+         *    Un token que no existe EN TIEMPO DE COMPILACION es normal en CSS y
+         *    es un fallo en un `className`. La guardia mira donde el fallo vive.
+         */
+        if (/\.test\.|\.css$/.test(f)) continue
+        const malas = tokensQueNoPintan(readFileSync(f, 'utf8'), decl)
+        if (malas.length > 0) culpables.push(`${f} -> ${malas.join(' · ')}`)
+      }
+    }
+    expect(culpables, culpables.join(' | ')).toEqual([])
   })
 })
 

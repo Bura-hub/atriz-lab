@@ -120,7 +120,7 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
         id: 'parada',
         titulo: 'La parada de emergencia está puesta',
         estado: 'CONFIRMADA',
-        evidencia: 'La bandera del driver vale `true`: el robot descarta todo `cmd_vel_raw`.',
+        evidencia: 'La bandera del driver vale true: el robot descarta todo lo que se publique en cmd_vel_raw.',
         /*
          * ⚠️ ESTE REMEDIO DEPENDE DE LA SESIÓN, y es la única cosa de todo el
          *    diagnóstico que lo hace. El veredicto NO cambia: la parada está
@@ -142,7 +142,7 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
         id: 'parada',
         titulo: 'La parada de emergencia',
         estado: 'DESCARTADA',
-        evidencia: 'La bandera del driver vale `false`.',
+        evidencia: 'La bandera del driver vale false.',
         remedio: '',
       })
 
@@ -154,7 +154,7 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
       id: 'barrido',
       titulo: 'El barrido del LIDAR',
       estado: 'DESCARTADA',
-      evidencia: '`/scan` está llegando, así que la capa de seguridad tiene con qué trabajar.',
+      evidencia: 'Está llegando /scan, así que la capa de seguridad tiene con qué trabajar.',
       remedio: '',
     }
     : {
@@ -223,13 +223,13 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
         estado: 'CONFIRMADA',
         evidencia: `La última muestra de \`/odom\` tiene ${a.toFixed(1)} s. `
           + 'Es el caso en el que el robot parece sano por todos lados y no lo está.',
-        remedio: 'Reinicia el servicio en el robot: `sudo systemctl restart atriz-robot`.',
+        remedio: 'Reinicia el servicio en el robot, con «sudo systemctl restart atriz-robot».',
       }
       : {
         id: 'odom',
         titulo: 'La odometría',
         estado: 'DESCARTADA',
-        evidencia: `Llega \`/odom\` desde hace ${a.toFixed(1)} s.`,
+        evidencia: `Llega /odom desde hace ${a.toFixed(1)} s.`,
         remedio: '',
       })
 
