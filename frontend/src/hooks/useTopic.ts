@@ -141,6 +141,18 @@ export interface MensajeColor {
 }
 
 /**
+ * ⚠️ CORREGIDO EL 2026-08-06. Este bloque decia que `/color` llega a ceros «en
+ *    los 16 robots por defecto» y que **no se puede encender desde la web**.
+ *    Lo segundo es FALSO desde que el robot expone `/enable_color`
+ *    (`std_srvs/SetBool`), y lo primero solo describe el arranque.
+ *
+ * 🔴 Y ahora la luz **se apaga sola**: por inactividad
+ *    (`color_apagado_inactividad_s`, 120 s) y por tope duro
+ *    (`color_apagado_max_s`, 900 s). Por eso el estado NO se puede recordar:
+ *    hay que leer `color_activo` de `/estado_robot`.
+ */
+
+/**
  * `nav_msgs/msg/OccupancyGrid`.
  *
  * 🔴🔴 VA **LATCHEADO**: `RELIABLE + TRANSIENT_LOCAL`. Y `map_server` lo publica
@@ -281,6 +293,25 @@ export interface MensajeEstadoRobot {
   antiguedad_muestra_s: number
   antiguedad_odom_s: number
   reanudaciones_fallidas: number
+  /**
+   * ¿Está encendida la LUZ del sensor de color? Añadido en el robot el
+   * 2026-08-06.
+   *
+   * 🔴 EXISTE PORQUE LA LUZ SE APAGA SOLA —por inactividad a los 120 s y por
+   *    tope duro a los 900—, así que el estado **NO se puede recordar**. Un
+   *    cliente que guardara «yo la encendí» acabaría pintando el botón encendido
+   *    sobre un sensor a oscuras.
+   *
+   * ⚠️ Y NO vale deducirlo de que `/color` traiga ceros: **publica igual con la
+   *    luz apagada** —no calla— y una superficie negra de verdad también da
+   *    valores muy bajos. El topic dice QUÉ SE VE; este campo, SI HAY LUZ para
+   *    verlo. Esta pantalla lo dedujo de los ceros durante un día y lo llamaba
+   *    «una firma»: era lo mejor que había, y ya no hace falta.
+   *
+   * 📝 `true` también cuando se arrancó con `color_detection:=true`. En ese caso
+   *    NO se apaga sola: la puso alguien a propósito.
+   */
+  color_activo: boolean
 }
 
 /**

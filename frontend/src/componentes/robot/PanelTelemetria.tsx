@@ -403,14 +403,19 @@ export function PanelTelemetria() {
       {/*
         🔴 EL SENSOR OPTICO VA EN SU PROPIA BANDA, y no con el flujo del RVR.
            No comparte naturaleza con `/odom` e `/imu`: aquellos llegan siempre y
-           este llega **a ceros en los 16 robots por defecto**, porque el sensor
-           no ve nada sin su luz y el driver solo la enciende con
-           `color_detection:=true`. Meterlo entre los que sí traen datos habria
+           este llega **a ceros mientras la luz este apagada**, que es como
+           arrancan los 16 robots. Meterlo entre los que si traen datos habria
            hecho que su fila de ceros se leyera como una medida mas.
+
+        ⚠️ La `fuente` decia «y la pantalla lo distingue de ver negro». Eso era
+           cierto cuando la unica pista eran los tres ceros y habia que tratarlos
+           como una FIRMA. Desde el 2026-08-06 el robot publica `color_activo`,
+           asi que ya no se deduce: se lee. Y ademas la luz se enciende desde
+           aqui, que es lo que ese rotulo tiene que anunciar ahora.
       */}
       <Grupo
         titulo="Sensor óptico"
-        fuente="/color · llega apagado por defecto, y la pantalla lo distingue de ver negro"
+        fuente="/color · la luz se enciende desde aquí, y el robot dice si está encendida"
       >
         <PanelColor />
       </Grupo>

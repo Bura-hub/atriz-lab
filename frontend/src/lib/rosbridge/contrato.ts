@@ -15,9 +15,26 @@ export const TOPICS_LECTURA = [
 /** 🔴 /cmd_vel NO esta y no debe estar: es la SALIDA del collision_monitor. */
 export const TOPICS_ESCRITURA = ['/cmd_vel_raw', '/emergency_stop', '/initialpose'] as const
 
+/*
+ * 🔴 `/enable_color` Y `/get_rgbc_sensor_values` VAN JUNTOS O NO SIRVE NINGUNO.
+ *    Lo dice la lista blanca del robot con esas palabras: son la sesion de
+ *    medicion completa —encender la luz y leer lo que ve el sensor—, y separarlos
+ *    deja media herramienta.
+ *
+ * 📝 Añadidos el 2026-08-06, y merecen una nota porque este cliente llego a
+ *    afirmar que el primero NO PODIA EXISTIR. El driver llevaba escrito
+ *    «🔴 MEDIDO: NO PUEDE FUNCIONAR como servicio — 481 mensajes de /color, todos
+ *    ceros», y se cito como establecido. **Aquella medida estaba mal hecha:** el
+ *    servicio bajo prueba se apagaba a si mismo dentro de la misma llamada, asi
+ *    que casi todos aquellos mensajes eran POSTERIORES al enable(False). Una
+ *    medida que no separa las dos hipotesis no refuta ninguna.
+ *    Remedido con el streaming corriendo: `/color` no-cero 0 -> 53 -> 0, canal
+ *    claro 1 -> 1320 -> 0, y RGB reales (255, 224, 208).
+ */
 export const SERVICIOS = [
   '/start_scan', '/stop_scan', '/release_emergency_stop', '/set_pos_and_yaw',
   '/set_led_rgb', '/set_multiple_leds', '/set_leds', '/trigger_led_event',
+  '/enable_color', '/get_rgbc_sensor_values',
 ] as const
 
 /**
@@ -147,9 +164,18 @@ export const SERVICIOS_SIN_CONFIRMACION = [
   '/start_scan', '/stop_scan', '/release_emergency_stop', '/set_leds',
 ] as const
 
-/** El otro lado de SERVICIOS_SIN_CONFIRMACION: los cuatro con `bool success`. */
+/**
+ * El otro lado de SERVICIOS_SIN_CONFIRMACION: los que devuelven `bool success`.
+ *
+ * ⚠️ `success` sigue sin ser el efecto. En `/enable_color` es
+ *    `std_srvs/SetBool`: un `true` dice que la llamada al SDK no lanzo, **no que
+ *    haya luz**. Lo que lo prueba es `/estado_robot.color_activo` subiendo, o
+ *    `/color` dejando de traer ceros — y esa es la comprobacion que hace la
+ *    pantalla, igual que el `latido` para la parada y `/odom` para el origen.
+ */
 export const SERVICIOS_SOLO_NO_LANZO = [
   '/set_pos_and_yaw', '/set_led_rgb', '/set_multiple_leds', '/trigger_led_event',
+  '/enable_color', '/get_rgbc_sensor_values',
 ] as const
 
 export function confirmaEfecto(servicio: string): ConfirmacionServicio {
