@@ -17,10 +17,11 @@ transportador. El administrador mira los 16 desde el otro lado del aula.
 | ✅ **Telemetría, flota, LIDAR, conducir, diagnóstico** | Cinco rutas construidas, y **miradas renderizadas contra el robot vivo** — no solo con `curl`. El LIDAR dibuja geometría real (224 de 260 puntos, lo más cercano a 0,30 m) |
 | ✅ **El muro encuentra a los robots por su nombre** | `ws://rvr-01.local:9090` abre en el navegador: 4339 ms con la caché mDNS fría, 2331 caliente. Estuvo roto hasta el 2026-08-04 —el nombre resolvía a cuatro direcciones y el navegador se colgaba en las dos primeras, **sin dar error**— y se arregló en el robot, no aquí. Queda un campo para apuntar a una IP, porque el aula sigue sin probarse |
 | ✅ **Sistema visual** | Tokens claro **y oscuro** en `src/app/globals.css`, tipografía del sistema, rejilla de 1 px |
-| ✅ **Pruebas** | **507**, más 33 que se saltan porque necesitan el robot |
+| ✅ **Pruebas** | **508**, más 33 que se saltan porque necesitan el robot |
 | ❌ **El terminal** | El producto, y lo único que falta. Bloqueado — ver `/robot/[id]`, que lo explica en pantalla |
 | ⚠️ **Sesión** | Existe desde el 2026-08-06 y **protege la interfaz, no el robot**: contraseña con `scrypt`, cookie `httpOnly` firmada con HMAC, bloqueo por intentos en el **servidor** (no en `localStorage`), cero dependencias nuevas. Sirve para que liberar una parada de emergencia tenga un nombre detrás. **No** cierra el camino directo: el navegador habla con el rosbridge de cada robot sin pasar por este servidor, y rosbridge 2.7.0 no tiene autenticación —cualquiera en la red sigue pudiendo hablar con cualquier robot—. Eso es la Fase B, en el robot, y no está construida |
 | ✅ **Liberar la parada, CON TESTIGO DEL ROBOT** | 2026-08-06, verificado contra rvr-01 de punta a punta. Se pulsó la parada por el camino de la web (`latido` 291 → la bandera sube en el 292) y se liberó **desde el navegador**, con la interfaz real: la pantalla dijo «Liberada» y el robot lo confirmó (`parada_emergencia: false`). 🔴 La respuesta del servicio **no prueba nada** —`std_srvs/srv/Empty`—, y `/estado_robot` va `TRANSIENT_LOCAL`, así que el primer mensaje que llega puede ser un enlatado **anterior** con la bandera ya abajo: por eso el primer mensaje solo sirve de **referencia** y hace falta uno con `latido` estrictamente mayor. Cuatro resultados distintos, y `SIGUE_PUESTA` (negativa con evidencia) no se confunde con los tres «no se sabe» |
+| ✅ **La luz del sensor de color se enciende desde la web** | 2026-08-06. El robot expone `/enable_color` (`std_srvs/SetBool`) y publica `color_activo` en `/estado_robot`; la web lo **lee**, no lo recuerda, porque la luz **se apaga sola** (120 s de inactividad, 900 s de tope duro). 🔴 Y esta interfaz llegó a afirmar que ese botón **no podía existir**, citando un «🔴 MEDIDO» del driver: aquella medida estaba mal hecha —el servicio bajo prueba se apagaba a sí mismo dentro de la misma llamada—. Verificado por rosbridge y por el navegador: `color_activo` false → true → false |
 | — | **No hay cámaras** en los robots |
 
 🔴 **Antes de tocar nada, lee [`CLAUDE.md`](CLAUDE.md).** Contiene la regla que
@@ -39,7 +40,7 @@ Todo lo de abajo corre dentro de `frontend/`.
 cd frontend
 npm install
 npm run dev        # http://localhost:3000 — y ENTRA en las rutas: compilar no es pintar
-npm test           # 507 pruebas, en Node
+npm test           # 508 pruebas, en Node
 npm run contrato   # compara la lista blanca de la web con robot.launch.py DEL ROBOT
 npm run build
 ```

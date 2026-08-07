@@ -35,7 +35,7 @@ describe('las frases honestas', () => {
 })
 
 describe('textoDeConfirmacion — lo decide contrato.ts, no este fichero', () => {
-  it('🔴 NINGUNO de los ocho servicios se describe como «confirmado»', () => {
+  it('🔴 NINGUNO de los diez servicios se describe como «confirmado»', () => {
     for (const s of SERVICIOS) {
       const t = normalizar(textoDeConfirmacion(s))
       expect(t).not.toContain('confirmad')

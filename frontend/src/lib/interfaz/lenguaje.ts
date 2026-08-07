@@ -72,7 +72,7 @@ export const PARADA_NO_ENVIADA = 'LA PARADA NO SE HA ENVIADO'
  * dar. La decision de que categoria es cada uno la toma `confirmaEfecto()` en
  * `contrato.ts`; aqui solo se pone en palabras.
  *
- * 🔴 Ninguna de las dos ramas dice «confirmado», porque **ninguno de los ocho
+ * 🔴 Ninguna de las dos ramas dice «confirmado», porque **ninguno de los diez
  * servicios confirma un efecto fisico**. `ConfirmacionServicio` no tiene un
  * tercer valor a proposito.
  */
@@ -152,7 +152,7 @@ export const LO_QUE_NO_SE_PUEDE_DECIR: readonly { que: string; porque: string }[
     que: 'si un LED se encendió de verdad',
     porque:
       'ningún servicio del robot confirma un efecto físico. Cuatro responden vacío y los otros ' +
-      'cuatro solo dicen que la corrutina del SDK no lanzó.',
+      'seis solo dicen que la corrutina del SDK no lanzó.',
   },
   {
     que: 'que un robot esté averiado',

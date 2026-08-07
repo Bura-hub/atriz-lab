@@ -133,7 +133,7 @@ export const tipoDe = (topic: string): string | undefined => TIPOS[topic]
  * proyecto con la parada de emergencia.
  *
  * Por eso la funcion ya NO devuelve un booleano: un booleano solo tiene
- * espacio para "confirma" / "no confirma", y NINGUN servicio de los ocho
+ * espacio para "confirma" / "no confirma", y NINGUN servicio de los diez
  * confirma el efecto de verdad. `ConfirmacionServicio` no tiene un tercer
  * valor tipo "CONFIRMA" -no existe en la union- para que sea IMPOSIBLE que
  * el tipo prometa algo que ningun servicio da:
@@ -146,7 +146,7 @@ export const tipoDe = (topic: string): string | undefined => TIPOS[topic]
  *
  * Version anterior (CORREGIDO), conservada porque su hallazgo sigue en pie
  * -solo la palabra "confirman" de la version vieja era el error-: NO es solo
- * `/set_leds`. Cuatro de los ocho servicios tienen la respuesta VACIA
+ * `/set_leds`. Cuatro de los DIEZ servicios tienen la respuesta VACIA
  * (`std_srvs/srv/Empty`, sin ningun campo debajo del `---`), medido contra
  * el repositorio del robot:
  *
