@@ -139,3 +139,55 @@ describe('resumen', () => {
     expect(r).not.toMatch(/bien|correcto|sano|ok/i)
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 La capa de seguridad frenando — el caso que faltaba
+// ═══════════════════════════════════════════════════════════════════════════
+describe('la capa de seguridad', () => {
+  const sano = {
+    conectado: true, paradaEmergencia: false, rvrResponde: true,
+    antiguedadOdomS: 0.1, reanudacionesFallidas: 0,
+    hayBarrido: true, msDesdeBarrido: 100, pestanaOculta: false,
+  }
+  const causa = (extra: object) =>
+    diagnosticar({ ...sano, ...extra }).find((c) => c.id === 'frenado')!
+
+  it('🔴 SIN mensaje del monitor NO se descarta: se dice que no se sabe', () => {
+    /*
+     * El monitor publica al CAMBIAR, no cada tanto: 0 mensajes en 12 s con el
+     * robot quieto. Tratar el silencio como «no está frenando» descartaría la
+     * causa más probable de que un avance salga corto — y es la misma forma que
+     * «ros2 topic list conserva topics de nodos muertos».
+     */
+    expect(causa({ frenadoMonitor: null }).estado).toBe('NO_SE_SABE')
+    expect(causa({}).estado).toBe('NO_SE_SABE')
+  })
+
+  it('ralentizando: CONFIRMADA, y dice que el robot SÍ obedece', () => {
+    const c = causa({ frenadoMonitor: { accion: 2, poligono: 'Precaucion' } })
+    expect(c.estado).toBe('CONFIRMADA')
+    expect(c.titulo).toContain('SÍ obedece')
+    // 🔴 El ANCHO es el dato que lo explica, y el que la pantalla no decía.
+    expect(c.evidencia).toContain('40 de ANCHO')
+    expect(c.evidencia).toContain('COSTADO')
+    expect(c.remedio).toContain('LADOS')
+  })
+
+  it('parando por invalid source: el remedio NO manda a buscar un obstáculo', () => {
+    // `invalid source` significa que no le llega /scan. Mandar a apartar algo
+    // que no existe es el falso diagnóstico que esta pantalla evita.
+    const c = causa({ frenadoMonitor: { accion: 1, poligono: 'invalid source' } })
+    expect(c.estado).toBe('CONFIRMADA')
+    expect(c.remedio).toContain('LIDAR')
+    expect(c.remedio).not.toContain('Aparta')
+  })
+
+  it('parando por un polígono de verdad: manda a apartar lo que haya', () => {
+    expect(causa({ frenadoMonitor: { accion: 1, poligono: 'Emergencia' } }).remedio)
+      .toContain('Aparta')
+  })
+
+  it('sin limitar: DESCARTADA', () => {
+    expect(causa({ frenadoMonitor: { accion: 0, poligono: '' } }).estado).toBe('DESCARTADA')
+  })
+})

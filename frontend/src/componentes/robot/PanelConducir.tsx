@@ -32,6 +32,7 @@
 import { useEffect, useState } from 'react'
 import type { PointerEvent as EventoPuntero } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
+import { ACCION_MONITOR, useTopic } from '@/hooks/useTopic'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
 import { ORDEN_ENVIADA, textoDeConfirmacion } from '@/lib/interfaz/lenguaje'
 import {
@@ -339,6 +340,31 @@ function CruzDeMando({
 function PedidoContraMedido({ velocidad }: { velocidad: number }) {
   const { transporte } = useRobot()
   const { ultimo } = useMuestreo(transporte, '/odom')
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 AÑADIDO EL 2026-08-08: EL ALUMNO PIDE 60 cm, OBTIENE 26, Y NO RECIBE
+   *      NINGÚN MENSAJE.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Medido en el robot ejecutando la misma práctica dos veces seguidas, sin
+   * tocar nada: **26,4 cm y 59,5 cm**. La causa no es un fallo — es la capa de
+   * seguridad frenando al 40 % — pero **el journal lo registra y el alumno no ve
+   * nada**, así que la conclusión natural es «el robot no obedece».
+   *
+   * El dato que lo explica es el ANCHO, y esta pantalla no lo decía: el polígono
+   * `Precaucion` mide **60 cm de largo × 40 de ANCHO**, centrado en el robot. Con
+   * un robot de 21,7 cm de ancho, **cualquier cosa a menos de ~9 cm de un COSTADO
+   * lo frena** — una pata de silla, un zócalo, tu propio pie— y lo frena aunque
+   * el robot se esté alejando de ella.
+   *
+   * → Se pinta EN VIVO y AQUÍ, pegado a «medido», que es donde aparece la
+   *   discrepancia. Ponerlo en un pie de página sería no ponerlo.
+   *
+   * ⚠️ Y cuesta ~0: `/collision_monitor_state` publica **al cambiar**, no cada
+   *    tanto (0 mensajes en 12 s con el robot quieto). La otra cara es que **con
+   *    el robot quieto no llega nada**, así que «sin mensaje» no es «todo bien»:
+   *    es «no se sabe», y por eso el aviso solo aparece cuando SÍ hay mensaje.
+   */
+  const monitor = useTopic(transporte, '/collision_monitor_state')
   const lineal = ultimo?.twist?.twist?.linear
   const angular = ultimo?.twist?.twist?.angular
 
@@ -353,8 +379,31 @@ function PedidoContraMedido({ velocidad }: { velocidad: number }) {
     },
   ]
 
+  // `LIMITAR` y `APROXIMACION` también recortan; solo `NO_HACER_NADA` no.
+  const frenando = monitor !== null && monitor.action_type !== ACCION_MONITOR.NO_HACER_NADA
+
   return (
     <div className="grid min-w-[17rem] flex-1 grid-cols-2 gap-2.5">
+      {frenando && (
+        <div className="col-span-2" role="status">
+          <Aviso
+            nivel={monitor.action_type === ACCION_MONITOR.PARAR ? 'ERROR' : 'ATENCION'}
+            titulo={monitor.action_type === ACCION_MONITOR.PARAR
+              ? 'La capa de seguridad está BLOQUEANDO el movimiento'
+              : 'La capa de seguridad te está frenando ahora mismo'}
+          >
+            {monitor.action_type === ACCION_MONITOR.PARAR
+              ? <>El robot no se moverá mientras esto dure. Motivo del robot:{' '}
+                <code>{monitor.polygon_name}</code>. Si pone <code>invalid source</code> es que no
+                le llega el barrido del LIDAR, no que haya un obstáculo.</>
+              : <>Vas a recorrer <strong>menos de lo que pides</strong>, y no es que el robot no
+                obedezca. El polígono <code>{monitor.polygon_name}</code> mide 60 cm de largo por{' '}
+                <strong>40 de ancho</strong>: con un robot de 21,7 cm, cualquier cosa a menos de
+                ~9 cm de un <strong>costado</strong> lo frena al 40 %, aunque te estés alejando de
+                ella. Medido: la misma orden dio 26,4 cm con algo cerca y 59,5 despejado.</>}
+          </Aviso>
+        </div>
+      )}
       {celdas.map((c) => (
         <div
           key={c.etiqueta}
@@ -583,7 +632,7 @@ export function PanelConducir() {
         <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-2 max-w-prose">
           <li>
             <strong>Retroceder junto a una pared tarda más de lo esperado.</strong> El polígono de
-            precaución es estático y se extiende 0,36 m hacia delante: mientras la pared esté dentro,
+            precaución es estático y mide 60 cm de largo por <strong>40 de ancho</strong>: mientras la pared esté dentro,
             la capa de seguridad frena al 40 % <em>aunque el robot se esté alejando</em>. Medido: un
             retroceso de 2 s a 0,15 m/s recorrió 14 cm en vez de 30. No es que no obedezca.
           </li>

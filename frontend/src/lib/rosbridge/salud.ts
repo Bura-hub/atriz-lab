@@ -8,10 +8,42 @@
  * 3 s es el MISMO umbral que usa el detector de silencio del driver, para que
  * cliente y robot coincidan en cuando algo va mal.
  *
+ * ✅ VERIFICADO CONTRA EL ROBOT el 2026-08-08, no citado de memoria:
+ *    `robot.launch.py:100` declara `silence_timeout` con `default_value='3.0'`.
+ *    ⚠️ Y hay una constante PARECIDA que NO es esta y que cambió ese mismo dia:
+ *    `SILENCIO_ODOM_S` de `atriz.py` —la biblioteca del alumno— subio de 1,0 a
+ *    2,0 s. Es de otro consumidor y no arrastra a este numero. Se comprobo antes
+ *    de dejarlo quieto: en este proyecto **una trampa documentada tambien caduca**.
+ *
  * Se decide por LLEGADAS y no por Hz a proposito: una comprobacion de «> 10 Hz»
  * de este proyecto PASABA midiendo 11,3 Hz sobre un robot que iba a 16,5.
+ *
+ * 🔴 EL MARGEN REAL ES 9x, NO 37x — Y ESO SOLO SE SUPO AL MEDIR OTRO REGIMEN.
+ *
+ * El peor hueco de `/odom` depende de CUANDO se mire, y la diferencia es de un
+ * orden de magnitud:
+ *
+ *      regimen permanente    peor hueco   78-81 ms     (n=3, 60 s cada una)
+ *      recien reiniciado     peor hueco  325,7 ms      (20 s tras arrancar)
+ *
+ * Contra el transitorio, 3000 ms deja 9x. Sigue siendo holgado —por eso el
+ * numero no se toca—, pero el margen que uno CREE tener y el que tiene no son el
+ * mismo, y quien baje esta constante tiene que compararla contra 326, no contra
+ * 81. `salud.test.ts` lo fija.
+ *
+ * 📝 La leccion, que es del robot y vale igual aqui: **una medida tomada en un
+ *    solo regimen no caracteriza el fenomeno.** El proyecto ya lo tenia escrito
+ *    para otro caso —«un umbral en milisegundos no es transferible entre topics
+ *    de ritmos distintos»—; alli cambiaba el topic, aqui cambia el MOMENTO.
  */
 export const UMBRAL_SILENCIO_MS = 3000
+
+/**
+ * El peor hueco de `/odom` MEDIDO en el robot, en su peor regimen: los primeros
+ * segundos tras reiniciar el driver. Existe para que `UMBRAL_SILENCIO_MS` se
+ * compare contra un dato y no contra una intuicion.
+ */
+export const PEOR_HUECO_ODOM_MEDIDO_MS = 325.7
 
 export type EstadoRobot = 'SIN_CONEXION' | 'EN_LINEA' | 'SIN_DATOS'
 

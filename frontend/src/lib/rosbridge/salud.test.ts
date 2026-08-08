@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { evaluarSalud, UMBRAL_SILENCIO_MS } from './salud'
+import { PEOR_HUECO_ODOM_MEDIDO_MS, UMBRAL_SILENCIO_MS, evaluarSalud } from './salud'
 
 const base = { conectado: true, msDesdeUltimoOdom: 0, msDesdeUltimoScan: 0, frenando: false }
 
@@ -69,5 +69,26 @@ describe('estado del robot', () => {
   it('msDesdeUltimoOdom NEGATIVO (reloj no monotono) no es EN_LINEA', () => {
     const s = evaluarSalud({ ...base, msDesdeUltimoOdom: -1, msDesdeUltimoScan: null })
     expect(s.estado).toBe('SIN_DATOS')
+  })
+})
+
+describe('🔴 el umbral de silencio contra el PEOR regimen, no contra el comodo', () => {
+  it('deja al menos 5x sobre el peor hueco MEDIDO, que es el del transitorio', () => {
+    /*
+     * 325,7 ms tras reiniciar el driver, contra 78-81 en regimen permanente.
+     * Quien baje `UMBRAL_SILENCIO_MS` tiene que compararlo contra 326: con el
+     * numero comodo parece haber 37x de margen y de verdad hay 9x.
+     *
+     * Es la misma forma que costo un fallo en el robot: `girar()` abortaba por
+     * construccion en los primeros segundos porque su umbral (250 ms) estaba
+     * POR DEBAJO de un hueco que ocurre de verdad.
+     */
+    expect(UMBRAL_SILENCIO_MS).toBeGreaterThan(PEOR_HUECO_ODOM_MEDIDO_MS * 5)
+  })
+
+  it('y el peor hueco medido es MAYOR que el de regimen permanente', () => {
+    // Si alguien sustituye la constante por los 81 ms comodos, esto falla y
+    // obliga a decir de que regimen habla.
+    expect(PEOR_HUECO_ODOM_MEDIDO_MS).toBeGreaterThan(81)
   })
 })

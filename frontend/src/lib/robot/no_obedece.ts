@@ -56,6 +56,15 @@ export interface EntradaNoObedece {
   /** ¿Está la pestaña en segundo plano ahora mismo? */
   pestanaOculta: boolean
   /**
+   * Lo último de `/collision_monitor_state`, o `null` si no ha llegado nada.
+   *
+   * 🔴 `null` NO ES «no está frenando». El monitor publica **al cambiar**, no
+   *    cada tanto: con el robot quieto no llega ni un mensaje (0 en 12 s
+   *    medidos). «Sin mensaje» es «no se sabe», y decir lo contrario sería
+   *    descartar la causa MÁS probable de que un avance salga corto.
+   */
+  frenadoMonitor?: { accion: number; poligono: string } | null
+  /**
    * ¿Hay sesión iniciada? Cambia **el remedio de la parada**, no el veredicto.
    *
    * 🔴 Sin sesión no se menciona ningún botón. Un remedio que dice «pulsa» a
@@ -167,6 +176,64 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
         + 'apagado a propósito en los 16 robots.',
       remedio: 'Enciéndelo en la pestaña Conducir, o con «atriz-escaneo on» en el robot.',
     })
+
+  /*
+   * ── 2b · La capa de seguridad frenando ─────────────────────────────────────
+   *
+   * 🔴🔴 EL CASO QUE FALTABA, Y ES EL QUE MÁS SE PARECE A «NO OBEDECE».
+   *
+   * Medido el 2026-08-08 corriendo la misma práctica dos veces sin tocar nada:
+   * `avanzar(0.20, 3)` dio **26,4 cm** y **59,5 cm**. No es un fallo —es la capa
+   * de seguridad frenando al 40 %— pero **el journal lo registra y el alumno no
+   * ve nada**, así que la conclusión natural es que el robot no le hace caso.
+   *
+   * El dato que lo explica es el ANCHO: `Precaucion` mide 60 × **40 cm**,
+   * centrado en un robot de 21,7 de ancho. Cualquier cosa a menos de ~9 cm de un
+   * COSTADO lo frena, **aunque el robot se esté alejando de ella**.
+   */
+  const fm = e.frenadoMonitor
+  if (fm === undefined || fm === null) {
+    causas.push({
+      id: 'frenado',
+      titulo: 'Si la capa de seguridad te está frenando',
+      estado: 'NO_SE_SABE',
+      evidencia:
+        'El monitor de colisión publica solo cuando cambia, así que con el robot quieto no '
+        + 'llega ningún mensaje. No haber recibido nada NO significa que no esté frenando.',
+      remedio: 'Manda al robot adelante y mira si aparece un aviso en la pestaña Conducir.',
+    })
+  } else if (fm.accion === 1) {
+    causas.push({
+      id: 'frenado',
+      titulo: 'La capa de seguridad está BLOQUEANDO el movimiento',
+      estado: 'CONFIRMADA',
+      evidencia: `El robot informa de una parada por «${fm.poligono}».`,
+      // `invalid source` significa que no le llega /scan, no que haya un obstáculo.
+      remedio: fm.poligono.includes('invalid')
+        ? 'No es un obstáculo: al monitor no le llega el barrido del LIDAR. Enciéndelo.'
+        : 'Aparta lo que tenga delante, o retira el robot de ahí con la mano.',
+    })
+  } else if (fm.accion !== 0) {
+    causas.push({
+      id: 'frenado',
+      titulo: 'La capa de seguridad te está frenando, y el robot SÍ obedece',
+      estado: 'CONFIRMADA',
+      evidencia:
+        `El polígono «${fm.poligono}» está recortando la velocidad al 40 %. Mide 60 cm de largo `
+        + 'por 40 de ANCHO sobre un robot de 21,7: cualquier cosa a menos de ~9 cm de un COSTADO '
+        + 'lo frena, aunque te estés alejando de ella. Medido: la misma orden dio 26,4 cm con '
+        + 'algo cerca y 59,5 despejado.',
+      remedio: 'Despeja también los LADOS, no solo el frente, y repite la medida.',
+    })
+  } else {
+    causas.push({
+      id: 'frenado',
+      titulo: 'La capa de seguridad',
+      estado: 'DESCARTADA',
+      evidencia: 'El monitor de colisión dice que no está limitando el movimiento.',
+      remedio: '',
+    })
+  }
 
   // ── 3 · El RVR contesta ────────────────────────────────────────────────────
   if (e.rvrResponde === null) {

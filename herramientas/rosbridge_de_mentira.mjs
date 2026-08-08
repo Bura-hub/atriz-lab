@@ -40,6 +40,14 @@ const arg = (n) => {
 const fijoSlam = arg('--slam')
 const fijoNav = arg('--nav')
 const sinMapa = process.argv.includes('--sin-mapa')
+/*
+ * 🔴 `--frenando [parar]` hace que `/collision_monitor_state` publique un
+ *    recorte. Es el estado que el alumno NO ve en el robot —el journal lo
+ *    registra y la pantalla callaba— y no se puede provocar a demanda sin poner
+ *    algo al lado del robot, que es justo por lo que hace falta aquí.
+ */
+const frenando = process.argv.includes('--frenando')
+const frenandoParar = process.argv.includes('--parar')
 // 🔴 «Latcheado» no es un estado del enum: es una bandera aparte, y la interfaz
 //    tiene que pintarla ENCIMA de lo que diga el estado. Se pide por su nombre.
 const latSlam = fijoSlam === 'bloqueado'
@@ -162,7 +170,10 @@ const CUERPOS = {
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
     rgb_color: [255, 224, 208], confianza: 0.0, color: 'desconocido',
   }),
-  '/collision_monitor_state': () => ({ action_type: 0, polygon_name: '' }),
+  '/collision_monitor_state': () => (
+    frenandoParar ? { action_type: 1, polygon_name: 'invalid source' }
+      : frenando ? { action_type: 2, polygon_name: 'Precaucion' }
+        : { action_type: 0, polygon_name: '' }),
   '/estado_robot': () => ({
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
     latido: 100 + t, parada_emergencia: false, rvr_responde: true,

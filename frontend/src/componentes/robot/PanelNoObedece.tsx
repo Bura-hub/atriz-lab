@@ -212,6 +212,12 @@ export function PanelNoObedece() {
   const { transporte, conectado } = useRobot()
   const estado = useTopic(transporte, '/estado_robot')
   const barrido = useTopic(transporte, '/scan')
+  /*
+   * 🔴 `/collision_monitor_state` cuesta ~0 —publica al CAMBIAR, no cada tanto—,
+   *    y sin él esta pantalla no podía ver la causa que más se parece a «no
+   *    obedece»: el robot obedeciendo y recorriendo la mitad.
+   */
+  const monitor = useTopic(transporte, '/collision_monitor_state')
   useLatido()
 
   /*
@@ -240,6 +246,10 @@ export function PanelNoObedece() {
     hayBarrido: barrido !== null,
     msDesdeBarrido,
     pestanaOculta: oculta,
+    // `null` cuando no ha llegado nada, que NO es «no está frenando».
+    frenadoMonitor: monitor === null
+      ? null
+      : { accion: monitor.action_type, poligono: monitor.polygon_name },
   })
 
   /*
