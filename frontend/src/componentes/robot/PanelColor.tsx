@@ -35,19 +35,18 @@
  *    se ve; el campo, si hay luz para verlo.
  */
 
-import { useCallback, useState } from 'react'
+
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
-import { SIN_DATO, horaCorta, numero } from '@/lib/interfaz/formato'
+import { SIN_DATO, numero } from '@/lib/interfaz/formato'
 import { Dato } from '@/componentes/ui/Dato'
+import { MedirColor } from '@/componentes/robot/MedirColor'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Contexto } from '@/componentes/ui/Contexto'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { useMuestreo } from './useMuestreo'
 
-const SERVICIO = '/enable_color'
 /** Cuánto se espera a que `/color` deje de traer ceros. A 13 Hz sobra. */
-const PLAZO_TESTIGO_MS = 4000
 
 /** Un canal 0..255 válido, o `null`. */
 function canal(v: unknown): number | null {
@@ -55,12 +54,10 @@ function canal(v: unknown): number | null {
 }
 
 export function PanelColor() {
-  const { transporte, conectado } = useRobot()
+  const { transporte } = useRobot()
   const { ultimo } = useMuestreo(transporte, '/color')
   const estado = useTopic(transporte, '/estado_robot')
 
-  const [enviando, setEnviando] = useState(false)
-  const [resultado, setResultado] = useState<{ hora: string; texto: string; malo: boolean } | null>(null)
 
   const rgb = ultimo?.rgb_color
   const r = canal(rgb?.[0])
@@ -70,73 +67,21 @@ export function PanelColor() {
   //    inventa un `false`, que se leería como «apagado» sobre algo que no se sabe.
   const luz: boolean | null = estado === null ? null : estado.color_activo === true
 
-  const conmutar = useCallback(async (encender: boolean) => {
-    setEnviando(true)
-    setResultado(null)
-    const hora = horaCorta(Date.now())
-    let cancelar: (() => void) | null = null
-    try {
-      /*
-       * ═══════════════════════════════════════════════════════════════════════
-       * 🔴 EL TESTIGO ES `color_activo`, **NO** QUE `/color` DEJE DE SER CERO.
-       * ═══════════════════════════════════════════════════════════════════════
-       * La primera versión de esto esperaba a que `/color` trajera algún canal
-       * distinto de cero. **Sobre una superficie muy oscura eso puede no llegar
-       * nunca**, y entonces el botón diría «no se encendió» con el LED
-       * encendido: un falso negativo, y del peor tipo — deja al alumno buscando
-       * una avería mientras gasta batería.
-       *
-       * ⏳ Y no hay número que lo acote: **no está medido** cuánto da `/color`
-       *    sobre negro con la luz puesta. Lo único medido es el canal claro
-       *    —181 sobre negro contra 2288 sobre blanco—, que este topic no trae.
-       *
-       * `color_activo` es exacto en los dos sentidos y no depende de lo que haya
-       * debajo del robot. `/color` se queda como refuerzo visual, en la rejilla.
-       *
-       * 🔴🔴 Y `/estado_robot` VA LATCHEADO (`TRANSIENT_LOCAL`), así que el
-       *      primer mensaje que llegue puede ser un enlatado **anterior** a la
-       *      llamada. Se usa la misma guardia que al liberar la parada: el
-       *      primero solo sirve de REFERENCIA, y cuenta uno con `latido`
-       *      estrictamente mayor.
-       */
-      let visto = false
-      let referencia: number | null = null
-      cancelar = transporte.suscribir('/estado_robot', (m) => {
-        const e = m as { latido?: unknown; color_activo?: unknown }
-        if (typeof e.latido !== 'number' || typeof e.color_activo !== 'boolean') return
-        if (referencia === null) { referencia = e.latido; return }
-        if (e.latido <= referencia) return
-        if (e.color_activo === encender) visto = true
-      })
-
-      await transporte.llamar(SERVICIO, { data: encender })
-
-      const limite = Date.now() + PLAZO_TESTIGO_MS
-      while (!visto && Date.now() < limite) await new Promise((s) => setTimeout(s, 120))
-
-      setResultado(visto
-        ? {
-          hora,
-          texto: encender
-            ? 'Y lo confirma el robot: su bandera color_activo ha subido en un mensaje posterior a la orden.'
-            : 'Y lo confirma el robot: color_activo ha bajado.',
-          malo: false,
-        }
-        : {
-          hora,
-          texto: 'El servicio contestó, pero el robot no ha confirmado el cambio en 4 s. '
-            + 'Puede que no haya llegado ningún /estado_robot posterior, o que la luz siga como '
-            + 'estaba. Desde aquí no se distinguen: mira el robot.',
-          malo: true,
-        })
-    } catch (e) {
-      // 🔴 Se PINTA. La orden no salió, y quien pulsó tiene que enterarse.
-      setResultado({ hora, texto: e instanceof Error ? e.message : String(e), malo: true })
-    } finally {
-      cancelar?.()
-      setEnviando(false)
-    }
-  }, [transporte])
+  /*
+   * 🔴 AQUI VIVIA `conmutar()`, Y SU LECCION SE CONSERVA PORQUE COSTO CARA.
+   *
+   * Llamaba a `/enable_color` y **esperaba al testigo**: `color_activo` con un
+   * `latido` estrictamente mayor, porque `/estado_robot` va TRANSIENT_LOCAL y el
+   * primer mensaje que llega puede ser un enlatado ANTERIOR a la orden. Sin esa
+   * guarda la pantalla confirmaba con un dato viejo.
+   *
+   * → Se retiró con el botón duplicado, no porque la idea sobrara. El testigo
+   *   **sigue estando**, en `MedirColor`: en vez de esperarlo UNA vez tras
+   *   pulsar, se pinta CONTINUAMENTE («el robot confirma la luz apagada, que es
+   *   lo que pide este modo»). Es más fuerte, no menos: cubre además el apagado
+   *   automático a los 15 minutos, que ocurre sin que nadie pulse nada y que un
+   *   testigo de una sola vez no habría visto nunca.
+   */
 
   return (
     <Tarjeta
@@ -146,28 +91,24 @@ export function PanelColor() {
         <p>Todavía no ha llegado ningún <code>/color</code>.</p>
       ) : undefined}
     >
-      {/* ── El interruptor ─────────────────────────────────────────────── */}
-      <div className="mb-3 flex flex-wrap items-center gap-3">
-        <button
-          type="button"
-          onClick={() => { void conmutar(luz !== true) }}
-          disabled={!conectado || enviando || luz === null}
-          aria-busy={enviando}
-          className="pulsable focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:text-muted-foreground"
-        >
-          {enviando
-            ? 'Esperando al sensor…'
-            : luz === true ? 'Apagar la luz' : 'Encender la luz'}
-        </button>
-        <span className="text-[13px] text-muted-foreground">
-          {luz === null
-            ? 'No llega /estado_robot: desde aquí no se sabe si hay luz.'
-            : luz
-              ? 'La luz está encendida.'
-              : 'La luz está apagada, y sin ella el sensor no ve nada.'}
-        </span>
-      </div>
+      {/*
+        🔴🔴 AQUI HABIA UN SEGUNDO CONTROL DE LA MISMA LUZ, Y SE QUITO EL
+             2026-08-08 NADA MAS VERLO EN UNA CAPTURA.
 
+        Era un botón «Encender la luz» al lado del selector de modo del medidor.
+        Los dos llaman a `/enable_color`, o sea que **dos controles mandaban sobre
+        el mismo estado del robot**: pulsar uno dejaba al otro describiendo algo
+        que ya no era cierto, y el alumno con dos versiones de la verdad en la
+        misma tarjeta.
+
+        Este proyecto ya tiene la regla escrita para el caso peor —«dos controles
+        de parada juntos es la confusión que la franja de seguridad existe para
+        evitar»—; aquí no hay peligro, pero la forma es la misma.
+
+        → El modo manda. La luz dejó de ser algo que se enciende y pasó a ser una
+          consecuencia de responder «¿qué hay debajo del robot?», que es la
+          pregunta que de verdad decide si la medida sale bien o al revés.
+      */}
       {/*
         ⚠️ QUE SE APAGA SOLA HAY QUE DECIRLO. Si no, el alumno ve el sensor
            apagarse a mitad de una práctica y concluye que se rompió — y esa
@@ -197,6 +138,16 @@ export function PanelColor() {
         </div>
       )}
 
+      <div className="mb-4">
+        <MedirColor />
+      </div>
+
+      {/*
+        📝 Lo de abajo es el TOPIC, que va a 16 Hz y sirve para ver el sensor
+           moverse. El medidor de arriba usa el SERVICIO, que trae además el canal
+           claro y funciona en los dos modos. No son redundantes: el topic solo
+           dice algo en modo reflejo.
+      */}
       <div className="rejilla sm:grid-cols-2 xl:grid-cols-4">
         <Dato etiqueta="Rojo" valor={r === null ? SIN_DATO : numero(r, 0)} crudo={r ?? undefined} />
         <Dato etiqueta="Verde" valor={g === null ? SIN_DATO : numero(g, 0)} crudo={g ?? undefined} />
@@ -215,16 +166,6 @@ export function PanelColor() {
         />
       </div>
 
-      {resultado !== null && (
-        <div className="mt-3" role="alert">
-          <Aviso
-            nivel={resultado.malo ? 'ERROR' : 'NOTA'}
-            titulo={`${resultado.malo ? 'Sin confirmar' : 'Hecho'} · ${resultado.hora}`}
-          >
-            {resultado.texto}
-          </Aviso>
-        </div>
-      )}
 
       <Contexto>
       <p>
@@ -235,8 +176,14 @@ export function PanelColor() {
       <p>
         Este topic <strong>no trae el canal claro</strong>, que es el que mejor separa una línea
         de su fondo —recorre 12,6 veces entre negro y blanco, mientras que el color se normaliza
-        por el verde—. Sí lo devuelve el servicio <code>get_rgbc_sensor_values</code>, que esta
-        pantalla todavía no usa.
+        por el verde—. Sí lo devuelve el servicio <code>get_rgbc_sensor_values</code>, que es el
+        que usa el medidor de arriba.
+      </p>
+      <p>
+        🔴 <strong>Y el topic solo dice algo en modo reflejo.</strong> Con la luz apagada lo que
+        publica es oscuridad aunque haya una pantalla encendida debajo: para medir una superficie
+        luminosa hay que <strong>preguntar por el servicio</strong>, no mirar aquí. Es la trampa
+        de ese modo, y está medida.
       </p>
       <p>
         Y un solo sensor mirando hacia abajo <strong>no puede saber hacia qué lado se desvió el

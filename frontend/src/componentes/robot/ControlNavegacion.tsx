@@ -3,11 +3,26 @@
 /**
  * ARRANCAR Y PARAR SLAM Y NAV2 DESDE LA WEB, sin SSH.
  *
- * ⚠️ **NO VERIFICADO CONTRA EL ROBOT.** Escrito el 2026-08-07 con el `.msg` del
- *    supervisor delante y el robot apagado cargando. Hasta que el supervisor
- *    corra, `/pedir_slam` y `/pedir_nav` **no existirán en el robot** y las
- *    llamadas darán plazo agotado. 🔴 Eso NO es un fallo de esta pantalla, y por
- *    eso el mensaje de error nombra al servicio que faltaba.
+ * 🔴🔴 CORREGIDO EL 2026-08-08 DESDE EL ROBOT: LO DE ABAJO ERA FALSO AL
+ *      ESCRIBIRSE. Esta cabecera decía «NO VERIFICADO […] hasta que el supervisor
+ *      corra, `/pedir_slam` y `/pedir_nav` **no existirán en el robot**». El
+ *      supervisor lleva corriendo desde el **2026-08-07**, los dos servicios
+ *      contestan, y esa misma tarde se usaron de verdad: `/pedir_slam` levantó
+ *      SLAM y se mapeó el cuarto, `/pedir_nav` levantó Nav2 y navegó.
+ *
+ *      📝 **La lección, en su versión de dos máquinas:** este cliente dedujo el
+ *      estado del robot de **cuándo se había subido el código**, no de haberlo
+ *      consultado. **El repositorio dice qué existe; solo el robot dice qué está
+ *      corriendo.** Es la misma forma que «`ros2 topic list` incluye topics de
+ *      nodos muertos»: la lista y el proceso son cosas distintas.
+ *
+ * ✅ **Lo que sí sigue en pie, y es lo útil:** que el mensaje de plazo agotado
+ *    **nombre el servicio**. El caso existe de verdad —un driver caído o una
+ *    unidad `latcheada` dan exactamente esa firma—, solo que la causa no es la
+ *    que yo suponía.
+ *
+ * ⏳ Lo que sigue **sin** verificar es esta PANTALLA contra el robot: los seis
+ *    estados se han visto contra un doble, no contra el supervisor real.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴 POR QUE SE PIDE Y NO SE ORDENA

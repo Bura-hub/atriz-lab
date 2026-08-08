@@ -4,20 +4,29 @@
  * NAVEGAR: el mapa, dónde cree AMCL que está el robot, y mandarle un objetivo.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 ESTA PANTALLA NACE SABIENDO QUE HOY NO PUEDE FUNCIONAR, Y LO DICE
+ * 🔴 ESTA PANTALLA NACIÓ SABIENDO QUE NO PODÍA FUNCIONAR — Y YA FUNCIONA
  * ═══════════════════════════════════════════════════════════════════════════
- * `atriz-nav.service` está instalado y **NO habilitado** a propósito: Nav2 cuesta
- * ~58 % de un núcleo, la Pi se alimenta del USB del RVR, y la autonomía (~2 h) ya
- * no cubre una clase. Sin ese servicio no hay `/map`, ni `/amcl_pose`, ni
- * servidor de acción — medido hoy: un objetivo a `/navigate_to_pose` contesta
- * «No action server available».
+ * Decía: «`atriz-nav.service` está instalado y NO habilitado […] sin ese servicio
+ * no hay `/map`, ni `/amcl_pose`, ni servidor de acción», y que **no existe un
+ * mapa**. Las dos cosas eran ciertas cuando se escribió y **dejaron de serlo el
+ * 2026-08-07**: el supervisor del robot levanta Nav2 a petición, se mapeó un
+ * cuarto y **Nav2 navegó de verdad**.
  *
- * Y falta lo otro: **no existe un mapa del aula**. Sin él AMCL no tiene contra
- * qué localizar.
+ * ✅ Lo que sigue en pie, y por eso la unidad no está habilitada: Nav2 son ~58 %
+ *    de un núcleo, la Pi se alimenta del USB del RVR y la autonomía (~2 h) ya no
+ *    cubre una clase. **No arranca sola**; se pide desde el panel de arriba.
  *
- * → Así que lo primero de esta pantalla es un diagnóstico, no un dibujo. Un
- *   canvas vacío se lee como «la interfaz está rota»; una frase que dice qué
- *   falta se lee como lo que es.
+ * ⏳ Y lo que falta de verdad es **el mapa del AULA** —lo mapeado es un cuarto—,
+ *    que es tarea física del laboratorio.
+ *
+ * 🔴 **Pero nada de esto se afirma ya de forma estática.** El robot publica
+ *    `hay_mapa` y los seis estados de `/estado_navegacion`: la pantalla PREGUNTA
+ *    en vez de recordar. Es la lección que costó este párrafo — este cliente
+ *    dedujo el estado del robot de cuándo se había subido el código, y **el
+ *    repositorio dice qué existe; solo el robot dice qué está corriendo**.
+ *
+ * → Lo primero de esta pantalla sigue siendo un diagnóstico y no un dibujo: un
+ *   canvas vacío se lee como «la interfaz está rota».
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴🔴 RETRACTADO EL 2026-08-06: LA «TRAMPA DE LA DURABILIDAD» NO EXISTE AQUÍ
@@ -212,10 +221,16 @@ export function PanelNavegar() {
               una clase. Se arranca <strong>desde el panel de arriba</strong>, sin entrar al robot.
             </Aviso>
             <div className="mt-3">
-              <Aviso nivel="ATENCION" titulo="Y aunque se arranque, falta el mapa del aula">
-                AMCL localiza <strong>contra un mapa que no existe todavía</strong>. Hay que
-                recorrer el aula con SLAM y guardarlo primero. Sin eso no hay nada que dibujar aquí
-                ni sitio al que mandar el robot.
+              {/*
+                🔴 «no existe todavía» ERA UNA AFIRMACIÓN ESTÁTICA, y quedó falsa el
+                   2026-08-07 en cuanto se mapeó un cuarto. Ahora se remite al panel
+                   de arriba, que lee `hay_mapa` DEL ROBOT en vez de recordarlo.
+              */}
+              <Aviso nivel="ATENCION" titulo="Y aunque arranque, hace falta un mapa DE ESTE SITIO">
+                AMCL localiza contra un mapa guardado, y el panel de arriba dice si el robot tiene
+                alguno. <strong>Que exista uno no basta: tiene que ser de donde está el robot
+                ahora.</strong> Con un mapa del sitio equivocado Nav2 navega, dice que llegó, y se
+                queda a 41 cm — medido. Si has movido las mesas, vuelve a mapear.
               </Aviso>
             </div>
           </Tarjeta>
@@ -393,33 +408,41 @@ export function PanelNavegar() {
               lo pedido. Si el rumbo final importa para lo que estés midiendo, corrígelo a mano.
             </p>
             {/*
-              🔴 ESTE PÁRRAFO DECÍA «el error medido al llegar es de 8-10 cm, que
-                 es la tolerancia configurada», y el robot lo desmintió el
-                 2026-08-07. Era una cifra de un día bueno presentada como si
-                 fuera una propiedad de Nav2.
+              🔴🔴 ESTE PÁRRAFO LLEVA **DOS** CORRECCIONES, Y LA SEGUNDA ES MÍA.
 
-                 Medido navegando al mismo objetivo con dos mapas del MISMO
-                 cuarto, sin tocar un solo parámetro de AMCL:
+              (1) 2026-08-07 — decía «el error medido al llegar es de 8-10 cm,
+                  que es la tolerancia configurada». El robot lo desmintió: con
+                  un mapa viejo del mismo cuarto, Nav2 declaró SUCCEEDED a
+                  41,3 cm. Era una cifra de un día bueno presentada como una
+                  propiedad.
 
-                   mapa viejo   error de AMCL 45,0 cm · distancia real 41,3 cm
-                   remapeado    error de AMCL  8,9 cm · distancia real  6,1 cm
+              (2) 2026-08-08 — al corregirlo escribí «con el cuarto remapeado el
+                  mismo objetivo acabó a 6 cm», que es **n=1 presentado como
+                  propiedad otra vez**. La réplica, mismo protocolo y misma marca:
 
-                 Nav2 dijo SUCCEEDED **las dos veces**, con la tolerancia en
-                 10 cm. O sea que en la primera declaró éxito a 41,3 cm: no es
-                 que el error sea de 8-10 cm, es que el error DEPENDE DEL MAPA y
-                 Nav2 no lo sabe —cree estar donde AMCL le dice—.
+                    mapa viejo      41,3 cm   AMCL 45,0   map→odom 0,424
+                    remapeado · 1    6,1 cm   AMCL  8,9   map→odom 0,028
+                    remapeado · 2   11,8 cm   AMCL 15,2   map→odom 0,021
 
-                 Es exactamente lo que este párrafo ya advertía por otro motivo,
-                 así que el aviso se queda y gana el número que lo demuestra.
+                  Nav2 dijo SUCCEEDED **las tres veces**, con la tolerancia en
+                  10 cm — incluida la de 11,8. Sigue mintiendo: por 1,8 cm en vez
+                  de por 31, pero mintiendo.
+
+              📝 Cometí el mismo error que había señalado el día antes, con la
+                 advertencia «n=1, esto pide repetirse» escrita al lado. **Ver el
+                 error en el trabajo de otro no vacuna contra cometerlo.**
+
+              → Lo que aguanta y sale reforzado: el mapa es la causa dominante, y
+                el DESENLACE NO INFORMA DE LA PRECISIÓN. Eso es la forma, no la
+                cifra, y es lo único sobre lo que se puede construir una promesa.
             */}
             <p>
-              Y que la acción termine <strong>no dice dónde terminó</strong>. Con un mapa viejo del
-              mismo cuarto, Nav2 dio un objetivo por <strong>cumplido a 41 cm</strong> de donde se
-              le pidió, teniendo la tolerancia en 10 — y con el cuarto remapeado, sin cambiar nada
-              más, el mismo objetivo acabó a 6 cm. El error no es una propiedad de Nav2:{' '}
-              <strong>depende de lo viejo que sea el mapa</strong>, y Nav2 no puede saberlo porque
-              se cree lo que le dice su localización. Para saber si el robot está donde querías,
-              míralo.
+              Y que la acción termine <strong>no dice dónde terminó</strong>. Nav2 declaró el mismo
+              objetivo <strong>cumplido a 6,1 · 11,8 y 41,3 cm</strong> en tres intentos, con la
+              tolerancia puesta en 10. El desenlace <strong>no informa de la precisión</strong>, y
+              no hay ninguna promesa que se le pueda hacer a un alumno apoyada en él. Sobre un mapa
+              fresco la cifra honesta es <strong>~10-12 cm</strong>, no los 10 que Nav2 anuncia; con
+              el mapa viejo se fue a 41. Para saber si el robot está donde querías, míralo.
             </p>
             </Contexto>
           </Tarjeta>

@@ -99,6 +99,14 @@ function estadoAhora() {
  *    que el formato encaja, NO que el robot mande esto.
  */
 let t = 0
+/*
+ * 🔴 El estado de la LUZ del sensor, para que `/get_rgbc_sensor_values` conteste
+ *    distinto en cada modo — que es lo único que hace interesante a ese servicio.
+ *    Los números son los MEDIDOS sobre una pantalla de móvil roja a tope
+ *    (evidencia 86): con la luz apagada R/G = 5,12; con ella encendida, 0,66 —o
+ *    sea el resultado INVERTIDO, que es lo que la pantalla tiene que atrapar.
+ */
+let luzEncendida = false
 const CUERPOS = {
   '/odom': () => ({
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: 'odom' },
@@ -159,7 +167,7 @@ const CUERPOS = {
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
     latido: 100 + t, parada_emergencia: false, rvr_responde: true,
     antiguedad_muestra_s: 0.06, antiguedad_odom_s: 0.06,
-    reanudaciones_fallidas: 0, color_activo: false,
+    reanudaciones_fallidas: 0, color_activo: luzEncendida,
   }),
   '/scan': () => {
     // 🔴 250 puntos, NO 255 ni 260: el tamaño NO es una constante entre
@@ -244,7 +252,23 @@ servidor.on('upgrade', (req, socket) => {
       } else if (m.op === 'call_service') {
         console.log(`  call_service ${m.service} ${JSON.stringify(m.args)}`)
         const arrancar = m.args?.data === true
-        if (m.service === '/pedir_slam' || m.service === '/pedir_nav') {
+        if (m.service === '/enable_color') {
+          luzEncendida = m.args?.data === true
+          socket.write(marco(JSON.stringify({
+            op: 'service_response', id: m.id, service: m.service, result: true,
+            values: { success: true, message: luzEncendida ? 'luz encendida' : 'luz apagada' },
+          })))
+        } else if (m.service === '/get_rgbc_sensor_values') {
+          // Pantalla ROJA a tope, medida en los dos estados de la luz.
+          const v = luzEncendida
+            ? { red_channel_value: 817, green_channel_value: 1238, blue_channel_value: 607, clear_channel_value: 1238 }
+            : { red_channel_value: 512, green_channel_value: 100, blue_channel_value: 15, clear_channel_value: 150 }
+          socket.write(marco(JSON.stringify({
+            op: 'service_response', id: m.id, service: m.service, result: true,
+            values: { ...v, success: true,
+              message: luzEncendida ? '' : 'la luz del sensor esta apagada' },
+          })))
+        } else if (m.service === '/pedir_slam' || m.service === '/pedir_nav') {
           // Mueve el guion, para que pulsar el botón tenga efecto visible.
           paso = arrancar ? 1 : 0
           socket.write(marco(JSON.stringify({
