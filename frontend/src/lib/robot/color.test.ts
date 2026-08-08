@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  BANDA_PLANA, LUZ_DE, hayLectura, interpretar, luzConcuerda, motivoDeDuda, proporciones,
+  BANDA_PLANA, VERDE_MINIMO_PARA_DECIDIR, LUZ_DE, hayLectura, interpretar, luzConcuerda, motivoDeDuda, proporciones,
   type Lectura, type Modo,
 } from './color'
 
@@ -77,20 +77,20 @@ describe('🔴 el MODO decide, y el mismo número significa cosas distintas', ()
   })
 
   it('en REFLEJO sí nombra una superficie MATE roja (R/G medido 2,74)', () => {
-    expect(interpretar({ rg: 2.74, bg: 0.5 }, 'REFLEJO')).toBe('ROJO')
+    expect(interpretar({ rg: 2.74, bg: 0.5, verde: 100 }, 'REFLEJO')).toBe('ROJO')
   })
 
   it('🔴 y la MISMA lectura cambia de veredicto según el modo', () => {
     // 0,66 / 0,49 es el rojo sobre vidrio con luz. En emisión sería «verde»
     // —los dos cocientes por debajo de 1—; en reflejo, banda plana. Ninguna de
     // las dos es «rojo», y por eso el modo no puede tener valor por defecto.
-    const p = { rg: 0.66, bg: 0.49 }
+    const p = { rg: 0.66, bg: 0.49, verde: 100 }
     expect(interpretar(p, 'EMISION')).toBe('VERDE')
     expect(interpretar(p, 'REFLEJO')).toBe('NO_SE_PUEDE_DECIR')
   })
 
   it('en EMISIÓN, los dos cocientes por encima de 1 no es ningún color medido', () => {
-    expect(interpretar({ rg: 2, bg: 2 }, 'EMISION')).toBe('NO_SE_PUEDE_DECIR')
+    expect(interpretar({ rg: 2, bg: 2, verde: 100 }, 'EMISION')).toBe('NO_SE_PUEDE_DECIR')
   })
 
   it('la banda plana está entre las dos medidas, no encima de ninguna', () => {
@@ -144,17 +144,66 @@ describe('motivoDeDuda', () => {
   it('cada duda trae su motivo, y ninguno es genérico', () => {
     for (const m of ['REFLEJO', 'EMISION'] as Modo[]) {
       expect(motivoDeDuda(null, m).length).toBeGreaterThan(60)
-      expect(motivoDeDuda({ rg: 0.5, bg: 0.5 }, m).length).toBeGreaterThan(60)
+      expect(motivoDeDuda({ rg: 0.5, bg: 0.5, verde: 100 }, m).length).toBeGreaterThan(60)
     }
   })
 
   it('🔴 en reflejo, el motivo dice QUÉ HACER: cambiar de modo', () => {
     // Un «no se sabe» sin salida manda a buscar una avería que no hay.
-    expect(motivoDeDuda({ rg: 0.5, bg: 0.5 }, 'REFLEJO')).toContain('modo emisión')
-    expect(motivoDeDuda({ rg: 0.5, bg: 0.5 }, 'REFLEJO')).toContain('invertido')
+    expect(motivoDeDuda({ rg: 0.5, bg: 0.5, verde: 100 }, 'REFLEJO')).toContain('modo emisión')
+    expect(motivoDeDuda({ rg: 0.5, bg: 0.5, verde: 100 }, 'REFLEJO')).toContain('invertido')
   })
 
   it('el verde a cero se explica distinto en cada modo', () => {
     expect(motivoDeDuda(null, 'EMISION')).toContain('nada encendido')
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴🔴 EL FALLO QUE ENCONTRO EL ROBOT, no una prueba
+// ═══════════════════════════════════════════════════════════════════════════
+describe('ruido no es un color', () => {
+  it('🔴 (0, 1, 0) sobre suelo mate en emisión NO es «verde»', () => {
+    /*
+     * LA LECTURA REAL de rvr-01, el 2026-08-09: R=0 G=1 B=0 claro=1. Los dos
+     * cocientes valen 0, los dos son «≤ 1», y verde es el caso POR DESCARTE:
+     * la pantalla afirmó «la luz que sale de la superficie es verde» sobre un
+     * suelo a oscuras.
+     *
+     * 📝 Y había una prueba contra este fallo, que comprobaba `verde === 0`.
+     *    Aquí verde vale 1. Una cuenta de ruido se cuela por el borde de la
+     *    guarda — la banda intermedia, otra vez.
+     */
+    expect(interpretar(proporciones({ rojo: 0, verde: 1, azul: 0 }), 'EMISION'))
+      .toBe('NO_SE_PUEDE_DECIR')
+  })
+
+  it('barre el tramo ENTERO, no tres puntos', () => {
+    // De 1 hasta el umbral, ninguno puede salir «verde».
+    for (let g = 1; g < VERDE_MINIMO_PARA_DECIDIR; g++) {
+      expect(interpretar(proporciones({ rojo: 0, verde: g, azul: 0 }), 'EMISION'), `verde=${g}`)
+        .toBe('NO_SE_PUEDE_DECIR')
+    }
+    // Y a partir del umbral sí, porque ahí el cociente ya está resuelto.
+    for (let g = VERDE_MINIMO_PARA_DECIDIR; g <= 40; g++) {
+      expect(interpretar(proporciones({ rojo: 0, verde: g, azul: 0 }), 'EMISION'), `verde=${g}`)
+        .toBe('VERDE')
+    }
+  })
+
+  it('🔴 pero un ROJO tenue SIGUE identificándose: la guarda no tapa señal real', () => {
+    // El umbral protege el caso POR DESCARTE, no los positivos. Con R/G = 5 hay
+    // color aunque las cuentas sean pocas: la separación medida es de 25-30x.
+    expect(interpretar(proporciones({ rojo: 25, verde: 5, azul: 0 }), 'EMISION')).toBe('ROJO')
+  })
+
+  it('el motivo dice el número y qué hacer, no «no se sabe» a secas', () => {
+    const m = motivoDeDuda(proporciones({ rojo: 0, verde: 1, azul: 0 }), 'EMISION')
+    expect(m).toContain('1')
+    expect(m).toContain('brillo')
+  })
+
+  it('el verde crudo viaja con el cociente', () => {
+    expect(proporciones({ rojo: 0, verde: 387, azul: 0 })!.verde).toBe(387)
   })
 })

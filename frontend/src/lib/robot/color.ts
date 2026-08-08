@@ -40,7 +40,16 @@ export interface Lectura {
   message: string
 }
 
-export interface Proporciones { rg: number; bg: number }
+export interface Proporciones {
+  rg: number
+  bg: number
+  /**
+   * 🔴 EL VERDE CRUDO VIAJA CON EL COCIENTE, y no es redundante: un cociente sin
+   *    su denominador **no dice si significa algo**. `R/G = 0` con G = 1 y con
+   *    G = 400 son el mismo número y dos hechos distintos.
+   */
+  verde: number
+}
 
 /**
  * 🔴 `null` CUANDO EL VERDE ES CERO, y ese caso OCURRE — no es defensa teórica.
@@ -54,7 +63,7 @@ export interface Proporciones { rg: number; bg: number }
 export function proporciones(l: Pick<Lectura, 'rojo' | 'verde' | 'azul'>): Proporciones | null {
   if (!Number.isFinite(l.verde) || l.verde === 0) return null
   if (!Number.isFinite(l.rojo) || !Number.isFinite(l.azul)) return null
-  return { rg: l.rojo / l.verde, bg: l.azul / l.verde }
+  return { rg: l.rojo / l.verde, bg: l.azul / l.verde, verde: l.verde }
 }
 
 /**
@@ -69,6 +78,42 @@ export function proporciones(l: Pick<Lectura, 'rojo' | 'verde' | 'azul'>): Propo
 export const hayLectura = (l: Lectura): boolean => l.success
 
 export type Veredicto = 'ROJO' | 'VERDE' | 'AZUL' | 'NO_SE_PUEDE_DECIR'
+
+/**
+ * 🔴🔴 EL MINIMO PARA QUE UN COCIENTE SIGNIFIQUE ALGO — y esto lo encontró el
+ *      ROBOT, no una prueba.
+ *
+ * Validando contra rvr-01 el 2026-08-09, con el robot sobre **suelo mate** y en
+ * modo emisión —o sea la casilla del cero absoluto—, el sensor devolvió:
+ *
+ *     R = 0   G = 1   B = 0   claro = 1
+ *
+ * `proporciones()` calculó `R/G = 0` y `B/G = 0`, los dos por debajo de 1, y
+ * `interpretar()` concluyó **VERDE** — porque en modo emisión verde es el caso
+ * POR DESCARTE. La pantalla afirmó *«la luz que sale de la superficie es
+ * verde»* sobre un suelo a oscuras.
+ *
+ * 📝 Y había una prueba escrita **contra este mismo fallo**: comprobaba
+ *    `verde === 0`. Aquí verde vale **1**. Una sola cuenta de ruido se cuela por
+ *    el borde de la guarda. Es literalmente la lección que este proyecto tiene
+ *    escrita —«un test que barre tres puntos representativos puede dejar sin
+ *    cubrir justo el tramo donde vive el bug»—, cometida por mí, en el fichero
+ *    donde la cité.
+ *
+ * ── POR QUE 10, Y NO UN NUMERO CUALQUIERA ─────────────────────────────────
+ * Las cuentas son ENTERAS. El error de cuantización de `R/G` es ±1/G, así que
+ * con G = 1 el cociente tiene un **±100 %** de error: no distingue 0,9 de 1,1,
+ * que es justo la frontera con la que se decide el color. Pedir que el cociente
+ * quede resuelto mejor que el 10 % da **G ≥ 10**. Es una derivación, no una
+ * medida.
+ *
+ * ⚠️ Y NO se sabe dónde está el suelo de verdad: el propio documento del robot
+ *    dice que «dónde está el límite por abajo sigue **sin medir**». La lectura
+ *    válida más tenue que existe es `claro = 42`. Este umbral es conservador por
+ *    el lado seguro —callarse— y **hay que remedirlo** el día que alguien
+ *    caracterice una baldosa de verdad.
+ */
+export const VERDE_MINIMO_PARA_DECIDIR = 10
 
 /**
  * 🔴 LA BANDA EN LA QUE EL REFLEJO NO DISTINGUE NADA.
@@ -110,6 +155,13 @@ export function interpretar(p: Proporciones | null, modo: Modo): Veredicto {
     if (p.rg > 1 && p.bg > 1) return 'NO_SE_PUEDE_DECIR'
     if (p.rg > 1) return 'ROJO'
     if (p.bg > 1) return 'AZUL'
+    /*
+     * 🔴 Y AQUI NO SE PUEDE CAER POR DESCARTE SI NO HAY SEÑAL. Con G = 1 los dos
+     *    cocientes valen 0, los dos son «≤ 1», y sin esta guarda el resultado es
+     *    un VERDE afirmado sobre ruido. Medido en el robot: suelo mate en modo
+     *    emisión dio (0, 1, 0) y la pantalla dijo «es verde».
+     */
+    if (p.verde < VERDE_MINIMO_PARA_DECIDIR) return 'NO_SE_PUEDE_DECIR'
     return 'VERDE'
   }
 
@@ -136,6 +188,12 @@ export function motivoDeDuda(p: Proporciones | null, modo: Modo): string {
       + 'ahí una pantalla roja a tope da 0,53 y un papel azul claro 0,42, casi el mismo número. '
       + 'Si la superficie EMITE luz, cambia al modo emisión — con la luz encendida el resultado '
       + 'no es impreciso, es que sale invertido.'
+  }
+  if (p.verde < VERDE_MINIMO_PARA_DECIDIR) {
+    return 'Casi no llega luz: el canal verde vale ' + String(p.verde) + ', y con tan pocas cuentas '
+      + 'el cociente no distingue un color de otro —una sola cuenta de ruido lo cambia entero—. '
+      + 'Si la superficie debería estar encendida, súbele el brillo; si es una superficie normal, '
+      + 'cambia al modo de superficie normal para que el robot la ilumine.'
   }
   return 'Los dos cocientes salen por encima de 1 a la vez, que no es ninguno de los tres '
     + 'colores medidos. Mira lo que hay debajo del robot.'
