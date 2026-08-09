@@ -410,7 +410,8 @@ export interface MensajeEstadoNavegacion {
    *    NO es del sitio hace que Nav2 declare el objetivo cumplido **a 41,3 cm**,
    *    con `SUCCEEDED`, el estado en FUNCIONANDO y **ni una linea de error en
    *    ningun log**. No hay ningun otro sintoma — lo destapo una cinta metrica.
-   *    Remapeado el mismo cuarto: 6,1 y 11,8 cm.
+   *    Remapeado el mismo cuarto, n=3: 6,1 · 11,8 · 11,3 cm — **dos de tres
+   *    siguen fuera** de la tolerancia de 10.
    *
    * → La unica defensa es que **una persona mire**, y quien tiene a la persona
    *   delante es la web. Estos dos campos son para eso.

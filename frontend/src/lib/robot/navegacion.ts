@@ -1,10 +1,23 @@
 /**
  * Arrancar SLAM y Nav2 desde la web — la LOGICA, sin React.
  *
- * ⚠️ **TODO ESTE FICHERO ES NO VERIFICADO CONTRA EL ROBOT.** Se escribio el
- *    2026-08-07 con el `.msg` del supervisor delante, y el robot esta apagado
- *    cargando. El supervisor se estrena con este mensaje: hasta que corra, lo
- *    unico probado aqui son las funciones puras contra sus propias pruebas.
+ * ✅ **VALIDADO CONTRA rvr-01 el 2026-08-09.** Esta cabecera decia «TODO ESTE
+ *    FICHERO ES NO VERIFICADO CONTRA EL ROBOT», y era cierto cuando se escribio
+ *    —el 07, con el robot cargando—. Ya no:
+ *
+ *      apagado -> arrancando · 4 · 9 · 14 s -> funcionando    ~18 s
+ *      CIEGO    forzado apagando el barrido con SLAM vivo
+ *      MUDO     aparecio solo al parar SLAM
+ *      parar    funcionando -> MUDO -> apagado
+ *
+ *    📝 Y se corrige porque **un «no verificado» que ya no lo es manda a
+ *    desconfiar de codigo que funciona**, que gasta la credibilidad de los
+ *    avisos que si importan. Es la misma regla que hizo quitar el aviso de «los
+ *    LEDs se encienden al arrancar el driver», que llevaba meses siendo falso.
+ *
+ * ⏳ **Lo que sigue sin ver:** `BLOQUEADO` —inalcanzable desde la web a
+ *    proposito: el supervisor se niega antes de llamar a `systemctl`— y
+ *    `NO_SE_SABE`, que exige parar el supervisor por SSH.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴 POR QUE ESTO NO ES UN INTERRUPTOR
