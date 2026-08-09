@@ -152,6 +152,21 @@ Cuando una skill contradiga esta tabla, **gana la tabla**. No la vuelvas a plant
   Cambiarlo exige una justificación fuerte y explícita.
 - 🔴 **`src/hooks/` no se toca** desde un componente. Lo nuevo vive con los componentes —
   precedente ya sentado por `componentes/robot/useMuestreo.ts`.
+- 🔴🔴 **NO SE LLAMA A `/rosapi/*`. NUNCA.** No es una preferencia de diseño: **una llamada de
+  esta web mató el nodo `rosapi` del robot** el 2026-08-08, y `systemctl` siguió en verde.
+  `rosapi/params.py` revienta en su propio temporizador de limpieza (`Can't subtract times with
+  different clock types`) unos 30 s después de que se le pregunte por **un nodo que no existe** —
+  que es el caso **normal** aquí: `amcl`, `slam_toolbox` y los nodos de Nav2 solo existen con la
+  navegación arrancada.
+  → El robot lo mitigó con `respawn` (el fallo dura ~2 s en vez de para siempre), pero **la causa
+    está aguas arriba, en Jazzy**. Lo único que lo cierra desde este lado es no llamarlo.
+  → ⚠️ Y el daño no es local: rosapi es **lo que `roslibjs` usa AL CONECTAR**, así que tumbarlo
+    deja sin arrancar a **los clientes nuevos de ese robot** mientras los ya conectados parecen
+    sanos. Este cliente no usa roslibjs y no lo necesita — la auditoría del robot lo confirma:
+    *«cero dependencias, le pasa por encima»*. **Que siga así.**
+  → 📝 Si algún día hace falta un parámetro del robot, el nombre va `<nodo>:<parámetro>` —con dos
+    puntos, no barra— y **solo de un nodo que se sepa vivo**. Pero antes de eso, pregúntate si el
+    robot puede publicarlo: `/estado_robot` y `/estado_navegacion` existen justamente por esto.
 - **Sin líneas de coautoría en los commits.**
 
 ---
