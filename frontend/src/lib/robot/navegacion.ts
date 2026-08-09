@@ -248,3 +248,56 @@ export function tono(p: Pintado): 'BIEN' | 'AVISO' | 'MAL' | 'NEUTRO' {
     case 'NO_SE_SABE': return 'NEUTRO'
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * EL MAPA: CUÁL ES Y DE CUÁNDO
+ * ═══════════════════════════════════════════════════════════════════════════
+ *
+ * 🔴🔴 AQUI NO HAY UMBRAL, Y ESA ES LA DECISION.
+ *
+ * Lo tentador es «avisar si el mapa tiene más de N días», y el robot llegó a
+ * proponer 7 «que es el mismo umbral que ya usa `verificar_robot.sh`». **Se fue
+ * a mirar y ese umbral no existe** — ni en ese script ni en ningún otro del
+ * proyecto. Era una cita sin fuente.
+ *
+ * Pero el motivo de fondo para no ponerlo es mejor que eso: **la edad no mide lo
+ * que falla.** El fallo medido no es «el mapa es viejo», es «el mapa NO ES DE
+ * ESTE SITIO» —41,3 cm con `SUCCEEDED` y sin una línea de error—, y un mapa de
+ * ayer del cuarto equivocado es igual de peligroso que uno de hace un mes. Al
+ * revés también: el del aula de la semana pasada está perfecto si nadie movió
+ * las mesas.
+ *
+ * Y `mapa_edad_s` es el `mtime` del fichero: **copiar un mapa viejo lo
+ * rejuvenece**. Un semáforo sobre ese número daría verde justo al caso peor.
+ *
+ * → Por eso la pantalla **no gradúa: pregunta.** Enseña el nombre y la edad
+ *   siempre, y deja escrita la pregunta que solo puede contestar quien está
+ *   mirando el aula. Es lo que dice el propio `.msg`: «el robot da los dos datos
+ *   y **la persona decide**».
+ */
+export interface Mapa {
+  /** `null` si el robot dice que no hay mapa. */
+  nombre: string | null
+  /** Texto para la persona: «hace 3 días». `null` si no se sabe. */
+  edad: string | null
+}
+
+/** Segundos → «hace 40 minutos». Sin decimales: aquí no aportan. */
+export function edadLegible(segundos: number): string | null {
+  // 🔴 Negativo es «no aplica», no «cero segundos». Es la convención del
+  //    proyecto entero y ya costó un fallo tratarla como número.
+  if (!Number.isFinite(segundos) || segundos < 0) return null
+  const min = Math.floor(segundos / 60)
+  if (min < 1) return 'hace menos de un minuto'
+  if (min < 60) return `hace ${min} ${min === 1 ? 'minuto' : 'minutos'}`
+  const h = Math.floor(min / 60)
+  if (h < 24) return `hace ${h} ${h === 1 ? 'hora' : 'horas'}`
+  const d = Math.floor(h / 24)
+  return `hace ${d} ${d === 1 ? 'día' : 'días'}`
+}
+
+export function leerMapa(msg: MensajeEstadoNavegacion | null, latidoAvanza: boolean): Mapa {
+  if (msg === null || !latidoAvanza) return { nombre: null, edad: null }
+  const n = typeof msg.mapa_nombre === 'string' && msg.mapa_nombre !== '' ? msg.mapa_nombre : null
+  return { nombre: n, edad: edadLegible(msg.mapa_edad_s) }
+}

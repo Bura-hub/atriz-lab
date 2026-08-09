@@ -402,6 +402,27 @@ export interface MensajeEstadoNavegacion {
   nav_arrancando_s: number
   /** Sin mapa legible Nav2 no arranca: el boton se deshabilita, no se deja intentar. */
   hay_mapa: boolean
+  /*
+   * ── QUE mapa es y DE CUANDO ────────────────────────────────────────────
+   * Anadidos por el robot el 2026-08-08, y **existen para esta pantalla**.
+   *
+   * 🔴 `hay_mapa` a solas no basta, y lo que hay detras esta medido: un mapa que
+   *    NO es del sitio hace que Nav2 declare el objetivo cumplido **a 41,3 cm**,
+   *    con `SUCCEEDED`, el estado en FUNCIONANDO y **ni una linea de error en
+   *    ningun log**. No hay ningun otro sintoma — lo destapo una cinta metrica.
+   *    Remapeado el mismo cuarto: 6,1 y 11,8 cm.
+   *
+   * → La unica defensa es que **una persona mire**, y quien tiene a la persona
+   *   delante es la web. Estos dos campos son para eso.
+   *
+   * ⚠️ `mapa_edad_s` es el `mtime` DEL FICHERO, no «cuando se mapeo ese
+   *    espacio». Copiar un mapa viejo lo rejuvenece. Por eso va el NOMBRE al
+   *    lado: el robot da los dos datos y **la persona decide**.
+   */
+  /** `"cuarto3.yaml"`, o `""` si no hay mapa. */
+  mapa_nombre: string
+  /** Segundos desde el `mtime`. **-1.0 si no hay mapa**, nunca 0. */
+  mapa_edad_s: number
   /**
    * 🔴 EL CAMPO QUE EVITA UNA LLAMADA DE TELEFONO. `Restart=on-failure` +
    * `StartLimitBurst=3`: **un solo `start` sin mapa agota el presupuesto** —el

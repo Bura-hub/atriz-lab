@@ -55,7 +55,7 @@ import { useSesion } from '@/hooks/ContextoSesion'
 import { useTopic } from '@/hooks/useTopic'
 import { horaCorta } from '@/lib/interfaz/formato'
 import {
-  UMBRAL_LATIDO_NAV_MS, decidirBoton, frase, leer, tono,
+  UMBRAL_LATIDO_NAV_MS, decidirBoton, frase, leer, leerMapa, tono,
   type Sistema,
 } from '@/lib/robot/navegacion'
 import { Aviso } from '@/componentes/ui/Aviso'
@@ -147,6 +147,23 @@ export function ControlNavegacion() {
         </p>
       )}
 
+      {/*
+        🔴🔴 EL MAPA, CON NOMBRE Y FECHA — y aquí NO hay semáforo.
+        ═══════════════════════════════════════════════════════════════════════
+        El robot añadió `mapa_nombre` y `mapa_edad_s` el 2026-08-08 **para esta
+        pantalla**, porque `hay_mapa` a solas no defiende del peor fallo medido:
+        un mapa que NO es del sitio hace que Nav2 declare el objetivo cumplido a
+        **41,3 cm**, con `SUCCEEDED` y sin una línea de error en ningún log.
+
+        🔴 **Y aquí no se gradúa, se pregunta.** La edad NO mide lo que falla: un
+        mapa de ayer del cuarto equivocado es igual de peligroso que uno de hace
+        un mes, y `mapa_edad_s` es el `mtime` —copiar un mapa viejo lo
+        rejuvenece—, así que un semáforo daría VERDE justo en el caso peor.
+        Se enseñan los dos datos y se deja escrita la pregunta que solo puede
+        contestar quien está mirando el aula.
+      */}
+      <MapaEnUso avanza={avanza} />
+
       <Contexto>
         <p>
           Estos botones <strong>piden</strong>, no ordenan. Que el servicio conteste que sí
@@ -169,6 +186,40 @@ export function ControlNavegacion() {
         </p>
       </Contexto>
     </Tarjeta>
+  )
+}
+
+function MapaEnUso({ avanza }: { avanza: boolean }) {
+  const { transporte } = useRobot()
+  const estado = useTopic(transporte, '/estado_navegacion')
+  const mapa = leerMapa(estado, avanza)
+
+  if (mapa.nombre === null) {
+    return (
+      <p className="mt-4 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+        El robot no dice qué mapa tiene. Sin uno, Nav2 no puede arrancar.
+      </p>
+    )
+  }
+
+  return (
+    <div className="mt-4 rounded border border-border p-3">
+      <p className="text-[13px] leading-relaxed">
+        Mapa en uso: <strong>{mapa.nombre}</strong>
+        {mapa.edad !== null && <> · guardado <strong>{mapa.edad}</strong></>}
+      </p>
+      <p className="mt-1 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+        🔴 <strong>¿Es de este sitio, y no se han movido las mesas desde entonces?</strong> Es la
+        única pregunta que protege del peor fallo medido: con un mapa que no era del sitio, Nav2
+        dio el objetivo por cumplido <strong>a 41 cm</strong>, con la tolerancia en 10 y{' '}
+        <strong>sin una sola línea de error en ningún log</strong>. Lo destapó una cinta métrica.
+        Si dudas, vuelve a mapear — es más barato que la duda.
+      </p>
+      <p className="mt-1 max-w-prose text-[12px] leading-relaxed text-muted-foreground">
+        ⚠️ La fecha es la del fichero, no la de cuándo se recorrió el sitio: copiar un mapa viejo
+        lo rejuvenece. Por eso va el nombre al lado y la decisión es tuya.
+      </p>
+    </div>
   )
 }
 

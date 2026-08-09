@@ -1,7 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ESTADO_NAV, type MensajeEstadoNavegacion } from '../../hooks/useTopic'
 import {
-  UMBRAL_LATIDO_NAV_MS, decidirBoton, frase, leer, tono,
+  UMBRAL_LATIDO_NAV_MS, decidirBoton, edadLegible, frase, leer, leerMapa, tono,
   type Pintado, type Sistema,
 } from './navegacion'
 
@@ -16,6 +17,8 @@ function msg(p: Partial<MensajeEstadoNavegacion> = {}): MensajeEstadoNavegacion 
     slam_arrancando_s: -1,
     nav_arrancando_s: -1,
     hay_mapa: true,
+    mapa_nombre: 'cuarto3.yaml',
+    mapa_edad_s: 104976,
     slam_latcheado: false,
     nav_latcheado: false,
     ...p,
@@ -241,5 +244,61 @@ describe('frase y tono', () => {
       expect(t.toLowerCase()).not.toContain('confirmad')
       expect(t.toLowerCase()).not.toContain('listo')
     }
+  })
+})
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 El mapa: cual es y de cuando — SIN umbral, y esa es la decision
+// ═══════════════════════════════════════════════════════════════════════════
+describe('el mapa', () => {
+  it('lee nombre y edad, y los da en palabras', () => {
+    const m = leerMapa(msg({ mapa_nombre: 'cuarto3.yaml', mapa_edad_s: 104976 }), true)
+    expect(m.nombre).toBe('cuarto3.yaml')
+    expect(m.edad).toBe('hace 1 día')
+  })
+
+  it('🔴 -1 es «no se sabe», NO «hace 0 segundos»', () => {
+    // La convencion del proyecto entero, y ya costo un fallo tratarla como
+    // numero: `-1.0` significa siempre «no aplica».
+    expect(edadLegible(-1)).toBeNull()
+    expect(edadLegible(-0.5)).toBeNull()
+    expect(edadLegible(0)).toBe('hace menos de un minuto')
+  })
+
+  it('nombre vacio es null, no la cadena vacia', () => {
+    expect(leerMapa(msg({ mapa_nombre: '', mapa_edad_s: -1 }), true).nombre).toBeNull()
+  })
+
+  it('🔴 con el latido parado no se afirma nada del mapa', () => {
+    // Mismo criterio que el resto del mensaje: un enlatado no es un dato.
+    const m = leerMapa(msg({ mapa_nombre: 'cuarto3.yaml', mapa_edad_s: 100 }), false)
+    expect(m.nombre).toBeNull()
+    expect(m.edad).toBeNull()
+  })
+
+  it.each([
+    [30, 'hace menos de un minuto'],
+    [60, 'hace 1 minuto'],
+    [3540, 'hace 59 minutos'],
+    [3600, 'hace 1 hora'],
+    [86_400, 'hace 1 día'],
+    [259_200, 'hace 3 días'],
+  ])('%i s -> «%s»', (s, esperado) => {
+    expect(edadLegible(s)).toBe(esperado)
+  })
+
+  it('🔴 NO existe ningun umbral de «mapa viejo», y es deliberado', () => {
+    /*
+     * La edad NO mide lo que falla. El fallo medido no es «el mapa es viejo»,
+     * es «el mapa NO ES DE ESTE SITIO» —41,3 cm con SUCCEEDED—, y un mapa de
+     * ayer del cuarto equivocado es igual de peligroso que uno de hace un mes.
+     * Ademas `mapa_edad_s` es el mtime: copiar un mapa viejo lo rejuvenece, asi
+     * que un semaforo daria VERDE justo en el caso peor.
+     *
+     * Si alguien añade un umbral, esta prueba falla y le obliga a justificar
+     * contra qué medida lo pone.
+     */
+    const fuente = readFileSync(new URL('./navegacion.ts', import.meta.url), 'utf8')
+    expect(fuente).not.toMatch(/UMBRAL_MAPA|MAPA_VIEJO|mapaViejo|edadMaxima/)
   })
 })
