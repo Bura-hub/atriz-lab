@@ -59,8 +59,45 @@
 > → Consecuencia: la pantalla **ya no promete** que la luz se apague sola. Dice
 > que la apagues tú, con la medida al lado.
 >
-> ⏳ **Sin ver todavía:** `BLOQUEADO` (exige quitar el mapa) y `NO_SE_SABE` (exige
-> parar el supervisor por SSH).
+> ⏳ **Lo que queda sin ver, y por qué se dejó así:**
+>
+> - **`BLOQUEADO`** — 🔴 **no es un hueco: es inalcanzable a propósito.** Ver la
+>   corrección en la sección 1.
+> - **`NO_SE_SABE`** — exige parar el supervisor por SSH. Sin hacer.
+> - **1c · el botón de Nav2 sin mapa** — 👤 **decisión de no hacerlo hoy.** Media
+>   comprobación ya está: se midió `hay_mapa: true` llegando del robot y el botón
+>   salió habilitado en consecuencia, así que **el campo viaja y la pantalla lo
+>   lee**. La otra mitad es una rama booleana (`false` → `disabled` + motivo) con
+>   prueba unitaria y sin nada del hardware que pueda sorprender. El coste —mover
+>   el mapa recién hecho y devolverlo— no lo justifica.
+>
+> ### 🔴 DOS COSAS PARA EL ROBOT, encontradas de rebote
+>
+> **1 · `ATRIZ_MAPA` apunta fuera de la ruta por defecto.** El supervisor usa
+> `os.environ.get('ATRIZ_MAPA') or ~/atriz_ws/src/Atriz_rvr/atriz_rvr_bringup/maps/aula.yaml`,
+> y en rvr-01 **ese directorio está vacío** mientras `hay_mapa` dice `true`. O sea
+> que la variable está puesta y el mapa vive en otro sitio. No es un fallo, pero
+> **no está escrito en ningún documento del PC**, y quien lea el código deducirá
+> la ruta equivocada — me pasó a mí, y mandé un comando que no podía funcionar.
+> 📌 Se cierra con `systemctl show atriz-robot -p Environment | grep MAPA`.
+>
+> **2 · `rosapi/get_param` revienta.** Preguntando por `/supervisor_navegacion/mapa`
+> desde rosbridge:
+>
+> ```
+> result=true  ·  successful=false
+> reason: "cannot access local variable 'node_name' where it is not associated with a value"
+> ```
+>
+> Es un error **interno de rosapi**, no una respuesta a la pregunta. ⚠️ Y fíjate
+> en la forma: `result=true` —rosbridge pudo llamar— con `successful=false`
+> dentro. Es exactamente la distinción `result`/`success` que el robot documentó
+> el 2026-08-08, apareciendo sola en el primer sitio donde se usó `rosapi`.
+> 📌 Lo que importa decidir: **si `rosapi` no sirve para leer parámetros, la web
+> no puede preguntarle al robot por su configuración** y todo lo que quiera saber
+> tiene que venir por topic o por servicio propio — que es lo que ya hace
+> `/estado_navegacion`. Puede que sea la respuesta correcta y no haya nada que
+> arreglar; pero conviene saberlo antes de diseñar algo que dependa de `rosapi`.
 
 Todo lo de aquí estaba **construido, con pruebas en verde, y sin comprobar contra
 rvr-01**. Se escribió entre el 2026-08-07 y el 08 con el robot apagado, contra
