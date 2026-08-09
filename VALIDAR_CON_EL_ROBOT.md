@@ -102,11 +102,37 @@ Ninguno aparece solo, y son la razón de que haya seis estados y no un interrupt
   arrancado. Es el caso medido: el búfer TF se rompe y el mapa deja de crecer.
   🔴 Refuta: que la pantalla siga diciendo `funcionando`, que es justo lo que dice
   `systemctl is-active` y el motivo de que no baste.
-- **`BLOQUEADO`** — pedir Nav2 **sin mapa** tres veces seguidas: `StartLimitBurst=3`
-  agota el presupuesto en ~40 s y la unidad queda `failed`. Debe decir que hace
-  falta `systemctl reset-failed` **en el robot**.
-  🔴 Refuta: que ofrezca «reintentar». Volver a pulsar no hará nada, y ese botón
-  deja al alumno dándole a algo muerto.
+- 🔴 **`BLOQUEADO` — ESTE PUNTO ESTABA MAL, corregido el 2026-08-09 leyendo el
+  supervisor.** Decía: *«pedir Nav2 sin mapa tres veces seguidas: `StartLimitBurst=3`
+  agota el presupuesto»*. **No ocurre.** El supervisor comprueba el mapa **antes**
+  de llamar a `systemctl` y devuelve un rechazo limpio:
+
+  ```python
+  if cual == 'nav':
+      if not self._hay_mapa():
+          motivos.append(f'no hay mapa legible en {self._mapa}')
+  if motivos:
+      resp.success = False          # ← y NUNCA llama a systemctl
+  ```
+
+  Su propia cabecera lo dice: *«por eso este nodo se NIEGA antes de llamar a
+  systemctl. Un `isfile` de coste cero evita **el único estado del que la web no
+  puede salir sola**»*. **`BLOQUEADO` es deliberadamente inalcanzable desde la
+  web**, y esa es una propiedad del diseño, no un hueco de la validación.
+
+  📝 El punto salió de un comentario del `.msg` que describe lo que pasa al
+  hacer `systemctl start` **a mano**, o sea la situación de antes de que el
+  supervisor existiera. Copié la consecuencia sin comprobar si el camino seguía
+  abierto.
+
+  → Producirlo de verdad exige entrar al robot y hacer `systemctl start
+  atriz-nav` **saltándose el supervisor**, y deja la unidad en un estado que
+  solo se deshace con `sudo systemctl reset-failed`. **No se hace por
+  curiosidad**: se hará el día que alguien tenga que reproducir un incidente.
+
+- ✅ **Lo que SÍ hay que validar del mapa es el punto 1c** —el botón
+  deshabilitado— porque recorre exactamente la misma comprobación `hay_mapa` y
+  es el estado que un alumno sí puede encontrarse.
 
 ⚠️ **Y hay un número que la pantalla NO promete y conviene medir igual:** cuánto
 tarda hasta `funcionando`. Hay dos cifras y son de hitos distintos — **24,3 s**
