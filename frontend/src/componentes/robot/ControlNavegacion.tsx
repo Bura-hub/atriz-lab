@@ -83,7 +83,7 @@ const CLASE_TONO: Record<ReturnType<typeof tono>, string> = {
   NEUTRO: 'text-muted-foreground',
 }
 
-interface Envio { hora: string; texto: string; malo: boolean }
+interface Envio { hora: string; texto: string; malo: boolean; pedia: 'ARRANCAR' | 'PARAR' }
 
 export function ControlNavegacion() {
   const { transporte, conectado } = useRobot()
@@ -195,10 +195,21 @@ function Sistema_({
       const detalle = typeof r?.message === 'string' && r.message.length > 0 ? ` El robot dice: «${r.message}»` : ''
       setEnvio({
         hora,
-        // 🔴 «Petición aceptada», NUNCA «arrancado». El efecto lo confirma el
-        //    estado de arriba, y puede tardar ~24 s en llegar a FUNCIONANDO.
+        pedia: arrancar ? 'ARRANCAR' : 'PARAR',
+        /*
+         * 🔴 «Petición aceptada», NUNCA «arrancado». El efecto lo confirma el
+         *    estado de arriba, y tarda ~15-20 s (medido en rvr-01) en llegar a
+         *    FUNCIONANDO.
+         *
+         * 🔴 Y EL TEXTO DEPENDE DE LO QUE SE PIDIO. Decía siempre «no dirá
+         *    "funcionando" hasta que lo esté», y al pulsar PARAR eso es un
+         *    sinsentido: se acaba de pedir lo contrario. Visto en el robot el
+         *    2026-08-09, tras parar SLAM.
+         */
         texto: ok
-          ? `Petición aceptada. Mira el estado: no dirá «funcionando» hasta que lo esté.${detalle}`
+          ? (arrancar
+            ? `Petición aceptada. Mira el estado: no dirá «funcionando» hasta que lo esté.${detalle}`
+            : `Petición de parada aceptada. Mira el estado: no dirá «apagado» hasta que lo esté.${detalle}`)
           : `El supervisor ha rechazado la petición.${detalle || ' No ha dicho por qué.'}`,
         malo: !ok,
       })
@@ -211,6 +222,7 @@ function Sistema_({
        */
       setEnvio({
         hora,
+        pedia: arrancar ? 'ARRANCAR' : 'PARAR',
         texto: `No hubo respuesta a ${servicio}: ${e instanceof Error ? e.message : String(e)}. `
           + 'Si el robot todavía no tiene instalado el supervisor de navegación, es esto y no una '
           + 'avería — el servicio aún no existe ahí.',
@@ -220,6 +232,23 @@ function Sistema_({
       setEnviando(false)
     }
   }, [transporte, servicio])
+
+  /*
+   * 🔴🔴 EL ACUSE SE RETIRA CUANDO EL ESTADO YA LO CONTESTA.
+   *
+   * Visto en el robot el 2026-08-09: SLAM llegó a «funcionando» a los ~18 s y el
+   * aviso seguía diciendo *«no dirá "funcionando" hasta que lo esté»* **un minuto
+   * después**, con «funcionando» escrito tres centímetros más arriba. Un mensaje
+   * que dice «espera» cuando la espera terminó enseña a no leer los mensajes.
+   *
+   * → El acuse es de la PETICIÓN, y deja de aportar en cuanto el estado alcanza
+   *   lo que se pidió. El de un RECHAZO se queda: ahí el estado no va a moverse,
+   *   y retirarlo borraría la única explicación que hay.
+   */
+  const llego = envio !== null && !envio.malo && (
+    envio.pedia === 'ARRANCAR'
+      ? lectura.pintado !== 'APAGADO' && lectura.pintado !== 'ARRANCANDO'
+      : lectura.pintado === 'APAGADO')
 
   const puedePulsar = boton.habilitado && usuario !== null && !enviando
 
@@ -271,7 +300,7 @@ function Sistema_({
         </p>
       )}
 
-      {envio !== null && (
+      {envio !== null && !llego && (
         <div className="mt-3" role="alert">
           <Aviso nivel={envio.malo ? 'ERROR' : 'NOTA'} titulo={`${nombre} · ${envio.hora}`}>
             {envio.texto}

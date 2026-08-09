@@ -1,6 +1,34 @@
 # Lo que falta validar con el robot delante
 
-Todo lo de aquí está **construido, con pruebas en verde, y NO comprobado contra
+> ## ✅ PASADA DEL 2026-08-09 CONTRA rvr-01
+>
+> | | resultado |
+> |---|---|
+> | **1a · arrancar SLAM desde la web** | ✅ `apagado` → `arrancando · 4 → 9 → 14 s` → `funcionando` en **~18 s**, botón a «Parar SLAM» |
+> | **1b · los segundos suben** | ✅ 4, 9, 14 — no se quedan en 0, o sea que el `-1` se traduce bien |
+> | **CIEGO** | ✅ forzado apagando el barrido con SLAM vivo: *«levantado, pero no le llega el barrido — el robot no conducirá»*, en teja, con el detalle del robot literal. **Es el estado que `is-active` llamaría *active*** |
+> | **MUDO** | ✅ **apareció solo** al parar SLAM: *«la unidad dice `deactivating` pero no hay señal de que funcione»* |
+> | **parar SLAM** | ✅ `funcionando` → `MUDO` → `apagado` |
+> | **2a · sin modo por defecto** | ✅ ningún modo elegido, «Medir ahora» deshabilitado |
+> | **2e · suelo mate en emisión** | 🔴 **DESTAPÓ UN FALLO** — ver abajo. Arreglado y re-verificado |
+> | **el socket por nombre** | ✅ **2736 ms en frío, 16-25 ms en caliente** desde el navegador, muy dentro del plazo de 10 s |
+>
+> 🔴 **El fallo que encontró la pasada:** con el robot sobre suelo mate en modo
+> emisión, el sensor devolvió `R=0 G=1 B=0` —ruido— y la pantalla afirmó **«la luz
+> que sale de la superficie es verde»**. Verde era el caso *por descarte* y una
+> sola cuenta se coló por el borde de una guarda que comprobaba `verde === 0`.
+> Arreglado con `VERDE_MINIMO_PARA_DECIDIR`, y re-medido en el robot.
+>
+> 🔴 **Y dos defectos del acuse de petición**, vistos al parar SLAM: seguía
+> diciendo *«no dirá "funcionando" hasta que lo esté»* **un minuto después** de
+> estar funcionando, y ese mismo texto salía tras pulsar PARAR, donde es un
+> sinsentido. Los dos arreglados.
+>
+> ⏳ **Sin ver todavía:** `BLOQUEADO` (exige quitar el mapa), `NO_SE_SABE` (exige
+> parar el supervisor por SSH), y **2b/2c/2d** (exigen papel rojo mate y una
+> pantalla de móvil bajo el robot).
+
+Todo lo de aquí estaba **construido, con pruebas en verde, y sin comprobar contra
 rvr-01**. Se escribió entre el 2026-08-07 y el 08 con el robot apagado, contra
 `herramientas/rosbridge_de_mentira.mjs`.
 
