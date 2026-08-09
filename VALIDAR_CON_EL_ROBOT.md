@@ -11,6 +11,8 @@
 > | **parar SLAM** | ✅ `funcionando` → `MUDO` → `apagado` |
 > | **2a · sin modo por defecto** | ✅ ningún modo elegido, «Medir ahora» deshabilitado |
 > | **2e · suelo mate en emisión** | 🔴 **DESTAPÓ UN FALLO** — ver abajo. Arreglado y re-verificado |
+> | **2b · papel rojo mate, modo normal** | ✅ `R/G` = **2,96 · 2,97 · 2,94** (referencia 2,74) → «la superficie es **rojo**, medida por reflejo del LED». Dispersión del 0,9 % en tres tomas |
+> | 🎯 **el 2×2 completo sobre el MISMO papel** | ✅ el mismo rojo en modo *luminosa* da **0 · 0 · 0 · 0** tres veces, dispersión 0, y la pantalla dice «no se puede decir». **Una superficie que solo refleja es invisible sin la luz**: los dos modos no son intercambiables, y eso queda demostrado sin mover el robot |
 > | **el socket por nombre** | ✅ **2736 ms en frío, 16-25 ms en caliente** desde el navegador, muy dentro del plazo de 10 s |
 >
 > 🔴 **El fallo que encontró la pasada:** con el robot sobre suelo mate en modo
