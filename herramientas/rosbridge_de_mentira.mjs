@@ -90,6 +90,17 @@ function estadoAhora() {
     slam_arrancando_s: slam === 1 ? seg : -1,
     nav_arrancando_s: nav === 1 ? seg : -1,
     hay_mapa: !sinMapa,
+    /*
+     * 🔴 AÑADIDOS AL DOBLE EL 2026-08-09, y llegaron tarde: el robot los publica
+     *    desde el 08 y este fichero se quedó atrás, así que la pantalla pintaba
+     *    su texto de reserva («el robot no dice qué mapa tiene») sobre un doble
+     *    que simplemente no lo mandaba. Es el mismo descuido que ya costó los
+     *    nombres de campo de /encoders. **Al cambiar un `.msg`, este doble va
+     *    detrás en el mismo tirón.**
+     * Valores reales de rvr-01: cuarto3.yaml con 104976 s (1,22 días).
+     */
+    mapa_nombre: sinMapa ? '' : 'cuarto3.yaml',
+    mapa_edad_s: sinMapa ? -1 : 104976,
     slam_latcheado: latSlam,
     nav_latcheado: latNav,
   }
