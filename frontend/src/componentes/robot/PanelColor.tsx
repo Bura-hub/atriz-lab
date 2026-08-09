@@ -125,15 +125,39 @@ export function PanelColor() {
       */}
       {luz === true && (
         <div className="mb-3">
-          <Aviso nivel="ATENCION" titulo="Se apagará sola a los 15 minutos">
-            Y lo hará <strong>aunque tengas esta pantalla abierta</strong>: es un tope duro, no un
-            temporizador de inactividad. No es una avería — la luz es un LED blanco bajo el chasis
-            y gasta batería del RVR, que es de donde también se alimenta la Raspberry. Si se apaga
-            a mitad de una medida, vuelve a encenderla.
-            <br /><br />
-            Hay además un apagado por inactividad a los 120 s, pero{' '}
-            <strong>mientras esta pantalla esté abierta no se cumple</strong>: leer el color cuenta
-            como actividad.
+          {/*
+            🔴🔴 ESTE AVISO PROMETIA UN APAGADO QUE NO SE CUMPLIO, Y LO DESTAPO
+                 EL ROBOT EL 2026-08-09.
+
+            Decía que la luz «se apagará sola a los 15 minutos» y que hay un
+            apagado por inactividad a los 120 s. Medido cerrando la pestaña tras
+            la última lectura:
+
+                última lectura        19:47:23
+                sin ningún lector     14 min 38 s
+                la luz                SIGUIÓ ENCENDIDA  (visto en el robot)
+                se apagó              porque la apagué a mano, 20:02:01
+
+            El apagado por inactividad **no saltó**: son 120 s y pasaron 878.
+            ⚠️ El tope duro queda SIN MEDIR y por mi culpa: lo apagué a mano a
+               menos de dos segundos de cuando habría vencido, así que no puedo
+               distinguir «saltó» de «lo apagué yo».
+
+            📌 La hipótesis, y es HIPOTESIS: el driver cuenta como actividad que
+               alguien esté suscrito a `/color`, y rosbridge puede conservar esa
+               suscripción cuando la pestaña se cierra de golpe. Si es eso, en el
+               aula con dieciséis robots la luz se queda encendida gastando
+               batería del RVR — que es justo lo que el apagado existe para
+               evitar. Se cierra mirando `ros2 topic info /color` en el robot.
+
+            → Hasta que eso se mida, esta pantalla NO promete que se apague sola.
+          */}
+          <Aviso nivel="ATENCION" titulo="Apaga la luz tú al terminar">
+            Es un LED blanco bajo el chasis y <strong>gasta batería del RVR</strong>, que es de
+            donde también se alimenta la Raspberry. El robot tiene un apagado automático, pero{' '}
+            <strong>se midió que no siempre salta</strong>: el 2026-08-09 la luz siguió encendida
+            casi 15 minutos sin que nadie la leyera, y hubo que apagarla a mano. Cambia a
+            «superficie luminosa» cuando acabes, o apágala en el robot.
           </Aviso>
         </div>
       )}

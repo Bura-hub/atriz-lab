@@ -42,9 +42,25 @@
 > estar funcionando, y ese mismo texto salía tras pulsar PARAR, donde es un
 > sinsentido. Los dos arreglados.
 >
-> ⏳ **Sin ver todavía:** `BLOQUEADO` (exige quitar el mapa), `NO_SE_SABE` (exige
-> parar el supervisor por SSH), y **2b/2c/2d** (exigen papel rojo mate y una
-> pantalla de móvil bajo el robot).
+> 🔴🔴 **2f · EL APAGADO AUTOMATICO DE LA LUZ NO SALTO.** Cerrada la pestaña tras
+> la última lectura (19:47:23), la luz siguió encendida **14 min 38 s** —visto en
+> el robot, no solo en `color_activo`— y se apagó porque **la apagué a mano**. El
+> apagado por inactividad son 120 s y pasaron 878.
+>
+> ⚠️ **El tope duro queda SIN MEDIR, y por mi culpa:** lo apagué a menos de dos
+> segundos de cuando habría vencido, así que no distingo «saltó» de «lo apagué
+> yo». Repetirlo exige no tocar nada durante 20 min.
+>
+> 📌 **Hipótesis, no medida:** el driver cuenta como actividad que alguien esté
+> suscrito a `/color`, y rosbridge puede conservar la suscripción cuando la
+> pestaña se cierra de golpe. Se cierra con `ros2 topic info /color` **en el
+> robot**, mirando el número de suscriptores con la web cerrada.
+>
+> → Consecuencia: la pantalla **ya no promete** que la luz se apague sola. Dice
+> que la apagues tú, con la medida al lado.
+>
+> ⏳ **Sin ver todavía:** `BLOQUEADO` (exige quitar el mapa) y `NO_SE_SABE` (exige
+> parar el supervisor por SSH).
 
 Todo lo de aquí estaba **construido, con pruebas en verde, y sin comprobar contra
 rvr-01**. Se escribió entre el 2026-08-07 y el 08 con el robot apagado, contra
