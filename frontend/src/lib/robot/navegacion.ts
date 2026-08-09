@@ -255,13 +255,17 @@ export function tono(p: Pintado): 'BIEN' | 'AVISO' | 'MAL' | 'NEUTRO' {
  *
  * 🔴🔴 AQUI NO HAY UMBRAL, Y ESA ES LA DECISION.
  *
- * Lo tentador es «avisar si el mapa tiene más de N días», y el robot llegó a
- * proponer 7 «que es el mismo umbral que ya usa `verificar_robot.sh`». **Se fue
- * a mirar y ese umbral no existe** — ni en ese script ni en ningún otro del
- * proyecto. Era una cita sin fuente.
+ * Lo tentador es «avisar si el mapa tiene más de N días», y el robot propuso 7,
+ * por coherencia con `verificar_robot.sh`.
  *
- * Pero el motivo de fondo para no ponerlo es mejor que eso: **la edad no mide lo
- * que falla.** El fallo medido no es «el mapa es viejo», es «el mapa NO ES DE
+ * ⚠️ Este comentario llegó a decir que **ese umbral no existía**. Es falso, y el
+ *    error fue mío: está en `verificar_robot.sh:1459` (`-le 7`), y mi búsqueda
+ *    iba tras `7 días` / `604800` / `-mtime +7`, ninguno de los cuales podía
+ *    casar con `-le 7` sobre una variable. **Un negativo sacado de una búsqueda
+ *    que no podía encontrarlo.**
+ *
+ * El motivo de fondo para no ponerlo aquí no cambia, y es el bueno: **la edad no
+ * mide lo que falla.** El fallo medido no es «el mapa es viejo», es «el mapa NO ES DE
  * ESTE SITIO» —41,3 cm con `SUCCEEDED` y sin una línea de error—, y un mapa de
  * ayer del cuarto equivocado es igual de peligroso que uno de hace un mes. Al
  * revés también: el del aula de la semana pasada está perfecto si nadie movió

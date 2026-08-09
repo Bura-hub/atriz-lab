@@ -72,6 +72,7 @@ import { Contexto } from '@/componentes/ui/Contexto'
 import { Dato } from '@/componentes/ui/Dato'
 import { Grupo } from '@/componentes/ui/Grupo'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
+import { useMuestreo } from './useMuestreo'
 
 const ACCION = '/navigate_to_pose'
 const TIPO_ACCION = 'nav2_msgs/action/NavigateToPose'
@@ -92,13 +93,53 @@ export function PanelNavegar() {
   const { usuario } = useSesion()
   const mapa = useTopic(transporte, '/map')
   const pose = useTopic(transporte, '/amcl_pose')
+  /*
+   * 🔴 `/odom` AQUI, Y LO PIDIO EL ROBOT CON ESTAS PALABRAS: «lo que sí se puede
+   *    mostrar es el desplazamiento por `/odom`, que es la fuente que acierta a
+   *    0,3-4,2 cm».
+   *
+   * El desenlace de la acción **miente en las dos direcciones** —`SUCCEEDED` a
+   * 41 cm del objetivo, y `ABORTED` sobre un robot que llegó—, así que sin esto
+   * la pantalla solo puede decir «míralo». Con esto da un número.
+   *
+   * ⚠️ Y NO es la distancia al objetivo: es **cuánto se movió el robot**. Para lo
+   *    primero haría falta cruzar `map` con `odom`, y ese cruce es justamente el
+   *    que se equivoca. Se muestra lo que se sabe.
+   *
+   * 📌 Cuesta ~13 kB/s mientras la pestaña esté abierta. Se paga porque la
+   *    alternativa es una pantalla que no puede decir nada cierto del resultado.
+   */
+  const { ultimo: odom } = useMuestreo(transporte, '/odom')
   const lienzo = useRef<HTMLCanvasElement | null>(null)
 
   const [objetivo, setObjetivo] = useState<Objetivo | null>(null)
+  /** Dónde estaba el robot según `/odom` al mandar el objetivo. */
+  const partida = useRef<{ x: number; y: number } | null>(null)
   const [avance, setAvance] = useState<number | null>(null)
   const [desenlace, setDesenlace] = useState<{ hora: string; texto: string; malo: boolean } | null>(null)
 
   const tono = { '--tono-seccion': 'var(--seccion-navegar)' } as CSSProperties
+
+  /*
+   * El último `/odom` en una ref: se lee en el momento de pulsar y en el del
+   * desenlace, no en cada render. Un estado aquí re-renderizaría el canvas del
+   * mapa a 16,5 Hz.
+   */
+  const ultimoOdom = useRef<{ x: number; y: number } | null>(null)
+  const op = odom?.pose?.pose?.position
+  const opx = numeroValido(op?.x)
+  const opy = numeroValido(op?.y)
+  if (opx !== null && opy !== null) ultimoOdom.current = { x: opx, y: opy }
+
+  /** Cuánto se movió el robot desde que se mandó el objetivo, en metros. */
+  const recorrido = (): string => {
+    const a = partida.current
+    const b = ultimoOdom.current
+    if (a === null || b === null) return ''
+    const d = Math.hypot(b.x - a.x, b.y - a.y)
+    return ` Según la odometría el robot se desplazó ${metros(d)} desde que lo mandaste, `
+      + 'que es la fuente que acierta a 0,3-4,2 cm.'
+  }
 
   /* ── Dibujar ─────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -162,12 +203,51 @@ export function PanelNavegar() {
         if (d !== null) setAvance(d)
       },
     })
+    // Se anota la partida ANTES de que llegue el desenlace: si se leyera al
+    // final no habría con qué comparar.
+    const px0 = numeroValido(ultimoOdom.current?.x)
+    const py0 = numeroValido(ultimoOdom.current?.y)
+    partida.current = px0 !== null && py0 !== null ? { x: px0, y: py0 } : null
     setObjetivo({ id, x, y, hora })
     setAvance(null)
     setDesenlace(null)
+    /*
+     * 🔴🔴 LOS DOS DESENLACES MIENTEN, Y EL SEGUNDO SE SUPO EL 2026-08-08.
+     *
+     * Que TERMINE no dice dónde terminó: Nav2 declaró `SUCCEEDED` a 41,3 cm de
+     * un objetivo con 10 de tolerancia.
+     *
+     * Y que FALLE tampoco. `bt_navigator` tenía `default_server_timeout: 20`
+     * —veinte milisegundos para que el controlador acusara recibo— y se rendía
+     * mientras `controller_server` conducía:
+     *
+     *     22:18:57  Received a goal, begin computing control effort
+     *     22:18:57  Timed out … Aborting handle · Goal failed
+     *     22:19:07  Reached the goal!          ← DIEZ SEGUNDOS DESPUÉS
+     *
+     * El robot recorrió 67 cm y llegó, con la acción marcada como fallida. **Tres
+     * tandas dadas por fallidas eran buenas.** Subido a 1000 ms en el robot, así
+     * que debería ser raro — pero la interfaz no puede afirmar que no pasa.
+     *
+     * → Por eso ninguno de los dos textos habla del ROBOT: hablan de la ACCIÓN, y
+     *   los dos mandan a mirar. Es la misma disciplina que «orden enviada».
+     */
     resultado.then(
-      () => setDesenlace({ hora: horaCorta(Date.now()), texto: 'Nav2 dio el objetivo por terminado. Mira el robot: esto dice que la acción acabó, no dónde acabó.', malo: false }),
-      (err: Error) => setDesenlace({ hora: horaCorta(Date.now()), texto: err.message, malo: true }),
+      () => setDesenlace({
+        hora: horaCorta(Date.now()),
+        texto: 'Nav2 dio el objetivo por terminado. Eso dice que la acción acabó, no dónde acabó: '
+          + 'con un mapa que no era del sitio dio por cumplido un objetivo a 41 cm.'
+          + recorrido(),
+        malo: false,
+      }),
+      (err: Error) => setDesenlace({
+        hora: horaCorta(Date.now()),
+        texto: `${err.message} · 🔴 Y ojo: que la acción falle NO significa que el robot no haya `
+          + 'llegado. Se midió a Nav2 abortando mientras el controlador seguía conduciendo, y el '
+          + 'robot llegó diez segundos después.' + recorrido()
+          + ' Antes de repetir el objetivo, mira dónde está.',
+        malo: true,
+      }),
     ).finally(() => { setObjetivo(null); setAvance(null) })
   }, [mapa, pose, usuario, objetivo, transporte])
 
@@ -394,7 +474,7 @@ export function PanelNavegar() {
 
             {desenlace !== null && (
               <div className="mt-3" role="alert">
-                <Aviso nivel={desenlace.malo ? 'ERROR' : 'NOTA'} titulo={`${desenlace.malo ? 'El objetivo falló' : 'Objetivo terminado'} · ${desenlace.hora}`}>
+                <Aviso nivel={desenlace.malo ? 'ERROR' : 'NOTA'} titulo={`${desenlace.malo ? 'La acción falló · el robot puede haber llegado igual' : 'Objetivo terminado'} · ${desenlace.hora}`}>
                   {desenlace.texto}
                 </Aviso>
               </div>
@@ -420,13 +500,14 @@ export function PanelNavegar() {
                   mismo objetivo acabó a 6 cm», que es **n=1 presentado como
                   propiedad otra vez**. La réplica, mismo protocolo y misma marca:
 
-                    mapa viejo      41,3 cm   AMCL 45,0   map→odom 0,424
-                    remapeado · 1    6,1 cm   AMCL  8,9   map→odom 0,028
-                    remapeado · 2   11,8 cm   AMCL 15,2   map→odom 0,021
+                    mapa viejo      41,3 cm   AMCL 45,0   🔴 fuera de 10
+                    remapeado · 1    6,1 cm   AMCL  8,9   ✅ dentro
+                    remapeado · 2   11,8 cm   AMCL 15,2   🔴 fuera
+                    remapeado · 3   11,3 cm   AMCL  8,2   🔴 fuera
 
-                  Nav2 dijo SUCCEEDED **las tres veces**, con la tolerancia en
-                  10 cm — incluida la de 11,8. Sigue mintiendo: por 1,8 cm en vez
-                  de por 31, pero mintiendo.
+                  Nav2 dijo SUCCEEDED **las cuatro veces**, con la tolerancia en
+                  10 cm. Con el mapa fresco, **dos de tres quedaron fuera**: la
+                  cifra honesta es ~10-12 cm, no los 10 que anuncia.
 
               📝 Cometí el mismo error que había señalado el día antes, con la
                  advertencia «n=1, esto pide repetirse» escrita al lado. **Ver el
@@ -438,11 +519,11 @@ export function PanelNavegar() {
             */}
             <p>
               Y que la acción termine <strong>no dice dónde terminó</strong>. Nav2 declaró el mismo
-              objetivo <strong>cumplido a 6,1 · 11,8 y 41,3 cm</strong> en tres intentos, con la
-              tolerancia puesta en 10. El desenlace <strong>no informa de la precisión</strong>, y
-              no hay ninguna promesa que se le pueda hacer a un alumno apoyada en él. Sobre un mapa
-              fresco la cifra honesta es <strong>~10-12 cm</strong>, no los 10 que Nav2 anuncia; con
-              el mapa viejo se fue a 41. Para saber si el robot está donde querías, míralo.
+              objetivo <strong>cumplido a 6,1 · 11,8 · 11,3 y 41,3 cm</strong>. Sobre el mapa
+              fresco, <strong>dos de tres quedaron fuera</strong> de la tolerancia de 10. Y al
+              revés también engaña: se midió a Nav2 <strong>abortando un objetivo que el robot
+              cumplió</strong> diez segundos después. <strong>Ni terminar ni fallar dicen dónde
+              está el robot.</strong> La cifra honesta sobre un mapa fresco es ~10-12 cm. Míralo.
             </p>
             </Contexto>
           </Tarjeta>

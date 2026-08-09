@@ -167,6 +167,15 @@ Cuando una skill contradiga esta tabla, **gana la tabla**. No la vuelvas a plant
   → 📝 Si algún día hace falta un parámetro del robot, el nombre va `<nodo>:<parámetro>` —con dos
     puntos, no barra— y **solo de un nodo que se sepa vivo**. Pero antes de eso, pregúntate si el
     robot puede publicarlo: `/estado_robot` y `/estado_navegacion` existen justamente por esto.
+- 🔴 **SI ALGÚN DÍA SE PUBLICA EN `/initialpose`, EL SELLO VA A CERO.** Está en la lista blanca
+  y **hoy no se usa**, pero el robot midió que su banco de pruebas lo publicaba mal **en las diez
+  tandas de la historia del proyecto**: `Failed to transform initial pose in time (extrapolation
+  into the future)` — el sello iba **69 ms por delante** de lo último que tenía TF, así que AMCL
+  lo descartaba siempre.
+  → 🔴 **Y el fallo es mudo para quien publica:** no hay respuesta, no hay error, el mensaje sale y
+    nadie lo rechaza en tu cara. El banco «creía fijar la pose y no la fijaba nunca».
+  → El arreglo del robot fue **sello `0`**, que le dice a TF «lo más reciente que tengas». Un
+    `Date.now()` del navegador sería aún peor: ni siquiera está sincronizado con el reloj del robot.
 - **Sin líneas de coautoría en los commits.**
 
 ---
