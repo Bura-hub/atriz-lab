@@ -13,6 +13,22 @@
 > | **2e · suelo mate en emisión** | 🔴 **DESTAPÓ UN FALLO** — ver abajo. Arreglado y re-verificado |
 > | **2b · papel rojo mate, modo normal** | ✅ `R/G` = **2,96 · 2,97 · 2,94** (referencia 2,74) → «la superficie es **rojo**, medida por reflejo del LED». Dispersión del 0,9 % en tres tomas |
 > | 🎯 **el 2×2 completo sobre el MISMO papel** | ✅ el mismo rojo en modo *luminosa* da **0 · 0 · 0 · 0** tres veces, dispersión 0, y la pantalla dice «no se puede decir». **Una superficie que solo refleja es invisible sin la luz**: los dos modos no son intercambiables, y eso queda demostrado sin mover el robot |
+> | **2c · pantalla de móvil roja, modo luminosa** | ✅ `R/G` = **5,2 · 5,0 · 4,7** (referencia 5,12) → «la luz que sale de la superficie es **rojo**» |
+> | 🎯🎯 **2d · LA MISMA pantalla, modo normal** | ✅ **`R 409 · G 721 · B 357` → `R/G = 0,57`.** La pantalla es ROJA y el sensor lee **más verde que rojo**. La interfaz **se niega a nombrarlo** y manda a cambiar de modo. Es la casilla que justifica todo el diseño |
+>
+> **El 2×2 sobre la MISMA pantalla roja, sin mover el robot:**
+>
+> ```
+>                    luz APAGADA        luz ENCENDIDA
+>   lectura       R 78 · G 15 · B 3   R 409 · G 721 · B 357
+>   R/G                  5,0                  0,57
+>   veredicto        «es rojo» ✅     «no se puede decir» ✅
+> ```
+>
+> Un factor **9** entre los dos cocientes sobre el mismo objeto, y caen a lados
+> opuestos de 1. Con la regla ingenua —`R/G > 1` → rojo, si no, verde por
+> descarte— la casilla de la derecha habría dicho **«verde» sobre una pantalla
+> roja**. Eso es lo que evita la banda plana.
 > | **el socket por nombre** | ✅ **2736 ms en frío, 16-25 ms en caliente** desde el navegador, muy dentro del plazo de 10 s |
 >
 > 🔴 **El fallo que encontró la pasada:** con el robot sobre suelo mate en modo
