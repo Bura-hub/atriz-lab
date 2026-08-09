@@ -178,6 +178,20 @@ renderiza un componente**, y `vitest.config.ts` documenta que `jsdom` no se inst
   todas de **ausencia**, y una página vacía las cumple. Solo la que exige que los datos
   **lleguen** lo vio. → **Toda batería de comprobaciones de ausencia necesita al menos una de
   presencia**, o es una comprobación muerta que cuenta como aprobada.
+→ 🔴🔴 **Y NI SIQUIERA ESO BASTA: el 2026-08-09 el ROBOT encontró tres fallos que ninguna
+  comprobación de este repositorio veía**, y dos de ellos con las 579 pruebas, `tsc` y `eslint`
+  en verde. Un «es verde» afirmado sobre **ruido** (`R=0 G=1 B=0`), un acuse que decía «espera»
+  un minuto después de haber llegado, y una promesa de que la luz se apaga sola que **no se
+  cumplió** —14 min 38 s encendida—.
+  → **La única forma de encontrarlos fue conducir la interfaz contra el hardware y mirar.** Hay
+    dos herramientas para eso, y el orden importa:
+    · `herramientas/rosbridge_de_mentira.mjs` — sin robot, para estados que tardan minutos o que
+      no se pueden pedir (`ciego`, `mudo`, latcheado). 🔴 **Prueba que el código no revienta, NO
+      que el robot haga eso**: llegó a tener mal los nombres de campo de `/encoders` y la
+      telemetría pintaba `—` con datos llegando, **pareciendo un fallo de la web**.
+    · **`VALIDAR_CON_EL_ROBOT.md`** — la lista contra rvr-01, y cada punto lleva **qué lo
+      refutaría**. Sin esa línea, una pasada verde no distingue «funciona» de «no llegué a
+      probarlo».
 → Lo que sigue sin cubrirse: colores, espaciado y si algo se lee a tres metros. **Eso exige una
   persona mirando.**
 → Y para el muro del administrador, el criterio de aceptación es **una persona a tres metros**.
