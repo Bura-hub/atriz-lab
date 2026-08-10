@@ -23,7 +23,24 @@ export const SIN_DATO = 'no se sabe'
 /** Coma decimal: es una interfaz en español. */
 export function numero(n: number | null | undefined, decimales: number): string {
   if (n === null || n === undefined || !Number.isFinite(n)) return SIN_DATO
-  return n.toFixed(decimales).replace('.', ',')
+  const t = n.toFixed(decimales)
+  /*
+   * 🔴 EL CERO NEGATIVO. `(-0.0004).toFixed(3)` es `"-0.000"`, y la pantalla
+   * pintaba **«−0,000 m/s»** con el robot parado — visto en Conducir contra
+   * rvr-01 el 2026-08-10.
+   *
+   * No es cosmético: en este proyecto un signo delante de una velocidad
+   * significa **la dirección de la marcha**, y aquí no hay ninguna. Un alumno
+   * que lee «menos cero» tiene que pararse a decidir si el robot va marcha
+   * atrás muy despacio o si está quieto — y `/odom` **sí trae valores
+   * negativos de verdad**, así que no puede descartarlo de un vistazo.
+   *
+   * 📝 Lo destapó una captura de pantalla, no una prueba: `numero()` tiene 30
+   *    casos y ninguno pasaba un valor entre −0,0005 y 0. Es la banda
+   *    intermedia otra vez.
+   */
+  const limpio = /^-0(?:[.,]0*)?$/.test(t) ? t.slice(1) : t
+  return limpio.replace('.', ',')
 }
 
 /**

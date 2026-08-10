@@ -136,3 +136,48 @@ describe('partirUnidad — el numero manda, la unidad acompaña', () => {
     expect(partirUnidad('8,23 ')).toEqual({ numero: '8,23 ', unidad: null })
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// 🔴 EL CERO NEGATIVO — lo destapo una CAPTURA DE PANTALLA, no una prueba
+//
+// El 2026-08-10, mirando Conducir contra rvr-01 con el robot parado, la celda
+// «MEDIDO · LINEAL» ponia **−0,000 m/s**. `numero()` tenia ya 30 casos y
+// ninguno pasaba un valor entre −0,0005 y 0: la banda intermedia otra vez.
+//
+// No es cosmetico. En este proyecto el signo de una velocidad es LA DIRECCION
+// DE LA MARCHA, y /odom trae negativos de verdad — asi que «menos cero» obliga
+// a decidir si el robot retrocede muy despacio o esta quieto.
+// ═══════════════════════════════════════════════════════════════════════════
+describe('numero — el cero negativo no se pinta', () => {
+  it('🔴 el caso VISTO en pantalla: -0,0004 m/s a tres decimales', () => {
+    expect(numero(-0.0004, 3)).toBe('0,000')
+    expect(numero(-0.0004, 3)).not.toBe('-0,000')
+  })
+
+  it('el cero negativo de JavaScript tampoco', () => {
+    expect(numero(-0, 3)).toBe('0,000')
+    expect(numero(-0, 0)).toBe('0')
+  })
+
+  it('barre la banda entera, no tres puntos', () => {
+    // De casi -0,0005 a 0: ninguno puede salir con signo a 3 decimales.
+    for (let i = 1; i <= 49; i++) {
+      const v = -i / 100000          // -0,00001 .. -0,00049
+      expect(numero(v, 3), `v=${v}`).toBe('0,000')
+    }
+  })
+
+  it('🔴 pero un negativo DE VERDAD conserva su signo', () => {
+    // La guarda protege el cero, no la direccion. Si se comiera esto, la
+    // pantalla diria que el robot avanza cuando retrocede.
+    expect(numero(-0.001, 3)).toBe('-0,001')
+    expect(numero(-0.1, 3)).toBe('-0,100')
+    expect(numero(-12.5, 1)).toBe('-12,5')
+  })
+
+  it('y el positivo no cambia', () => {
+    expect(numero(0, 3)).toBe('0,000')
+    expect(numero(0.0004, 3)).toBe('0,000')
+    expect(numero(0.199, 3)).toBe('0,199')
+  })
+})
