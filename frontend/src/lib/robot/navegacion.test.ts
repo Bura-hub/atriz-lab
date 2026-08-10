@@ -301,4 +301,27 @@ describe('el mapa', () => {
     const fuente = readFileSync(new URL('./navegacion.ts', import.meta.url), 'utf8')
     expect(fuente).not.toMatch(/UMBRAL_MAPA|MAPA_VIEJO|mapaViejo|edadMaxima/)
   })
+
+  it('🔴 y tampoco un umbral de «mapa DEMASIADO NUEVO» — el otro extremo', () => {
+    /*
+     * Añadido el 2026-08-09 (evidencias 96 y 97). La tentación es simétrica y
+     * más fuerte, porque el robot midió que un mapa RECIÉN HECHO puede ser
+     * inservible:
+     *
+     *     160 cm de recorrido ->  4 nodos · 49 celdas · 89,3 % desconocido
+     *                             -> Nav2 no encuentra ruta por un hueco de 47 cm
+     *     781 cm              -> 17 nodos -> el MISMO hueco da plan recto
+     *
+     * Pero un umbral de juventud sería FALSO: lo que da valor al mapa son los
+     * METROS, no los minutos, y un mapa de 8 m puede tener dos minutos y estar
+     * perfecto. Además el robot no publica ni nodos ni cobertura —solo nombre y
+     * edad—, así que la web **no puede medir la calidad** ni aproximarla.
+     *
+     * Es la misma regla de la prueba de arriba, aplicada al otro extremo de la
+     * escala: antes de poner un umbral, pregunta si la magnitud que mides es la
+     * que falla. Aquí no lo es en ninguna de las dos direcciones.
+     */
+    const fuente = readFileSync(new URL('./navegacion.ts', import.meta.url), 'utf8')
+    expect(fuente).not.toMatch(/MAPA_NUEVO|mapaNuevo|edadMinima|UMBRAL_FRESCO|recienMapeado/)
+  })
 })

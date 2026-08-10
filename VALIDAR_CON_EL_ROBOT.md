@@ -261,6 +261,25 @@ a «Hay algo a menos de 15 cm: el robot puede quedar bloqueado». Si dijera lo
 mismo en los dos casos, la pantalla estaría **afirmando** un congelamiento que no
 ha visto — y esa es exactamente la clase de error que este cambio corrige.
 
+### Y de paso, la tarjeta del mapa — misma limitación, mismo remedio
+
+Con el doble corriendo (sin banderas basta), en
+`http://localhost:3000/robot/1/navegar`, la tarjeta **Mapa en uso** también es de
+cliente y tampoco la mira ninguna prueba. Tiene que traer **tres** avisos y no
+dos, que es lo que se añadió el 2026-08-09:
+
+1. ¿es de este sitio? — el fallo de los 41 cm
+2. la fecha es el `mtime`: copiar un mapa viejo lo **rejuvenece**
+3. 🆕 **una fecha reciente tampoco es buena noticia**: lo que vale son los
+   **metros** — con 160 cm salen 4 nodos y un 89 % sin explorar, y Nav2 no
+   encuentra ruta por un hueco que sí cabe; con 781 cm, plan recto
+
+🔴 **Lo que lo refutaría:** que apareciera un semáforo o un color sobre la edad.
+No puede haberlo en **ninguna** dirección — el robot no publica ni nodos ni
+cobertura, así que la web **no puede medir la calidad**; y «demasiado nuevo»
+sería falso, porque un mapa de 8 m puede tener dos minutos y estar perfecto.
+Dos pruebas de `navegacion.test.ts` lo impiden por los dos extremos.
+
 ---
 
 ## 3 · Lo que ya se validó y solo hay que no romper

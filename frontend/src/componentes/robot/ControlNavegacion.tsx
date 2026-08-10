@@ -219,6 +219,40 @@ function MapaEnUso({ avanza }: { avanza: boolean }) {
         ⚠️ La fecha es la del fichero, no la de cuándo se recorrió el sitio: copiar un mapa viejo
         lo rejuvenece. Por eso va el nombre al lado y la decisión es tuya.
       </p>
+      {/*
+        🔴🔴 AÑADIDO EL 2026-08-09 (evidencias 96 y 97), y corrige el sesgo de la
+        línea de arriba. Esa avisa de que una fecha VIEJA puede engañar; el robot
+        midió que una fecha NUEVA engaña en la dirección contraria, y peor,
+        porque «guardado hace 2 minutos» se lee como una buena noticia.
+
+        Lo que da valor a un mapa son los METROS recorridos, no su antigüedad:
+
+            160 cm de recorrido ->  4 nodos ·  49 celdas · 89,3 % desconocido
+            781 cm de recorrido -> 17 nodos · 506+       · 47,4 %
+
+        Con el primero, Nav2 no encontraba ruta por un hueco de 47 cm y se
+        atribuyó al ancho; con el segundo, el MISMO hueco da plan recto y el
+        robot lo cruza. La causa no era el hueco: era el mapa.
+
+        📌 Y explica el caso que este panel crea sin querer: arrancar SLAM aquí,
+           pararlo y pasar a Navegar deja un mapa de segundos de antigüedad y
+           casi vacío. **Mapear no es instantáneo: son metros.**
+
+        🔴 SIGUE SIN HABER UMBRAL, y ahora por partida doble. El robot solo
+           publica `mapa_nombre` y `mapa_edad_s`: nodos y cobertura no viajan,
+           así que la web NO PUEDE medir la calidad. Y un umbral de «demasiado
+           nuevo» sería falso — un mapa de 8 m puede tener dos minutos y estar
+           perfecto. Se enseña el hecho y decide quien conduce, igual que con la
+           edad. `navegacion.test.ts` impide añadir el umbral sin justificarlo.
+      */}
+      <p className="mt-1 max-w-prose text-[12px] leading-relaxed text-muted-foreground">
+        ⚠️ Y una fecha reciente <strong>tampoco</strong> es buena noticia por sí sola: lo que hace
+        útil a un mapa son los <strong>metros recorridos</strong> al hacerlo. Medido: con{' '}
+        <strong>160 cm</strong> el mapa sale con 4 nodos y un 89 % sin explorar, y Nav2 no
+        encuentra ruta por un hueco que <strong>sí cabe</strong>; con <strong>781 cm</strong>, el
+        mismo hueco da plan recto. Si acabas de mapear en dos minutos, vuelve a hacerlo dando una
+        vuelta al espacio.
+      </p>
     </div>
   )
 }
