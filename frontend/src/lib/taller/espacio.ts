@@ -46,23 +46,47 @@ export const ESPACIO: readonly EspacioPractica[] = [
 ]
 
 /**
- * 🔴 LOS DOS AVISOS QUE NO PUEDEN FALTAR AL PIE DE LA TABLA.
+ * 🔴 LOS AVISOS QUE NO PUEDEN FALTAR AL PIE DE LA TABLA.
  *
- * Los dos son medidas, y los dos contradicen lo que alguien supondría:
+ * Todos son medidas, y todos contradicen lo que alguien supondría:
  *
  *   · «despejado» se mide **a la altura del plano de barrido**, 15,5 cm del
  *     suelo. El LIDAR pasa POR ENCIMA de zócalos y cajas bajas, así que un
  *     suelo despejado a ras no basta y el robot chocaría con algo que su
  *     sensor nunca vio.
- *   · **hacia atrás no hay capa de seguridad**: el polígono del
- *     `collision_monitor` se extiende hacia DELANTE. Retroceder no está
- *     protegido por nada.
+ *   · un obstáculo **a menos de 15 cm en cualquier dirección** no frena al
+ *     robot: lo **inmoviliza**, y no puede salir ni alejándose.
+ *   · hay **~1 cm ciego** pegado al chasis que ningún parámetro cubre.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 RETIRADO EL 2026-08-09: «hacia atrás no hay capa de seguridad»
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Aquí decía, al alumno y al pie de la tabla de prácticas, que *«el polígono
+ * del `collision_monitor` se extiende hacia DELANTE; un retroceso no está
+ * protegido por nada»*. **Es falso por dos vías independientes, las dos
+ * medidas:**
+ *
+ *   1. El círculo de aproximación es un CÍRCULO. El barrido de pared del
+ *      2026-08-09 (24 estaciones, cuatro direcciones) dio el mismo umbral en
+ *      las cuatro: DETRÁS 17,8 · DELANTE 16,1 · IZQUIERDA 17,9 · DERECHA 17,9.
+ *      Hacia atrás protege **igual** que hacia delante.
+ *   2. `Precaucion` tampoco acaba en el robot: va de −0,24 a +0,36 m, o sea
+ *      **24 cm por detrás**. Ya estaba medido —un retroceso pedido de 30 cm
+ *      recorrió 14 porque frenaba— y esta frase lo contradecía en el mismo
+ *      repositorio.
+ *
+ * 📝 El aviso no era «prudente de más»: enseñaba a desconfiar de una protección
+ *    que sí existe, y de paso dejaba sin contar la que de verdad muerde, que es
+ *    quedarse clavado sin poder salir.
  */
 export const AVISOS_ESPACIO: readonly string[] = [
   'Despejado se mide a 15,5 cm del suelo, que es donde barre el LIDAR — no a ras de suelo. '
   + 'El barrido pasa por encima de zócalos y cajas bajas.',
-  'Hacia atrás no hay capa de seguridad: el polígono de precaución se extiende hacia delante. '
-  + 'Un retroceso no está protegido por nada.',
+  'Un obstáculo a menos de 15 cm deja al robot INMÓVIL, no lento: no avanza, no gira y no puede '
+  + 'alejarse. Pasa en las cuatro direcciones por igual, y solo se sale retirando el obstáculo '
+  + 'o moviendo el robot con la mano.',
+  'El LIDAR no ve nada a menos de 10 cm de su eje, y el borde del robot está a 9: hay ~1 cm '
+  + 'pegado al chasis que la capa de seguridad no puede ver. No dejes nada tocando el robot.',
 ]
 
 /** Las prácticas cuya fila lleva un número que alguien midió. */

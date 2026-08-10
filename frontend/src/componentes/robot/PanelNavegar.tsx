@@ -245,7 +245,24 @@ export function PanelNavegar() {
         texto: `${err.message} · 🔴 Y ojo: que la acción falle NO significa que el robot no haya `
           + 'llegado. Se midió a Nav2 abortando mientras el controlador seguía conduciendo, y el '
           + 'robot llegó diez segundos después.' + recorrido()
-          + ' Antes de repetir el objetivo, mira dónde está.',
+          + ' Antes de repetir el objetivo, mira dónde está.'
+          /*
+           * 🔴 AÑADIDO EL 2026-08-09 (evidencias 90 y 91). Si el robot de verdad
+           * NO llegó, esta es la causa medida más probable y no se parece a un
+           * fallo: Nav2 no se cuela por huecos estrechos, los RODEA.
+           *
+           * El mapa de slam_toolbox engorda los objetos ~5 cm por lado, así que
+           * el paso mínimo TRANSITABLE sale de una cuenta, no de una intuición:
+           *   2 × (radio inscrito 14,5 + engorde 5 + celda 5) ≈ 49 cm.
+           * Por debajo, el plan mide 168-233 % de la recta y se va 68-115 cm de
+           * lado; en un cuarto pequeño ese rodeo no cabe y aborta a los 5,7 s.
+           *
+           * ⚠️ Se dice «~50 cm» y no un número exacto a propósito: el umbral
+           *    práctico medido está entre 45 y 60, y depende de si hay SLAM o
+           *    AMCL. Dar una cifra limpia sería inventar precisión.
+           */
+          + ' Si el robot NO llegó, mira si tenía que pasar por un hueco: por debajo de ~50 cm '
+          + 'Nav2 no se cuela, da un rodeo del doble de largo, y si no cabe aborta.',
         malo: true,
       }),
     ).finally(() => { setObjetivo(null); setAvance(null) })
@@ -306,11 +323,22 @@ export function PanelNavegar() {
                    2026-08-07 en cuanto se mapeó un cuarto. Ahora se remite al panel
                    de arriba, que lee `hay_mapa` DEL ROBOT en vez de recordarlo.
               */}
+              {/*
+                🔴 AMPLIADO EL 2026-08-09 con el mecanismo, que es más útil que la
+                   regla. Antes decía «si has movido las mesas, vuelve a mapear» —
+                   correcto, pero da a entender que el problema es un mapa VIEJO.
+                   La evidencia 90 midió que basta con AÑADIR algo a un cuarto ya
+                   mapeado: con una puerta de dos cajas, la corrección `map→odom`
+                   se fue de 0,00 a 1,68 m sobre un mapa de dos días antes.
+                   Una silla que un alumno deja donde no estaba lo reproduce.
+              */}
               <Aviso nivel="ATENCION" titulo="Y aunque arranque, hace falta un mapa DE ESTE SITIO">
                 AMCL localiza contra un mapa guardado, y el panel de arriba dice si el robot tiene
                 alguno. <strong>Que exista uno no basta: tiene que ser de donde está el robot
                 ahora.</strong> Con un mapa del sitio equivocado Nav2 navega, dice que llegó, y se
-                queda a 41 cm — medido. Si has movido las mesas, vuelve a mapear.
+                queda a 41 cm — medido. Y <strong>no hace falta que el mapa sea viejo: basta con
+                añadir algo</strong> — una silla que no estaba al mapear llevó la localización a{' '}
+                <strong>1,68 m</strong> de error. Si has movido o añadido muebles, vuelve a mapear.
               </Aviso>
             </div>
           </Tarjeta>

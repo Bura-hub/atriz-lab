@@ -195,6 +195,74 @@ Construido contra el contrato de `SENSOR_COLOR.md`, medido en el robot pero
 
 ---
 
+## 2bis · 🔴 El robot bloqueado a 15 cm — `PanelConducir` y «por qué no obedece»
+
+**Añadido el 2026-08-09**, y es el punto más fácil de comprobar de toda la lista:
+no hace falta ningún montaje, solo **una pared y una cinta métrica**.
+
+Lo que el robot midió con 24 estaciones a mano (evidencias 93, 94 y 95): con algo
+dentro del círculo de 15 cm el robot **no se mueve en ninguna dirección**, ni
+siquiera alejándose. Hasta hoy esta app lo llamaba «va más despacio».
+
+| paso | qué hacer | qué tiene que salir |
+|---|---|---|
+| **a** | Pon el robot con la **pared detrás a ~17 cm** (medido con cinta desde el chasis) y el barrido encendido | — |
+| **b** | Manda **avanzar** (alejándose de la pared) desde Conducir | La tarjeta pasa a **ERROR** y dice «El robot está BLOQUEADO y no puede salir solo». El robot **no se mueve** |
+| **c** | Manda **girar** | Lo mismo. 🔴 Es lo más contraintuitivo: girar no acerca a nada |
+| **d** | Abre «por qué no obedece» | Causa `frenado` **CONFIRMADA**, titular con **BLOQUEADO**, y el remedio dice **«con la mano»** |
+| **e** | Aparta el robot a **~25 cm** y repite (b) | Se mueve. La tarjeta baja a ATENCIÓN o desaparece |
+
+🔴 **QUÉ LO REFUTARÍA, que es la parte que importa:**
+
+- **Que el robot SÍ se mueva a 17 cm.** Entonces el radio del robot no es 0.15 —
+  es lo que `verificar_robot.sh` marca como **FALLO**, no aviso: significa que a
+  ese robot no le llegó el fichero nuevo. Compruébalo en el robot antes de tocar
+  la web: el defecto estaría allí.
+- **Que la tarjeta diga «te está frenando» en vez de «BLOQUEADO».** Sería que la
+  acción 3 volvió a caer en la rama de `RALENTIZAR`.
+- **Que diga «BLOQUEADO» pero el robot se mueva.** Sería `seMueve()` leyendo mal
+  `/odom`, y afirmaría un congelamiento que no hay — el error simétrico y
+  igual de malo.
+
+⚠️ **Y lo que este punto NO puede comprobar:** el **~1 cm ciego** pegado al
+chasis. El LIDAR no da nada por debajo de `range_min` (10 cm), así que un
+obstáculo ahí no produce ningún mensaje que mirar. La app lo **dice** en los
+avisos del taller; que sea cierto lo sostiene la medida del robot, no esta lista.
+
+### 🔴 Y esto SÍ se puede hacer HOY, sin robot — porque yo no lo hice
+
+El texto del aviso de Conducir **es de cliente**: aparece cuando llega
+`/collision_monitor_state` por el WebSocket, así que **no está en el HTML que
+sirve el servidor** y ninguna de las 614 pruebas lo mira. Lo que está verificado
+es la **lógica** —con las cifras medidas del robot como casos de prueba— y que
+los avisos estáticos del taller llegan al DOM. **La tarjeta pintada, no.**
+
+```bash
+node herramientas/rosbridge_de_mentira.mjs --aproximacion    # robot CONGELADO
+# en otra terminal:  cd frontend && npm run dev
+# y abrir  http://localhost:3000/robot/1/conducir
+```
+
+| qué mirar | qué tiene que salir |
+|---|---|
+| la tarjeta sobre PEDIDO/MEDIDO | **roja** (ERROR), no ámbar |
+| el titular | «El robot está BLOQUEADO y no puede salir solo» |
+| el cuerpo | los tres ceros, y «No insistas ni pruebes marcha atrás» |
+| `medido · lineal` | **0,000 m/s** — es de donde sale la afirmación |
+
+**El control, que es lo que lo hace una prueba y no una foto:**
+
+```bash
+node herramientas/rosbridge_de_mentira.mjs --aproximacion --moviendose
+```
+
+Misma acción 3, pero `/odom` a 0,100 m/s. **Tiene que cambiar el mensaje**: pasa
+a «Hay algo a menos de 15 cm: el robot puede quedar bloqueado». Si dijera lo
+mismo en los dos casos, la pantalla estaría **afirmando** un congelamiento que no
+ha visto — y esa es exactamente la clase de error que este cambio corrige.
+
+---
+
 ## 3 · Lo que ya se validó y solo hay que no romper
 
 No hay que repetirlo, pero si algo de esto falla, **es una regresión**:

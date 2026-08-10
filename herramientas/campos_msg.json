@@ -1,0 +1,48 @@
+{
+  "MotorStatus": [
+    "std_msgs/Header header",
+    "bool atascado_izquierdo",
+    "bool atascado_derecho",
+    "bool fallo",
+    "float32 temperatura_izquierdo",
+    "float32 temperatura_derecho",
+    "uint8 estado_termico_izquierdo",
+    "uint8 estado_termico_derecho",
+    "float32 antiguedad_atasco_s",
+    "float32 antiguedad_fallo_s",
+    "float32 antiguedad_termico_s"
+  ],
+  "Encoder": [
+    "int32 left_wheel_count",
+    "int32 right_wheel_count"
+  ],
+  "Color": [
+    "int32[] rgb_color",
+    "float32 confidence"
+  ],
+  "EstadoRobot": [
+    "std_msgs/Header header",
+    "uint64 latido",
+    "bool parada_emergencia",
+    "bool rvr_responde",
+    "float32 antiguedad_muestra_s",
+    "float32 antiguedad_odom_s",
+    "uint32 reanudaciones_fallidas",
+    "bool color_activo"
+  ],
+  "EstadoNavegacion": [
+    "std_msgs/Header header",
+    "uint64 latido",
+    "uint8 slam",
+    "uint8 nav",
+    "string slam_detalle",
+    "string nav_detalle",
+    "float32 slam_arrancando_s",
+    "float32 nav_arrancando_s",
+    "bool hay_mapa",
+    "bool slam_latcheado",
+    "bool nav_latcheado",
+    "string mapa_nombre",
+    "float32 mapa_edad_s"
+  ]
+}

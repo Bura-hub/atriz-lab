@@ -10,7 +10,7 @@
  * proyecto: probar_lista_blanca.py, verificar_robot.sh, compilar.sh, etc.)
  */
 import { execFileSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -18,7 +18,14 @@ import { fileURLToPath } from 'node:url'
 // directorio de trabajo: npm ejecuta los guiones desde `frontend/`, asi que
 // una ruta relativa al CWD apuntaria al sitio equivocado segun quien lo llame.
 const raizProyecto = resolve(dirname(fileURLToPath(import.meta.url)), '..')
-const raizRvr = resolve(raizProyecto, process.argv[2] ?? '../Atriz_rvr')
+/*
+ * ⚠️ Se filtran las banderas antes de leer la ruta. Sin esto,
+ * `npm run contrato -- --aceptar-campos` tomaria «--aceptar-campos» como el
+ * directorio de Atriz_rvr y el guion moriria diciendo que no encuentra el
+ * launch — un error que no menciona la bandera y manda a mirar el clon.
+ */
+const sueltos = process.argv.slice(2).filter((a) => !a.startsWith('--'))
+const raizRvr = resolve(raizProyecto, sueltos[0] ?? '../Atriz_rvr')
 
 const rutaLaunch = join(raizRvr, 'atriz_rvr_bringup/launch/robot.launch.py')
 if (!existsSync(rutaLaunch)) {
@@ -239,6 +246,101 @@ if (faltantes.length) {
     '(paquetes estandar -nav_msgs/sensor_msgs/geometry_msgs/std_msgs/tf2_msgs/nav2_msgs- ' +
     'no viven en este repositorio y quedan FUERA de esta comprobacion)'
   )
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// QUINTA COMPROBACION: los CAMPOS de cada .msg, contra una instantanea
+// ═══════════════════════════════════════════════════════════════════════
+// 🔴🔴 EL PUNTO CIEGO QUE CASI CUESTA DOS CAMPOS EN PANTALLA.
+//
+// La comprobacion de arriba mira que el .msg EXISTA. Nunca lee lo que hay
+// dentro. El 2026-08-08 el robot anadio `mapa_nombre` y `mapa_edad_s` a
+// EstadoNavegacion y escribio: «le toca al PC anadirlos a contrato.ts;
+// comprobar_contrato.mjs estara en rojo hasta entonces, que es lo correcto».
+// **No lo estuvo:** ejecutado antes de tocar nada, dio todo verde.
+//
+// 🔴 Y la direccion del fallo es la mala. Si alguien se hubiera fiado de ese
+//    rojo que nunca llego, los dos campos NO habrian llegado nunca a la
+//    pantalla, con el comprobador en verde — y esos dos campos existen para
+//    avisar del fallo de los 41,3 cm, en el que Nav2 declara exito estando a
+//    medio metro y no hay ningun otro sintoma.
+//
+// → Lo que la cierra, y lo propuso el robot: guardar los campos en un fichero
+//   VERSIONADO y comparar. Cualquier cambio se pone en rojo hasta que alguien
+//   actualice la instantanea, que es exactamente el gesto de «me he enterado».
+//   No decide si la pantalla necesita el campo — eso es de una persona—; solo
+//   impide que el cambio pase inadvertido.
+//
+// ⚠️ Lo que esto NO hace, y conviene decirlo para que nadie lea de mas:
+//    · No comprueba que la interfaz de TypeScript tenga esos campos. Un campo
+//      nuevo aceptado en la instantanea y no usado sigue sin llegar a pantalla.
+//    · Solo mira los tipos de `atriz_rvr_msgs` que estan en TIPOS.
+const RUTA_CAMPOS = join(raizProyecto, 'herramientas/campos_msg.json')
+const aceptar = process.argv.includes('--aceptar-campos')
+
+/**
+ * Los campos de un .msg, en orden. Descarta comentarios y CONSTANTES.
+ *
+ * 📌 Las constantes (`uint8 APAGADO=0`) se descartan a proposito: no viajan en
+ *    el mensaje, asi que no son parte de lo que la pantalla puede leer. Un
+ *    estado nuevo en el enum SI merece verse — pero eso lo caza el campo
+ *    `slam`/`nav` que lo transporta, y meterlas aqui haria saltar la
+ *    instantanea por cambios que no afectan al contrato de datos.
+ */
+function camposDeMsg(texto) {
+  const campos = []
+  for (const bruta of texto.split('\n')) {
+    const linea = bruta.split('#')[0].trim()
+    if (!linea) continue
+    // `tipo nombre` · `tipo nombre valorPorDefecto` · `tipo NOMBRE=valor`
+    const m = /^(\S+)\s+([A-Za-z_]\w*)\s*(=)?/.exec(linea)
+    if (!m || m[3]) continue          // sin nombre, o con `=`: es una constante
+    campos.push(`${m[1]} ${m[2]}`)
+  }
+  return campos
+}
+
+const instantaneaViva = {}
+for (const [, tipo] of propios) {
+  const nombreMsg = tipo.split('/').pop()
+  const rutaMsg = join(raizRvr, 'atriz_rvr_msgs/msg', `${nombreMsg}.msg`)
+  if (!existsSync(rutaMsg)) continue          // ya lo grito la comprobacion 4
+  instantaneaViva[nombreMsg] = camposDeMsg(readFileSync(rutaMsg, 'utf8'))
+}
+
+if (aceptar) {
+  writeFileSync(RUTA_CAMPOS, `${JSON.stringify(instantaneaViva, null, 2)}\n`)
+  console.log(`📸 instantanea de campos actualizada: ${RUTA_CAMPOS}`)
+  console.log('   🔴 Actualizarla NO anade los campos a la pantalla. Mira si alguno')
+  console.log('      hace falta en contrato.ts, useTopic.ts y en algun componente.')
+} else if (!existsSync(RUTA_CAMPOS)) {
+  fallos++
+  console.error(`🔴 CAMPOS: no existe la instantanea ${RUTA_CAMPOS}`)
+  console.error('   creala con: npm run contrato -- --aceptar-campos')
+} else {
+  const guardada = JSON.parse(readFileSync(RUTA_CAMPOS, 'utf8'))
+  const cambios = []
+  for (const msgNombre of new Set([...Object.keys(guardada), ...Object.keys(instantaneaViva)])) {
+    const antes = guardada[msgNombre] ?? null
+    const ahora = instantaneaViva[msgNombre] ?? null
+    if (antes === null) { cambios.push(`   ${msgNombre}: es NUEVO en el contrato`); continue }
+    if (ahora === null) { cambios.push(`   ${msgNombre}: ya no esta en TIPOS`); continue }
+    for (const c of ahora) if (!antes.includes(c)) cambios.push(`   ${msgNombre}: 🆕 '${c}'`)
+    for (const c of antes) if (!ahora.includes(c)) cambios.push(`   ${msgNombre}: ❌ se fue '${c}'`)
+  }
+  if (cambios.length) {
+    fallos++
+    console.error('🔴 CAMPOS: el robot ha cambiado el contenido de un .msg')
+    for (const c of cambios) console.error(c)
+    console.error('   👉 mira si la pantalla los necesita. Si ya lo has hecho (o no hacen falta):')
+    console.error('      npm run contrato -- --aceptar-campos')
+  } else {
+    const n = Object.values(instantaneaViva).reduce((s, c) => s + c.length, 0)
+    console.log(
+      `✅ CAMPOS: ${n} campos en ${Object.keys(instantaneaViva).length} .msg, ` +
+      'iguales a la instantanea (constantes excluidas: no viajan en el mensaje)'
+    )
+  }
 }
 
 process.exit(fallos ? 1 : 0)

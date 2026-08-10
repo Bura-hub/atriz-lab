@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EntradaNoObedece, diagnosticar, resumen } from './no_obedece'
+import { ACCION_APROXIMACION, EntradaNoObedece, diagnosticar, resumen } from './no_obedece'
 
 /** Un robot al que todo le va bien: enlace, barrido, RVR y odometría. */
 const sano: EntradaNoObedece = {
@@ -189,5 +189,59 @@ describe('la capa de seguridad', () => {
 
   it('sin limitar: DESCARTADA', () => {
     expect(causa({ frenadoMonitor: { accion: 0, poligono: '' } }).estado).toBe('DESCARTADA')
+  })
+
+  /*
+   * ═════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 LA ACCIÓN 3, QUE HASTA EL 2026-08-09 CAÍA EN LA RAMA EQUIVOCADA
+   * ═════════════════════════════════════════════════════════════════════════
+   * Le contestaba «la capa de seguridad te está frenando, y el robot SÍ
+   * obedece» a quien tenía delante un robot que daba 0,0 cm avanzando, 0,0°
+   * girando y 0,0 cm retrocediendo. En LA pantalla del «no obedece».
+   */
+  describe('🔴 acción 3 (APROXIMACION): el robot está bloqueado, no lento', () => {
+    const c = () => causa({ frenadoMonitor: { accion: 3, poligono: 'Aproximacion' } })
+
+    it('NO dice que el robot obedezca', () => {
+      expect(c().titulo).not.toMatch(/S[IÍ] obedece/i)
+      expect(c().titulo).toMatch(/BLOQUEADO/)
+    })
+
+    it('dice que no puede salir solo, que es lo que nadie sabía', () => {
+      expect(c().titulo).toMatch(/no puede salir solo/i)
+    })
+
+    it('🔴 no menciona el 40 %, que es de OTRO polígono', () => {
+      // `Precaucion` recorta al 40 %; `approach` multiplica por cero. Copiar la
+      // cifra de uno al otro es el error que este proyecto llama «una cifra
+      // correcta en su contexto se vuelve falsa al mudarla de sitio».
+      expect(`${c().evidencia} ${c().remedio}`).not.toContain('40 %')
+    })
+
+    it('🔴 el remedio NO manda a repetir la orden ni a probar marcha atrás', () => {
+      // El anterior decía «despeja los LADOS y repite la medida». Repetir no
+      // hace nada: está medido en las cuatro direcciones.
+      expect(c().remedio).not.toMatch(/repite/i)
+      expect(c().remedio).toMatch(/con la mano/i)
+    })
+
+    it('trae las tres cifras medidas, para que se pueda comprobar', () => {
+      expect(c().evidencia).toContain('0,0 cm')
+      expect(c().evidencia).toContain('0,0°')
+      expect(c().evidencia).toContain('15 cm')
+    })
+  })
+})
+
+describe('🔴 la constante local no puede quedarse atrás del .msg del robot', () => {
+  it('ACCION_APROXIMACION es el 3 del enum de useTopic', async () => {
+    /*
+     * `no_obedece.ts` declara el 3 en local para no depender de React, que es lo
+     * que permite probarlo sin entorno de navegador. El precio de esa copia es
+     * que puede divergir; esta prueba es lo que lo impide, y por eso el import
+     * va aquí dentro y no arriba.
+     */
+    const { ACCION_MONITOR } = await import('../../hooks/useTopic')
+    expect(ACCION_APROXIMACION).toBe(ACCION_MONITOR.APROXIMACION)
   })
 })

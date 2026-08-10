@@ -18,6 +18,8 @@
  *   node herramientas/rosbridge_de_mentira.mjs              # ciclo automático
  *   node herramientas/rosbridge_de_mentira.mjs --slam ciego # un estado fijo
  *   node herramientas/rosbridge_de_mentira.mjs --nav bloqueado --sin-mapa
+ *   node herramientas/rosbridge_de_mentira.mjs --aproximacion       # 🔴 robot CONGELADO
+ *   node herramientas/rosbridge_de_mentira.mjs --aproximacion --moviendose  # el control
  *
  * Después: abrir http://localhost:3000/robot/rvr-01/navegar con la dirección
  * apuntando a `ws://localhost:9090`.
@@ -48,6 +50,25 @@ const sinMapa = process.argv.includes('--sin-mapa')
  */
 const frenando = process.argv.includes('--frenando')
 const frenandoParar = process.argv.includes('--parar')
+/*
+ * 🔴🔴 `--aproximacion` — EL CASO PEOR, y el doble no sabia producirlo.
+ *
+ * Medido en el robot el 2026-08-09 (evidencias 93-95) con 24 estaciones a mano:
+ * con algo dentro del circulo de 15 cm, `approach` multiplica el mando ENTERO
+ * —lineal y angular— por el tiempo hasta colision, y ese factor es CERO:
+ *
+ *     AVANZAR alejandose -> 0,0 cm   GIRAR -> 0,0°   RETROCEDER -> 0,0 cm
+ *
+ * Provocarlo en el robot cuesta poner una pared a 17 cm y medirla; aqui es una
+ * bandera. Publica `action_type: 3` **y `/odom` a cero**, porque la pantalla no
+ * decide con el codigo: mira si el robot se mueve. Las dos cosas hacen falta —
+ * con `/odom` a 0,100 m/s se veria el aviso prudente, no la afirmacion.
+ */
+const aproximacion = process.argv.includes('--aproximacion')
+// Con `--aproximacion --moviendose` sale el otro lado: el robot SI se mueve, y
+// entonces la pantalla NO puede afirmar que este congelado. Es el control.
+const seMueveIgual = process.argv.includes('--moviendose')
+const robotQuieto = aproximacion && !seMueveIgual
 // 🔴 «Latcheado» no es un estado del enum: es una bandera aparte, y la interfaz
 //    tiene que pintarla ENCIMA de lo que diga el estado. Se pide por su nombre.
 const latSlam = fijoSlam === 'bloqueado'
@@ -134,7 +155,12 @@ const CUERPOS = {
       position: { x: 0.30 + t * 0.001, y: -0.02, z: 0 },
       orientation: { x: 0, y: 0, z: 0.0011, w: 1 },
     } },
-    twist: { twist: { linear: { x: 0.100, y: 0, z: 0 }, angular: { x: 0, y: 0, z: 0.002 } } },
+    // 🔴 Con el robot congelado por `approach`, `/odom` da CERO EXACTO. No es un
+    //    detalle del doble: es lo que la pantalla mira para no tener que
+    //    adivinar si la accion 3 es «mas lento» o «parado».
+    twist: robotQuieto
+      ? { twist: { linear: { x: 0, y: 0, z: 0 }, angular: { x: 0, y: 0, z: 0 } } }
+      : { twist: { linear: { x: 0.100, y: 0, z: 0 }, angular: { x: 0, y: 0, z: 0.002 } } },
   }),
   '/imu': () => ({
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: 'imu_link' },
@@ -183,8 +209,9 @@ const CUERPOS = {
   }),
   '/collision_monitor_state': () => (
     frenandoParar ? { action_type: 1, polygon_name: 'invalid source' }
-      : frenando ? { action_type: 2, polygon_name: 'Precaucion' }
-        : { action_type: 0, polygon_name: '' }),
+      : aproximacion ? { action_type: 3, polygon_name: 'Aproximacion' }
+        : frenando ? { action_type: 2, polygon_name: 'Precaucion' }
+          : { action_type: 0, polygon_name: '' }),
   '/estado_robot': () => ({
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
     latido: 100 + t, parada_emergencia: false, rvr_responde: true,

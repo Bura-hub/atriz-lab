@@ -39,6 +39,7 @@ import {
   SIN_DATO, horaCorta, metrosPorSegundo, numero, partirUnidad, radianesPorSegundo,
 } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
+import { seMueve } from '@/lib/interfaz/seguridad'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { PanelEnlace } from './EstadoEnlace'
@@ -382,25 +383,61 @@ function PedidoContraMedido({ velocidad }: { velocidad: number }) {
   // `LIMITAR` y `APROXIMACION` también recortan; solo `NO_HACER_NADA` no.
   const frenando = monitor !== null && monitor.action_type !== ACCION_MONITOR.NO_HACER_NADA
 
+  /*
+   * 🔴🔴 2026-08-09 · `APROXIMACION` NO ERA «TE ESTÁ FRENANDO».
+   *
+   * Este aviso repartía los cinco códigos en dos cajas —PARAR y «todo lo demás
+   * te frena»— y ponía la acción 3 en la segunda, con el texto de `Precaucion`
+   * y su 40 %. Lo medido con 24 estaciones en las cuatro direcciones es que la
+   * acción 3 puede ser **inmovilización total**: 0,0 cm avanzando, 0,0° girando
+   * y 0,0 cm retrocediendo, incluso alejándose del obstáculo.
+   *
+   * → Aquí, además, se puede hacer lo que la lógica pura no puede: **comprobar
+   *   el efecto**. Esta tarjeta ya tiene delante la velocidad medida, así que
+   *   distingue «recortado» de «congelado» mirando si el robot se mueve, en vez
+   *   de deducirlo del código.
+   */
+  const aproximacion = monitor?.action_type === ACCION_MONITOR.APROXIMACION
+  const congelado = aproximacion
+    && seMueve(numeroValido(lineal?.x), numeroValido(angular?.z)) === false
+
   return (
     <div className="grid min-w-[17rem] flex-1 grid-cols-2 gap-2.5">
       {frenando && (
         <div className="col-span-2" role="status">
           <Aviso
-            nivel={monitor.action_type === ACCION_MONITOR.PARAR ? 'ERROR' : 'ATENCION'}
-            titulo={monitor.action_type === ACCION_MONITOR.PARAR
-              ? 'La capa de seguridad está BLOQUEANDO el movimiento'
-              : 'La capa de seguridad te está frenando ahora mismo'}
+            nivel={monitor.action_type === ACCION_MONITOR.PARAR || aproximacion
+              ? 'ERROR'
+              : 'ATENCION'}
+            titulo={
+              monitor.action_type === ACCION_MONITOR.PARAR
+                ? 'La capa de seguridad está BLOQUEANDO el movimiento'
+                : aproximacion
+                  ? (congelado
+                    ? 'El robot está BLOQUEADO y no puede salir solo'
+                    : 'Hay algo a menos de 15 cm: el robot puede quedar bloqueado')
+                  : 'La capa de seguridad te está frenando ahora mismo'
+            }
           >
             {monitor.action_type === ACCION_MONITOR.PARAR
               ? <>El robot no se moverá mientras esto dure. Motivo del robot:{' '}
                 <code>{monitor.polygon_name}</code>. Si pone <code>invalid source</code> es que no
                 le llega el barrido del LIDAR, no que haya un obstáculo.</>
-              : <>Vas a recorrer <strong>menos de lo que pides</strong>, y no es que el robot no
-                obedezca. El polígono <code>{monitor.polygon_name}</code> mide 60 cm de largo por{' '}
-                <strong>40 de ancho</strong>: con un robot de 21,7 cm, cualquier cosa a menos de
-                ~9 cm de un <strong>costado</strong> lo frena al 40 %, aunque te estés alejando de
-                ella. Medido: la misma orden dio 26,4 cm con algo cerca y 59,5 despejado.</>}
+              : aproximacion
+                ? <>{congelado
+                  ? <>Se le está mandando movimiento y la velocidad medida es <strong>cero</strong>.</>
+                  : <>Está dentro del círculo de aproximación (<code>{monitor.polygon_name}</code>).</>}{' '}
+                  Esto <strong>no</strong> es ir más despacio: el mando entero —giro incluido— se
+                  multiplica por el tiempo hasta la colisión, y con algo ya dentro ese factor
+                  es <strong>cero</strong>. Medido en las cuatro direcciones: avanzar alejándose{' '}
+                  <strong>0,0 cm</strong>, girar <strong>0,0°</strong>, retroceder{' '}
+                  <strong>0,0 cm</strong>. <strong>No insistas ni pruebes marcha atrás</strong>:
+                  retira el obstáculo o aparta el robot con la mano.</>
+                : <>Vas a recorrer <strong>menos de lo que pides</strong>, y no es que el robot no
+                  obedezca. El polígono <code>{monitor.polygon_name}</code> mide 60 cm de largo por{' '}
+                  <strong>40 de ancho</strong>: con un robot de 21,7 cm, cualquier cosa a menos de
+                  ~9 cm de un <strong>costado</strong> lo frena al 40 %, aunque te estés alejando de
+                  ella. Medido: la misma orden dio 26,4 cm con algo cerca y 59,5 despejado.</>}
           </Aviso>
         </div>
       )}

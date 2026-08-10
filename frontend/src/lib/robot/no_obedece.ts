@@ -102,6 +102,16 @@ export const UMBRAL_BARRIDO_MS = 1500
 /** El vigilante del driver corta el movimiento a los 0,3 s sin `cmd_vel`. */
 export const UMBRAL_ODOM_MUERTA_S = 3
 
+/**
+ * `action_type = 3` del `collision_monitor`: APPROACH.
+ *
+ * ⚠️ Se declara aquí en vez de importar `ACCION_MONITOR` para que este módulo
+ * siga sin depender de nada —es lo que dice su cabecera y lo que permite
+ * probarlo sin React—. **Una prueba lo ata al enum real**, así que no puede
+ * quedarse atrás si el `.msg` del robot cambia.
+ */
+export const ACCION_APROXIMACION = 3
+
 export function diagnosticar(e: EntradaNoObedece): Causa[] {
   const causas: Causa[] = []
 
@@ -212,6 +222,36 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
       remedio: fm.poligono.includes('invalid')
         ? 'No es un obstáculo: al monitor no le llega el barrido del LIDAR. Enciéndelo.'
         : 'Aparta lo que tenga delante, o retira el robot de ahí con la mano.',
+    })
+  } else if (fm.accion === ACCION_APROXIMACION) {
+    /*
+     * 🔴🔴 ESTA RAMA NO EXISTÍA, Y SU AUSENCIA ERA EL PEOR TEXTO DE LA PANTALLA.
+     *
+     * Hasta el 2026-08-09 la acción 3 caía en la rama de abajo y esta pantalla
+     * —la que lee alguien cuyo robot NO OBEDECE— le respondía con el titular
+     * «la capa de seguridad te está frenando, y el robot SÍ obedece».
+     *
+     * Lo medido es lo contrario: con un punto dentro del círculo, `approach`
+     * multiplica el mando ENTERO por cero y el robot da **0,0 cm avanzando,
+     * 0,0° girando y 0,0 cm retrocediendo**. 24 de 24 estaciones, todo-o-nada.
+     * O sea que le decíamos «sí obedece» a quien tenía delante exactamente el
+     * fallo que esta pantalla existe para explicar.
+     *
+     * 📝 Y el remedio que se ofrecía —«despeja también los LADOS y repite la
+     *    medida»— mandaba a repetir una orden que está medido que no hace nada.
+     */
+    causas.push({
+      id: 'frenado',
+      titulo: 'La capa de seguridad tiene al robot BLOQUEADO, y no puede salir solo',
+      estado: 'CONFIRMADA',
+      evidencia:
+        `El robot informa de aproximación por «${fm.poligono}»: tiene algo dentro del círculo `
+        + 'de 15 cm. Eso NO es «va más despacio»: el mando entero se multiplica por el tiempo '
+        + 'hasta la colisión, y con un punto ya dentro ese factor es CERO. Medido en las cuatro '
+        + 'direcciones: avanzar alejándose 0,0 cm, girar 0,0°, retroceder 0,0 cm.',
+      remedio:
+        'Retira el obstáculo, o aparta el robot con la mano. Desde aquí no hay forma: mandar '
+        + 'marcha atrás está medido y da cero igual. Girando no rozaría nada, pero tampoco gira.',
     })
   } else if (fm.accion !== 0) {
     causas.push({
