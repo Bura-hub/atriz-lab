@@ -21,8 +21,32 @@
  *    unidad `latcheada` dan exactamente esa firma—, solo que la causa no es la
  *    que yo suponía.
  *
- * ⏳ Lo que sigue **sin** verificar es esta PANTALLA contra el robot: los seis
- *    estados se han visto contra un doble, no contra el supervisor real.
+ * ✅ **VALIDADA CONTRA EL SUPERVISOR REAL. Aquí decía que no, y era falso.**
+ *
+ * Esta línea rezaba «los seis estados se han visto contra un doble, no contra
+ * el supervisor real» — cierto al escribirla, falso desde el 2026-08-09. **Cinco
+ * de los seis se han visto de verdad, en rvr-01**, y cada uno por una vía
+ * distinta:
+ *
+ *     APAGADO      las dos unidades, en reposo y tras pararlas
+ *     ARRANCANDO   SLAM 4 · 9 · 14 s (2026-08-09) · Nav2 1…21 s (2026-08-10),
+ *                  con los segundos SUBIENDO, que es lo que la pantalla pinta
+ *     FUNCIONANDO  SLAM en ~18 s · Nav2 en 21 s
+ *     CIEGO        forzado apagando el barrido con SLAM vivo — el estado que
+ *                  `systemctl is-active` llamaría `active`
+ *     MUDO         apareció SOLO las dos veces, al parar SLAM y al parar Nav2
+ *     DESCONOCIDO  con `atriz-slam.service` sin instalar (2026-08-07)
+ *
+ * ⏳ **El único que no se ha visto es `FALLO`**, y no se fuerza a la ligera: la
+ *    forma barata de provocarlo —pedir Nav2 sin mapa— agota el `StartLimitBurst`
+ *    en ~40 s y deja la unidad `failed`, de la que **solo se sale con
+ *    `reset-failed` desde el robot**. Se probaría de paso el `latcheado`, pero
+ *    deja el robot inservible desde la web hasta que alguien entre por SSH.
+ *
+ * 📝 Y la lección, por segunda vez en este fichero: **un «no verificado» que ya
+ *    no lo es manda a desconfiar de código que funciona**, y gasta la
+ *    credibilidad de los avisos que sí importan. Al validar algo, hay que venir
+ *    a borrar su marca — no basta con anotarlo en la bitácora.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴 POR QUE SE PIDE Y NO SE ORDENA

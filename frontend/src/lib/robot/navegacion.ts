@@ -10,6 +10,21 @@
  *      MUDO     aparecio solo al parar SLAM
  *      parar    funcionando -> MUDO -> apagado
  *
+ *    ✅ **Y la OTRA unidad, el 2026-08-10: Nav2**, por el mismo camino de la web
+ *    (`/pedir_nav`), que es lo que faltaba — hasta entonces solo se habia visto
+ *    SLAM:
+ *
+ *      apagado -> arrancando · 1..21 s -> FUNCIONANDO         21 s
+ *      /pedir_nav responde «peticion ACEPTADA, no arrancado todavia»
+ *      parar    funcionando -> MUDO -> apagado
+ *
+ *    📌 Los 21 s caen dentro del intervalo medido en el robot (24,3 s hasta
+ *    aceptar objetivos, ~30 s hasta FUNCIONANDO, n=1 cada uno), asi que el
+ *    «~30 s» que pinta la pantalla sigue siendo el numero prudente.
+ *    ⚠️ Y **arrancar no es navegar**: se comprobo que llegan `/map`, `/tf` y
+ *    `/amcl_pose` —Nav2 puede arrancar mal sin decirlo— pero **no se mando
+ *    ningun objetivo**. Eso mueve el robot y es otra sesion.
+ *
  *    📝 Y se corrige porque **un «no verificado» que ya no lo es manda a
  *    desconfiar de codigo que funciona**, que gasta la credibilidad de los
  *    avisos que si importan. Es la misma regla que hizo quitar el aviso de «los
