@@ -46,12 +46,14 @@
  * frases que este proyecto tiene prohibidas por haber costado algo.
  */
 
-import { existsSync } from 'node:fs'
-import { mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { ChildProcess, spawn } from 'node:child_process'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+/*
+ * 🔴 EL CONDUCTOR DE NAVEGADOR SE EXTRAJO EL 2026-08-09 a `navegador_cdp.ts`.
+ *    Vivia aqui dentro y era privado; hizo falta para una segunda prueba —la de
+ *    las tarjetas que solo existen tras recibir por WebSocket— y la alternativa
+ *    era copiarlo. Esta prueba no cambia: usa el mismo cliente, importado.
+ */
+import { ESPERA_MS, type Informe, Navegador } from './navegador_cdp'
 import { FRASES_PROHIBIDAS, normalizar } from './lenguaje'
 import { SIN_DATO } from './formato'
 import { marcasDe, marcasDefectuosas } from './semantica'
@@ -80,14 +82,6 @@ const WEB = process.env.ATRIZ_WEB ?? 'http://localhost:3118'
 const HOST = process.env.ATRIZ_HOST ?? '1'
 const PUERTO = Number(process.env.ATRIZ_CDP_PUERTO ?? 9333)
 
-/**
- * 🔴 ESPERA EN TIEMPO REAL, y esto no es negociable.
- *
- * `--virtual-time-budget` **congela el reloj del navegador y ahoga la red**.
- * Con el puesto, las paginas volvieron vacias tres veces seguidas y se estuvo a
- * punto de concluir que el WebSocket estaba roto.
- */
-const ESPERA_MS = Number(process.env.ATRIZ_ESPERA_MS ?? 9000)
 
 const RUTAS: readonly [string, string][] = [
   ['portada', '/'],
@@ -105,144 +99,9 @@ const RUTAS: readonly [string, string][] = [
   ['diagnóstico', `/robot/${HOST}/diagnostico`],
 ]
 
-const CANDIDATOS = [
-  'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
-  'C:/Program Files/Google/Chrome/Application/chrome.exe',
-  '/usr/bin/microsoft-edge',
-  '/usr/bin/google-chrome',
-  '/usr/bin/chromium-browser',
-  '/usr/bin/chromium',
-]
-
-const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms))
-
-function rutaDelNavegador(): string {
-  const puesta = process.env.ATRIZ_NAVEGADOR
-  if (puesta !== undefined && puesta !== '') return puesta
-  const hallado = CANDIDATOS.find((c) => existsSync(c))
-  if (hallado === undefined) {
-    throw new Error(
-      'no encuentro un navegador basado en Chromium. Pon ATRIZ_NAVEGADOR con la ruta al binario.',
-    )
-  }
-  return hallado
-}
-
-/** Lo que se le pregunta a una pantalla ya hidratada. */
-interface Informe {
-  html: string
-  /** El texto de cada hoja del DOM. SCRIPT/STYLE fuera: ver abajo. */
-  hojas: string[]
-  texto: string
-}
-
-/** Cliente CDP minimo. Sin dependencias: node 22 trae `WebSocket` global. */
-class Navegador {
-  private proceso: ChildProcess | null = null
-  private ws: WebSocket | null = null
-  private perfil = ''
-  private id = 0
-  private pendientes = new Map<number, (r: unknown) => void>()
-
-  async arrancar(): Promise<void> {
-    this.perfil = mkdtempSync(join(tmpdir(), 'atriz-cdp-'))
-    this.proceso = spawn(rutaDelNavegador(), [
-      '--headless=new',
-      `--remote-debugging-port=${PUERTO}`,
-      `--user-data-dir=${this.perfil}`,
-      '--no-first-run',
-      '--no-default-browser-check',
-      '--disable-extensions',
-      'about:blank',
-    ], { stdio: 'ignore' })
-
-    // Esperar a que el puerto de depuracion conteste, sin dormir un numero
-    // inventado: se pregunta hasta que responde.
-    let objetivo: { webSocketDebuggerUrl: string } | undefined
-    for (let i = 0; i < 100 && objetivo === undefined; i++) {
-      await dormir(200)
-      try {
-        const lista = await (await fetch(`http://127.0.0.1:${PUERTO}/json/list`)).json()
-        objetivo = (lista as { type: string; webSocketDebuggerUrl: string }[])
-          .find((t) => t.type === 'page')
-      } catch { /* todavia no escucha */ }
-    }
-    if (objetivo === undefined) throw new Error('el navegador no abrio su puerto de depuracion')
-
-    const ws = new WebSocket(objetivo.webSocketDebuggerUrl)
-    await new Promise<void>((ok, err) => {
-      ws.onopen = () => ok()
-      ws.onerror = () => err(new Error('no se pudo hablar con el navegador por CDP'))
-    })
-    ws.onmessage = (e: MessageEvent) => {
-      const m = JSON.parse(String(e.data)) as { id?: number; result?: unknown }
-      if (m.id !== undefined) {
-        const cb = this.pendientes.get(m.id)
-        if (cb !== undefined) { this.pendientes.delete(m.id); cb(m.result) }
-      }
-    }
-    this.ws = ws
-
-    await this.cmd('Page.enable')
-    await this.cmd('Runtime.enable')
-    await this.cmd('Emulation.setDeviceMetricsOverride',
-      { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
-  }
-
-  private cmd(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
-    const ws = this.ws
-    if (ws === null) throw new Error('el navegador no esta arrancado')
-    return new Promise((ok) => {
-      const n = ++this.id
-      this.pendientes.set(n, ok)
-      ws.send(JSON.stringify({ id: n, method, params }))
-    })
-  }
-
-  async mirar(ruta: string): Promise<Informe> {
-    await this.cmd('Page.navigate', { url: WEB + ruta })
-    await dormir(ESPERA_MS)   // 🔴 en tiempo real. Ver la nota de ESPERA_MS.
-
-    /*
-     * 🔴 SCRIPT/STYLE/TEMPLATE fuera del barrido de hojas.
-     *    El payload de hidratacion de Next.js lleva dentro cosas como
-     *    «border border» y disparaba los detectores de repeticion sobre texto
-     *    que **nadie ve**. Fue el primer falso positivo de esta comprobacion.
-     */
-    const expr = `(() => {
-      const INVISIBLE = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE'])
-      const hojas = [...document.body.querySelectorAll('*')]
-        .filter(e => !INVISIBLE.has(e.tagName) && e.children.length === 0)
-        .map(e => e.innerText || '')
-        .map(s => s.trim())
-        .filter(s => s !== '')
-      return {
-        html: document.documentElement.outerHTML,
-        hojas,
-        texto: document.body.innerText,
-      }
-    })()`
-    const r = await this.cmd('Runtime.evaluate',
-      { expression: expr, returnByValue: true }) as
-      { result?: { value?: Informe }; exceptionDetails?: unknown }
-    const valor = r.result?.value
-    if (valor === undefined) throw new Error(`no pude leer ${ruta}: ${JSON.stringify(r)}`)
-    return valor
-  }
-
-  cerrar(): void {
-    try { this.ws?.close() } catch { /* da igual */ }
-    try { this.proceso?.kill() } catch { /* da igual */ }
-    // ⚠️ En Windows `kill()` puede dejar procesos hijos del navegador. El
-    //    perfil temporal se borra igual; si quedara alguno, muere al cerrar la
-    //    sesion. Es una prueba manual, no de CI.
-    try { rmSync(this.perfil, { recursive: true, force: true }) } catch { /* da igual */ }
-  }
-}
 
 describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', () => {
-  const nav = new Navegador()
+  const nav = new Navegador(PUERTO, WEB)
   const informes = new Map<string, Informe>()
 
   beforeAll(async () => {

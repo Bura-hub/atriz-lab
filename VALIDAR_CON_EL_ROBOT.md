@@ -229,56 +229,54 @@ chasis. El LIDAR no da nada por debajo de `range_min` (10 cm), así que un
 obstáculo ahí no produce ningún mensaje que mirar. La app lo **dice** en los
 avisos del taller; que sea cierto lo sostiene la medida del robot, no esta lista.
 
-### 🔴 Y esto SÍ se puede hacer HOY, sin robot — porque yo no lo hice
+### ✅ Y esto YA NO hace falta hacerlo a mano: hay prueba, y no necesita robot
 
-El texto del aviso de Conducir **es de cliente**: aparece cuando llega
-`/collision_monitor_state` por el WebSocket, así que **no está en el HTML que
-sirve el servidor** y ninguna de las 614 pruebas lo mira. Lo que está verificado
-es la **lógica** —con las cifras medidas del robot como casos de prueba— y que
-los avisos estáticos del taller llegan al DOM. **La tarjeta pintada, no.**
+🔴 **Aquí decía que estas dos tarjetas «no se podían verificar» porque son de
+cliente. Era falso, y el error es mío:** el conductor de navegador headless
+**ya estaba en el repositorio**, dentro de `pantallas_reales.test.ts`, y lo había
+usado esa misma noche sin reparar en lo que permitía. *«No se puede verificar» es
+una afirmación, y necesita la misma comprobación que cualquier otra.*
+
+Extraído a `src/lib/interfaz/navegador_cdp.ts` y usado por
+`tarjetas_vivas.test.ts`, que **levanta el doble él mismo** —uno por caso, porque
+las banderas se leen al arrancar— y mira lo que el navegador acaba pintando:
 
 ```bash
-node herramientas/rosbridge_de_mentira.mjs --aproximacion    # robot CONGELADO
-# en otra terminal:  cd frontend && npm run dev
-# y abrir  http://localhost:3000/robot/1/conducir
+cd frontend && npm run dev                        # en otra terminal
+ATRIZ_VIVAS=1 ATRIZ_HOST=127.0.0.1 \
+  npx vitest run src/lib/interfaz/tarjetas_vivas.test.ts
 ```
 
-| qué mirar | qué tiene que salir |
+🔴 **`ATRIZ_HOST=127.0.0.1` NO es opcional, y es el segundo error que tenía este
+apartado.** Decía «abre `/robot/1/conducir`», y ese segmento hace que la app
+conecte a **`rvr-01.local`**, no al doble: con el robot apagado la página sale
+vacía y las comprobaciones de ausencia **pasan todas**. La ruta acepta una IPv4
+literal, así que `/robot/127.0.0.1/conducir` es lo que habla con el doble.
+
+**Lo que cubre, 5 de 5 en verde:**
+
+| | |
 |---|---|
-| la tarjeta sobre PEDIDO/MEDIDO | **roja** (ERROR), no ámbar |
-| el titular | «El robot está BLOQUEADO y no puede salir solo» |
-| el cuerpo | los tres ceros, y «No insistas ni pruebes marcha atrás» |
-| `medido · lineal` | **0,000 m/s** — es de donde sale la afirmación |
+| tarjeta de `APROXIMACION` | titular «BLOQUEADO… no puede salir solo», los tres ceros, y «con la mano» |
+| lo que **no** debe decir | ni «te está frenando ahora mismo» ni «al 40 %» **dentro de la tarjeta** |
+| **el control** | con `--moviendose` —misma acción 3, `/odom` vivo— el mensaje **cambia** a «puede quedar bloqueado» |
+| tarjeta del mapa | los **tres** avisos: de este sitio · el `mtime` rejuvenece · los **metros** (160 cm → sin ruta; 781 → plan recto) |
+| y ningún veredicto | nada de «caducado», «vigente» ni «al día» sobre la edad |
 
-**El control, que es lo que lo hace una prueba y no una foto:**
+📌 **El control es lo que la hace una prueba y no una foto.** Mismo `action_type`
+en los dos casos: si el mensaje no cambiara, la pantalla estaría **afirmando** un
+congelamiento que no ha visto — el error simétrico, y igual de malo.
 
-```bash
-node herramientas/rosbridge_de_mentira.mjs --aproximacion --moviendose
-```
+⚠️ **Dos falsos positivos MÍOS al escribirla**, y quedan documentados dentro
+porque son la misma forma de siempre: comprobar «la tarjeta no dice 40 %» sobre
+**la página entera** acusaba a un bloque permanente que explica el 40 % de
+`Precaucion` y es correcto; y prohibir la palabra «viejo» saltaba sobre el aviso
+«copiar un mapa viejo lo rejuvenece», que **otra prueba del mismo fichero
+exige**. Se busca el **veredicto**, no la palabra, y se mira **la tarjeta**, no
+lo que hay alrededor.
 
-Misma acción 3, pero `/odom` a 0,100 m/s. **Tiene que cambiar el mensaje**: pasa
-a «Hay algo a menos de 15 cm: el robot puede quedar bloqueado». Si dijera lo
-mismo en los dos casos, la pantalla estaría **afirmando** un congelamiento que no
-ha visto — y esa es exactamente la clase de error que este cambio corrige.
-
-### Y de paso, la tarjeta del mapa — misma limitación, mismo remedio
-
-Con el doble corriendo (sin banderas basta), en
-`http://localhost:3000/robot/1/navegar`, la tarjeta **Mapa en uso** también es de
-cliente y tampoco la mira ninguna prueba. Tiene que traer **tres** avisos y no
-dos, que es lo que se añadió el 2026-08-09:
-
-1. ¿es de este sitio? — el fallo de los 41 cm
-2. la fecha es el `mtime`: copiar un mapa viejo lo **rejuvenece**
-3. 🆕 **una fecha reciente tampoco es buena noticia**: lo que vale son los
-   **metros** — con 160 cm salen 4 nodos y un 89 % sin explorar, y Nav2 no
-   encuentra ruta por un hueco que sí cabe; con 781 cm, plan recto
-
-🔴 **Lo que lo refutaría:** que apareciera un semáforo o un color sobre la edad.
-No puede haberlo en **ninguna** dirección — el robot no publica ni nodos ni
-cobertura, así que la web **no puede medir la calidad**; y «demasiado nuevo»
-sería falso, porque un mapa de 8 m puede tener dos minutos y estar perfecto.
-Dos pruebas de `navegacion.test.ts` lo impiden por los dos extremos.
+⚠️ **Lo que sigue exigiendo una persona:** que la tarjeta roja *se vea* como
+urgente. Esto lee texto, no diseño.
 
 ---
 
