@@ -247,22 +247,34 @@ export function PanelNavegar() {
           + 'robot llegó diez segundos después.' + recorrido()
           + ' Antes de repetir el objetivo, mira dónde está.'
           /*
-           * 🔴 AÑADIDO EL 2026-08-09 (evidencias 90 y 91). Si el robot de verdad
-           * NO llegó, esta es la causa medida más probable y no se parece a un
-           * fallo: Nav2 no se cuela por huecos estrechos, los RODEA.
+           * 🔴 CORREGIDO EL 2026-08-09 (evidencia 97), y el error venía del robot.
+           * Este bloque decía «Nav2 no se cuela por huecos estrechos, los RODEA»,
+           * con el engorde del mapa como mecanismo. ERA FALSO EN DOS SENTIDOS:
            *
-           * El mapa de slam_toolbox engorda los objetos ~5 cm por lado, así que
-           * el paso mínimo TRANSITABLE sale de una cuenta, no de una intuición:
-           *   2 × (radio inscrito 14,5 + engorde 5 + celda 5) ≈ 49 cm.
-           * Por debajo, el plan mide 168-233 % de la recta y se va 68-115 cm de
-           * lado; en un cuarto pequeño ese rodeo no cabe y aborta a los 5,7 s.
+           *   · El rodeo NO lo causaba el ancho del hueco, sino un mapa de SLAM
+           *     construido con 160 cm de recorrido: 4 nodos, 49 celdas ocupadas.
+           *     Con un mapa hecho conduciendo, un hueco de 47 cm da plan RECTO
+           *     y el robot lo cruza. Lo mismo con AMCL sobre un mapa guardado.
+           *   · Y por debajo del umbral NO rodea: no hay ruta y el planificador
+           *     se niega, que es un desenlace distinto.
            *
-           * ⚠️ Se dice «~50 cm» y no un número exacto a propósito: el umbral
-           *    práctico medido está entre 45 y 60, y depende de si hay SLAM o
-           *    AMCL. Dar una cifra limpia sería inventar precisión.
+           * La curva, con cinco anchos y el robot cruzando DE VERDAD, no sólo
+           * consultando planes:
+           *
+           *   38,6 / 38,9 / 41,1 cm   0 planes de 6-8    no cruza
+           *   47,1 cm                 3 planes de 8      cruza 3 de 3, DEGRADADO
+           *   61,1 cm                 8 planes de 8      cruza limpio en 7,8 s
+           *
+           * ⚠️ El régimen del medio es el que peor se explica en una pantalla: el
+           *    robot LLEGA, pero puede tardar el triple y va dando tumbos. NO es
+           *    un fallo y no hay que pintarlo como tal.
+           * 📌 Y la tasa de planes NO predice fallo, predice COSTE: con 3 de 8
+           *    planes cruzó 3 de 3, porque Nav2 replanifica hasta 35 veces por
+           *    trayecto y le basta con que el hueco esté abierto en algún momento.
            */
-          + ' Si el robot NO llegó, mira si tenía que pasar por un hueco: por debajo de ~50 cm '
-          + 'Nav2 no se cuela, da un rodeo del doble de largo, y si no cabe aborta.',
+          + ' Si el robot NO llegó, mira si tenía que pasar por un hueco: por debajo de ~45 cm '
+          + 'no hay ruta y el planificador se niega. Entre ~47 y 55 sí pasa, pero puede tardar el '
+          + 'triple y dar tumbos, y eso no es un fallo sino un hueco demasiado justo.',
         malo: true,
       }),
     ).finally(() => { setObjetivo(null); setAvance(null) })
