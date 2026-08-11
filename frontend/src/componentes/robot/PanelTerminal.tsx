@@ -44,10 +44,28 @@ const CADENA: readonly { paso: string; titulo: string; estado: string; porque: s
      * diseño completo»), que además ya está dicha en la portada. Lo que decide
      * —qué falla si el AP aísla, y que se mide en diez minutos— se queda.
      */
-    estado: 'sin medir',
+    estado: 'sin medir · ya hay herramienta',
+    /*
+     * 🔴 «Diez minutos en el aula» era verdad y no bastaba: no había CON QUÉ.
+     *    Desde el 2026-08-10 sí — `03_operacion/medir_aula.html` en el
+     *    repositorio de migración, una página sin librerías que se copia al
+     *    portátil y se abre con doble clic.
+     *
+     * Y es una PÁGINA, no un script, porque este proyecto ya midió que no se
+     * transfiere entre clientes: el mismo nombre tarda 2,7 s en el navegador y
+     * 7,3 s desde Node, y `ping` ha dado verde con el navegador colgado 12 s.
+     * El testigo válido es el cliente que se va a usar.
+     *
+     * Lo que la hace útil de verdad es que prueba **por nombre Y por IP**: sin
+     * las dos, un rojo no distingue «mDNS roto» —que se arregla escribiendo la
+     * dirección— de «el AP aísla», que sí tira el transporte. Con IP a cero se
+     * niega a dar veredicto en vez de elegir el más alarmante.
+     */
     porque:
       'Si el AP aísla a sus clientes entre sí, el navegador no puede hablar con el robot y el '
-      + 'transporte se replantea entero. Diez minutos en el aula.',
+      + 'transporte se replantea entero. Diez minutos en el aula, y ya hay con qué: la página '
+      + '«medir_aula.html» del repositorio de migración prueba por nombre y por dirección, que '
+      + 'es lo que separa «mDNS roto» de «el AP aísla».',
   },
   {
     paso: '2',
