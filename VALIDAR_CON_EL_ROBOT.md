@@ -304,7 +304,9 @@ ATRIZ_ROBOT=1 npx vitest run src/lib/interfaz/barrido_real.test.ts
 # ⚠️ MUEVE EL ROBOT — lo deja parado al terminar:
 ATRIZ_ROBOT=1 npx vitest run src/lib/rosbridge/parada_en_marcha.test.ts
 
-# Y las once pantallas, con datos reales. 🔴 El puerto NO es opcional:
+# Y las DIEZ pantallas del laboratorio, con datos reales. Son 12 rutas en total:
+# `/entrar` y `/usuarios` quedan fuera a propósito — no hablan con el robot.
+# 🔴 El puerto NO es opcional:
 ATRIZ_ROBOT=1 ATRIZ_WEB=http://localhost:3000 ATRIZ_HOST=1 \
   npx vitest run src/lib/interfaz/pantallas_reales.test.ts
 ```
