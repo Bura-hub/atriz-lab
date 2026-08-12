@@ -17,6 +17,22 @@ export const TOPICS_LECTURA = [
    *    arrancar Nav2 tarda decenas de segundos.
    */
   '/estado_navegacion',
+  /*
+   * 🆕 2026-08-11 · Los dos del sistema de infrarrojos robot-a-robot. Ninguno
+   *    mueve nada: son de LECTURA.
+   *
+   * 🔴 `/estado_ir` trae `conduciendo_por_ir`, y es LA UNICA FORMA de que esta
+   *    web sepa que un robot se esta moviendo. `following` y `evading` son modos
+   *    del FIRMWARE: el RVR conduce solo, sin pasar por `cmd_vel`, asi que ni el
+   *    vigilante ni el `collision_monitor` los ven. Sin este campo la interfaz
+   *    pinta «parado» mientras el robot cruza el aula.
+   *
+   * 📝 `/infrared_messages` CAMBIO DE TIPO el 2026-08-11 (era `code` + cuatro
+   *    `*_strength`; las cuatro intensidades eran ficcion —el firmware no las
+   *    envia nunca en la recepcion—). No rompio nada aqui precisamente porque
+   *    no estaba en la lista blanca: se rompio en el momento barato.
+   */
+  '/estado_ir', '/infrared_messages',
 ] as const
 
 /** 🔴 /cmd_vel NO esta y no debe estar: es la SALIDA del collision_monitor. */
@@ -50,6 +66,17 @@ export const SERVICIOS = [
    *    confirma `enable_color`.
    */
   '/pedir_slam', '/pedir_nav',
+  /*
+   * 🆕 2026-08-11 · ENCIENDE EMISORES, NO MUEVE NADA. Por eso este esta abierto
+   *    y sus dos hermanos no.
+   *
+   * 🔴 `/set_ir_mode` y `/set_ir_evading` se quedan FUERA a proposito, y no es
+   *    un olvido que haya que corregir: ponen al robot a CONDUCIR saltandose la
+   *    capa de seguridad, y rosbridge no tiene identidad por usuario. Abrirlos
+   *    hoy seria que cualquiera en el aula ponga a conducir cualquier robot.
+   *    Se reabren cuando exista esa identidad (Fase B), no por comodidad.
+   */
+  '/send_infrared_message',
 ] as const
 
 /**
@@ -107,6 +134,11 @@ export const TIPOS: Readonly<Record<string, string>> = {
   '/collision_monitor_state': 'nav2_msgs/msg/CollisionMonitorState',
   '/amcl_pose': 'geometry_msgs/msg/PoseWithCovarianceStamped',
   '/estado_navegacion': 'atriz_rvr_msgs/msg/EstadoNavegacion',
+  // 🆕 2026-08-11. `EstadoIR` es el periodico (1 Hz) y `InfraredMessage` el
+  // EVENTO, igual que `/estado_robot` frente a los topics sueltos: un topic mudo
+  // no distingue el silencio del fallo.
+  '/estado_ir': 'atriz_rvr_msgs/msg/EstadoIR',
+  '/infrared_messages': 'atriz_rvr_msgs/msg/InfraredMessage',
   '/cmd_vel_raw': 'geometry_msgs/msg/Twist',
   '/emergency_stop': 'std_msgs/msg/Empty',
   '/initialpose': 'geometry_msgs/msg/PoseWithCovarianceStamped',
@@ -200,6 +232,15 @@ export const SERVICIOS_SOLO_NO_LANZO = [
    *    confirma `enable_color`.
    */
   '/pedir_slam', '/pedir_nav',
+  /*
+   * `SendInfraredMessage.srv` devuelve `bool success` + `string message`, asi
+   * que cae de este lado. ⚠️ Y aqui «no lanzo» pesa mas de lo normal: el efecto
+   * es una luz INFRARROJA, o sea INVISIBLE para quien esta delante del robot.
+   * En los demas servicios queda el ojo del usuario como ultimo testigo; en este
+   * NO HAY TESTIGO HUMANO POSIBLE. Lo unico que lo confirma es el `/estado_ir`
+   * del OTRO robot trayendo el codigo.
+   */
+  '/send_infrared_message',
 ] as const
 
 export function confirmaEfecto(servicio: string): ConfirmacionServicio {

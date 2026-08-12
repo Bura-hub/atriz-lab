@@ -88,6 +88,52 @@ Promise<{ texto: string; avisos: string }> {
   return { texto: informe.texto, avisos: informe.estados.join('\n') }
 }
 
+describe.skipIf(!CORRER)('🆕 INFRARROJOS: el robot que se mueve solo', () => {
+  it('🔴 lo dice en pantalla, y estrena el camino de pintado POSIBLE', async () => {
+    /*
+     * `following` y `evading` son modos del FIRMWARE: no pasan por `cmd_vel`, asi
+     * que sin `/estado_ir.conduciendo_por_ir` esta pantalla razonaria sobre un
+     * robot «quieto» que esta cruzando el aula.
+     *
+     * 🔴 Y hay una razon para mirarlo en el navegador de verdad y no solo con
+     *    `diagnosticar()`: `POSIBLE` estaba DECLARADO en el tipo y pintado en el
+     *    componente desde siempre, pero NINGUNA causa lo producia. Este es el
+     *    primer render de ese camino, y un camino que nunca se ha ejecutado no
+     *    esta probado por estar escrito.
+     */
+    const { texto } = await pintado(['--conduciendo-ir'], `/robot/${HOST}/no-obedece`)
+    expect(texto).toContain('El robot se está moviendo SOLO, por infrarrojos')
+    /*
+     * La etiqueta de POSIBLE, **tal como se VE**: el componente la declara
+     * `'puede ser'` y la pinta en MAYUSCULAS. Esta prueba fallo primero
+     * comprobando la minuscula —o sea comprobando el codigo fuente y no la
+     * pantalla—, que es justo lo que estas pruebas existen para no hacer.
+     */
+    expect(texto).toContain('PUEDE SER')
+    // 🔴 Y NO promete un boton: los servicios que quitan el modo estan cerrados.
+    expect(texto).toContain('no desde aquí')
+    /*
+     * 🔴 EL TITULAR, que es lo que se lee ANTES que la tarjeta. Esta linea la
+     * puso el volcado de esta misma prueba: decia «Ninguna de las causas
+     * conocidas encaja» justo encima del aviso de que el robot se mueve solo.
+     */
+    expect(texto).toContain('Ninguna confirmada, pero hay una que mirar')
+    expect(texto).not.toContain('Ninguna de las causas conocidas encaja')
+  }, 120000)
+
+  it('🔴 EL CONTROL: sin infrarrojos la tarjeta NO aparece', async () => {
+    /*
+     * Sin este caso, una pantalla que pintara la tarjeta SIEMPRE pasaria el de
+     * arriba sin despeinarse. Es la mitad negativa, que es la que separa «lo
+     * detecta» de «lo dice siempre».
+     */
+    const { texto } = await pintado([], `/robot/${HOST}/no-obedece`)
+    expect(texto).not.toContain('por infrarrojos')
+    // Y el titular vuelve al de siempre: el control tambien lo cubre.
+    expect(texto).toContain('Ninguna de las causas conocidas encaja')
+  }, 120000)
+})
+
 describe.skipIf(!CORRER)('🔴 APROXIMACION: la tarjeta que decia lo contrario', () => {
   it('con el robot QUIETO, afirma el bloqueo y dice que no puede salir solo', async () => {
     /*

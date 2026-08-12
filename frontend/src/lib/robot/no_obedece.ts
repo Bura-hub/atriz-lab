@@ -76,6 +76,19 @@ export interface EntradaNoObedece {
    *    equivale a **sin sesión**, que es el lado que no ofrece nada.
    */
   haySesion?: boolean
+  /**
+   * De `/estado_ir.conduciendo_por_ir`. `null` si el topic no ha traído nada.
+   *
+   * 🔴 ES EL UNICO SITIO DEL QUE ESTA WEB PUEDE SACARLO. `following` y `evading`
+   *    son modos del FIRMWARE del RVR: el robot conduce solo, sin pasar por
+   *    `cmd_vel`, así que el vigilante del driver no los ve y el
+   *    `collision_monitor` tampoco. Hasta el 2026-08-11 nada en ROS se enteraba.
+   *
+   * ⚠️ Opcional, como `haySesion`, para no romper a quien ya llamaba a
+   *    `diagnosticar()`. Ausente equivale a «no se sabe», que es el lado que no
+   *    afirma nada.
+   */
+  conduciendoPorIR?: boolean | null
 }
 
 export type EstadoCausa = 'CONFIRMADA' | 'POSIBLE' | 'DESCARTADA' | 'NO_SE_SABE'
@@ -123,6 +136,41 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
       evidencia: 'El WebSocket no está abierto, así que no se sabe nada del robot.',
       remedio: 'Comprueba la dirección en el muro, y que el robot esté encendido.',
     }]
+  }
+
+  /*
+   * ── 0 · EL ROBOT SE ESTÁ MOVIENDO SOLO ─────────────────────────────────────
+   *
+   * 🔴🔴 VA PRIMERO PORQUE CAMBIA LA LECTURA DE TODO LO DEMÁS. Quien abre esta
+   * pantalla cree que el robot está quieto; si se está moviendo por infrarrojos,
+   * el resto del diagnóstico responde a una pregunta que no es la suya.
+   *
+   * Solo se añade cuando OCURRE, igual que la pestaña en segundo plano. Una
+   * tarjeta permanente diciendo «no está conduciendo por infrarrojos» sería
+   * ruido en las dieciséis pantallas que no lo hacen nunca.
+   *
+   * ⚠️ Y es `POSIBLE`, no `CONFIRMADA`, con toda intención: **que se esté
+   * moviendo es un hecho** —sale de `get_active_control_system_id() == 8`, o sea
+   * de lo que el firmware está haciendo, no de lo que se le pidió— pero que eso
+   * sea LA CAUSA de que no obedezca **no está medido**. Marcarlo confirmado
+   * sería la mentira de precisión que este proyecto ya pagó con «confirmado por
+   * tres vías independientes» resultando ser una vía contada tres veces.
+   */
+  if (e.conduciendoPorIR === true) {
+    causas.push({
+      id: 'ir',
+      titulo: 'El robot se está moviendo SOLO, por infrarrojos',
+      estado: 'POSIBLE',
+      evidencia:
+        'El robot informa de que lo está conduciendo su firmware por infrarrojos. Eso NO pasa por '
+        + 'cmd_vel, así que ni el vigilante ni la capa de seguridad lo ven, y esta web no lo sabría '
+        + 'si el robot no lo dijera. Que se mueva es seguro; que sea la razón de que ignore tus '
+        + 'órdenes NO está medido.',
+      remedio:
+        'Se para en el robot, no desde aquí: los servicios que ponen y quitan ese modo están '
+        + 'CERRADOS a propósito en la lista blanca, porque conducen saltándose la capa de seguridad '
+        + 'y cualquiera del aula podría usarlos. Ve a mirar el robot antes de nada.',
+    })
   }
 
   // ── 1 · La parada de emergencia ────────────────────────────────────────────
@@ -365,7 +413,26 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
  */
 export function resumen(causas: readonly Causa[]): string {
   const n = causas.filter((c) => c.estado === 'CONFIRMADA').length
-  if (n === 0) return 'Ninguna de las causas conocidas encaja'
+  if (n === 0) {
+    /*
+     * 🔴 CORREGIDO EL 2026-08-11, Y LO DESTAPÓ MIRAR LA PANTALLA.
+     *
+     * Con el robot conduciendo por infrarrojos y todo lo demás sano, esto
+     * titulaba «Ninguna de las causas conocidas encaja» **justo encima** de una
+     * tarjeta que dice que el robot se está moviendo solo. Las dos frases eran
+     * ciertas por separado —ninguna causa está CONFIRMADA— y juntas restaban
+     * importancia a lo único que había que leer.
+     *
+     * No se arregla marcando la causa como confirmada, que sería afirmar una
+     * causalidad no medida: se arregla dejando de decir «ninguna» cuando hay
+     * algo. 📝 Ninguna prueba de `diagnosticar()` podía verlo; se vio en el
+     * volcado de lo que el navegador acaba pintando.
+     */
+    const posibles = causas.filter((c) => c.estado === 'POSIBLE').length
+    if (posibles === 1) return 'Ninguna confirmada, pero hay una que mirar'
+    if (posibles > 1) return `Ninguna confirmada, pero hay ${posibles} que mirar`
+    return 'Ninguna de las causas conocidas encaja'
+  }
   if (n === 1) return 'Una causa encaja'
   return `${n} causas encajan a la vez`
 }

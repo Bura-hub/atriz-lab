@@ -20,6 +20,7 @@
  *   node herramientas/rosbridge_de_mentira.mjs --nav bloqueado --sin-mapa
  *   node herramientas/rosbridge_de_mentira.mjs --aproximacion       # 🔴 robot CONGELADO
  *   node herramientas/rosbridge_de_mentira.mjs --aproximacion --moviendose  # el control
+ *   node herramientas/rosbridge_de_mentira.mjs --conduciendo-ir     # 🔴 se mueve SOLO
  *
  * Después: abrir http://localhost:3000/robot/rvr-01/navegar con la dirección
  * apuntando a `ws://localhost:9090`.
@@ -69,6 +70,15 @@ const aproximacion = process.argv.includes('--aproximacion')
 // entonces la pantalla NO puede afirmar que este congelado. Es el control.
 const seMueveIgual = process.argv.includes('--moviendose')
 const robotQuieto = aproximacion && !seMueveIgual
+/*
+ * 🔴 `--conduciendo-ir` — el robot se mueve SOLO, conducido por su firmware.
+ *
+ * `following` y `evading` no pasan por `cmd_vel`, asi que ni el vigilante ni el
+ * `collision_monitor` los ven: sin `/estado_ir.conduciendo_por_ir` la web pinta
+ * «parado» un robot que cruza el aula. Este es el unico interruptor que produce
+ * ese estado sin dos robots de verdad y un emisor infrarrojo.
+ */
+const conduciendoIR = process.argv.includes('--conduciendo-ir')
 // 🔴 «Latcheado» no es un estado del enum: es una bandera aparte, y la interfaz
 //    tiene que pintarla ENCIMA de lo que diga el estado. Se pide por su nombre.
 const latSlam = fijoSlam === 'bloqueado'
@@ -212,6 +222,24 @@ const CUERPOS = {
       : aproximacion ? { action_type: 3, polygon_name: 'Aproximacion' }
         : frenando ? { action_type: 2, polygon_name: 'Precaucion' }
           : { action_type: 0, polygon_name: '' }),
+  /*
+   * 🆕 2026-08-11. Por defecto: sondeo ENCENDIDO (el driver trae
+   * `ir_sondeo_hz: 1.0`), lectura fresca y nadie cerca — o sea los cuatro
+   * sensores en 255, que es como se ve un aula normal.
+   *
+   * 🔴 `--conduciendo-ir` produce el caso que ningun otro doble sabia hacer: el
+   *    robot MOVIENDOSE sin que nadie se lo haya mandado desde la web. Es la
+   *    unica forma de estrenar el camino de pintado `POSIBLE`, que hasta hoy no
+   *    lo producia ninguna causa.
+   */
+  '/estado_ir': () => ({
+    header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
+    crudo: 0xFFFFFFFF, sensor_0: 255, sensor_1: 255, sensor_2: 255, sensor_3: 255,
+    lecturas_validas: true, antiguedad_lectura_s: 0.3,
+    ultimo_codigo: 0, hay_mensaje: false, antiguedad_mensaje_s: -1.0,
+    modo: conduciendoIR ? 'following' : 'off', far_code: 0, near_code: 0,
+    conduciendo_por_ir: conduciendoIR,
+  }),
   '/estado_robot': () => ({
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
     latido: 100 + t, parada_emergencia: false, rvr_responde: true,

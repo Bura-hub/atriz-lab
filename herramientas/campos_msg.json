@@ -44,5 +44,26 @@
     "bool nav_latcheado",
     "string mapa_nombre",
     "float32 mapa_edad_s"
+  ],
+  "EstadoIR": [
+    "std_msgs/Header header",
+    "uint32 crudo",
+    "uint8 sensor_0",
+    "uint8 sensor_1",
+    "uint8 sensor_2",
+    "uint8 sensor_3",
+    "bool lecturas_validas",
+    "float32 antiguedad_lectura_s",
+    "uint8 ultimo_codigo",
+    "bool hay_mensaje",
+    "float32 antiguedad_mensaje_s",
+    "string modo",
+    "uint8 far_code",
+    "uint8 near_code",
+    "bool conduciendo_por_ir"
+  ],
+  "InfraredMessage": [
+    "std_msgs/Header header",
+    "uint8 code"
   ]
 }

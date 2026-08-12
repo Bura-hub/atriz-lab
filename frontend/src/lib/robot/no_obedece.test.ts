@@ -26,6 +26,74 @@ describe('sin enlace no se diagnostica nada más', () => {
   })
 })
 
+describe('🆕 el robot conduciendo SOLO por infrarrojos', () => {
+  it('🔴 solo aparece cuando OCURRE — nunca como tarjeta permanente', () => {
+    /*
+     * Los dieciséis robots están casi siempre sin infrarrojos. Una tarjeta fija
+     * diciendo «no conduce por IR» sería ruido en la pantalla que más importa,
+     * y este proyecto ya tiene escrito que un aviso que salta solo se aprende a
+     * ignorar. Mismo criterio que la pestaña en segundo plano.
+     */
+    expect(causa(diagnosticar(sano), 'ir')).toBeUndefined()
+    expect(causa(diagnosticar({ ...sano, conduciendoPorIR: false }), 'ir')).toBeUndefined()
+    // 🔴 Y `null` es «no ha llegado el topic», que tampoco autoriza a afirmar.
+    expect(causa(diagnosticar({ ...sano, conduciendoPorIR: null }), 'ir')).toBeUndefined()
+  })
+
+  it('🔴 cuando ocurre va PRIMERA, porque cambia la lectura de todo lo demás', () => {
+    // Quien abre esta pantalla cree que el robot está quieto. Si se está
+    // moviendo, el resto del diagnóstico responde a otra pregunta.
+    const cs = diagnosticar({ ...sano, conduciendoPorIR: true })
+    expect(cs[0].id).toBe('ir')
+  })
+
+  it('🔴 es POSIBLE, no CONFIRMADA: el hecho está medido, la causalidad no', () => {
+    /*
+     * `conduciendo_por_ir` sale de `get_active_control_system_id() == 8`, o sea
+     * de lo que el firmware HACE. Que eso sea la razón de que ignore las órdenes
+     * no lo ha medido nadie, y marcarlo confirmado sería la misma mentira de
+     * precisión que «confirmado por tres vías» siendo una vía contada tres.
+     */
+    const c = causa(diagnosticar({ ...sano, conduciendoPorIR: true }), 'ir')
+    expect(c.estado).toBe('POSIBLE')
+    expect(c.evidencia).toContain('NO está medido')
+  })
+
+  it('🔴 el remedio NO ofrece un botón que no existe', () => {
+    // `/set_ir_mode` y `/set_ir_evading` están CERRADOS en la lista blanca a
+    // propósito: conducen saltándose la capa de seguridad.
+    const c = causa(diagnosticar({ ...sano, conduciendoPorIR: true }), 'ir')
+    expect(c.remedio).toContain('no desde aquí')
+    expect(c.remedio).not.toMatch(/pulsa|bot[oó]n/i)
+  })
+
+  it('no infla el recuento de causas confirmadas', () => {
+    // `resumen()` cuenta CONFIRMADA. Un robot que conduce por IR no debe
+    // titularse como si tuviera un fallo confirmado.
+    expect(resumen(diagnosticar({ ...sano, conduciendoPorIR: true })))
+      .not.toMatch(/causas? encaja/)
+  })
+
+  it('🔴 PERO el titular deja de decir «ninguna encaja» — se vio en la pantalla', () => {
+    /*
+     * Esta prueba nace de un volcado del navegador, no de un razonamiento: el
+     * titular decía «Ninguna de las causas conocidas encaja» JUSTO ENCIMA de la
+     * tarjeta que avisa de que el robot se mueve solo. Las dos frases eran
+     * ciertas y juntas enterraban la única que había que leer.
+     */
+    expect(resumen(diagnosticar(sano))).toBe('Ninguna de las causas conocidas encaja')
+    expect(resumen(diagnosticar({ ...sano, conduciendoPorIR: true })))
+      .toBe('Ninguna confirmada, pero hay una que mirar')
+  })
+
+  it('y con una causa CONFIRMADA manda la confirmada, no la posible', () => {
+    // Una parada de emergencia puesta es un hecho accionable; la de IR no lo es.
+    // El titular tiene que hablar de la primera.
+    expect(resumen(diagnosticar({ ...sano, conduciendoPorIR: true, paradaEmergencia: true })))
+      .toBe('Una causa encaja')
+  })
+})
+
 describe('la parada de emergencia', () => {
   it('🔴 SIN SESION el remedio no menciona ningun boton', () => {
     /*

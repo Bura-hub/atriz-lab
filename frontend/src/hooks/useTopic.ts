@@ -21,6 +21,15 @@
 
 import { useEffect, useState } from 'react'
 import { permitidoSuscribir } from '../lib/rosbridge/contrato'
+/*
+ * 🔴 SE IMPORTA, NO SE COPIA. `EstadoIR` tiene catorce campos y las trampas de
+ *    interpretarlos viven en `infrarrojos.ts` junto a su definicion. Declararlo
+ *    otra vez aqui daria DOS listas de campos que se pueden separar en silencio,
+ *    que es exactamente la deriva que `comprobar_contrato.mjs` existe para
+ *    cazar entre la web y el robot. Es un import de TIPO: no llega nada al
+ *    paquete final.
+ */
+import type { EstadoIR as MensajeEstadoIR } from '../lib/robot/infrarrojos'
 import { Transporte } from '../lib/rosbridge/transporte'
 
 /** `std_msgs/msg/Header`, tal y como lo serializa rosbridge. */
@@ -458,6 +467,18 @@ export interface MensajesPorTopic {
   '/estado_robot': MensajeEstadoRobot
   '/estado_navegacion': MensajeEstadoNavegacion
   '/collision_monitor_state': MensajeEstadoMonitor
+  /*
+   * 🆕 2026-08-11. Se modela ENTERO —los catorce campos— aunque hoy la pantalla
+   * solo lea `conduciendo_por_ir`: el `.msg` esta leido y sus trampas escritas
+   * en `lib/robot/infrarrojos.ts`, que es lo que este comentario exige para
+   * modelar un topic.
+   *
+   * 🔴 `/infrared_messages` NO esta aqui, y no es un olvido: el robot lo
+   *    autoriza, pero es un EVENTO —se publica cuando llega un codigo— y esta
+   *    web no tiene todavia ninguna pantalla que lo consuma. `/estado_ir` ya
+   *    trae el ultimo codigo con su antiguedad, que es lo que hacia falta.
+   */
+  '/estado_ir': MensajeEstadoIR
 }
 
 export type TopicModelado = keyof MensajesPorTopic

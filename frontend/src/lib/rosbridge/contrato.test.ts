@@ -95,6 +95,16 @@ describe('lista blanca', () => {
     // acepto la peticion, no que SLAM o Nav2 esten FUNCIONANDO.
     expect(confirmaEfecto('/pedir_slam')).toBe('SOLO_QUE_NO_LANZO')
     expect(confirmaEfecto('/pedir_nav')).toBe('SOLO_QUE_NO_LANZO')
+    /*
+     * Añadido el 2026-08-11. `SendInfraredMessage.srv` devuelve `bool success`.
+     * ⚠️ Y aqui «solo dice que no lanzo» pesa mas que en los otros ocho: el
+     *    efecto es una luz INFRARROJA, o sea invisible. En `/set_led_rgb` queda
+     *    el ojo de quien esta delante del robot como ultimo testigo —es
+     *    literalmente lo que destapo el fallo de `undercarriage_white`—; aqui NO
+     *    HAY TESTIGO HUMANO POSIBLE. Lo unico que confirma la emision es el
+     *    `/estado_ir` de OTRO robot trayendo el codigo.
+     */
+    expect(confirmaEfecto('/send_infrared_message')).toBe('SOLO_QUE_NO_LANZO')
   })
 
   /*
@@ -105,7 +115,7 @@ describe('lista blanca', () => {
    *    si mismo: obliga a que alguien MIRE las de arriba al añadir un servicio.
    */
   it('🔴 si esto falla, actualiza tambien las DOS enumeraciones de arriba', () => {
-    expect(SERVICIOS).toHaveLength(12)
+    expect(SERVICIOS).toHaveLength(13)
   })
 
   // Los DIEZ de SERVICIOS estan cubiertos entre las dos pruebas de arriba:
