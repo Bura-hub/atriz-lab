@@ -291,12 +291,18 @@ le da, no que el robot lo mande así.
 único emisor de infrarrojos posible es otro RVR. Con rvr-02 ya aprovisionado, deja
 de ser imposible.
 
+📌 **El campo se lee de `/estado_robot`, NO de `/estado_ir`.** El robot lo duplicó
+el 2026-08-11 en el canal barato precisamente para que el muro pudiera verlo, así
+que la web no se suscribe a `/estado_ir` en ninguna pantalla.
+
 | | qué hacer | qué debe pasar | 🔴 qué lo refuta |
 |---|---|---|---|
-| **3a** | abrir `/robot/1/no-obedece` con el robot **normal** | **no** aparece ninguna tarjeta de infrarrojos | que aparezca: se estaría pintando siempre, y entonces el 3b no prueba nada |
-| **3b** | poner rvr-01 en modo `following` **en el robot** (`set_ir_mode`, por SSH: desde la web está cerrado a propósito) con rvr-02 emitiendo | sale «El robot se está moviendo SOLO, por infrarrojos», etiquetada **«puede ser»** | que no salga con el robot moviéndose: `conduciendo_por_ir` no se está leyendo, y es **el único campo que delata ese movimiento** |
-| **3c** | mirar el remedio | dice que se para **en el robot**, y **no** ofrece ningún botón | que ofrezca uno: `/set_ir_mode` no está en la lista blanca, así que el botón no podría funcionar |
-| **3d** | arrancar el driver con `ir_sondeo_hz:=0.0` | `zonaDelEmisor()` da `SIN_SONDEO` y no se interpreta ningún sensor | que pinte «no hay nadie»: serían los ceros de relleno leídos como datos |
+| **3a** | abrir `/robot/1/no-obedece` y `/flota` con el robot **normal** | **no** aparece nada de infrarrojos en ninguna de las dos | que aparezca: se estaría pintando siempre, y entonces el 3b no prueba nada |
+| **3b** | poner rvr-01 en modo `following` **en el robot** (`set_ir_mode`, por SSH: desde la web está cerrado a propósito) con rvr-02 emitiendo | en «por qué no obedece»: «El robot se está moviendo SOLO, por infrarrojos», etiquetada **«puede ser»**, y el titular pasa a «Ninguna confirmada, pero hay una que mirar» | que no salga con el robot moviéndose: `conduciendo_por_ir` no se está leyendo, y es **el único campo que delata ese movimiento** |
+| **3c** | 🆕 mirar **el muro de flota** a la vez | la baldosa de rvr-01 pasa a **ámbar** con la etiqueta «conduce por IR» | que siga verde: el muro estaría pintando «parado» un robot que cruza el aula, que es justo para lo que el robot duplicó el campo |
+| **3d** | mirar el remedio | dice que se para **en el robot**, y **no** ofrece ningún botón | que ofrezca uno: `/set_ir_mode` no está en la lista blanca, así que el botón no podría funcionar |
+| **3e** | arrancar el driver con `ir_sondeo_hz:=0.0` | `zonaDelEmisor()` da `SIN_SONDEO` y no se interpreta ningún sensor. ⚠️ `conduciendo_por_ir` **no depende del sondeo**: sigue siendo válido | que la pantalla deje de avisar del movimiento: son dos cosas distintas y se leen de sitios distintos |
+| **3f** | 🆕 con la navegación **bloqueada por el IR**, mirar el botón de Nav2 | el motivo dice **«primero QUITA LA CAUSA»** y luego el `reset-failed`, en ese orden | que solo diga `reset-failed`: está medido que la unidad se vuelve a bloquear a los tres intentos si el IR sigue encendido, o sea dos viajes al laboratorio |
 
 ### 🔴 Lo que hay que mirar aunque no se esté probando
 
@@ -307,10 +313,17 @@ sistema discrimina **tres** zonas. `infrarrojos.ts` lo impide con una prueba que
 barre las 64 entradas posibles, pero la prueba protege el módulo, no una pantalla
 nueva que decida leer los campos por su cuenta.
 
-⚠️ **Y `/estado_ir` NO está en el muro de la flota**, a propósito: el presupuesto
-de ancho de banda exige un caudal **medido** por topic y el de éste no se ha
-medido. `caudalDeFlota()` lanza antes que estimarlo a ojo. Si algún día se quiere
-en el muro, primero se mide en el robot.
+### ⏳ Y una casilla que sigue abierta, ahora en el muro
+
+**Nadie ha medido el caudal de `/estado_robot`**, y el muro se suscribe a él por
+los dieciséis. La evidencia 68 midió seis topics y ése no existía todavía; el
+«~0,03 kB/s» que circulaba por el código era el de `/battery_state`, que publica
+**cada 30 s** contra **1 Hz** de éste.
+
+Mientras tanto la pantalla del muro enseña su caudal con un **«≥»** y dice qué no
+ha podido sumar. En cuanto llegue el número medido, entra en `CAUDAL_KBS`, se
+vacía `MURO_SIN_CAUDAL_MEDIDO` y el «≥» desaparece solo — hay una prueba que
+obliga a hacer las tres cosas a la vez.
 
 ---
 

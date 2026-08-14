@@ -165,7 +165,34 @@ describe('entradaDeBaldosa', () => {
       antiguedadMuestraS: 0.05,
       antiguedadOdomS: 0.06,
       reanudacionesFallidas: 0,
+      /*
+       * 🔴 El mensaje de arriba NO trae `conduciendo_por_ir` —es un driver de
+       * antes del 2026-08-11— y aun asi sale `false`, no `undefined` ni `null`:
+       * un campo nuevo que falta NO puede tumbar la baldosa entera, que es
+       * donde viven la bateria, la parada y la odometria. `false` es ademas el
+       * lado seguro: no inventa un aviso de robot moviendose solo.
+       */
+      conduciendoPorIR: false,
     })
+  })
+
+  it('🆕 y cuando el driver SI lo manda, se recoge tal cual', () => {
+    // El control de la de arriba: si no distinguiera, `conduciendoPorIR` seria
+    // siempre `false` y el aviso del muro no saltaria nunca.
+    const e = entradaDeBaldosa({
+      id: 1,
+      conectado: true,
+      bateria: null,
+      motores: null,
+      msDesdeUltimoMotorStatus: null,
+      estado: {
+        latido: 10, parada_emergencia: false, rvr_responde: true,
+        antiguedad_muestra_s: 0.05, antiguedad_odom_s: 0.06,
+        reanudaciones_fallidas: 0, conduciendo_por_ir: true,
+      },
+      latidoPrevio: 9,
+    })
+    expect(e.estadoRobot?.conduciendoPorIR).toBe(true)
   })
 
   it('🔴 un mensaje al que le falta lo esencial da null, no medio dato', () => {

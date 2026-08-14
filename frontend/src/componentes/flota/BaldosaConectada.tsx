@@ -42,10 +42,18 @@ function Contenido({ id, alResumir }: { id: number; alResumir?: AlResumir }) {
   const { transporte, conectado } = useRobot()
   const bateria = useTopic(transporte, '/battery_state')
   const motores = useTopic(transporte, TOPIC_LATIDO_MURO)
-  // 🔴 `/estado_robot`, 1 Hz, ~0,03 kB/s. Es lo que le da al muro TRES cosas que
-  //    antes no podia saber: si la parada esta puesta, si el RVR contesta, y
-  //    —la que mas— si `/odom` esta muerto con el enlace vivo, que es el caso en
-  //    el que la baldosa saldria VERDE con la odometria parada.
+  // 🔴 `/estado_robot`, 1 Hz. Es lo que le da al muro CUATRO cosas que antes no
+  //    podia saber: si la parada esta puesta, si el RVR contesta, si el robot
+  //    conduce solo por infrarrojos, y —la que mas— si `/odom` esta muerto con
+  //    el enlace vivo, que es el caso en el que la baldosa saldria VERDE con la
+  //    odometria parada.
+  //
+  // 🔴 AQUI PONIA «~0,03 kB/s» Y ERA UNA CIFRA INVENTADA, corregido el
+  //    2026-08-11. **Nadie ha medido este topic**: la evidencia 68 midio seis y
+  //    este no existia todavia. El 0,03 es el de `/battery_state`, que publica
+  //    **cada 30 s** (0,07 Hz medidos) mientras este va a **1 Hz** — y con ese
+  //    numero falso el presupuesto del muro se quedaba corto sin que se notara.
+  //    Ver `MURO_SIN_CAUDAL_MEDIDO` en `presupuesto.ts`.
   const estado = useTopic(transporte, '/estado_robot')
   // La antiguedad envejece sin que llegue nada: sin este muestreo, una baldosa
   // muda se quedaria en «en linea» para siempre.

@@ -28,7 +28,8 @@
     "float32 antiguedad_muestra_s",
     "float32 antiguedad_odom_s",
     "uint32 reanudaciones_fallidas",
-    "bool color_activo"
+    "bool color_activo",
+    "bool conduciendo_por_ir"
   ],
   "EstadoNavegacion": [
     "std_msgs/Header header",

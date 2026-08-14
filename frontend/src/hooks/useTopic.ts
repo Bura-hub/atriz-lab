@@ -321,6 +321,20 @@ export interface MensajeEstadoRobot {
    *    NO se apaga sola: la puso alguien a propósito.
    */
   color_activo: boolean
+  /**
+   * 🔴🔴 EL ROBOT SE ESTÁ MOVIENDO SOLO, conducido por su firmware por
+   * infrarrojos. Añadido por el robot el 2026-08-11.
+   *
+   * `following` y `evading` **no pasan por `cmd_vel`**: ni el vigilante del
+   * driver ni el `collision_monitor` los ven. Sin este campo, un robot que cruza
+   * el aula solo aparece aquí como **parado**.
+   *
+   * 📌 **También está en `/estado_ir`, y viene aquí a propósito**: éste es el
+   *    canal barato, el que el muro puede permitirse por los DIECISÉIS. Se lee
+   *    de aquí y no de `/estado_ir` en todas las pantallas que ya traen
+   *    `/estado_robot`, que son casi todas.
+   */
+  conduciendo_por_ir: boolean
 }
 
 /**
@@ -468,15 +482,18 @@ export interface MensajesPorTopic {
   '/estado_navegacion': MensajeEstadoNavegacion
   '/collision_monitor_state': MensajeEstadoMonitor
   /*
-   * 🆕 2026-08-11. Se modela ENTERO —los catorce campos— aunque hoy la pantalla
-   * solo lea `conduciendo_por_ir`: el `.msg` esta leido y sus trampas escritas
-   * en `lib/robot/infrarrojos.ts`, que es lo que este comentario exige para
-   * modelar un topic.
+   * 🆕 2026-08-11. Modelado ENTERO —los catorce campos—, con sus trampas en
+   * `lib/robot/infrarrojos.ts`.
    *
-   * 🔴 `/infrared_messages` NO esta aqui, y no es un olvido: el robot lo
-   *    autoriza, pero es un EVENTO —se publica cuando llega un codigo— y esta
-   *    web no tiene todavia ninguna pantalla que lo consuma. `/estado_ir` ya
-   *    trae el ultimo codigo con su antiguedad, que es lo que hacia falta.
+   * ⚠️ Y HOY NINGUNA PANTALLA SE SUSCRIBE, a proposito. El mismo dia el robot
+   *    duplico `conduciendo_por_ir` en `/estado_robot` —el canal barato, el que
+   *    el muro paga por los dieciseis— y esa es la unica lectura que la interfaz
+   *    necesitaba de aqui. Se conserva el modelo porque el robot lo autoriza y
+   *    porque las TRES zonas de `infrarrojos.ts` estan escritas y probadas: el
+   *    dia que haya una pantalla de infrarrojos, el tipo ya esta.
+   *
+   * 🔴 `/infrared_messages` NO esta aqui, y no es un olvido: es un EVENTO y
+   *    `/estado_ir` ya trae el ultimo codigo con su antiguedad.
    */
   '/estado_ir': MensajeEstadoIR
 }

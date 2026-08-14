@@ -185,10 +185,27 @@ export function decidirBoton(lectura: Lectura, sistema: Sistema): Boton {
         // 🔴 SIN BACKTICKS. Esto se pinta como TEXTO PLANO, no como markdown, y
         //    en la captura salieron como caracteres: «hace falta `systemctl
         //    reset-failed`». Se ve al mirar la pantalla, no al leer el código.
+        /*
+         * ⚠️ LA SEGUNDA FRASE LA PIDIÓ EL ROBOT, y evita una segunda visita al
+         *    laboratorio. Medido por él el 2026-08-11 replicando la unidad
+         *    (`StartLimitBurst=3`, `StartLimitIntervalSec=300`): tras el
+         *    `reset-failed`, **si la causa sigue ahí la unidad se vuelve a
+         *    bloquear a los tres intentos**. O sea que el orden importa —
+         *    primero quitar la causa, después desbloquear— y hacerlo al revés
+         *    manda a cruzar el edificio dos veces.
+         *
+         * 📌 La causa concreta, cuando el robot la dice, ya se pinta encima:
+         *    `lectura.detalle` sale del `nav_detalle` del supervisor. Aquí NO se
+         *    repite ni se adivina cuál es — se dice el ORDEN, que es lo que
+         *    vale para cualquier causa.
+         */
         motivo:
           'La unidad de ' + nombre + ' está bloqueada por systemd, y volver a ' +
           'pulsar no hará nada: hace falta ejecutar «systemctl reset-failed» en ' +
-          'el robot, con privilegios que el navegador no tiene.',
+          'el robot, con privilegios que el navegador no tiene. Y en este orden: ' +
+          'primero QUITA LA CAUSA y después desbloquea, porque si la causa sigue ' +
+          'ahí la unidad se vuelve a bloquear a los tres intentos.' +
+          (lectura.detalle !== '' ? ' El robot dice cuál es, justo aquí arriba.' : ''),
       }
 
     case 'ARRANCANDO':

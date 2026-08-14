@@ -79,6 +79,19 @@ export interface EntradaEstadoRobot {
   antiguedadOdomS: number
   /** Reanudaciones seguidas sin recuperar dato. ⚠️ Umbrales sin calibrar. */
   reanudacionesFallidas: number
+  /**
+   * 🔴 EL ROBOT SE MUEVE SOLO, conducido por su firmware por infrarrojos.
+   *
+   * ⚠️ CUIDADO CON EL NOMBRE: aqui `IR` a secas —el de `AtencionBaldosa`—
+   *    significa **«ir a verlo»**, no infrarrojo. Son dos cosas distintas y se
+   *    cruzan en este mismo fichero. Este campo es el INFRARROJO.
+   *
+   * Llega por `/estado_robot` desde el 2026-08-11, y el robot lo duplico ahi
+   * desde `/estado_ir` precisamente para que el muro pudiera verlo: es el canal
+   * que el muro ya paga por los dieciseis. Sin el, un robot que cruza el aula
+   * solo sale en esta rejilla como **parado**.
+   */
+  conduciendoPorIR: boolean
 }
 
 /**
@@ -219,6 +232,8 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
   const er = e.estadoRobot
   const paradaEmergencia: boolean | null = er === null ? null : er.paradaEmergencia
   const rvrResponde: boolean | null = er === null ? null : er.rvrResponde
+  // `null` = no llega `/estado_robot`, que NO es «no conduce por infrarrojos».
+  const conduciendoPorIR: boolean | null = er === null ? null : er.conduciendoPorIR
 
   // 🔴 EL TERCER ESTADO. Llegan muestras del RVR (`antiguedadMuestraS` fresca)
   //    pero `/odom` no se completa (`antiguedadOdomS` envejecida). El latido
@@ -262,6 +277,24 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
         'parada puesta',
         'la parada de emergencia esta puesta: el robot no acepta ordenes de movimiento hasta ' +
         'que alguien la libere con el robot delante. NO es una averia',
+      )
+    }
+    /*
+     * 🔴 VA JUSTO DESPUÉS DE LA PARADA, y por el mismo motivo que ella: explica
+     *    por sí solo lo que se ve. La parada explica un robot que no obedece;
+     *    esto explica un robot que se mueve **sin que nadie se lo haya mandado**,
+     *    que es lo contrario y desde el muro se ve igual de raro.
+     *
+     * ⚠️ `IR` aquí sería un error. Durante una práctica de infrarrojos esto es
+     *    lo que TIENE que pasar, y las dieciséis baldosas pedirían cruzar el
+     *    aula a la vez — justo el gasto de credibilidad que este fichero ya
+     *    documenta para la parada y el RVR sin contestar. Se mira, no se corre.
+     */
+    if (conduciendoPorIR === true) {
+      anota(
+        'conduce por IR',
+        'el robot se mueve SOLO, conducido por su firmware por infrarrojos: no pasa por cmd_vel, ' +
+        'asi que ni el vigilante ni la capa de seguridad lo ven. Se apaga en el robot, no desde aqui',
       )
     }
     if (odometriaMuerta) {
@@ -329,6 +362,7 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
       ? 'IR'
       : !datosVigentes || bateria === 'BAJA'
         || paradaEmergencia === true || rvrResponde === false
+        || conduciendoPorIR === true
         ? 'MIRAR'
         : 'NINGUNA'
 

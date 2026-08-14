@@ -21,7 +21,7 @@
  */
 
 import { CSSProperties, useCallback, useMemo, useState } from 'react'
-import { TOPICS_MURO, caudalDeFlota } from '@/lib/flota/presupuesto'
+import { TOPICS_MURO, presupuestoMuro } from '@/lib/flota/presupuesto'
 import { Baldosa } from '@/lib/flota/resumen'
 import { EstadoRobot } from '@/lib/rosbridge/salud'
 import { OrdenMuro, ordenarBaldosas } from '@/lib/flota/orden'
@@ -34,8 +34,18 @@ import { AlResumir, BaldosaConectada } from './BaldosaConectada'
 import { DondeBuscar, useDirecciones } from './DondeBuscar'
 
 export function MuroFlota() {
-  const porRobot = caudalDeFlota(TOPICS_MURO, 1)
-  const total = caudalDeFlota(TOPICS_MURO, TOTAL_ROBOTS)
+  /*
+   * 🔴 SON UN MÍNIMO, no el total, y por eso llevan «≥» delante.
+   *
+   * El muro se suscribe a TRES topics y sólo DOS tienen caudal medido:
+   * `/estado_robot` entró en la baldosa el 2026-08-04 y nunca entró en el
+   * presupuesto, así que esta cifra llevaba desde entonces por debajo de lo
+   * real. No se estima —el módulo se niega a sumar lo que nadie ha medido— pero
+   * tampoco se calla: se enseña el suelo y se dice qué falta.
+   */
+  const { kbs: porRobot, sinMedir, completo } = presupuestoMuro(1)
+  const { kbs: total } = presupuestoMuro(TOTAL_ROBOTS)
+  const prefijo = completo ? '' : '≥ '
   const { direcciones, poner } = useDirecciones()
   const [proyeccion, setProyeccion] = useState(false)
   const [orden, setOrden] = useState<OrdenMuro>('NUMERO')
@@ -230,16 +240,27 @@ export function MuroFlota() {
             <div className="rounded-md border border-white/25 bg-white/10 px-[18px] py-[13px]">
               <dt className="microetiqueta !text-white/70">por robot</dt>
               <dd className="cifra-menor mt-1 text-white">
-                {numero(porRobot, 2)}<span className="unidad !text-white/70">kB/s</span>
+                {prefijo}{numero(porRobot, 2)}<span className="unidad !text-white/70">kB/s</span>
               </dd>
             </div>
             <div className="rounded-md border border-white/25 bg-white/10 px-[18px] py-[13px]">
               <dt className="microetiqueta !text-white/70">los {TOTAL_ROBOTS}</dt>
               <dd className="cifra-menor mt-1 text-white">
-                {numero(total, 2)}<span className="unidad !text-white/70">kB/s</span>
+                {prefijo}{numero(total, 2)}<span className="unidad !text-white/70">kB/s</span>
               </dd>
             </div>
           </dl>
+          {/*
+            🔴 La nota que impide leer la cifra de arriba como un total. Sale
+               SOLO cuando falta algo por medir: en cuanto el robot dé el caudal
+               de `/estado_robot`, esto desaparece y el «≥» con ello.
+          */}
+          {!completo && (
+            <p className="mt-2.5 text-[11px] leading-snug text-white/70">
+              No incluye {sinMedir.join(' ni ')}, que el muro SÍ recibe: nadie ha medido su
+              caudal todavía. La evidencia 68 midió seis topics y ése no existía aún.
+            </p>
+          )}
           </div>
         </div>
       </header>

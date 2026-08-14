@@ -218,17 +218,6 @@ export function PanelNoObedece() {
    *    obedece»: el robot obedeciendo y recorriendo la mitad.
    */
   const monitor = useTopic(transporte, '/collision_monitor_state')
-  /*
-   * 🔴 `/estado_ir` va a 1 Hz —el mismo coste que `/estado_robot`, que esta
-   *    pantalla ya paga— y trae lo único que delata a un robot moviéndose sin
-   *    que nadie se lo haya mandado desde aquí. Sin él, esta pantalla razonaría
-   *    sobre un robot «quieto» que está cruzando el aula.
-   *
-   * 📌 Aquí sí, en el muro de la flota NO: allí el presupuesto de ancho de banda
-   *    exige un caudal MEDIDO por topic y el de `/estado_ir` no se ha medido.
-   *    `caudalDeFlota()` lanza a propósito antes que estimarlo a ojo.
-   */
-  const ir = useTopic(transporte, '/estado_ir')
   useLatido()
 
   /*
@@ -261,8 +250,16 @@ export function PanelNoObedece() {
     frenadoMonitor: monitor === null
       ? null
       : { accion: monitor.action_type, poligono: monitor.polygon_name },
-    // `null` mientras el topic no traiga nada: «no se sabe», no «no conduce».
-    conduciendoPorIR: ir?.conduciendo_por_ir ?? null,
+    /*
+     * `null` mientras el topic no traiga nada: «no se sabe», no «no conduce».
+     *
+     * 📌 Sale de `/estado_robot` y NO de `/estado_ir`, aunque los dos lo traen.
+     *    El robot lo duplicó a propósito el 2026-08-11 para que el canal barato
+     *    —el que el muro puede pagar por los dieciséis— lo lleve también. Esta
+     *    pantalla ya estaba suscrita a `/estado_robot`, así que leerlo de aquí
+     *    le ahorra una suscripción entera.
+     */
+    conduciendoPorIR: estado?.conduciendo_por_ir ?? null,
   })
 
   /*

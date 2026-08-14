@@ -147,6 +147,8 @@ export interface LecturaEstadoRobot {
   antiguedad_muestra_s?: number
   antiguedad_odom_s?: number
   reanudaciones_fallidas?: number
+  /** 🆕 2026-08-11. Opcional como los demás: un driver anterior no lo manda. */
+  conduciendo_por_ir?: boolean
 }
 
 /**
@@ -178,6 +180,19 @@ export function estadoRobotDe(
     antiguedadMuestraS: numeroValido(m.antiguedad_muestra_s) ?? -1,
     antiguedadOdomS: numeroValido(m.antiguedad_odom_s) ?? -1,
     reanudacionesFallidas: numeroValido(m.reanudaciones_fallidas) ?? 0,
+    /*
+     * 🔴 `?? false`, y NO se suma a los tres campos obligatorios de arriba.
+     *
+     * El campo lo añadió el robot el 2026-08-11: un robot con el driver de la
+     * semana pasada **no lo manda**, y devolver `null` ahí tumbaría la baldosa
+     * entera —perderíamos la batería, la parada y la odometría— por un campo
+     * nuevo. `false` es además el lado seguro del fallo: no inventa un aviso.
+     *
+     * ⚠️ Lo que sí paga es que un driver viejo se ve igual que uno que no
+     *    conduce por infrarrojos. Es aceptable porque los 16 corren la misma
+     *    imagen dorada; deja de serlo el día que convivan dos versiones.
+     */
+    conduciendoPorIR: booleanoValido(m.conduciendo_por_ir) ?? false,
   }
 }
 

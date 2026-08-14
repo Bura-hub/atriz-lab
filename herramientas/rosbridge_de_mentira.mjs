@@ -245,6 +245,13 @@ const CUERPOS = {
     latido: 100 + t, parada_emergencia: false, rvr_responde: true,
     antiguedad_muestra_s: 0.06, antiguedad_odom_s: 0.06,
     reanudaciones_fallidas: 0, color_activo: luzEncendida,
+    /*
+     * 🆕 2026-08-11. El robot lo duplico aqui desde `/estado_ir` el mismo dia:
+     * este es el canal barato, y es de donde lo leen la baldosa del muro y la
+     * pantalla de «por que no obedece». Si el doble solo lo mandara en
+     * `/estado_ir`, las dos saldrian diciendo que el robot esta parado.
+     */
+    conduciendo_por_ir: conduciendoIR,
   }),
   '/scan': () => {
     // 🔴 250 puntos, NO 255 ni 260: el tamaño NO es una constante entre

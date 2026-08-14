@@ -18,6 +18,7 @@ const estadoSano = (cambios: Partial<EntradaEstadoRobot> = {}): EntradaEstadoRob
   antiguedadMuestraS: 0.06,
   antiguedadOdomS: 0.06,
   reanudacionesFallidas: 0,
+  conduciendoPorIR: false,
   ...cambios,
 })
 
@@ -296,6 +297,43 @@ describe('resumirBaldosa — la parada de emergencia en el muro', () => {
 
   it('⚠️ pide MIRAR, no IR: alguien la pulso, es un estado normal', () => {
     expect(parado.atencion).toBe('MIRAR')
+  })
+})
+
+describe('🆕 resumirBaldosa — el robot que conduce SOLO por infrarrojos', () => {
+  const porIR = resumirBaldosa(sana({ estadoRobot: estadoSano({ conduciendoPorIR: true }) }))
+
+  it('🔴 lo dice: sin esto la baldosa pinta «parado» un robot que cruza el aula', () => {
+    // `following` y `evading` son modos del FIRMWARE y no pasan por cmd_vel, asi
+    // que ninguna otra señal del muro los ve.
+    expect(porIR.motivos.some((m) => m.includes('se mueve SOLO'))).toBe(true)
+    expect(porIR.etiquetas.some((t) => t.includes('conduce por IR'))).toBe(true)
+  })
+
+  it('y dice donde se apaga, que no es aqui', () => {
+    expect(porIR.motivos.some((m) => m.includes('no desde aqui'))).toBe(true)
+  })
+
+  it('⚠️ pide MIRAR, no IR: en una practica de infrarrojos es lo que TIENE que pasar', () => {
+    /*
+     * Con `IR` las dieciseis baldosas pedirian cruzar el aula a la vez durante
+     * una practica normal, que es el gasto de credibilidad que este fichero ya
+     * documenta para la parada y para el RVR sin contestar.
+     */
+    expect(porIR.atencion).toBe('MIRAR')
+  })
+
+  it('🔴 EL CONTROL: un robot sano no lo dice, y sigue en NINGUNA', () => {
+    const sano = resumirBaldosa(sana({ estadoRobot: estadoSano() }))
+    expect(sano.atencion).toBe('NINGUNA')
+    expect(sano.motivos.some((m) => m.includes('se mueve SOLO'))).toBe(false)
+  })
+
+  it('🔴 sin /estado_robot NO se afirma que no conduzca', () => {
+    // `null` es «no se sabe». Un robot mudo ya sale en MIRAR por otro camino, y
+    // añadir aqui una negacion inventada seria afirmar de mas.
+    const mudo = resumirBaldosa(sana({ estadoRobot: null }))
+    expect(mudo.motivos.some((m) => m.includes('se mueve SOLO'))).toBe(false)
   })
 })
 

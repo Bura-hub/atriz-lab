@@ -113,6 +113,31 @@ describe('latcheado', () => {
     expect(b.accion).toBeNull()
   })
 
+  it('🆕 🔴 y dice el ORDEN: primero la causa, despues el reset-failed', () => {
+    /*
+     * Lo pidió el robot tras medirlo (2026-08-11): con
+     * `StartLimitBurst=3`, tras el `reset-failed` **la unidad se vuelve a
+     * bloquear a los tres intentos si la causa sigue ahí**. Sin esta frase, el
+     * remedio de la pantalla manda a cruzar el edificio dos veces.
+     */
+    const b = decidirBoton(leer(msg({ nav_latcheado: true }), 'nav', true), 'nav')
+    expect(b.motivo).toContain('QUITA LA CAUSA')
+    expect(b.motivo).toContain('tres intentos')
+  })
+
+  it('🆕 y solo remite al motivo del robot CUANDO el robot lo manda', () => {
+    // Sin `nav_detalle` no hay nada arriba a lo que apuntar: decir «el robot
+    // dice cuál es» sobre un hueco manda a buscar un texto que no existe.
+    const sinDetalle = decidirBoton(leer(msg({ nav_latcheado: true }), 'nav', true), 'nav')
+    expect(sinDetalle.motivo).not.toContain('aquí arriba')
+
+    const conDetalle = decidirBoton(
+      leer(msg({ nav_latcheado: true, nav_detalle: 'el IR está conduciendo el robot' }), 'nav', true),
+      'nav',
+    )
+    expect(conDetalle.motivo).toContain('aquí arriba')
+  })
+
   it('🔴 gana tambien a FUNCIONANDO', () => {
     // Si systemd tiene la unidad latcheada, lo que diga el estado es
     // sospechoso: se prefiere la lectura que manda a mirar el robot.

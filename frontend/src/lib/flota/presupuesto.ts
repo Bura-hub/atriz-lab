@@ -64,7 +64,34 @@ export const CAUDAL_KBS: Readonly<Record<string, number>> = {
  * esta viva» de «no hay nadie». `/battery_state` va cada 30,0 s y trae el
  * `voltage`, que es lo unico que decide si hay que cargar.
  */
-export const TOPICS_MURO = ['/battery_state', '/motor_status'] as const
+export const TOPICS_MURO = ['/battery_state', '/motor_status', '/estado_robot'] as const
+
+/**
+ * 🔴🔴 LOS TOPICS DEL MURO A LOS QUE SE SUSCRIBE **SIN CAUDAL MEDIDO**.
+ *
+ * Encontrado el 2026-08-11, y era un presupuesto que no sumaba lo que gasta:
+ * `TOPICS_MURO` declaraba DOS topics mientras `BaldosaConectada` se suscribía a
+ * TRES. El tercero —`/estado_robot`, añadido el 2026-08-04— nunca entró aquí, y
+ * la cifra que el muro enseña llevaba desde entonces **por debajo de lo real**.
+ *
+ * 🔴 Y el número que circulaba por el código («~0,03 kB/s por robot», en el
+ *    comentario de `BaldosaConectada` y en el mensaje de commit del robot) **no
+ *    está medido**: la evidencia 68 midió SEIS topics y `/estado_robot` no es
+ *    ninguno — no existía todavía. Ese 0,03 es el de `/battery_state`, que
+ *    publica **cada 30 s** (0,07 Hz medidos) mientras `/estado_robot` va a
+ *    **1 Hz**. Copiarlo es la trampa que este proyecto ya tiene escrita: *una
+ *    cifra correcta en su contexto se vuelve falsa al mudarla de sitio*.
+ *
+ * 📌 Por comparación, `/motor_status` —también 1 Hz, y de tamaño parecido— mide
+ *    **0,45 kB/s**. O sea que lo más probable es que el muro cueste **un orden
+ *    de magnitud más** de lo que decía. Pero eso es una comparación, no una
+ *    medida, y aquí dentro no entra: se pide al robot y se espera.
+ *
+ * Mientras tanto la cifra del muro se presenta como lo que es —un **mínimo**— y
+ * se dice qué falta. Cambiar un error silencioso por uno declarado no arregla el
+ * número, pero deja de fingir que está completo.
+ */
+export const MURO_SIN_CAUDAL_MEDIDO = ['/estado_robot'] as const
 
 /**
  * kB/s totales de `robots` robots suscritos a `topics`.
@@ -94,4 +121,29 @@ export function caudalDeFlota(topics: readonly string[], robots: number): number
     porRobot += kbs
   }
   return porRobot * robots
+}
+
+/**
+ * Lo que cuesta el muro con `robots` baldosas, **diciendo lo que no ha podido
+ * sumar**.
+ *
+ * Devuelve un objeto y no un número a propósito: un número suelto se pinta como
+ * si fuera el total, y aquí NO lo es mientras quede un topic sin medir. Es la
+ * misma decisión que `confirmaEfecto()`, que dejó de devolver un booleano
+ * porque el tipo prometía una confirmación que ningún servicio daba.
+ *
+ * `kbs` es un **suelo**: lo que suman los topics con caudal medido.
+ */
+export function presupuestoMuro(robots: number): {
+  kbs: number
+  sinMedir: readonly string[]
+  completo: boolean
+} {
+  const medidos = TOPICS_MURO.filter(
+    (t) => !(MURO_SIN_CAUDAL_MEDIDO as readonly string[]).includes(t),
+  )
+  const sinMedir = TOPICS_MURO.filter(
+    (t) => (MURO_SIN_CAUDAL_MEDIDO as readonly string[]).includes(t),
+  )
+  return { kbs: caudalDeFlota(medidos, robots), sinMedir, completo: sinMedir.length === 0 }
 }
