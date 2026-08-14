@@ -26,7 +26,7 @@
  *
  * → `throttle_rate` baja el coste CUANDO ERES EL UNICO. No te protege de los
  *   demas, asi que no puede sostener un presupuesto. Lo unico que lo sostiene
- *   es NO SUSCRIBIRSE: por eso `TOPICS_MURO` tiene dos topics y no seis.
+ *   es NO SUSCRIBIRSE: por eso `TOPICS_MURO` tiene tres topics y no nueve.
  *
  * 📝 Es la misma familia de trampa que el QoS: en rosbridge, el primer cliente
  *    que se suscribe a un topic gobierna a todos los que llegan despues.
@@ -54,9 +54,11 @@ export const CAUDAL_KBS: Readonly<Record<string, number>> = {
 }
 
 /**
- * Los dos unicos topics del muro del administrador: **0,48 kB/s por robot**, 7,7 kB/s
- * con los 16. Con `/odom` dentro se pasaria de 200 kB/s, que sobre una sola AP
- * compartida con los portatiles del aula es otra conversacion.
+ * Los TRES topics del muro del administrador. Los dos primeros suman **0,48 kB/s
+ * por robot**, 7,7 kB/s con los 16; el tercero **no esta medido** —ver
+ * `MURO_SIN_CAUDAL_MEDIDO`—, asi que esa cifra es un **suelo**, no el total. Con
+ * `/odom` dentro se pasaria de 200 kB/s, que sobre una sola AP compartida con
+ * los portatiles del aula es otra conversacion.
  *
  * `/motor_status` va a 1 Hz (el driver lo republica con su propio temporizador,
  * `create_timer(1.0, ...)`), asi que ademas de la salud de motores es el LATIDO
@@ -69,7 +71,7 @@ export const TOPICS_MURO = ['/battery_state', '/motor_status', '/estado_robot'] 
 /**
  * 🔴🔴 LOS TOPICS DEL MURO A LOS QUE SE SUSCRIBE **SIN CAUDAL MEDIDO**.
  *
- * Encontrado el 2026-08-11, y era un presupuesto que no sumaba lo que gasta:
+ * Encontrado el 2026-08-14, y era un presupuesto que no sumaba lo que gasta:
  * `TOPICS_MURO` declaraba DOS topics mientras `BaldosaConectada` se suscribía a
  * TRES. El tercero —`/estado_robot`, añadido el 2026-08-04— nunca entró aquí, y
  * la cifra que el muro enseña llevaba desde entonces **por debajo de lo real**.

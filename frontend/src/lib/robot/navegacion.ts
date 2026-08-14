@@ -212,10 +212,25 @@ export function decidirBoton(lectura: Lectura, sistema: Sistema): Boton {
       return {
         accion: null,
         habilitado: false,
-        // Sin barra de progreso: 24,3 s es una medida en reposo (n=2) y nadie la
-        // ha probado con 16 robots y la bateria baja. Una barra afirmaria cuanto
-        // falta, y eso no se sabe.
-        motivo: nombre + ' está arrancando.',
+        /*
+         * 🔴 SIGUE SIN BARRA DE PROGRESO, y ahora con mejor motivo: nadie lo ha
+         *    probado con 16 robots y la batería baja. Una barra afirmaría cuánto
+         *    FALTA, y eso no se sabe.
+         *
+         * ✅ Pero sí se puede decir cuánto SUELE tardar, que es lo que impide
+         *    que alguien lo dé por colgado a los quince segundos. El número de
+         *    Nav2 lo midió el robot EN EL LABORATORIO el 2026-08-13, y con un
+         *    hito bien definido —hasta que `/navigate_to_pose` acepta objetivos,
+         *    no hasta que aparecen los nodos—: **27,80 y 27,84 s**, n=2 con
+         *    0,04 s de diferencia. El de SLAM sale de esta misma web contra
+         *    rvr-01 el 2026-08-09.
+         *
+         * ⚠️ «Suele» es la palabra exacta: son dos medidas en un robot en
+         *    reposo. No es una promesa, y por eso no hay cuenta atrás.
+         */
+        motivo: nombre + ' está arrancando. Medido en UN robot en reposo: unos '
+          + (sistema === 'nav' ? '28' : '18')
+          + ' segundos. Con la batería baja o varios robots a la vez, no se sabe.',
       }
 
     case 'APAGADO':

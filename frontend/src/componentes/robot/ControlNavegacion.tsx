@@ -318,7 +318,21 @@ function Sistema_({
         texto: ok
           ? (arrancar
             ? `Petición aceptada. Mira el estado: no dirá «funcionando» hasta que lo esté.${detalle}`
-            : `Petición de parada aceptada. Mira el estado: no dirá «apagado» hasta que lo esté.${detalle}`)
+            /*
+             * ⚠️ EL AVISO DEL BARRIDO, y lo pidió el robot tras medirlo en el
+             *    laboratorio el 2026-08-13, en las dos vueltas de B2: **al parar
+             *    la navegación el barrido del LIDAR queda APAGADO**.
+             *
+             * 🔴 Importa porque el siguiente síntoma no se parece a la causa:
+             *    sin `/scan` el `collision_monitor` **bloquea el movimiento por
+             *    completo** —0,0 cm medidos contra 9,9 del control—, así que el
+             *    alumno para la navegación, va a Conducir, y el robot «no le
+             *    hace caso» sin ningún error. Y quien pulsa este botón es
+             *    exactamente quien se lo va a encontrar.
+             */
+            : `Petición de parada aceptada. Mira el estado: no dirá «apagado» hasta que lo esté.${detalle}`
+              + ' ⚠️ Al parar la navegación el barrido del LIDAR queda apagado, y sin él el robot NO'
+              + ' conduce. Enciéndelo otra vez en la pestaña Conducir antes de mandarlo a ningún sitio.')
           : `El supervisor ha rechazado la petición.${detalle || ' No ha dicho por qué.'}`,
         malo: !ok,
       })

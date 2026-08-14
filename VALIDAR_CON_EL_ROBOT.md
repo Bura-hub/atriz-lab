@@ -124,6 +124,8 @@ los dos servicios contestan; lo que nadie ha visto es **esta pantalla contra él
 | **1a** | entrar con sesión, `/robot/1/navegar`, pulsar «Arrancar SLAM» | el estado pasa a **arrancando** con los segundos subiendo, y a **funcionando** | que se quede en `arrancando` pasados ~60 s, o que salte a `funcionando` **sin** pasar por `arrancando` (querría decir que el latido no se está leyendo y se pinta un enlatado) |
 | **1b** | mirar los segundos | suben de 1 en 1 | que salgan `0` fijos: sería `-1` mal traducido, y este proyecto usa `-1` para «no se sabe», nunca para «cero» |
 | **1c** | con Nav2 **sin** mapa, pulsar «Arrancar Nav2» | el botón está **deshabilitado** y dice que falta el mapa | que se pueda pulsar: `hay_mapa` no se está leyendo |
+| **1b-bis** | 🆕 mirar el texto mientras arranca | dice **«unos 28 segundos»** para Nav2 y **«unos 18»** para SLAM, **con la condición al lado** («medido en UN robot en reposo… con la batería baja o varios robots a la vez, no se sabe») | que dé un plazo a secas, o una barra, o un porcentaje: n=2 sobre un robot en reposo no habla de dieciséis con la batería baja |
+| **1c-bis** | 🆕 pulsar **Parar Nav2** y leer la confirmación | avisa de que **el barrido del LIDAR queda apagado** y de que sin él el robot no conduce | que no lo diga: el alumno se va a Conducir y el robot «no le hace caso» sin un solo error — es el `collision_monitor` bloqueando por falta de `/scan` |
 | **1d** | parar el supervisor en el robot (`systemctl stop`) y esperar 5 s | los dos sistemas pasan a **«no se sabe»**, no se congelan en el último valor | que sigan diciendo `funcionando`: la guardia del latido no corre. **Es el fallo que la pantalla existe para no cometer** |
 
 ### Los tres estados que hay que provocar a mano

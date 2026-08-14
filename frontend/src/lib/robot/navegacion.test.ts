@@ -179,12 +179,44 @@ describe('decidirBoton', () => {
   })
 
   it('arrancando: deshabilitado y sin prometer cuanto falta', () => {
+    /*
+     * ⚠️ ESTA PRUEBA CAMBIÓ EL 2026-08-14, Y CONVIENE DECIR POR QUÉ.
+     *
+     * Prohibía la palabra «segundos» entera, con este motivo: «24,3 s es una
+     * medida en reposo con n=2. No se promete un plazo». El fondo sigue siendo
+     * bueno; el alcance era demasiado ancho — confundía **prometer** con
+     * **informar**.
+     *
+     * El robot midió en el laboratorio (2026-08-13) el arranque de Nav2 hasta un
+     * hito bien definido —que `/navigate_to_pose` acepte objetivos—: 27,80 y
+     * 27,84 s, n=2 con 0,04 s de diferencia. Sin ese dato en pantalla, quien ve
+     * el contador subir no distingue «va bien» de «se colgó», y el contador YA
+     * está ahí (`arrancandoS`), así que la pantalla ya enseñaba un número sin
+     * nada con que compararlo.
+     *
+     * Lo que se sigue prohibiendo es la forma de PROMESA: cuánto falta, un
+     * porcentaje, una barra. Y se exige la condición al lado, porque n=2 sobre
+     * un robot en reposo no habla de dieciséis con la batería baja.
+     */
     const l = leer(msg({ nav: ESTADO_NAV.ARRANCANDO, nav_arrancando_s: 12.5 }), 'nav', true)
     const b = decidirBoton(l, 'nav')
     expect(b.habilitado).toBe(false)
     expect(l.arrancandoS).toBe(12.5)
-    // 24,3 s es una medida en reposo con n=2. No se promete un plazo.
-    expect(b.motivo).not.toMatch(/\d+\s*s|segundos|falta|%/)
+    // 🔴 Nada con forma de promesa: ni «falta», ni porcentaje, ni cuenta atrás.
+    expect(b.motivo).not.toMatch(/falta|%|restan|quedan/i)
+    // ✅ Pero sí el dato medido, y SIEMPRE con la condicion que lo acota.
+    expect(b.motivo).toContain('28 segundos')
+    expect(b.motivo).toMatch(/reposo/)
+    expect(b.motivo).toMatch(/no se sabe/)
+  })
+
+  it('🔴 y el numero es el de SU sistema: 28 s Nav2, 18 s SLAM', () => {
+    // Copiar el de uno al otro seria la trampa que este proyecto ya tiene
+    // escrita: una cifra correcta en su contexto se vuelve falsa al mudarla.
+    const nav = decidirBoton(leer(msg({ nav: ESTADO_NAV.ARRANCANDO }), 'nav', true), 'nav')
+    const slam = decidirBoton(leer(msg({ slam: ESTADO_NAV.ARRANCANDO }), 'slam', true), 'slam')
+    expect(nav.motivo).toContain('28 segundos')
+    expect(slam.motivo).toContain('18 segundos')
   })
 
   it('🔴 CIEGO y MUDO ofrecen PARAR, no arrancar otra vez', () => {
