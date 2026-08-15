@@ -88,6 +88,30 @@ Promise<{ texto: string; avisos: string }> {
   return { texto: informe.texto, avisos: informe.estados.join('\n') }
 }
 
+describe.skipIf(!CORRER)('🆕 EL TALLER por dirección IP: el caso que no puede funcionar', () => {
+  it('🔴 lo DICE, en vez de intentarlo y fallar con un código', async () => {
+    /*
+     * El testigo que abre el agente lleva dentro el NÚMERO del robot, y el
+     * agente lo compara con el suyo. Una dirección IP no tiene número que
+     * comparar: firmar uno inventado daría un cierre 4404 —«esa credencial es
+     * para otro robot»— que parece un fallo de permisos y manda a buscar a un
+     * profesor.
+     *
+     * ⚠️ Y esta prueba es lo MÁS que se puede comprobar del taller desde este
+     *    PC sin un robot: `/robot/7` resolvería `rvr-07.local`, que aquí no
+     *    existe, así que el camino CONECTADO solo se verifica con el robot
+     *    delante (o con una entrada en el fichero hosts). Está escrito en
+     *    VALIDAR_CON_EL_ROBOT.md y no se da por probado.
+     */
+    const { texto } = await pintado([], `/robot/${HOST}`)
+    expect(texto).toMatch(/dirección IP/i)
+    expect(texto).toMatch(/de 1 a 16/)
+    // Y no finge un editor utilizable sobre un enlace que no puede abrir… pero
+    // tampoco esconde el chasis: el editor se ve, y lo que falla se explica.
+    expect(texto).toMatch(/agente/i)
+  }, 120000)
+})
+
 describe.skipIf(!CORRER)('🆕 INFRARROJOS: el robot que se mueve solo', () => {
   it('🔴 lo dice en pantalla, y estrena el camino de pintado POSIBLE', async () => {
     /*

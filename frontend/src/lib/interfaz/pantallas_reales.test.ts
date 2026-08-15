@@ -169,19 +169,48 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
 
   it('🔴 el taller NO finge: ni codigo ni salida inventados', () => {
     /*
-     * El criterio de esa pantalla es una sola pregunta: ¿alguien podria creer
-     * que esto ya funciona? Aqui se comprueba lo comprobable por maquina — que
-     * no hay prompt de shell, ni cursor simulado, ni una linea de salida.
+     * ⚠️ ESTA PRUEBA CAMBIO EL 2026-08-14, Y SE SUSTITUYO EN VEZ DE BORRARSE.
+     *
+     * Exigia `/no construido/i` y un `<input disabled>`: era la guardia del
+     * CHASIS, cuando el terminal no existia. Ahora existe, asi que esa
+     * afirmacion es falsa — pero quitarla a secas dejaria el taller **sin
+     * ninguna guardia**, y este proyecto midio que 18 de 19 comprobaciones de
+     * AUSENCIA pasan sobre una pagina de error.
+     *
+     * El criterio no se relaja: **se invierte**. Antes era «¿alguien podria
+     * creer que esto ya funciona?»; ahora es «¿alguien podria creer que esto
+     * hace algo que no hace?».
      */
     const t = informes.get('taller')!
-    expect(t.texto).toMatch(/no construido/i)
-    // Ni prompt de shell ni salida simulada en ninguna hoja del DOM.
+
+    // 1 · El editor existe y SE PUEDE ESCRIBIR. Antes se exigia lo contrario.
+    expect(t.html).toMatch(/<textarea/)
+    expect(t.html).not.toMatch(/<textarea[^>]*disabled/)
+
+    // 2 · Y la salida sigue SIN INVENTAR NADA. Es lo unico que sobrevive intacto
+    //     del criterio viejo, y es lo que mas importa: ni prompt de shell, ni
+    //     cursor simulado, ni una linea de salida que nadie imprimio.
     for (const hoja of t.hojas) {
       expect(hoja, `hoja del taller: ${hoja}`).not.toMatch(/^\s*[$>#]\s|^Traceback|^>>> /)
     }
-    // Y la linea de entrada existe y esta desactivada: sin ella, dos practicas
-    // de diez estan muertas, y eso tiene que VERSE.
+
+    // 3 · La linea de entrada sigue DESACTIVADA mientras no corra nada, y su
+    //     motivo ya no miente: decia «no hay nada al otro lado» —cierto cuando
+    //     el agente no existia— y ahora dice que no hay programa corriendo.
     expect(t.html).toMatch(/<input[^>]*disabled/)
+    expect(t.texto).toMatch(/ningún programa corriendo/i)
+    expect(t.texto).not.toMatch(/no hay nada al otro lado/i)
+
+    // 4 · 🔴 LA COMPROBACION DE PRESENCIA QUE FALTABA. Sin agente detras, la
+    //     pantalla tiene que DECIRLO — y distinguirlo del enlace de rosbridge,
+    //     que es otro puerto y otro proceso. Son dos enlaces y se puede tener
+    //     uno vivo y el otro muerto.
+    expect(t.texto).toMatch(/agente/i)
+    expect(t.texto).toMatch(/9443|otro enlace/i)
+
+    // 5 · Y el aviso de lo que este terminal ABRE, que es real: el programa del
+    //     alumno alcanza caminos que la lista blanca cierra al navegador.
+    expect(t.texto).toMatch(/saltándose la capa de seguridad/i)
   })
 
   it('🔴 y la MITAD que nunca se verifico: que los datos LLEGUEN', () => {

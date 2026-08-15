@@ -1,397 +1,534 @@
 'use client'
 
-/**
- * EL TALLER DEL ALUMNO. **NO CONSTRUIDO**, y esta pantalla lo dice dos veces.
- *
- * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 EL CRITERIO DE REVISIÓN ES UNA SOLA PREGUNTA
- * ═══════════════════════════════════════════════════════════════════════════
- *      ¿alguien podría creer que esto ya funciona?
- *
- * Si la respuesta no es un no rotundo, la pantalla está mal. Por eso aquí no
- * hay **ni una línea de código ni una de salida inventada**, ni cursor, ni
- * prompt `$`, ni resaltado de sintaxis falso, ni «próximamente».
- *
- * Es el 90 % del tiempo del alumno y el 0 % de lo que funciona, y esa
- * desproporción se enseña en vez de disimularse: lo que ocupa la pantalla no es
- * un decorado de terminal, es **la lista de requisitos medidos que el agente de
- * sesión tendrá que cumplir**. Así el hueco es un encargo, no un adorno.
- *
- * ⚠️ Y lo único de esta pantalla que habla con el robot HOY es la parada de
- *    emergencia — porque el alumno lanza sus guiones por SSH mientras esto no
- *    exista, **y el robot se mueve de verdad mientras esta pantalla está
- *    abierta**.
+/*
+ * 🔴 AQUI NO SE ESCRIBE MARKDOWN EN LAS CADENAS que van a `motivo`, `evidencia`
+ *    o similares: se pintan como TEXTO PLANO. En el JSX de este fichero sí se
+ *    puede marcar con `<strong>` y `<code>`, que es lo que hay debajo.
  */
 
-import { ReactNode } from 'react'
-import { AVISOS_ESPACIO, ESPACIO } from '@/lib/taller/espacio'
+/**
+ * EL TALLER: donde el alumno escribe y ejecuta su código.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * ESTA PANTALLA ERA UN CHASIS VACIO, Y LO ERA A PROPOSITO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Desde el 2026-08-04 decía «no construido» y no fingía nada: ni editor, ni
+ * cursor, ni una línea de salida inventada. Su criterio de revisión era una sola
+ * pregunta — **¿alguien podría creer que esto ya funciona?**
+ *
+ * Hoy funciona, y el criterio no se relaja: **se invierte**. La pregunta pasa a
+ * ser *¿alguien podría creer que esto hace algo que no hace?*, y de ahí salen
+ * las tres cosas que esta pantalla se niega a decir:
+ *
+ * 1. **Que el robot está parado.** Que un programa termine no lo dice. Lo dice
+ *    lo que el agente mide DESPUES, y cada campo suyo puede ser «no lo sé».
+ * 2. **Que esto ve todo lo que pasa en el robot.** Un guion lanzado por SSH el
+ *    agente no lo ve, y va escrito.
+ * 3. **Que lo que corre es lo que se ve.** En cuanto el alumno toca una tecla
+ *    deja de ser cierto, y la huella de lo lanzado permite decirlo.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 Y LO QUE ESTA PANTALLA ABRE, QUE ES REAL
+ * ═══════════════════════════════════════════════════════════════════════════
+ * El programa del alumno corre con `rclpy` NATIVO en el robot, no por rosbridge.
+ * Desde ahí alcanza `raw_motors`, `move_timed` y `set_ir_mode('following')` —los
+ * caminos que **se saltan la capa de seguridad**— que es justo lo que la lista
+ * blanca cierra para el navegador. La frase «`raw_motors` ya no es alcanzable»
+ * deja de ser cierta mientras haya un programa corriendo, y eso se dice aquí.
+ */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Insignia } from '@/componentes/ui/Insignia'
-import { Tarjeta } from '@/componentes/ui/Tarjeta'
+import { useRobot } from '@/hooks/ContextoRobot'
+import { AVISOS_ESPACIO, ESPACIO } from '@/lib/taller/espacio'
+import {
+  SENALES, type Senal, opEjecutar, opEntrada, opLeer, opListar, opParar, opSenal,
+} from '@/lib/taller/protocolo'
+import {
+  entradaViva, puedeEjecutar, textoCambiadoDesdeElLanzamiento,
+} from '@/lib/taller/sesion_taller'
+import { estaVacia, faltaAlgo, texto as textoDeSalida } from '@/lib/taller/salida'
+import { useAgente } from './useAgente'
 
-/** Los tres eslabones de la cadena, en orden. Ninguno se puede saltar. */
-const CADENA: readonly { paso: string; titulo: string; estado: string; porque: string }[] = [
-  {
-    paso: '1',
-    titulo: 'F0 · medir el punto de acceso del aula',
-    /*
-     * 🔴 RECORTADO, y el motivo es de FORMA. Las tres fichas medían 300 / 235 /
-     *    150 px —una escalera descendente con la tercera flotando sobre 150 px
-     *    de fondo—, y eso no era un problema de rejilla: era de longitud de
-     *    texto. 203 caracteres contra 134 y 48.
-     *
-     * Lo que se fue es la valoración («el único experimento que puede tirar un
-     * diseño completo»), que además ya está dicha en la portada. Lo que decide
-     * —qué falla si el AP aísla, y que se mide en diez minutos— se queda.
-     */
-    estado: 'sin medir · ya hay herramienta',
-    /*
-     * 🔴 «Diez minutos en el aula» era verdad y no bastaba: no había CON QUÉ.
-     *    Desde el 2026-08-10 sí — `03_operacion/medir_aula.html` en el
-     *    repositorio de migración, una página sin librerías que se copia al
-     *    portátil y se abre con doble clic.
-     *
-     * Y es una PÁGINA, no un script, porque este proyecto ya midió que no se
-     * transfiere entre clientes: el mismo nombre tarda 2,7 s en el navegador y
-     * 7,3 s desde Node, y `ping` ha dado verde con el navegador colgado 12 s.
-     * El testigo válido es el cliente que se va a usar.
-     *
-     * Lo que la hace útil de verdad es que prueba **por nombre Y por IP**: sin
-     * las dos, un rojo no distingue «mDNS roto» —que se arregla escribiendo la
-     * dirección— de «el AP aísla», que sí tira el transporte. Con IP a cero se
-     * niega a dar veredicto en vez de elegir el más alarmante.
-     */
-    porque:
-      'Si el AP aísla a sus clientes entre sí, el navegador no puede hablar con el robot y el '
-      + 'transporte se replantea entero. Diez minutos en el aula, y ya hay con qué: la página '
-      + '«medir_aula.html» del repositorio de migración prueba por nombre y por dirección, que '
-      + 'es lo que separa «mDNS roto» de «el AP aísla».',
-  },
-  {
-    paso: '2',
-    titulo: 'Agente de sesión en el robot',
-    estado: 'no escrito',
-    porque:
-      'Tu código corre EN el robot, con rclpy nativo sobre atriz.py — no por rosbridge. Haría '
-      + 'falta un servicio propio, escuchando en el robot.',
-  },
-  {
-    paso: '3',
-    titulo: 'Este terminal',
-    estado: 'chasis dibujado, sin conectar',
-    porque: 'Lo que ves. La forma que tendrá, sin nada detrás.',
-  },
-]
-
-/**
- * Lo que el agente de sesión tendrá que dar, **cada uno con la medida que lo
- * obliga**. No es documentación interna: es lo que separa «no está hecho» de
- * «no está hecho de cualquier manera».
- */
-const REQUISITOS: readonly { titulo: string; porque: string }[] = [
-  {
-    titulo: 'PTY, no tubería',
-    porque:
-      '05_sensor_color.py imprime una fila cada 0,5 s y el seguidor de línea gira a 10 Hz. '
-      + 'Contra una tubería, print() escribe a bloques: pantalla congelada con el robot en marcha.',
-  },
-  {
-    titulo: 'stdin bidireccional',
-    porque:
-      'Cuatro input() en 04_giro_preciso.py (líneas 75, 103, 106 y 109) y un quinto en '
-      + '99_test_ctrl_c.py (línea 64). Sin él, dos prácticas de diez están muertas.',
-  },
-  {
-    titulo: 'Señales y PID a la vista',
-    porque:
-      'SIGINT repetido, SIGQUIT, SIGTERM y SIGHUP son el objeto de estudio de la práctica 99, y '
-      + 'su ejercicio 5 pide kill -9 <pid> desde otra terminal.',
-  },
-]
-
-/**
- * Una caja vacía con su motivo dentro. **Nunca con contenido simulado.**
- *
- * 🔴 EL RÓTULO VA DENTRO DE LA CAJA, Y LA CAJA MIDE 300 px.
- *
- * Antes el rótulo flotaba encima y la caja medía 190 px: el terminal —que es el
- * ASUNTO de esta pantalla— eran dos rectángulos punteados más bajos que
- * cualquiera de las tarjetas de texto que tenían debajo, y el rótulo se leía
- * como un párrafo suelto entre dos bloques en vez de como la cabecera de uno.
- * La maqueta de Stitch lo pinta al revés: un bloque alto con `EDITOR · TU
- * CÓDIGO` **dentro**, separado por su propia línea. Eso es lo que hace que el
- * hueco se lea como un chasis y no como un espacio que sobró.
- */
-function Hueco({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
-  return (
-    /*
-      ⚠️ 210 px y no 300. A 300 con el texto centrado quedaban ~110 px de vacio
-         encima y otros 110 debajo, dos veces: se leia como un componente que no
-         termino de cargar, no como un chasis. El argumento del comentario -que
-         la caja no sea mas baja que las tarjetas de debajo- se cumple igual.
-    */
-    <div className="flex min-h-[210px] flex-col rounded-md border border-dashed border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
-      <p className="microetiqueta border-b border-[rgb(var(--filo)/0.12)] px-4 py-2.5">
-        {etiqueta}
-      </p>
-      {/* `items-start`: el texto queda pegado bajo su rotulo y el hueco de abajo
-          se lee como «aqui ira el codigo», que es lo que es. */}
-      <div className="flex flex-1 items-start px-4 py-5">
-        <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">{children}</p>
-      </div>
-    </div>
-  )
+/** La huella de lo que hay en el editor. Doce hex, como la del agente. */
+async function huellaDe(codigo: string): Promise<string> {
+  const datos = new TextEncoder().encode(codigo)
+  const resumen = await crypto.subtle.digest('SHA-256', datos)
+  return [...new Uint8Array(resumen)].map((b) => b.toString(16).padStart(2, '0'))
+    .join('').slice(0, 12)
 }
 
+const GUION_INICIAL = ''
+
 export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
+  const { robot } = useRobot()
+  const numero = typeof robot === 'number' ? robot : null
+  const anfitrion = typeof robot === 'number'
+    ? `rvr-${String(robot).padStart(2, '0')}.local`
+    : robot
+
+  const { estado, salida, fichero, enviar, reintentar, limpiarSalida } = useAgente(numero, anfitrion)
+
+  const [codigo, setCodigo] = useState(GUION_INICIAL)
+  const [nombre, setNombre] = useState('mi_programa.py')
+  const [entrada, setEntrada] = useState('')
+  const [huellaActual, setHuellaActual] = useState('')
+  const [confirmando, setConfirmando] = useState<string | null>(null)
+  const cajaSalida = useRef<HTMLPreElement | null>(null)
+
+  // Al abrir una práctica, su texto entra en el editor.
+  useEffect(() => {
+    if (fichero !== null) {
+      setCodigo(fichero.texto)
+      setNombre(fichero.nombre)
+    }
+  }, [fichero])
+
+  useEffect(() => { void huellaDe(codigo).then(setHuellaActual) }, [codigo])
+
+  /*
+   * 🔴 SE PEGA ABAJO SOLO SI YA ESTABA ABAJO. Arrastrar la vista hacia el final
+   *    mientras alguien lee lo de arriba es la forma más rápida de que deje de
+   *    poder leerlo, y en una práctica de sensores la salida no para nunca.
+   */
+  useEffect(() => {
+    const c = cajaSalida.current
+    if (c === null) return
+    const abajo = c.scrollHeight - c.scrollTop - c.clientHeight < 40
+    if (abajo) c.scrollTop = c.scrollHeight
+  }, [salida])
+
+  const ejecutable = puedeEjecutar(estado)
+  const linea = entradaViva(estado)
+  const corriendo = estado.ejecucion !== null
+  const cambiado = textoCambiadoDesdeElLanzamiento(estado, huellaActual)
+  const falta = faltaAlgo(salida)
+
+  /** La cuenta del espacio de ESE fichero, o `null` si no se sabe. */
+  const espacioDe = useMemo(() => {
+    const fila = ESPACIO.find((f) => f.fichero === nombre)
+    return fila?.despejar ?? null
+  }, [nombre])
+
+  const lanzar = useCallback(() => {
+    limpiarSalida()
+    enviar(opEjecutar(codigo, nombre))
+    setConfirmando(null)
+  }, [codigo, nombre, enviar, limpiarSalida])
+
+  const mandarEntrada = useCallback(() => {
+    if (!linea.viva) return
+    // 🔴 NO se escribe localmente lo enviado: el PTY hace eco, como por SSH, y
+    //    pintarlo aquí además saldría duplicado.
+    enviar(opEntrada(`${entrada}\n`))
+    setEntrada('')
+  }, [entrada, enviar, linea.viva])
 
   return (
     <div className="space-y-4">
-      {/*
-        🔴 EL PORQUÉ DE LA PARADA, EN EL PIE Y EN UNA LÍNEA — Y ANTES ABRÍA LA
-           TARJETA CON CUATRO.
+      {estado.enlace !== 'ABIERTO' && (
+        <Aviso nivel={estado.enlace === 'ABRIENDO' ? 'NOTA' : 'ERROR'} titulo="El agente del robot">
+          <p>
+            {estado.enlace === 'ABRIENDO'
+              ? 'Pidiendo permiso y abriendo la conexión con el agente…'
+              : estado.motivoEnlace}
+          </p>
+          {/*
+            🔴 SE DICE QUE SON DOS ENLACES. La franja de arriba —parada, voltaje,
+               «en línea»— habla con rosbridge en el 9090; esto es el agente en el
+               9443. Se puede tener uno vivo y el otro muerto, y quien mire la
+               franja creería que está todo bien.
+          */}
+          {estado.enlace !== 'ABRIENDO' && (
+            <p className="mt-2">
+              Esto es <strong>otro enlace</strong> que el de la franja de arriba: aquella habla con
+              el robot por el puerto 9090 y esto con el agente por el 9443. Que una diga «en línea»
+              no dice nada de la otra.
+            </p>
+          )}
+          {estado.enlace !== 'ABRIENDO' && (
+            <button
+              type="button"
+              onClick={reintentar}
+              className="mt-3 rounded-md border border-[rgb(var(--filo)/0.2)] px-3 py-1.5 text-[13px] hover:bg-[rgb(var(--vidrio)/0.06)]"
+            >
+              Volver a intentarlo
+            </button>
+          )}
+        </Aviso>
+      )}
 
-        Era un párrafo de cuatro líneas **antes del editor**, así que el asunto de
-        la pantalla —el terminal— empezaba por debajo de la mitad del alto. Y
-        decía dos cosas que ya están dichas 200 px más arriba, en la franja del
-        marco: que la parada está ahí, y por qué no hay botón para liberarla (su
-        propio desplegable lo explica con casi las mismas palabras). Repetirlo
-        aquí no añadía nada y costaba el sitio del terminal.
+      {!estado.relojFiable && (
+        <Aviso nivel="ATENCION" titulo="El robot todavía no tiene la hora">
+          <p>
+            Acaba de arrancar y aún no ha preguntado a la red. No es un fallo tuyo ni de esta
+            página: <strong>se arregla esperando unos segundos</strong>. La Raspberry Pi no tiene
+            reloj propio, así que hasta que la red le dice la hora no puede comprobar permisos.
+          </p>
+        </Aviso>
+      )}
 
-        Lo que NO estaba dicho en ningún otro sitio se queda, porque es lo único
-        que ata esta pantalla al robot de verdad: hoy los guiones se lanzan por
-        SSH, así que el robot se mueve mientras esto está abierto sin que esta
-        pantalla haya mandado nada.
-      */}
+      {estado.ocupacion !== null && estado.ejecucion === null && (
+        <Aviso nivel="ATENCION" titulo="Este robot ya está ocupado">
+          <p>
+            Lo tiene <strong>{estado.ocupacion.sujeto}</strong>
+            {estado.ocupacion.nombre !== '' && <> con <code className="font-mono">{estado.ocupacion.nombre}</code></>}
+            {estado.ocupacion.pid !== null && <> (PID {estado.ocupacion.pid})</>}
+            {estado.ocupacion.desdeS > 0 && <>, desde hace {Math.round(estado.ocupacion.desdeS / 60)} min</>}.
+          </p>
+          <p className="mt-2">
+            Un robot solo puede correr un programa a la vez: la biblioteca crea un nodo con nombre
+            fijo, y dos a la vez se pelean por el mismo robot.{' '}
+            <strong>Desde aquí no se le puede quitar</strong> — habla con quien lo tiene.
+          </p>
+        </Aviso>
+      )}
+
+      {estado.rechazo !== null && estado.rechazo.codigo !== 'OCUPADO' && (
+        <Aviso nivel="ATENCION" titulo="El robot no ha aceptado la orden">
+          <p>{estado.rechazo.motivo}</p>
+        </Aviso>
+      )}
+
       <Tarjeta
         titulo={`Terminal · ${etiqueta}`}
-        subtitulo="Aquí todavía no se puede escribir ni ejecutar código: esto es la forma que tendrá, sin nada detrás."
-        extremo={<Insignia tono="NEUTRO">no construido</Insignia>}
+        subtitulo="Escribe tu programa o abre una práctica, y ejecútalo en el robot."
+        extremo={corriendo
+          ? <Insignia tono="ATENCION">corriendo</Insignia>
+          : <Insignia tono="NEUTRO">listo</Insignia>}
         pie={(
           <p>
             La parada de arriba para el robot{' '}
-            <strong className="text-foreground/85">venga la orden de donde venga</strong>, incluido
-            un guion que hayas lanzado por SSH — que es como se lanzan hoy, con esta pantalla
-            abierta y sin que ella haya mandado nada.
+            <strong className="text-foreground/85">venga la orden de donde venga</strong>.{' '}
+            ⚠️ Y esta pantalla <strong className="text-foreground/85">solo ve los programas que
+            salen de aquí</strong>: uno lanzado por SSH se mueve igual y no aparece.
           </p>
         )}
       >
-        {/* EL CHASIS. Dos columnas que se apilan en móvil. */}
         <div className="grid gap-5 px-5 py-5 lg:grid-cols-5">
+          {/* ── EL EDITOR ─────────────────────────────────────────────── */}
           <div className="lg:col-span-3">
-            <Hueco etiqueta="Editor · tu código">
-              No hay editor. <strong className="text-foreground/85">Y tampoco hay uno de
-              mentira</strong>: ni resaltado de sintaxis, ni números de línea, ni cursor. Una caja
-              en la que se puede escribir y que no ejecuta nada es peor que una vacía.
-            </Hueco>
+            <div className="flex flex-col rounded-md border border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
+              <div className="flex items-center justify-between gap-2 border-b border-[rgb(var(--filo)/0.12)] px-4 py-2.5">
+                <p className="microetiqueta">Editor · tu código</p>
+                <code className="font-mono text-[12px] text-muted-foreground">{nombre}</code>
+              </div>
+              {/*
+                🔴 UN `<textarea>`, NO UN EDITOR DE VERDAD. Las prácticas son de
+                   ~30 líneas y este repositorio tiene una regla de cero
+                   dependencias nuevas; Monaco son ~5 MB para poner colores.
+                ⚠️ Tab escribe cuatro espacios porque esto es Python, y se dice
+                   cómo salir del campo: si no, el teclado queda atrapado para
+                   quien navegue sin ratón.
+              */}
+              <textarea
+                id="editor-taller"
+                aria-label="Tu código"
+                spellCheck={false}
+                value={codigo}
+                onChange={(e) => setCodigo(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Tab' && !e.shiftKey) {
+                    e.preventDefault()
+                    const t = e.currentTarget
+                    const i = t.selectionStart
+                    const nuevo = `${codigo.slice(0, i)}    ${codigo.slice(t.selectionEnd)}`
+                    setCodigo(nuevo)
+                    requestAnimationFrame(() => { t.selectionStart = t.selectionEnd = i + 4 })
+                  }
+                }}
+                placeholder={'from atriz import Robot\n\nwith Robot() as robot:\n    robot.avanzar(0.20, 3)'}
+                className="min-h-[260px] w-full resize-y bg-transparent px-4 py-3 font-mono text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/40"
+              />
+              <p className="border-t border-[rgb(var(--filo)/0.09)] px-4 py-2 text-[11px] text-muted-foreground">
+                Tab escribe cuatro espacios. Para salir de la caja con el teclado, Escape y luego Tab.
+              </p>
+            </div>
+            {cambiado && (
+              <p className="mt-2 text-[13px] text-[rgb(var(--estado-mirar))]">
+                Has cambiado el texto desde que lanzaste: <strong>lo que corre no es lo que ves</strong>.
+              </p>
+            )}
           </div>
+
+          {/* ── LA SALIDA ─────────────────────────────────────────────── */}
           <div className="lg:col-span-2">
-            <Hueco etiqueta="Salida del programa">
-              Sin cursor, sin prompt y sin una sola línea de texto simulado. Lo que iría aquí es lo
-              que imprima tu guion, en vivo.
-            </Hueco>
+            <div className="flex h-full flex-col rounded-md border border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
+              <p className="microetiqueta border-b border-[rgb(var(--filo)/0.12)] px-4 py-2.5">
+                Salida del programa
+              </p>
+              {estaVacia(salida) ? (
+                <div className="flex flex-1 items-start px-4 py-5">
+                  {/*
+                    🔴 VACIO DE VERDAD MIENTRAS NO HAYA NADA: ni prompt, ni
+                       cursor, ni una línea de ejemplo. Es la regla que traía esta
+                       pantalla desde que era un chasis, y no cambia porque ahora
+                       funcione.
+                  */}
+                  <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+                    Aquí aparecerá lo que imprima tu programa, según lo vaya imprimiendo.
+                  </p>
+                </div>
+              ) : (
+                <pre
+                  ref={cajaSalida}
+                  className="min-h-[260px] flex-1 overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-mono text-[12.5px] leading-relaxed text-foreground"
+                >
+                  {textoDeSalida(salida)}
+                </pre>
+              )}
+              {falta !== '' && (
+                <p className="border-t border-[rgb(var(--filo)/0.09)] px-4 py-2 text-[11px] text-muted-foreground">
+                  ⚠️ {falta}.
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* LA LÍNEA DE ENTRADA: visible y desactivada, con el motivo debajo. */}
+        {/* ── LA LINEA DE ENTRADA ───────────────────────────────────────── */}
         <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 py-5">
-          {/* En `.microetiqueta`, como los rótulos de las dos cajas de arriba: al
-              meterlos DENTRO de su caja, este se quedó siendo el único rótulo del
-              terminal en otra tipografía. Un rótulo no puede pertenecer a dos
-              familias en la misma pieza. */}
-          <label
-            htmlFor="stdin-taller"
-            className="microetiqueta mb-2 block"
-          >
+          <label htmlFor="stdin-taller" className="microetiqueta mb-2 block">
             Lo que le contestas al programa
           </label>
           <input
             id="stdin-taller"
             type="text"
-            disabled
-            placeholder="el programa te pedirá que midas algo y pulses Enter"
-            className="w-full cursor-not-allowed rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.03)] px-3.5 py-2.5 font-mono text-sm text-muted-foreground placeholder:text-muted-foreground/50"
+            disabled={!linea.viva}
+            value={entrada}
+            onChange={(e) => setEntrada(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') mandarEntrada() }}
+            placeholder={linea.viva
+              ? 'escribe la medida y pulsa Enter'
+              : 'el programa te pedirá que midas algo y pulses Enter'}
+            className={`w-full rounded-md border border-[rgb(var(--filo)/0.12)] px-3.5 py-2.5 font-mono text-sm ${
+              linea.viva
+                ? 'bg-[rgb(var(--vidrio)/0.06)] text-foreground'
+                : 'cursor-not-allowed bg-[rgb(var(--vidrio)/0.03)] text-muted-foreground'
+            } placeholder:text-muted-foreground/50`}
           />
-          <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
-            Desactivada porque no hay nada al otro lado. Sin esta línea,{' '}
-            <strong className="text-foreground/85">dos prácticas de diez están muertas</strong>:
-            los cuatro <code className="font-mono">input()</code> de{' '}
-            <code className="font-mono">04_giro_preciso.py</code> y el de{' '}
-            <code className="font-mono">99_test_ctrl_c.py</code>.
-          </p>
+          {!linea.viva && (
+            /*
+             * 🔴 EL MOTIVO CAMBIÓ, y es la mitad del arreglo. Decía «no hay nada
+             *    al otro lado», que era cierto cuando el agente no existía. Ahora
+             *    existe: el motivo es que no hay programa corriendo.
+             */
+            <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+              {linea.motivo} Los cuatro <code className="font-mono">input()</code> de{' '}
+              <code className="font-mono">04_giro_preciso.py</code> y el de{' '}
+              <code className="font-mono">99_test_ctrl_c.py</code> se contestan aquí.
+            </p>
+          )}
 
-          {/*
-            🔴 `rounded-md`, NO `rounded-full`. Eran las dos únicas píldoras de la
-               aplicación: `Tarjeta` lleva escrito que «un instrumento no
-               redondea», y una píldora al lado de una ficha troquelada se lee
-               como un botón de otra interfaz. La forma también es vocabulario.
-          */}
+          {/* ── LOS MANDOS ─────────────────────────────────────────────── */}
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              disabled
-              /* 🔴 LA JERARQUIA ESTABA INVERTIDA: «Ejecutar» -la accion
-                 principal- era un relleno sin filo que sobre papel casi no se
-                 distinguia de la tarjeta, mientras «Parar el programa», la
-                 secundaria, si llevaba borde y se veia mas. Los dos siguen
-                 desactivados; lo que se arregla es el orden de lectura. */
-              className="cursor-not-allowed rounded-md border border-[rgb(var(--filo)/0.12)] bg-[rgb(var(--vidrio)/0.12)] px-5 py-2 text-sm font-semibold text-muted-foreground"
+              disabled={!ejecutable.puede || codigo.trim() === ''}
+              onClick={() => setConfirmando(nombre)}
+              className="rounded-md border border-[rgb(var(--filo)/0.2)] bg-[rgb(var(--vidrio)/0.06)] px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-45"
             >
               Ejecutar
             </button>
             <button
               type="button"
-              disabled
-              className="cursor-not-allowed rounded-md border border-[rgb(var(--filo)/0.12)] px-5 py-2 text-sm font-medium text-muted-foreground"
+              disabled={!corriendo}
+              onClick={() => enviar(opParar())}
+              className="rounded-md border border-[rgb(var(--filo)/0.2)] px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-45"
             >
               Parar el programa
             </button>
-            <span className="font-mono text-sm text-muted-foreground">PID —</span>
-            <span className="text-xs text-muted-foreground">
-              El PID es dato de la práctica 99, no decoración. Los tres necesitan el agente de
-              sesión.
+            <span className="font-mono text-[13px] text-muted-foreground">
+              PID {estado.ejecucion?.pid ?? '—'}
             </span>
+            {estado.ejecucion?.restanteS != null && (
+              <span className="text-[13px] text-muted-foreground">
+                le quedan {Math.floor(estado.ejecucion.restanteS / 60)} min{' '}
+                {estado.ejecucion.restanteS % 60} s
+              </span>
+            )}
           </div>
-        </div>
-      </Tarjeta>
 
-      <Tarjeta
-        titulo="Qué falta, en orden"
-        subtitulo="Tres casillas, no un avance medido: ninguna se puede saltar y ninguna está a medias."
-      >
-        {/*
-          🔴 TRES FICHAS EN FILA, NO UNA LISTA VERTICAL.
+          {!ejecutable.puede && ejecutable.motivo !== '' && (
+            <p className="mt-2 text-[13px] text-muted-foreground">{ejecutable.motivo}</p>
+          )}
 
-          Debajo del terminal había tres tarjetas seguidas con la MISMA anatomía
-          —lista vertical de título, estado en versalitas y párrafo—, así que la
-          pantalla era la misma forma repetida cuatro veces y nada decía cuál de
-          ellas importaba. Estas tres son **casillas**, no pasos de una lectura:
-          en fila se ven las tres a la vez y se cuentan de un vistazo, que es lo
-          que el propio subtítulo promete.
-
-          En un `div` con su relleno: el cuerpo de `Tarjeta` va a sangre.
-        */}
-        <div className="px-5 py-5">
           {/*
-            🔴 SIN `items-start`, Y ANTES LO LLEVABA A PROPÓSITO.
-
-            Con él las tres fichas medían 300 / 235 / 150 px: una escalera
-            descendente, con la tercera flotando sobre 150 px de fondo. El
-            comentario que lo justificaba decía que sin él la tercera se
-            quedaría con ~210 px de blanco dentro — y era cierto **con el texto
-            de entonces**: 203 caracteres en la primera contra 48 en la tercera.
-
-            Recortada la primera a la medida de la segunda, la causa desaparece
-            y el remedio sobra: tres cajas iguales se cuentan de un vistazo, que
-            es lo que el subtítulo promete («tres casillas»), y una escalera
-            sugiere un avance que aquí no existe.
+            LAS SEÑALES. No es un menú de experto: SIGINT repetido, SIGQUIT,
+            SIGTERM y SIGHUP son el OBJETO DE ESTUDIO de la práctica 99, y su
+            ejercicio 5 pide un `kill -9`.
           */}
-          <ol className="grid gap-4 md:grid-cols-3">
-            {CADENA.map((c) => (
-              <li key={c.paso} className="pozo-interior flex flex-col p-4">
-                <div className="flex items-baseline gap-3">
-                  <span className="cifra-menor text-muted-foreground/45">{c.paso}</span>
-                  {/* Sin `--estado-mirar`: es un color del vocabulario de ESTADO
-                      y estas tres palabras no hablan del robot, hablan de lo que
-                      falta por construir. El ordinal y la palabra ya las
-                      separan. */}
-                  <span className="microetiqueta">{c.estado}</span>
-                </div>
-                <h3 className="mt-3 text-base font-semibold leading-snug tracking-tight">
-                  {c.titulo}
-                </h3>
-                <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
-                  {c.porque}
-                </p>
-              </li>
-            ))}
-          </ol>
+          {corriendo && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="microetiqueta">Señales</span>
+              {SENALES.map((s: Senal) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => enviar(opSenal(s))}
+                  className="rounded-md border border-[rgb(var(--filo)/0.16)] px-2.5 py-1 font-mono text-[12px] hover:bg-[rgb(var(--vidrio)/0.06)]"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
-      </Tarjeta>
 
-      <Tarjeta
-        titulo="Lo que el agente tendrá que dar"
-        subtitulo="Cada requisito con la medida que lo obliga. Es lo que separa «no está hecho» de «no está hecho de cualquier manera»."
-      >
-        <ul className="divide-y divide-[rgb(var(--filo)/0.09)]">
-          {REQUISITOS.map((r) => (
-            <li key={r.titulo} className="px-5 py-4">
-              <h3 className="text-base font-semibold tracking-tight">{r.titulo}</h3>
-              <p className="mt-1.5 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
-                {r.porque}
+        {/* ── LA CONFIRMACION DE ESPACIO ─────────────────────────────────── */}
+        {confirmando !== null && (
+          <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 py-5">
+            <Aviso nivel="ATENCION" titulo="Antes de ejecutar, mira el suelo">
+              <p>
+                {espacioDe !== null ? (
+                  <>Esta práctica necesita <strong>{espacioDe}</strong>.</>
+                ) : (
+                  <>
+                    No puedo saber cuánto espacio necesita este programa:{' '}
+                    <strong>la cuenta sale de tu código</strong>.
+                  </>
+                )}
               </p>
-            </li>
-          ))}
-        </ul>
+              <ul className="mt-2 list-disc space-y-1 pl-5">
+                {AVISOS_ESPACIO.map((a) => <li key={a}>{a}</li>)}
+              </ul>
+              <div className="mt-3 flex gap-3">
+                <button
+                  type="button"
+                  onClick={lanzar}
+                  className="rounded-md border border-[rgb(var(--filo)/0.2)] bg-[rgb(var(--vidrio)/0.08)] px-4 py-2 text-sm"
+                >
+                  Está despejado, ejecutar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmando(null)}
+                  className="rounded-md border border-[rgb(var(--filo)/0.16)] px-4 py-2 text-sm"
+                >
+                  Ahora no
+                </button>
+              </div>
+            </Aviso>
+          </div>
+        )}
       </Tarjeta>
 
-      {/*
-        🔴 LA CUENTA DEL ESPACIO VA **ANTES** DE EJECUTAR, NO EN UNA AYUDA.
-        En cuanto el guion construye `Robot()`, la biblioteca enciende el
-        barrido y el robot ya obedece. Para cuando alguien buscara esta tabla
-        detrás de un clic, el robot ya se estaría moviendo.
-      */}
+      {/* ── EL DESENLACE ───────────────────────────────────────────────── */}
+      {estado.desenlace !== null && (
+        <Tarjeta
+          titulo="Cómo terminó"
+          subtitulo="Lo que dijo el robot al acabar, y lo que comprobó después."
+        >
+          <div className="space-y-2 px-5 py-5 text-[13px] leading-relaxed">
+            <p>
+              Terminó por <strong>{estado.desenlace.motivo.toLowerCase().replace(/_/g, ' ')}</strong>
+              {estado.desenlace.senal !== null && <> ({estado.desenlace.senal})</>}
+              {estado.desenlace.codigo !== null && <>, con código {estado.desenlace.codigo}</>}
+              , tras {estado.desenlace.duracionS} s.
+            </p>
+            {/*
+              🔴 UN CODIGO 0 NO ES «TODO BIEN», y esta pantalla no lo dice. Lo
+                 único que informa de lo que hizo el ROBOT es lo de abajo, y sus
+                 campos pueden decir «no lo sé».
+            */}
+            {estado.desenlace.efecto === null ? (
+              <p className="text-muted-foreground">
+                El robot <strong>no llegó a comprobar</strong> qué pasó después. Que el programa
+                terminara no dice que el robot se haya quedado quieto.
+              </p>
+            ) : (
+              <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                <li>
+                  Barrido del LIDAR:{' '}
+                  {estado.desenlace.efecto.scanLlegaba === null ? 'no se comprobó'
+                    : estado.desenlace.efecto.scanLlegaba
+                      ? (estado.desenlace.efecto.stopScanLlamado
+                        ? 'seguía encendido, y el robot lo apagó'
+                        : 'seguía encendido, y NO se apagó')
+                      : 'ya estaba apagado'}
+                  {estado.desenlace.efecto.navegacionEnMarcha === true
+                    && ' — no se apagó porque hay una navegación en marcha que lo necesita'}
+                </li>
+                <li>
+                  Movimiento después:{' '}
+                  {estado.desenlace.efecto.odomMaxLineal === null
+                    ? 'no se midió'
+                    : `${estado.desenlace.efecto.odomMaxLineal.toFixed(3)} m/s como mucho`}
+                </li>
+              </ul>
+            )}
+            {estado.desenlace.lineasDescartadas > 0 && (
+              <p className="text-muted-foreground">
+                Se descartaron {estado.desenlace.lineasDescartadas} líneas de salida.
+              </p>
+            )}
+          </div>
+        </Tarjeta>
+      )}
+
+      {/* ── LAS PRACTICAS ──────────────────────────────────────────────── */}
       <Tarjeta
-        titulo="Haz la cuenta del espacio, antes"
-        subtitulo="El robot no esquiva: solo tiene la capa de seguridad, y esa necesita el barrido encendido."
+        titulo="Las prácticas del robot"
+        subtitulo="La lista sale del robot, no de esta página."
+        extremo={(
+          <button
+            type="button"
+            onClick={() => enviar(opListar())}
+            className="rounded-md border border-[rgb(var(--filo)/0.16)] px-3 py-1.5 text-[13px]"
+          >
+            Actualizar
+          </button>
+        )}
       >
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th scope="col" className="px-5 py-2.5 font-medium">práctica</th>
-                <th scope="col" className="px-5 py-2.5 font-medium">qué despejar</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[rgb(var(--filo)/0.08)]">
-              {ESPACIO.map((p) => (
-                <tr key={p.fichero ?? 'propio'}>
-                  <td className="px-5 py-2.5">
-                    <span className="font-mono text-[12.5px] text-muted-foreground">
-                      {p.fichero ?? '—'}
-                    </span>
-                    <span className="ml-2.5">{p.titulo}</span>
-                  </td>
-                  <td className="px-5 py-2.5">
-                    {p.despejar === null ? (
-                      <span className="italic text-muted-foreground">
-                        no se puede saber: la cuenta sale de tu código
+        <div className="px-5 py-5">
+          {estado.ficheros.length === 0 ? (
+            <p className="text-[13px] text-muted-foreground">
+              El robot no ha dado ninguna lista todavía.
+            </p>
+          ) : (
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {estado.ficheros.map((f) => {
+                const fila = ESPACIO.find((x) => x.fichero === f.nombre)
+                return (
+                  <li key={f.nombre}>
+                    <button
+                      type="button"
+                      onClick={() => enviar(opLeer(f.nombre))}
+                      className="w-full rounded-md border border-[rgb(var(--filo)/0.12)] px-3 py-2 text-left hover:bg-[rgb(var(--vidrio)/0.05)]"
+                    >
+                      <code className="font-mono text-[13px]">{f.nombre}</code>
+                      <span className="ml-2 text-[12px] text-muted-foreground">
+                        {/*
+                          🔴 «no tengo la cuenta de este fichero» y no un hueco:
+                             la tabla de espacio de esta web y los ficheros del
+                             robot NO coinciden —cinco nombres de diez no existen
+                             allí— y callarlo haría creer que no hace falta sitio.
+                        */}
+                        {fila?.despejar ?? 'no tengo la cuenta de este fichero'}
                       </span>
-                    ) : p.despejar}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Mismo arreglo que en «no obedece»: los topos son de CSS, no un `·`
-            tecleado dentro del texto —que se lleva el sangrado por delante y no
-            lo ve ningún lector de pantalla—. */}
-        {/*
-          🔴🔴 ESTO ERA DOS PARRAFOS ENTEROS EN AMBAR, Y EL AMBAR ES ESTADO.
-
-          `--estado-mirar` significa «este robot pide que lo mires». Aqui teñia
-          dos avisos que **no dicen nada del robot** —hablan del espacio que hace
-          falta para que una practica no choque contra nada—, asi que el color
-          afirmaba algo falso. Y su hue es casi identico al de `--seccion-porque`
-          (166 78 8), asi que la pantalla violeta llevaba ademas pegotes del color
-          identitario de OTRA pantalla.
-
-          Son advertencias de seguridad de verdad, asi que no pierden peso: pasan
-          a un `Aviso` con su PALABRA. La regla del muro —«el color nunca va
-          solo»— vale igual al reves: una advertencia no puede ir señalada solo
-          por un color, y menos por uno prestado.
-        */}
-        <div className="border-t border-[rgb(var(--filo)/0.09)] px-5 py-4">
-          <Aviso nivel="ATENCION" titulo="Espacio">
-            <ul className="mt-1 list-disc space-y-1.5 pl-5 marker:text-muted-foreground/50">
-              {AVISOS_ESPACIO.map((a) => (
-                <li key={a} className="max-w-prose leading-relaxed">{a}</li>
-              ))}
+                    </button>
+                  </li>
+                )
+              })}
             </ul>
-          </Aviso>
+          )}
+          {estado.directorio !== '' && (
+            <p className="mt-3 font-mono text-[11px] text-muted-foreground">{estado.directorio}</p>
+          )}
         </div>
       </Tarjeta>
+
+      <Aviso nivel="ATENCION" titulo="Lo que abre este terminal">
+        <p>
+          Tu programa corre <strong>en el robot, con permisos de verdad</strong>. Desde ahí puede
+          hacer cosas que esta web tiene cerradas a propósito — mover los motores saltándose la capa
+          de seguridad, por ejemplo. No hay forma de impedirlo sin quitarte Python: lo que hay es
+          que <strong>lo sepas</strong>, y que la parada de emergencia siga funcionando pase lo que
+          pase.
+        </p>
+      </Aviso>
     </div>
   )
 }

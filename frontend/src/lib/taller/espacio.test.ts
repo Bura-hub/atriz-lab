@@ -2,9 +2,47 @@ import { describe, expect, it } from 'vitest'
 import { AVISOS_ESPACIO, ESPACIO, conCuenta } from './espacio'
 
 describe('la tabla de espacio', () => {
-  it('cubre las diez prácticas del curso más el guion del alumno', () => {
-    expect(ESPACIO).toHaveLength(11)
-    expect(conCuenta()).toHaveLength(10)
+  it('cubre las quince prácticas del robot más el guion del alumno', () => {
+    // Eran diez hasta el 2026-08-14; el robot añadió las cinco de infrarrojos
+    // el 2026-08-11 y esta tabla no se había enterado.
+    expect(ESPACIO).toHaveLength(16)
+    expect(conCuenta()).toHaveLength(15)
+  })
+
+  it('🔴 todos los nombres existen DE VERDAD en el robot', () => {
+    /*
+     * LA PRUEBA QUE NACE DE UN FALLO. Cinco de los diez nombres de esta tabla no
+     * existían en `Atriz_rvr/scripts/estudiantes/`: `01_primer_movimiento.py`,
+     * `02_giro.py`, `10_navegacion.py`, `90_practica_libre.py` y
+     * `seguidor_linea.py`. Mientras esto solo decía cuánto despejar era
+     * cosmético; con el terminal ejecutando, es un botón que falla.
+     *
+     * ⚠️ Esta prueba NO puede comprobar que existan —el repositorio del robot es
+     *    otro y puede no estar al lado—. Lo que sí fija es la FORMA, para que un
+     *    nombre inventado a mano cante: los del curso van numerados o son el
+     *    seguidor, y todos acaban en `.py`.
+     *
+     * 🔴 Lo que de verdad impide la deriva es que **la lista la dé el agente**,
+     *    leyendo el directorio real. Esta tabla solo aporta los centímetros.
+     */
+    for (const p of conCuenta()) {
+      expect(p.fichero, `«${p.fichero}»`).toMatch(/^(\d{2}_[a-z_]+|seguidor_linea_pid_demo)\.py$/)
+    }
+  })
+
+  it('🔴 las dos prácticas que se mueven SIN capa de seguridad lo dicen', () => {
+    /*
+     * `23_tren_de_robots.py` y `24_dispersion.py` conducen por el firmware de
+     * infrarrojos: no pasan por `cmd_vel`, así que ni el vigilante ni el
+     * `collision_monitor` las ven. Sus propias cabeceras lo avisan con dos 🔴, y
+     * esta tabla no puede decir menos que el fichero que describe.
+     */
+    for (const nombre of ['23_tren_de_robots.py', '24_dispersion.py']) {
+      const p = ESPACIO.find((x) => x.fichero === nombre)
+      expect(p, nombre).toBeDefined()
+      expect(p!.despejar, nombre).toMatch(/SIN capa de seguridad/)
+      expect(p!.despejar, nombre).toMatch(/no te vayas/)
+    }
   })
 
   it('🔴 el guion del alumno NO lleva número, y eso es a propósito', () => {

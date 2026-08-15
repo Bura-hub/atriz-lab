@@ -26,17 +26,67 @@ export interface EspacioPractica {
   despejar: string | null
 }
 
+/*
+ * 🔴🔴 LOS NOMBRES SE CORRIGIERON EL 2026-08-14, Y CINCO DE DIEZ ESTABAN MAL.
+ *
+ * Comparados con `Atriz_rvr/scripts/estudiantes/` no existían:
+ *
+ *     esta tabla decía        el robot tiene
+ *     01_primer_movimiento →  01_avanzar.py
+ *     02_giro              →  02_girar.py
+ *     10_navegacion        →  10_movimiento_completo.py
+ *     90_practica_libre    →  90_template.py
+ *     seguidor_linea       →  seguidor_linea_pid_demo.py
+ *
+ * Mientras esta tabla solo decía cuánto despejar, un nombre equivocado era
+ * cosmético. **Desde que el terminal ejecuta, un nombre equivocado es un botón
+ * que falla.**
+ *
+ * → Y de ahí la decisión que lo impide para siempre: **la lista de prácticas la
+ *   da el AGENTE**, leyendo el directorio del robot. Esta tabla ya no es la
+ *   lista: es lo que alguien MIDIÓ sobre algunas de ellas, y se casa por nombre.
+ *   Lo que el agente liste y esto no conozca sale con «no tengo la cuenta de
+ *   este fichero», que es la verdad.
+ */
 export const ESPACIO: readonly EspacioPractica[] = [
-  { fichero: '01_primer_movimiento.py', titulo: 'Primer movimiento', despejar: '1,5 m delante y ~1 m detrás' },
-  { fichero: '02_giro.py', titulo: 'Giro', despejar: '40 cm alrededor' },
+  { fichero: '01_avanzar.py', titulo: 'Primer movimiento', despejar: '1,5 m delante y ~1 m detrás' },
+  { fichero: '02_girar.py', titulo: 'Giro', despejar: '40 cm alrededor' },
   { fichero: '03_cuadrado.py', titulo: 'Cuadrado', despejar: 'un cuadrado libre de ~1,5 m de lado' },
   { fichero: '04_giro_preciso.py', titulo: 'Giro preciso', despejar: '40 cm alrededor, y un transportador' },
   { fichero: '05_sensor_color.py', titulo: 'Sensor de color', despejar: 'el robot no se mueve' },
-  { fichero: '10_navegacion.py', titulo: 'Navegación', despejar: '3 m en la dirección en que mire' },
+  { fichero: '10_movimiento_completo.py', titulo: 'Movimiento completo', despejar: '3 m en la dirección en que mire' },
   { fichero: '11_sensor_avanzado.py', titulo: 'Sensor avanzado', despejar: '1 m, cinta negra cruzando y 40 cm detrás' },
-  { fichero: 'seguidor_linea.py', titulo: 'Seguidor de línea', despejar: 'una pista de 6 m o más' },
-  { fichero: '90_practica_libre.py', titulo: 'Práctica libre', despejar: '1 m delante y 40 cm alrededor' },
+  { fichero: 'seguidor_linea_pid_demo.py', titulo: 'Seguidor de línea', despejar: 'una pista de 6 m o más' },
+  { fichero: '90_template.py', titulo: 'Plantilla para empezar', despejar: '1 m delante y 40 cm alrededor' },
   { fichero: '99_test_ctrl_c.py', titulo: 'Ctrl-C y señales', despejar: '1,5 m' },
+
+  /*
+   * Las cinco de infrarrojos, añadidas el 2026-08-14. **Necesitan DOS robots.**
+   * Lo que dice cada fila sale de la cabecera de su propio fichero, no de una
+   * estimación de aquí.
+   *
+   * 🔴 Y las dos últimas llevan un aviso que ninguna otra práctica lleva: el
+   *    robot se mueve por FIRMWARE, y eso **no pasa por la capa de seguridad**.
+   *    Ni el vigilante ni el `collision_monitor` lo ven.
+   */
+  { fichero: '20_identificarse.py', titulo: 'Identificarse por IR', despejar: 'el robot no se mueve' },
+  { fichero: '21_mensajeria.py', titulo: 'Mensajería por IR', despejar: 'el robot no se mueve' },
+  {
+    fichero: '22_marco_polo.py',
+    titulo: 'Marco Polo',
+    despejar: 'dos robots; el que busca lo mueves tú a mano',
+  },
+  {
+    fichero: '23_tren_de_robots.py',
+    titulo: 'Tren de robots',
+    despejar: 'dos robots, espacio despejado y suelo continuo — 🔴 se mueve SIN capa de seguridad, no te vayas',
+  },
+  {
+    fichero: '24_dispersion.py',
+    titulo: 'Dispersión',
+    despejar: 'dos robots, espacio despejado, sin escalones — 🔴 se mueve SIN capa de seguridad, no te vayas',
+  },
+
   {
     fichero: null,
     titulo: 'Tu propio guion',
