@@ -330,7 +330,7 @@ sumen exactamente lo mismo.
 
 ---
 
-## 4 · 🆕 EL TALLER — el terminal. **Ya tocó un robot, y quedan seis casillas**
+## 4 · ✅ EL TALLER — el terminal. **LAS 16 CASILLAS, CERRADAS**
 
 Construido el 2026-08-14. ~~«Nada de esto ha tocado un robot».~~ **Falso desde la
 madrugada del 2026-08-15**: la Pi lo auditó y lo validó en vivo sobre rvr-01
