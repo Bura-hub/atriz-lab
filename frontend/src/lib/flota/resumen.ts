@@ -264,8 +264,30 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
       estado === 'SIN_CONEXION' ? 'no llego al robot' : 'la Pi calla',
       estado === 'SIN_CONEXION'
         ? 'no hay WebSocket abierto con el robot, así que no se sabe nada de él. Eso NO es una avería'
+        /*
+         * 🔴 LA CUARTA CAUSA LA AÑADIÓ EL ROBOT EL 2026-08-14, y lo hizo
+         *    diciendo que **el síntoma aparece primero en esta pantalla y
+         *    apunta al sitio equivocado**.
+         *
+         * Las tres que había —cargando, dormido, driver caído— señalan al RVR o
+         * al proceso. En el incidente medido (evidencias 109 y 113, dos veces)
+         * no era ninguna: el driver estaba **vivo y leyendo la batería a 8,37 V**
+         * con el WiFi a −46 dBm y **cero desconexiones**, y lo que no cruzaba era
+         * **DDS dentro de la propia Pi** —ni un suscriptor local recibía nada, ni
+         * siquiera de un topic `TRANSIENT_LOCAL`—. Nace así a caballo de un
+         * arranque a medias (la Pi no tiene RTC y el reloj salta con los nodos ya
+         * arrancando).
+         *
+         * ✅ Y desde ese día el robot **se cura solo, UNA vez por arranque**:
+         *    `atriz-vigia-dds` espera hasta 90 s un mensaje de `/estado_robot` y,
+         *    si no llega, reinicia el stack. Por eso el texto manda ESPERAR antes
+         *    de cruzar el edificio — y no promete más de una: con la marca puesta
+         *    el vigía falla ABIERTO a propósito.
+         */
         : 'el enlace está abierto y no llega /motor_status: puede estar cargando (RVR apagado con la ' +
-          'Pi viva), dormido, o el driver caído. NO es una avería por sí solo',
+          'Pi viva), dormido, el driver caído, o haber nacido mudo en DDS —el robot vivo y publicando, ' +
+          'pero sin que nada le llegue a nadie—. NO es una avería por sí solo, y NO es la red. Si acaba ' +
+          'de arrancar, dale un par de minutos: se reinicia solo una vez por arranque',
     )
   } else {
     // 🔴 `atascado: null` no genera frase: que no se sepa no es que no lo haya,

@@ -51,6 +51,17 @@ export const CAUDAL_KBS: Readonly<Record<string, number>> = {
   '/motor_status': 0.45,
   '/battery_state': 0.03,
   '/scan': 80.7 * 0.83,
+  /*
+   * ✅ MEDIDO EL 2026-08-14 (evidencia 110), a peticion de esta web. **348 bytes
+   * por mensaje EXACTOS en las dos corridas**, a ~1 Hz.
+   *
+   * 🔴 Y el «~0,03» que circulaba aqui y en el README del robot se quedaba corto
+   *    POR DOCE VECES: era el de `/battery_state`, copiado. La medida vino con
+   *    sus controles —`/motor_status` dio 0,44 contra los 0,45 de la evidencia
+   *    68, y `/battery_state` ~0,02 contra 0,03—, o sea que el instrumento se
+   *    valido HOY sobre este robot antes de creerse el numero nuevo.
+   */
+  '/estado_robot': 0.35,
 }
 
 /**
@@ -69,7 +80,18 @@ export const CAUDAL_KBS: Readonly<Record<string, number>> = {
 export const TOPICS_MURO = ['/battery_state', '/motor_status', '/estado_robot'] as const
 
 /**
- * 🔴🔴 LOS TOPICS DEL MURO A LOS QUE SE SUSCRIBE **SIN CAUDAL MEDIDO**.
+ * ✅ **VACÍA DESDE EL 2026-08-14, y con eso el «≥» del muro desapareció solo.**
+ * El robot midió `/estado_robot` el mismo día (0,35 kB/s, evidencia 110), así
+ * que ya no queda ningún topic del muro sin presupuestar.
+ *
+ * 🔴 **NO se borra el mecanismo**, y eso es deliberado: el hueco que lo hizo
+ *    falta —suscribirse a un topic sin declararlo— tardó **diez días** en verse
+ *    y no lo destapó ninguna prueba, sino integrar otra cosa. La lista vacía es
+ *    la afirmación «hoy no falta ninguno», que es distinta de no haber mirado, y
+ *    el día que alguien añada un topic al muro esto es donde se dice si está
+ *    medido. Hay una prueba que exige que `TOPICS_MURO` esté cubierto entero.
+ *
+ * Lo que pasó, conservado porque la forma del fallo vuelve:
  *
  * Encontrado el 2026-08-14, y era un presupuesto que no sumaba lo que gasta:
  * `TOPICS_MURO` declaraba DOS topics mientras `BaldosaConectada` se suscribía a
@@ -92,8 +114,12 @@ export const TOPICS_MURO = ['/battery_state', '/motor_status', '/estado_robot'] 
  * Mientras tanto la cifra del muro se presenta como lo que es —un **mínimo**— y
  * se dice qué falta. Cambiar un error silencioso por uno declarado no arregla el
  * número, pero deja de fingir que está completo.
+ *
+ * ✅ **Y duró seis horas:** se pidió el número, el robot lo midió con controles,
+ * y entró arriba. El muro pasó de decir «≥ 7,68» a decir **13,28 kB/s** con los
+ * dieciséis — que es lo que costaba de verdad todo este tiempo.
  */
-export const MURO_SIN_CAUDAL_MEDIDO = ['/estado_robot'] as const
+export const MURO_SIN_CAUDAL_MEDIDO = [] as readonly string[]
 
 /**
  * kB/s totales de `robots` robots suscritos a `topics`.

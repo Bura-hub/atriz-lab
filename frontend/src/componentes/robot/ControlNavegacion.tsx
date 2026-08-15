@@ -319,20 +319,34 @@ function Sistema_({
           ? (arrancar
             ? `Petición aceptada. Mira el estado: no dirá «funcionando» hasta que lo esté.${detalle}`
             /*
-             * ⚠️ EL AVISO DEL BARRIDO, y lo pidió el robot tras medirlo en el
-             *    laboratorio el 2026-08-13, en las dos vueltas de B2: **al parar
-             *    la navegación el barrido del LIDAR queda APAGADO**.
+             * 🔴 AQUÍ HUBO UN AVISO DURANTE UNAS HORAS, Y SE RETIRA POR FALSO.
              *
-             * 🔴 Importa porque el siguiente síntoma no se parece a la causa:
-             *    sin `/scan` el `collision_monitor` **bloquea el movimiento por
-             *    completo** —0,0 cm medidos contra 9,9 del control—, así que el
-             *    alumno para la navegación, va a Conducir, y el robot «no le
-             *    hace caso» sin ningún error. Y quien pulsa este botón es
-             *    exactamente quien se lo va a encontrar.
+             * El 2026-08-13 el robot midió que al parar la navegación el barrido
+             * del LIDAR quedaba APAGADO, y lo avisé aquí porque sin `/scan` el
+             * `collision_monitor` bloquea el movimiento por completo —0,0 cm
+             * contra 9,9 del control— y quien pulsa este botón es exactamente
+             * quien se lo iba a encontrar.
+             *
+             * ✅ **El 2026-08-14 el robot lo ARREGLÓ donde tocaba: en el robot.**
+             * `atriz-escaneo` gana `on-recordando` / `off-si-sobra`, que anotan
+             * en `/run/atriz` si `/scan` YA publicaba antes de que la unidad lo
+             * encendiera, y al parar **lo devuelven al estado que encontraron**.
+             * Verificado por las unidades reales en las dos direcciones
+             * (evidencia 114): con el barrido encendido de antes, tras parar la
+             * navegación **sigue a 11,8 Hz**. Mismo principio que `atriz.py`:
+             * apaga solo lo que encendiste.
+             *
+             * 📝 Y la lección es de método, no de texto: **avisar de un defecto
+             *    es apostar a que no se va a arreglar**. Este duró un día. Lo
+             *    correcto sigue siendo haberlo dicho —el defecto era real y el
+             *    alumno se lo comía— pero hay que volver a mirarlo, porque un
+             *    aviso rancio manda a encender algo que ya está encendido.
+             *
+             * 🛟 Si algún robot se quedara con el `atriz-escaneo` viejo, el caso
+             *    NO queda desnudo: «por qué no obedece» ya diagnostica «El
+             *    barrido del LIDAR está parado» con su remedio.
              */
-            : `Petición de parada aceptada. Mira el estado: no dirá «apagado» hasta que lo esté.${detalle}`
-              + ' ⚠️ Al parar la navegación el barrido del LIDAR queda apagado, y sin él el robot NO'
-              + ' conduce. Enciéndelo otra vez en la pestaña Conducir antes de mandarlo a ningún sitio.')
+            : `Petición de parada aceptada. Mira el estado: no dirá «apagado» hasta que lo esté.${detalle}`)
           : `El supervisor ha rechazado la petición.${detalle || ' No ha dicho por qué.'}`,
         malo: !ok,
       })

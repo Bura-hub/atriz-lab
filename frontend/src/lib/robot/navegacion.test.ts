@@ -125,6 +125,26 @@ describe('latcheado', () => {
     expect(b.motivo).toContain('tres intentos')
   })
 
+  it('🔴 y ofrece la salida que NO exige a nadie: esperar ~5 minutos', () => {
+    /*
+     * CORREGIDO EL 2026-08-14. Este texto decía sólo «hace falta systemctl
+     * reset-failed… con privilegios que el navegador no tiene», o sea mandaba a
+     * buscar a una persona con SSH en mitad de una clase.
+     *
+     * **El latch no es permanente**: `StartLimitIntervalSec=300`. El robot
+     * esperó los cinco minutos mirando (evidencia 112) y midió que a los 355 s
+     * del último arranque real `systemctl start` vuelve a entrar, la unidad
+     * llega a `Started` de verdad y `NRestarts` vuelve a 0.
+     *
+     * 🔴 Las DOS salidas tienen que estar: quien pueda entrar por SSH no debe
+     *    esperar cinco minutos, y quien no pueda no debe creerse atascado.
+     */
+    const b = decidirBoton(leer(msg({ nav_latcheado: true }), 'nav', true), 'nav')
+    expect(b.motivo).toMatch(/CINCO MINUTOS|cinco minutos/)
+    expect(b.motivo).toContain('se limpia solo')
+    expect(b.motivo).toContain('reset-failed')
+  })
+
   it('🆕 y solo remite al motivo del robot CUANDO el robot lo manda', () => {
     // Sin `nav_detalle` no hay nada arriba a lo que apuntar: decir «el robot
     // dice cuál es» sobre un hueco manda a buscar un texto que no existe.

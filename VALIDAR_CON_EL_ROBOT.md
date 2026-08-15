@@ -125,7 +125,8 @@ los dos servicios contestan; lo que nadie ha visto es **esta pantalla contra él
 | **1b** | mirar los segundos | suben de 1 en 1 | que salgan `0` fijos: sería `-1` mal traducido, y este proyecto usa `-1` para «no se sabe», nunca para «cero» |
 | **1c** | con Nav2 **sin** mapa, pulsar «Arrancar Nav2» | el botón está **deshabilitado** y dice que falta el mapa | que se pueda pulsar: `hay_mapa` no se está leyendo |
 | **1b-bis** | 🆕 mirar el texto mientras arranca | dice **«unos 28 segundos»** para Nav2 y **«unos 18»** para SLAM, **con la condición al lado** («medido en UN robot en reposo… con la batería baja o varios robots a la vez, no se sabe») | que dé un plazo a secas, o una barra, o un porcentaje: n=2 sobre un robot en reposo no habla de dieciséis con la batería baja |
-| **1c-bis** | 🆕 pulsar **Parar Nav2** y leer la confirmación | avisa de que **el barrido del LIDAR queda apagado** y de que sin él el robot no conduce | que no lo diga: el alumno se va a Conducir y el robot «no le hace caso» sin un solo error — es el `collision_monitor` bloqueando por falta de `/scan` |
+| **1c-bis** | 🔁 **REESCRITA el 2026-08-14.** Enciende el barrido en Conducir, arranca Nav2, **párala**, y vuelve a mirar `/scan` | **el barrido SIGUE encendido**: la unidad lo devuelve al estado que encontró | que se apague: el robot tendría el `atriz-escaneo` viejo, y entonces el alumno se va a Conducir y «no le hace caso» sin un solo error. ⚠️ Antes aquí se exigía un **aviso** en la web; el robot lo arregló en el robot (evidencia 114) y el aviso se retiró |
+| **1e** | 🆕 con la unidad **bloqueada**, leer el motivo | ofrece **las dos salidas**: esperar ~5 minutos —«se limpia solo»— **y** el `reset-failed` por SSH; y antes de las dos, «QUITA LA CAUSA» | que solo mencione el `reset-failed`: mandaría a buscar a alguien con privilegios para algo que se arregla esperando (medido: 355 s, evidencia 112) |
 | **1d** | parar el supervisor en el robot (`systemctl stop`) y esperar 5 s | los dos sistemas pasan a **«no se sabe»**, no se congelan en el último valor | que sigan diciendo `funcionando`: la guardia del latido no corre. **Es el fallo que la pantalla existe para no cometer** |
 
 ### Los tres estados que hay que provocar a mano
@@ -315,17 +316,17 @@ sistema discrimina **tres** zonas. `infrarrojos.ts` lo impide con una prueba que
 barre las 64 entradas posibles, pero la prueba protege el módulo, no una pantalla
 nueva que decida leer los campos por su cuenta.
 
-### ⏳ Y una casilla que sigue abierta, ahora en el muro
+### ✅ Y la casilla del muro, CERRADA el mismo día
 
-**Nadie ha medido el caudal de `/estado_robot`**, y el muro se suscribe a él por
-los dieciséis. La evidencia 68 midió seis topics y ése no existía todavía; el
-«~0,03 kB/s» que circulaba por el código era el de `/battery_state`, que publica
-**cada 30 s** contra **1 Hz** de éste.
+Estuvo abierta seis horas: **nadie había medido el caudal de `/estado_robot`** y el
+muro se suscribía a él por los dieciséis. El robot lo midió con controles
+(evidencia 110): **0,35 kB/s**, 348 B/msg — **doce veces** el «~0,03» que
+circulaba, que era el de `/battery_state` (cada 30 s) copiado.
 
-Mientras tanto la pantalla del muro enseña su caudal con un **«≥»** y dice qué no
-ha podido sumar. En cuanto llegue el número medido, entra en `CAUDAL_KBS`, se
-vacía `MURO_SIN_CAUDAL_MEDIDO` y el «≥» desaparece solo — hay una prueba que
-obliga a hacer las tres cosas a la vez.
+El muro dice ahora **13,28 kB/s** con los dieciséis, sin «≥». Lo que queda vivo es
+el mecanismo: si alguien añade un topic al muro sin caudal medido,
+`caudalDeFlota` lanza y una prueba exige que `presupuestoMuro` y `TOPICS_MURO`
+sumen exactamente lo mismo.
 
 ---
 

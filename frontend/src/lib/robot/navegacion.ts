@@ -199,13 +199,36 @@ export function decidirBoton(lectura: Lectura, sistema: Sistema): Boton {
          *    repite ni se adivina cuál es — se dice el ORDEN, que es lo que
          *    vale para cualquier causa.
          */
+        /*
+         * 🔴🔴 CORREGIDO EL 2026-08-14: ESTE TEXTO MANDABA A SSH SIN HACER FALTA.
+         *
+         * Decía que «hace falta ejecutar systemctl reset-failed en el robot, con
+         * privilegios que el navegador no tiene» — y punto. **El latch no es
+         * permanente**: `StartLimitIntervalSec=300`, así que el contador se
+         * limpia solo. Medido por el robot (evidencia 112), que es la primera
+         * vez que alguien esperó los cinco minutos mirando:
+         *
+         *   latch a los 92 s · un start en caliente RECHAZADO (control) ·
+         *   a los 355 s del último arranque real, `systemctl start` devuelve 0,
+         *   la unidad llega a `Started` DE VERDAD y `NRestarts` vuelve a 0.
+         *
+         * O sea que había un camino que no exige a nadie: **esperar**. Decir
+         * sólo «hace falta SSH» manda a buscar a una persona con privilegios en
+         * mitad de una clase, para algo que se arregla solo en cinco minutos.
+         *
+         * ⚠️ El orden sigue siendo lo primero, y ahora más: reintentar SIN
+         *    arreglar la causa quema otro presupuesto entero y vuelve a
+         *    latchear. La espera no sirve de nada si la causa sigue ahí.
+         */
         motivo:
           'La unidad de ' + nombre + ' está bloqueada por systemd, y volver a ' +
-          'pulsar no hará nada: hace falta ejecutar «systemctl reset-failed» en ' +
-          'el robot, con privilegios que el navegador no tiene. Y en este orden: ' +
-          'primero QUITA LA CAUSA y después desbloquea, porque si la causa sigue ' +
-          'ahí la unidad se vuelve a bloquear a los tres intentos.' +
-          (lectura.detalle !== '' ? ' El robot dice cuál es, justo aquí arriba.' : ''),
+          'pulsar ahora mismo no hará nada. Primero QUITA LA CAUSA' +
+          (lectura.detalle !== '' ? ' —el robot dice cuál es, justo aquí arriba—' : '') +
+          ', porque reintentar sin arreglarla vuelve a bloquear la unidad a los ' +
+          'tres intentos. Con la causa resuelta hay dos salidas: esperar unos ' +
+          'CINCO MINUTOS desde el último intento, que el bloqueo se limpia solo, ' +
+          'o ejecutar «systemctl reset-failed» en el robot, que exige privilegios ' +
+          'que el navegador no tiene.',
       }
 
     case 'ARRANCANDO':

@@ -300,6 +300,43 @@ describe('resumirBaldosa — la parada de emergencia en el muro', () => {
   })
 })
 
+describe('🆕 «la Pi calla» — las CUATRO causas, no tres', () => {
+  /*
+   * El robot avisó de que este texto «apunta al sitio equivocado»: sus tres
+   * causas señalaban al RVR o al proceso, y el fallo medido dos veces
+   * (evidencias 109 y 113) no era ninguna — el driver vivo leyendo 8,37 V, el
+   * WiFi a −46 dBm con cero desconexiones, y DDS sin cruzar DENTRO de la Pi.
+   */
+  const calla = resumirBaldosa(sana({
+    conectado: true, msDesdeUltimoLatido: 99_000, estadoRobot: null,
+  }))
+
+  it('🔴 nombra el caso de DDS, que no encaja en ninguna de las otras tres', () => {
+    const texto = calla.motivos.join(' ')
+    expect(texto).toContain('mudo en DDS')
+  })
+
+  it('🔴 y dice explicitamente que NO es la red', () => {
+    // Era la conclusion natural y esta medido que no: −46 dBm, 200 Mbit/s,
+    // 0 desconexiones, `power_save off`.
+    expect(calla.motivos.join(' ')).toContain('NO es la red')
+  })
+
+  it('manda ESPERAR antes de cruzar el edificio, porque se cura solo una vez', () => {
+    // `atriz-vigia-dds` espera hasta 90 s y reinicia el stack. UNA vez por
+    // arranque: con la marca puesta falla abierto, asi que no se promete mas.
+    expect(calla.motivos.join(' ')).toMatch(/par de minutos/)
+    expect(calla.motivos.join(' ')).toContain('una vez por arranque')
+  })
+
+  it('🔴 EL CONTROL: sin enlace NO se habla de DDS', () => {
+    // Sin WebSocket no se sabe nada del robot; mencionar DDS ahi seria inventar
+    // una causa sobre un hueco.
+    const sinEnlace = resumirBaldosa(sana({ conectado: false, estadoRobot: null }))
+    expect(sinEnlace.motivos.join(' ')).not.toContain('DDS')
+  })
+})
+
 describe('🆕 resumirBaldosa — el robot que conduce SOLO por infrarrojos', () => {
   const porIR = resumirBaldosa(sana({ estadoRobot: estadoSano({ conduciendoPorIR: true }) }))
 

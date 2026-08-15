@@ -335,17 +335,31 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
   } else if (!e.rvrResponde) {
     /*
      * ⚠️ CARGANDO y DORMIDO se ven IGUAL desde aquí, y no se elige entre los
-     *    dos. `reanudaciones_fallidas` inclina la balanza —con el RVR apagado se
-     *    midieron 123 reintentos, uno cada 4 s— pero sus umbrales no están
-     *    caracterizados, así que se enseña el número y decide quien mira.
+     *    dos. Se enseña el número y decide quien mira.
+     *
+     * ✅ PERO EL NÚMERO YA SE PUEDE LEER, desde el 2026-08-14 (evidencia 116).
+     *    Antes el driver reintentaba **cada ~4-6 s sin espera creciente**, así
+     *    que «123 reanudaciones fallidas» eran unos minutos y el contador no
+     *    decía casi nada. Ahora la espera crece **3 → 6 → 12 → 24 → 48 → 60 s**
+     *    con tope de 60, o sea que llegar a la sexta ya son **~2,5 minutos**
+     *    —suma de las esperas, aritmética, no una medida— y a partir de ahí cada
+     *    fallo es un minuto más. Un puñado de fallos significa **minutos**, no
+     *    segundos, y eso sí orienta a quien mira.
+     *
+     * 📌 Y el otro cambio del mismo día importa para no confundirse leyendo el
+     *    log del robot: «streaming reanudado» ya sólo se escribe cuando **llega
+     *    una muestra de verdad**. Antes lo escribía porque `wake+stop+start` no
+     *    lanzaban excepción —con el RVR apagado— y salía 8 veces en 30 s con
+     *    `/odom` a cero.
      */
     causas.push({
       id: 'rvr',
       titulo: 'El RVR no contesta',
       estado: 'CONFIRMADA',
       evidencia: e.reanudacionesFallidas !== null && e.reanudacionesFallidas > 0
-        ? `El driver lleva ${e.reanudacionesFallidas} reanudaciones fallidas. `
-          + 'Puede estar cargando (RVR apagado con la Pi encendida) o dormido.'
+        ? `El driver lleva ${e.reanudacionesFallidas} reanudaciones fallidas, y espera cada vez más `
+          + 'entre intentos (3, 6, 12, 24, 48 y hasta 60 s), así que a partir de la sexta ya son '
+          + 'MINUTOS sin contestar. Puede estar cargando (RVR apagado con la Pi encendida) o dormido.'
         : 'La Raspberry Pi responde pero el RVR no. Puede estar cargando o dormido.',
       remedio: 'Mira el robot: si está en el cargador, es normal. Si no, apágalo y enciéndelo.',
     })
