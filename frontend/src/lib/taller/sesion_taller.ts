@@ -268,3 +268,32 @@ export function textoCambiadoDesdeElLanzamiento(
   return e.ejecucion !== null && e.ejecucion.huella !== ''
     && e.ejecucion.huella !== huellaActual
 }
+
+/**
+ * La insignia de la cabecera del terminal.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 ERA BINARIA, Y POR ESO AFIRMABA «listo» SIN SABERLO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Estaba escrita dentro del JSX como `corriendo ? 'corriendo' : 'listo'`. Con
+ * eso, **un terminal que no ha podido abrir el enlace decia «listo»** — visto en
+ * el navegador el 2026-08-15, entrando sin sesion: el aviso de arriba explicaba
+ * que hay que iniciar sesion y la insignia de al lado ponia «listo».
+ *
+ * `listo` significa «puedes ejecutar». Sin enlace no puedes, asi que era una
+ * afirmacion que la pantalla no podia hacer — la regla que gobierna toda esta
+ * interfaz. Misma familia que `ros2 topic list` incluyendo topics de nodos
+ * muertos, o que el clasificador de color diciendo «verde» por descarte: **un
+ * binario convierte «no lo se» en una afirmacion**.
+ *
+ * Ahora son tres, y el tercero se llama por su nombre.
+ */
+export function insigniaDelTerminal(
+  e: EstadoTaller,
+): { texto: string; tono: 'NEUTRO' | 'BIEN' | 'ATENCION' | 'GRAVE' } {
+  if (e.ejecucion !== null) return { texto: 'corriendo', tono: 'ATENCION' }
+  if (e.enlace === 'ABIERTO') return { texto: 'listo', tono: 'NEUTRO' }
+  if (e.enlace === 'ABRIENDO') return { texto: 'conectando', tono: 'NEUTRO' }
+  // CERRADO y RECHAZADO: no se sabe si se podria ejecutar, asi que no se dice.
+  return { texto: 'sin enlace', tono: 'ATENCION' }
+}

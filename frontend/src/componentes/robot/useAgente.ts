@@ -41,15 +41,22 @@ export const PUERTO_AGENTE = 9443
 
 /*
  * 🔴 SE IMPORTAN, NO SE REESCRIBEN. Aqui habia dos constantes con los mismos
- *    valores que las de `testigo_robot.ts`, y la auditoria del robot lo marco:
+ *    valores que las del servidor, y la auditoria del robot lo marco:
  *    «duplicados… divergen en silencio» (evidencia 117 §6).
  *
  *    Y divergir aqui no da un error legible: el navegador ofreceria un
  *    subprotocolo que el agente no reconoce, el agente no devolveria ninguno, y
  *    el socket se cerraria con **1006 y sin motivo** — el peor sintoma posible,
  *    porque no dice nada y se busca en el robot.
+ *
+ * 🔴🔴 PERO DE `enlace_agente`, **NUNCA** DE `testigo_robot`. Deduplicar contra
+ *      `testigo_robot.ts` fue el primer intento y **tumbo la pagina entera** el
+ *      2026-08-15: ese modulo importa `node:crypto` y calcula su cabecera al
+ *      evaluarse, asi que en el navegador da `Unknown encoding: base64url` antes
+ *      de que se pinte nada. Este fichero es `'use client'`: lo que importe,
+ *      viaja. `enlace_agente.ts` no importa nada, por eso se puede.
  */
-import { PREFIJO_TESTIGO, SUBPROTOCOLO_AGENTE } from '@/lib/sesion/testigo_robot'
+import { PREFIJO_TESTIGO, SUBPROTOCOLO_AGENTE } from '@/lib/sesion/enlace_agente'
 
 /**
  * 🔴 DIEZ SEGUNDOS PARA ABRIR, Y NO ES UN ADORNO.

@@ -365,7 +365,12 @@ if (aceptar) {
  *    la misma limitacion.
  */
 const rutaNucleo = join(raizRvr, 'scripts/agente/agente_nucleo.py')
-const rutaTestigoTs = join(raizProyecto, 'frontend/src/lib/sesion/testigo_robot.ts')
+// 🔴 `enlace_agente.ts`, NO `testigo_robot.ts`. Las dos constantes se mudaron
+//    ahi el 2026-08-15 porque `testigo_robot.ts` importa `node:crypto` y no
+//    puede llegar al navegador. La comprobacion de abajo AVISA si no las
+//    encuentra: sin eso, mover el fichero habria dejado este control mudo y en
+//    verde, que es como se pierden los controles sin que nadie se entere.
+const rutaTestigoTs = join(raizProyecto, 'frontend/src/lib/sesion/enlace_agente.ts')
 const rutaProtocoloTs = join(raizProyecto, 'frontend/src/lib/taller/protocolo.ts')
 
 if (!existsSync(rutaNucleo)) {
@@ -447,10 +452,20 @@ if (!existsSync(rutaNucleo)) {
       ['SUBPROTOCOLO', /SUBPROTOCOLO\s*=\s*'([^']+)'/],
     ]) {
       const py = testigoPy.match(re)?.[1]
-      const ts = testigoTs.match(new RegExp(`${nombre === 'SUBPROTOCOLO' ? 'SUBPROTOCOLO_AGENTE' : nombre}\\s*=\\s*'([^']+)'`))?.[1]
-      if (py !== undefined && ts !== undefined && py !== ts) {
-        problemas.push(`${nombre}: el robot '${py}' y la web '${ts}'`)
-      }
+      const enTs = nombre === 'SUBPROTOCOLO' ? 'SUBPROTOCOLO_AGENTE' : nombre
+      const ts = testigoTs.match(new RegExp(`${enTs}\\s*=\\s*'([^']+)'`))?.[1]
+      /*
+       * 🔴 NO ENCONTRARLA ES UN PROBLEMA, NO UN MOTIVO PARA CALLAR.
+       *
+       * Antes esto era `if (py !== undefined && ts !== undefined && py !== ts)`,
+       * o sea que renombrar la constante —o moverla de fichero, que es justo lo
+       * que paso el 2026-08-15— dejaba este control **mudo y en verde**. Es la
+       * familia que este proyecto persigue: una comprobacion que se cree que
+       * cubre algo y no lo cubre.
+       */
+      if (py === undefined) problemas.push(`${nombre}: no la encuentro en atriz_testigo.py`)
+      else if (ts === undefined) problemas.push(`${enTs}: no la encuentro en enlace_agente.ts`)
+      else if (py !== ts) problemas.push(`${nombre}: el robot '${py}' y la web '${ts}'`)
     }
   }
 

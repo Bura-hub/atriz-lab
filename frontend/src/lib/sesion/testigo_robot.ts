@@ -141,12 +141,16 @@ export function clavePrivadaDe(pem: string | undefined): KeyObject | null {
 
 /**
  * El prefijo del subprotocolo por el que viaja el testigo, y el subprotocolo que
- * el agente contesta siempre.
+ * el agente contesta siempre. Los dos valores son de `atriz_testigo.py:35-39`.
  *
- * ⚠️ Los dos valores son de `atriz_testigo.py:35-39`. Se repiten aqui porque el
- *    navegador los necesita, y **una prueba comprueba que el testigo emitido cabe
- *    en un nombre de subprotocolo** — que es lo unico que hace fragil a este
- *    transporte: solo admite caracteres de token HTTP, y base64url lo cumple.
+ * 🔴 **VIVEN EN OTRO FICHERO, Y NO ES ORGANIZACION: ES QUE ESTE MODULO NO PUEDE
+ *    LLEGAR AL NAVEGADOR.** Importa `node:crypto` y calcula `CABECERA` al
+ *    evaluarse; en el navegador eso revienta con `Unknown encoding: base64url` y
+ *    **tumba la pagina entera**. Pasó el 2026-08-15, justo al deduplicar estas
+ *    dos constantes trayendolas aqui desde `useAgente.ts`.
+ *
+ * → El cliente importa de `enlace_agente.ts`, que **no importa nada**. Aqui solo
+ *   se reexportan para que siga habiendo una sola fuente de verdad, que era lo
+ *   que pedia la auditoria del robot (evidencia 117 §6).
  */
-export const PREFIJO_TESTIGO = 'atriz.token.'
-export const SUBPROTOCOLO_AGENTE = 'atriz.v1'
+export { PREFIJO_TESTIGO, SUBPROTOCOLO_AGENTE } from './enlace_agente'

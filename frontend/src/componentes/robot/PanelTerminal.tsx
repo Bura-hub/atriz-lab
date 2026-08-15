@@ -48,7 +48,7 @@ import {
   opSenal,
 } from '@/lib/taller/protocolo'
 import {
-  entradaViva, puedeEjecutar, textoCambiadoDesdeElLanzamiento,
+  entradaViva, insigniaDelTerminal, puedeEjecutar, textoCambiadoDesdeElLanzamiento,
 } from '@/lib/taller/sesion_taller'
 import { estaVacia, faltaAlgo, texto as textoDeSalida } from '@/lib/taller/salida'
 import { useAgente } from './useAgente'
@@ -106,6 +106,11 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
   const corriendo = estado.ejecucion !== null
   const cambiado = textoCambiadoDesdeElLanzamiento(estado, huellaActual)
   const falta = faltaAlgo(salida)
+  /*
+   * 🔴 La insignia NO es `corriendo ? ... : 'listo'`. Sin enlace, «listo» seria
+   *    una afirmacion que esta pantalla no puede hacer. Ver `insigniaDelTerminal`.
+   */
+  const insignia = insigniaDelTerminal(estado)
 
   /** La cuenta del espacio de ESE fichero, o `null` si no se sabe. */
   const espacioDe = useMemo(() => {
@@ -206,9 +211,7 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
       <Tarjeta
         titulo={`Terminal · ${etiqueta}`}
         subtitulo="Escribe tu programa o abre una práctica, y ejecútalo en el robot."
-        extremo={corriendo
-          ? <Insignia tono="ATENCION">corriendo</Insignia>
-          : <Insignia tono="NEUTRO">listo</Insignia>}
+        extremo={<Insignia tono={insignia.tono}>{insignia.texto}</Insignia>}
         pie={(
           <p>
             La parada de arriba para el robot{' '}

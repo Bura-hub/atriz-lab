@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { leerMensaje } from './protocolo'
 import {
-  TALLER_INICIAL, entradaViva, puedeEjecutar, textoCambiadoDesdeElLanzamiento,
-  tras, trasCerrar,
+  type EstadoTaller,
+  TALLER_INICIAL, entradaViva, insigniaDelTerminal, puedeEjecutar,
+  textoCambiadoDesdeElLanzamiento, tras, trasCerrar,
 } from './sesion_taller'
 
 /** Encadena mensajes crudos sobre el estado inicial, como llegarian del socket. */
@@ -189,5 +190,47 @@ describe('el reloj de la Pi', () => {
     const e = correr(bienvenida({ reloj_fiable: false }))
     expect(e.relojFiable).toBe(false)
     expect(e.enlace).toBe('ABIERTO')
+  })
+})
+
+describe('🔴 la insignia no puede decir «listo» sin saberlo', () => {
+  /*
+   * Encontrado EN EL NAVEGADOR el 2026-08-15, entrando sin sesion: el aviso
+   * decia «hay que iniciar sesion para abrir el terminal» y la insignia de al
+   * lado ponia **listo**. Era un ternario `corriendo ? ... : 'listo'` dentro del
+   * JSX, o sea un binario donde hacen falta tres estados.
+   *
+   * Ninguna de las 740 pruebas lo vio, porque ninguna miraba esa insignia.
+   */
+  const con = (enlace: EstadoTaller['enlace'], ejecutando = false): EstadoTaller => ({
+    ...TALLER_INICIAL,
+    enlace,
+    ejecucion: ejecutando
+      ? { estado: 'CORRIENDO', pid: 42, nombre: 'x.py', huella: '', restanteS: null, lineasDescartadas: 0 }
+      : null,
+  })
+
+  it('sin enlace NO dice «listo»: dice que no hay enlace', () => {
+    for (const fase of ['CERRADO', 'RECHAZADO'] as const) {
+      const i = insigniaDelTerminal(con(fase))
+      expect(i.texto).not.toBe('listo')
+      expect(i.texto).toBe('sin enlace')
+      expect(i.tono).toBe('ATENCION')
+    }
+  })
+
+  it('mientras abre, tampoco: «conectando»', () => {
+    expect(insigniaDelTerminal(con('ABRIENDO')).texto).toBe('conectando')
+  })
+
+  it('con el enlace ABIERTO y nada corriendo, ahi si: «listo»', () => {
+    // El control positivo. Sin el, «no dice listo» no distinguiria el arreglo
+    // de haber borrado la palabra.
+    expect(insigniaDelTerminal(con('ABIERTO')).texto).toBe('listo')
+  })
+
+  it('lo que corre manda sobre todo lo demas', () => {
+    expect(insigniaDelTerminal(con('ABIERTO', true)).texto).toBe('corriendo')
+    expect(insigniaDelTerminal(con('ABIERTO', true)).tono).toBe('ATENCION')
   })
 })
