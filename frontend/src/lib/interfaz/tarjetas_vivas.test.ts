@@ -30,6 +30,20 @@
  *
  * Sin `ATRIZ_VIVAS=1` se salta, y vitest lo reporta como `skipped`.
  *
+ * 🔴 `ATRIZ_HOST` VALE `127.0.0.1` POR DEFECTO, Y NO ES UN DETALLE. Esta prueba
+ *    levanta su propio rosbridge de mentira en `localhost`, asi que la
+ *    aplicacion tiene que apuntar ahi — y a un robot se le apunta poniendo la
+ *    **IP como id** (`/robot/127.0.0.1/...`). Con un numero (`/robot/1`) la
+ *    aplicacion resolveria `rvr-01.local`, o sea el robot DE VERDAD, y el doble
+ *    se quedaria hablando solo.
+ *
+ *    Antes el defecto era `'1'`, heredado de `pantallas_reales.test.ts`, que si
+ *    quiere el robot real. Correr el comando de arriba tal cual daba **6 fallos
+ *    de 8, todos con la misma espera agotada de ~11 s** — que se leen como una
+ *    regresion y no lo son. Paso el 2026-08-15. Y la primera prueba del fichero
+ *    exige literalmente el texto «direccion IP», asi que con un numero **no
+ *    puede pasar**: el defecto estaba peleado con su propio contenido.
+ *
  * ⚠️ NO es una prueba visual: no mira color, ni tamano, ni jerarquia. Mira el
  *    TEXTO que el navegador acaba pintando. Que la tarjeta roja se vea como
  *    urgente sigue exigiendo una persona.
@@ -42,7 +56,7 @@ import { Navegador, dormir } from './navegador_cdp'
 
 const CORRER = process.env.ATRIZ_VIVAS === '1'
 const WEB = process.env.ATRIZ_WEB ?? 'http://localhost:3000'
-const HOST = process.env.ATRIZ_HOST ?? '1'
+const HOST = process.env.ATRIZ_HOST ?? '127.0.0.1'   // ver la cabecera: NO un numero
 const PUERTO_CDP = Number(process.env.ATRIZ_CDP_PUERTO ?? 9334)
 const RAIZ = resolve(__dirname, '../../../..')
 
