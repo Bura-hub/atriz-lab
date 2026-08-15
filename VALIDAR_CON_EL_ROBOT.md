@@ -330,6 +330,30 @@ sumen exactamente lo mismo.
 
 ---
 
+## 5 · 🆕 `/initialpose` — decirle al robot dónde está
+
+Construido el 2026-08-15 (evidencia 121 en `atriz_migracion`), porque estaba **declarado y sin
+construir**: en el contrato, tipado, con su helper de cuaternión y permitido por la lista blanca
+del robot — y nadie publicaba ahí.
+
+| | qué hacer | qué debe pasar | quién lo vio | 🔴 qué lo refuta |
+|---|---|---|---|---|
+| **5-1** | pulsar «Decirle al robot dónde está» y **arrastrar** sobre el mapa | `map → odom` salta: sólo lo mueve AMCL, así que el salto **es** la aceptación | ✅ **el navegador**, n=5 (31-36 cm de salto) | que no se mueva: el sello iría con `now()` y AMCL lo descarta en silencio, que es lo que pasó en las 10 tandas históricas |
+| **5-2** | 🔴 el MISMO gesto, mirando si manda un objetivo | **NO** manda ninguno | ✅ **el navegador**, `¿mandó objetivo? → NO` | que lo mande: es lo que pasó la primera vez y **el robot se enredó con unos cables**. Un arrastre dispara también un `click`, y la guarda se desactivaba a sí misma |
+| **5-3** | un **clic sin arrastrar** | se niega y dice que falta el rumbo | ✅ 10 pruebas puras, mutadas | que suponga rumbo 0: con 180° de error AMCL **no converge nunca**, y desde fuera parece que la navegación no funciona |
+| **5-4** | mover el robot ~30 cm tras fijar la pose | **`/amcl_pose` empieza a publicar** | ✅ odometría 28,1 cm · v máx 0,216 (sin frenado de seguridad) · 2 mensajes de AMCL | que no publique: no habría localizado |
+| **5-5** | ⏳ que la pose fijada sea **correcta** | el mapa cuadra con la sala | ⏳ **nadie** — y la pantalla lo dice ella misma en vez de afirmarlo | — |
+
+⚠️ **Y una comparación que NO se hace**: los 9,6 cm entre las dos muestras de AMCL **no son un
+error** contra los 28,1 de odometría. AMCL publica cada `update_min_d` = 15 cm, así que su primera
+muestra sale después del primer tramo. Restarlos y llamarlo error sería la clase de conclusión que
+este proyecto ha tenido que retirar tres veces.
+
+📌 **`/global_costmap/costmap` no está en la lista blanca**, así que la web **no puede** comprobar
+si el costmap está poblado — que es la señal documentada de un Nav2 mal arrancado. Sin decidir.
+
+---
+
 ## 4 · ✅ EL TALLER — el terminal. **LAS 16 CASILLAS, CERRADAS**
 
 Construido el 2026-08-14. ~~«Nada de esto ha tocado un robot».~~ **Falso desde la

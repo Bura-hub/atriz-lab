@@ -66,6 +66,9 @@ import { numeroValido } from '@/lib/interfaz/lecturas'
 import {
   cuaternionDeYaw, fronteraAbierta, mundoAPixel, pixelAMundo, pixelesDeMapa, recuentoDeCeldas,
 } from '@/lib/robot/mapa'
+import {
+  LO_QUE_NO_SE_PUEDE_CONFIRMAR, mensajePoseInicial, poseDelGesto,
+} from '@/lib/robot/pose_inicial'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { ControlNavegacion } from '@/componentes/robot/ControlNavegacion'
 import { Contexto } from '@/componentes/ui/Contexto'
@@ -179,9 +182,93 @@ export function PanelNavegar() {
   }, [mapa, pose])
 
   /* ── Mandar un objetivo ──────────────────────────────────────────────── */
+  /*
+   * ═══════════════════════════════════════════════════════════════════════
+   * 🔴 FIJAR DONDE ESTA EL ROBOT — el modo que faltaba
+   * ═══════════════════════════════════════════════════════════════════════
+   * AMCL arranca en (0,0) por su `set_initial_pose: true`. Si el robot no esta
+   * ahi, TODO lo que venga despues esta desplazado — y Nav2 dice `SUCCEEDED`
+   * igual. Y no hay otra via: este robot **no tiene rumbo absoluto**, asi que
+   * la pose de partida tiene que venir del operador.
+   *
+   * 🔴 ES UN MODO APARTE, NO UN CLIC MAS. El mismo gesto —pulsar en el mapa—
+   *    tiene que hacer dos cosas distintas, y una de ellas MUEVE EL ROBOT. Con
+   *    un solo modo, quien quisiera corregir la pose lanzaria un objetivo.
+   */
+  const [modoPose, setModoPose] = useState(false)
+  /*
+   * ═══════════════════════════════════════════════════════════════════════
+   * 🔴🔴 ESTE `ref` EXISTE PORQUE UN ARRASTRE MOVIÓ EL ROBOT DE VERDAD
+   * ═══════════════════════════════════════════════════════════════════════
+   * Un arrastre dispara `mousedown → mouseup → CLICK`. El manejador de
+   * `mouseup` publica la pose y hace `setModoPose(false)`; y **después** llega
+   * el `click`, cuya guarda era `if (modoPose) return` — para entonces ya vale
+   * `false`, así que pasaba y **mandaba un objetivo de navegación al punto
+   * donde se soltó**.
+   *
+   * Pasó el 2026-08-15 con el robot delante: el gesto de «decirle dónde está»
+   * lo puso a conducir y **se enredó con unos cables**. La guarda escrita para
+   * impedirlo se desactivaba a sí misma dos líneas antes.
+   *
+   * 🔴 Un `useState` NO sirve aquí: entre el `mouseup` y el `click` puede haber
+   *    un re-render, y entonces el `click` corre con el valor nuevo. Un `ref`
+   *    se lee y se escribe **síncrono**, así que no depende de cuándo pinte
+   *    React — que es justo lo que no se puede razonar desde fuera.
+   */
+  const tragarSiguienteClic = useRef(false)
+  const [arrastre, setArrastre] = useState<{ x0: number; y0: number; px0: number; py0: number } | null>(null)
+  const [avisoPose, setAvisoPose] = useState<string | null>(null)
+
+  const puntoDelEvento = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const c = lienzo.current
+    if (c === null || mapa === null) return null
+    const caja = c.getBoundingClientRect()
+    const px = ((e.clientX - caja.left) / caja.width) * c.width
+    const py = ((e.clientY - caja.top) / caja.height) * c.height
+    return { px, py, ...pixelAMundo(mapa.info, px, py) }
+  }, [mapa])
+
+  const alBajarEnMapa = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!modoPose) return
+    const p = puntoDelEvento(e)
+    if (p === null) return
+    setAvisoPose(null)
+    setArrastre({ x0: p.x, y0: p.y, px0: p.px, py0: p.py })
+  }, [modoPose, puntoDelEvento])
+
+  const alSoltarEnMapa = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!modoPose || arrastre === null) return
+    const p = puntoDelEvento(e)
+    setArrastre(null)
+    if (p === null) return
+    const arrastrePx = Math.hypot(p.px - arrastre.px0, p.py - arrastre.py0)
+    // Se marca ANTES de decidir nada: el `click` llega igual aunque la pose se
+    // rechace por falta de rumbo, y ahí también hay que tragárselo.
+    tragarSiguienteClic.current = true
+    const lectura = poseDelGesto({ x: arrastre.x0, y: arrastre.y0 }, { x: p.x, y: p.y }, arrastrePx)
+    if (!lectura.hay) { setAvisoPose(lectura.motivo); return }
+    try {
+      transporte.publicar('/initialpose', mensajePoseInicial(lectura.pose))
+      setAvisoPose(LO_QUE_NO_SE_PUEDE_CONFIRMAR)
+      setModoPose(false)
+    } catch (err) {
+      setAvisoPose(`No he podido publicarla: ${err instanceof Error ? err.message : String(err)}`)
+    }
+  }, [modoPose, arrastre, puntoDelEvento, transporte])
+
   const alPulsarMapa = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     // `puedeNavegar` primero: sin servidor de accion el objetivo solo produciria
     // un error, y el gesto ya esta desaconsejado en pantalla.
+    /*
+     * 🔴 En modo «fijar pose» este gesto NO manda objetivos: mover el robot
+     *    cuando alguien queria corregir su posicion seria lo peor que puede
+     *    hacer esta pantalla — y lo hizo una vez, ver `tragarSiguienteClic`.
+     *
+     * El orden importa: **primero se consume la marca**, que es sincrona, y
+     * solo despues se mira `modoPose`, que puede venir de un render anterior.
+     */
+    if (tragarSiguienteClic.current) { tragarSiguienteClic.current = false; return }
+    if (modoPose) return
     if (mapa === null || pose === null || usuario === null || objetivo !== null) return
     const c = lienzo.current
     if (c === null) return
@@ -278,7 +365,14 @@ export function PanelNavegar() {
         malo: true,
       }),
     ).finally(() => { setObjetivo(null); setAvance(null) })
-  }, [mapa, pose, usuario, objetivo, transporte])
+  /*
+   * 🔴 `modoPose` VA EN LAS DEPENDENCIAS. Sin el, este callback se queda con
+   *    el valor de cuando se creo, y la guarda de arriba usaria un
+   *    `modoPose` rancio: alguien que quisiera CORREGIR la pose del robot
+   *    le mandaria un objetivo. Lo marco eslint; el navegador no lo habria
+   *    dicho, y `tsc` tampoco.
+   */
+  }, [mapa, pose, usuario, objetivo, transporte, modoPose])
 
   /* ── Los tres estados ────────────────────────────────────────────────── */
   const hayMapa = mapa !== null
@@ -460,6 +554,8 @@ export function PanelNavegar() {
             <canvas
               ref={lienzo}
               onClick={alPulsarMapa}
+              onMouseDown={alBajarEnMapa}
+              onMouseUp={alSoltarEnMapa}
               /*
                 🔴🔴 EL TAMAÑO DEL MAPA, EN DOS INTENTOS FALLIDOS Y UNO BUENO.
                      Las tres versiones se vieron en captura; ninguna la vio tsc.
@@ -494,6 +590,45 @@ export function PanelNavegar() {
                 una parada: es una orden que mueve un robot en una sala con gente.
               </p>
             )}
+
+            {/* ── DECIRLE AL ROBOT DONDE ESTA ──────────────────────────── */}
+            <div className="mt-4 border-t border-[rgb(var(--filo)/0.09)] pt-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  disabled={!hayMapa || usuario === null}
+                  onClick={() => { setModoPose((v) => !v); setAvisoPose(null); setArrastre(null) }}
+                  className={`rounded-md border px-3 py-1.5 text-[13px] ${
+                    modoPose
+                      ? 'border-[rgb(var(--estado-mirar)/0.5)] bg-[rgb(var(--estado-mirar)/0.12)]'
+                      : 'border-[rgb(var(--filo)/0.2)] hover:bg-[rgb(var(--vidrio)/0.06)]'
+                  } disabled:cursor-not-allowed disabled:opacity-45`}
+                >
+                  {modoPose ? 'Cancelar' : 'Decirle al robot dónde está'}
+                </button>
+                {modoPose && (
+                  <span className="text-[13px] text-[rgb(var(--estado-mirar))]">
+                    Pulsa donde está el robot y <strong>arrastra hacia donde mira</strong>, sin
+                    soltar. Mientras tanto no se mandan objetivos.
+                  </span>
+                )}
+              </div>
+
+              {avisoPose !== null && (
+                <p className="mt-3 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+                  {avisoPose.replace(/\*\*/g, '')}
+                </p>
+              )}
+
+              {!modoPose && avisoPose === null && (
+                <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+                  AMCL arranca creyendo que el robot está en el origen del mapa. Si no lo está —y
+                  tras un arranque en frío casi nunca lo está— todo lo que venga después sale
+                  desplazado, y <strong>Nav2 dirá que llegó igual</strong>. Este robot no tiene
+                  brújula: la pose de partida sólo puede dársela una persona.
+                </p>
+              )}
+            </div>
 
             {objetivo !== null && (
               <div className="mt-3 flex flex-wrap items-center gap-3">
