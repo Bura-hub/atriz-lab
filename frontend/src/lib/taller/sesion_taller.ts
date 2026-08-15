@@ -125,7 +125,30 @@ export function tras(previo: EstadoTaller, m: MensajeTaller): EstadoTaller {
       }
 
     case 'ESTADO': {
-      const mia = m.soyElDueno
+      /*
+       * ═══════════════════════════════════════════════════════════════════
+       * 🔴🔴 NO SE USA `soy_el_dueno` A SOLAS: SE COMPARAN LOS NOMBRES
+       * ═══════════════════════════════════════════════════════════════════
+       * Medido contra rvr-01 el 2026-08-15 con dos alumnos y un solo robot:
+       * la pantalla del SEGUNDO decia **«Ya tienes un programa corriendo.
+       * Párralo antes.»** sobre el programa del PRIMERO, con su PID delante.
+       *
+       * La causa esta en el agente y es de una familia conocida aqui:
+       * `agente_sesion.py` hace `difundir(estado_actual(actual['sujeto']))`
+       * — **el mismo mensaje a todos los clientes**, con un `soy_el_dueno`
+       * calculado para UNO. Es lo mismo que rosbridge compartiendo una sola
+       * suscripcion entre clientes: *lo que vale para uno se manda a todos*.
+       *
+       * ✅ Y no hace falta esperar al robot para dejar de creerselo: el propio
+       *    mensaje trae `sujeto`, que es **quien tiene la ranura**, y la
+       *    bienvenida trajo el mio. Comparar dos nombres no depende de que
+       *    nadie calcule bien un booleano por destinatario.
+       *
+       * Se exigen las DOS cosas: que los nombres casen y que el agente lo
+       * confirme. Asi, el dia que el agente lo arregle, siguen de acuerdo; y
+       * mientras tanto, un `true` difundido de mas no se cuela.
+       */
+      const mia = previo.sujeto !== '' && m.sujeto === previo.sujeto && m.soyElDueno
       return {
         ...previo,
         ocupacion: m.estado === 'LIBRE' ? null : {

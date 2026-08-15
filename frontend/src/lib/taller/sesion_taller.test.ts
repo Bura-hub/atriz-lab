@@ -234,3 +234,58 @@ describe('🔴 la insignia no puede decir «listo» sin saberlo', () => {
     expect(insigniaDelTerminal(con('ABIERTO', true)).tono).toBe('ATENCION')
   })
 })
+
+describe('🔴🔴 el programa de OTRO alumno no es mio, aunque el agente lo difunda', () => {
+  /*
+   * Medido contra rvr-01 el 2026-08-15, con dos alumnos y un solo robot: la
+   * pantalla del segundo decia «Ya tienes un programa corriendo. Párralo
+   * antes.» sobre el programa del primero, y le ensenaba su PID.
+   *
+   * `agente_sesion.py` hace `difundir(estado_actual(actual['sujeto']))`: el
+   * mismo mensaje a todos, con `soy_el_dueno` calculado para UNO. Misma forma
+   * que rosbridge compartiendo una suscripcion entre clientes.
+   *
+   * ⚠️ El agente SI protege —el `parar` de Ana fue rechazado y el programa
+   *    siguio vivo—, asi que esto no era un agujero: era una PANTALLA que
+   *    afirmaba lo que no sabia, que es lo que esta interfaz no hace.
+   */
+  const bienvenida = (yo: string, duenoActual: string | null) => leerMensaje(JSON.stringify({
+    op: 'atriz_bienvenida', robot: 1, sujeto: yo, reloj_fiable: true,
+    sesion: duenoActual === null ? null
+      : { sujeto: duenoActual, estado: 'CORRIENDO', pid: 61700, nombre: '05_sensor_color.py', desde_s: 12 },
+  }))
+
+  /** Lo que el agente DIFUNDE hoy: `soy_el_dueno` true para todo el mundo. */
+  const estadoDifundido = (dueno: string) => leerMensaje(JSON.stringify({
+    op: 'atriz_estado', estado: 'CORRIENDO', sujeto: dueno, soy_el_dueno: true,
+    pid: 61700, nombre: '05_sensor_color.py', huella: 'abc123', restante_s: 500,
+    lineas_descartadas: 0,
+  }))
+
+  it('el segundo alumno NO cree que el programa sea suyo', () => {
+    let e = tras(TALLER_INICIAL, bienvenida('ana', 'bura_hub'))
+    e = tras(e, estadoDifundido('bura_hub'))          // <- el true difundido
+    expect(e.ejecucion).toBeNull()
+    expect(e.ocupacion?.sujeto).toBe('bura_hub')
+    // Y el motivo NOMBRA a quien lo tiene, que es la diferencia entre esperar
+    // y cruzar el aula a preguntar.
+    const p = puedeEjecutar({ ...e, enlace: 'ABIERTO' })
+    expect(p.puede).toBe(false)
+    expect(p.motivo).toContain('bura_hub')
+    expect(p.motivo).not.toContain('Ya tienes')
+  })
+
+  it('y el DUENO si: el control, sin el esto solo probaria que nunca es de nadie', () => {
+    let e = tras(TALLER_INICIAL, bienvenida('bura_hub', 'bura_hub'))
+    e = tras(e, estadoDifundido('bura_hub'))
+    expect(e.ejecucion).not.toBeNull()
+    expect(e.ejecucion?.pid).toBe(61700)
+    expect(puedeEjecutar({ ...e, enlace: 'ABIERTO' }).motivo).toContain('Ya tienes')
+  })
+
+  it('la entrada de teclado tampoco se abre para el que mira', () => {
+    let e = tras(TALLER_INICIAL, bienvenida('ana', 'bura_hub'))
+    e = tras(e, estadoDifundido('bura_hub'))
+    expect(entradaViva(e).viva).toBe(false)
+  })
+})
