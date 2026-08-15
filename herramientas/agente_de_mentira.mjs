@@ -310,10 +310,30 @@ servidor.on('upgrade', (req, socket) => {
    * credencial es de otro robot». El rechazo tiene que llegar como un cierre
    * NUESTRO, con su código y su frase.
    */
+  /*
+   * 🔴🔴 Y SOLO SE DEVUELVE UNO QUE EL CLIENTE HAYA OFRECIDO.
+   *
+   * Aquí se escribía `Sec-WebSocket-Protocol: atriz.v1` SIEMPRE, ofreciera lo
+   * que ofreciera el cliente. El agente de verdad **no puede** hacer eso:
+   * tornado ejecuta `assert self.selected_subprotocol in subprotocols`, así que
+   * un cliente que no ofrece ninguno se lleva un `AssertionError` y un **HTTP
+   * 500** en vez del cierre 4401. Visto en el journal de rvr-01 el 2026-08-15.
+   *
+   * O sea que este doble era **más permisivo que el robot**, y la prueba «sin
+   * testigo → 4401» pasaba en verde sobre un camino que en el robot revienta.
+   * 📌 **Un doble que miente sobre el MANEJO DE ERRORES** es el peor de todos:
+   *    los datos se acaban comparando contra el robot; los errores no los mira
+   *    nadie hasta que ocurren.
+   */
+  const ofrecidos = (req.headers['sec-websocket-protocol'] ?? '')
+    .split(',').map((x) => x.trim()).filter((x) => x !== '')
+  const elegido = ofrecidos.includes(SUBPROTOCOLO) ? SUBPROTOCOLO : (ofrecidos[0] ?? null)
+
   socket.write(
     'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n'
     + `Connection: Upgrade\r\nSec-WebSocket-Accept: ${acepta}\r\n`
-    + `Sec-WebSocket-Protocol: ${SUBPROTOCOLO}\r\n\r\n`,
+    + (elegido === null ? '' : `Sec-WebSocket-Protocol: ${elegido}\r\n`)
+    + '\r\n',
   )
 
   if (!v.ok) {

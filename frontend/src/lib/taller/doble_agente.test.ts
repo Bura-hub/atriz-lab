@@ -242,6 +242,21 @@ describe('los cuatro rechazos, cada uno con su codigo', () => {
     const c = await cosechar(a, 300)
     expect(c.cierre?.codigo).toBe(4401)
     expect(c.cierre?.motivo.length).toBeGreaterThan(0)
+    /*
+     * 🔴🔴 Y AQUI NO PUEDE VENIR SUBPROTOCOLO, aunque el resto de casos SI lo
+     *    exijan. Este cliente **no ofreció ninguno**, y el agente de verdad no
+     *    puede inventarse uno: tornado hace
+     *    `assert self.selected_subprotocol in subprotocols` y lo convierte en
+     *    un `AssertionError` + **HTTP 500**, no en este cierre.
+     *
+     *    Se descubrió al revés de lo cómodo: esta prueba estaba en VERDE y el
+     *    robot daba 500 en el journal (2026-08-15). El doble escribía la
+     *    cabecera a mano y era **más permisivo que el robot**, así que la
+     *    prueba certificaba un camino que en producción reventaba.
+     *    📌 Un doble que miente sobre el MANEJO DE ERRORES es el peor: los
+     *       datos se acaban comparando contra el robot; los errores, no.
+     */
+    expect(a.cabeceras['sec-websocket-protocol']).toBeUndefined()
   })
 
   it('firma de otra clave → 4403', async () => {
@@ -277,8 +292,14 @@ describe('los cuatro rechazos, cada uno con su codigo', () => {
      * Se comprueba en los CUATRO, porque el bug natural es acordarse en el
      * camino feliz y olvidarlo en uno de los de error.
      */
+    /*
+     * 🔴 Los tres casos que SI ofrecieron `atriz.v1`. El de «sin testigo» no
+     *    esta aqui a proposito: ese cliente no ofrecio ninguno, y devolverle uno
+     *    revienta el agente de verdad con `AssertionError` + HTTP 500 (tornado
+     *    lo comprueba). Su comprobacion —que NO venga— vive en su propia prueba,
+     *    arriba. Meterlo aqui era lo que dejaba pasar la divergencia.
+     */
     const casos: [number, string[]][] = [
-      [sano.puerto, []],
       [sano.puerto, conTestigo(testigoPara(7, CLAVE_INTRUSO))],
       [sano.puerto, conTestigo(testigoPara(3))],
       [sinReloj.puerto, conTestigo(testigoPara(7))],
