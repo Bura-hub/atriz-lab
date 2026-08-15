@@ -68,7 +68,17 @@ export interface EntradaRail {
 export function pestanasDeRobot(segmento: string): EntradaRail[] {
   const base = `/robot/${segmento}`
   return [
-    { href: base, texto: 'Taller', Icono: IconoTaller, color: '--seccion-taller', bloqueada: true },
+    /*
+     * ✅ SIN `bloqueada` DESDE EL 2026-08-14. Era la única entrada que la
+     *    llevaba, y lo llevó desde que la pestaña se dibujó: el terminal no
+     *    existía, y decirlo en el raíl era lo honesto.
+     *
+     * Ahora existe. Lo que queda por medir —el PTY contra un robot— no es «no
+     * hay nada detrás»: es exactamente la distinción que este mismo fichero hace
+     * dos entradas más abajo para Navegar. Dejar la coletilla diría que no hay
+     * nada, y lo hay.
+     */
+    { href: base, texto: 'Taller', Icono: IconoTaller, color: '--seccion-taller' },
     { href: `${base}/conducir`, texto: 'Conducir', Icono: IconoConducir, color: '--seccion-conducir' },
     { href: `${base}/no-obedece`, texto: 'Por qué no obedece', Icono: IconoNoObedece, color: '--seccion-porque' },
     { href: `${base}/telemetria`, texto: 'Telemetría', Icono: IconoTelemetria, color: '--seccion-telemetria' },

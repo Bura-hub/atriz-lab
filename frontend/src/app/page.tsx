@@ -254,9 +254,16 @@ export default function Portada() {
         */}
         <ul className="grid gap-x-10 gap-y-5 text-sm leading-relaxed text-muted-foreground sm:grid-cols-3">
           <li>
-            <strong className="text-foreground">El terminal</strong> —escribir y ejecutar código en
-            el robot desde aquí— no existe. Va por otro canal, un agente de sesión que aún no está
-            escrito, y ese diseño depende de medir primero el punto de acceso del aula.
+            {/*
+              🔴 ESTA ENTRADA DECÍA «no existe» HASTA EL 2026-08-14, y era cierto.
+                 Ahora existe y lo que falta es otra cosa — decirlo mal en el
+                 otro sentido sería igual de malo: prometer un terminal probado
+                 cuando su PTY no ha tocado un robot.
+            */}
+            <strong className="text-foreground">El terminal</strong> ya escribe y ejecuta, pero{' '}
+            <strong className="text-foreground">no se ha probado contra un robot</strong>: el
+            agente que corre tu código está escrito y sus decisiones probadas, y lo que falta es
+            instalarlo en un RVR y medirlo con cinta.
           </li>
           <li>
             <strong className="text-foreground">La sesión protege esta interfaz, no el

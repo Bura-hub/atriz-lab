@@ -330,6 +330,59 @@ sumen exactamente lo mismo.
 
 ---
 
+## 4 · 🆕 EL TALLER — el terminal. **Nada de esto ha tocado un robot**
+
+Construido el 2026-08-14. La cadena de tres eslabones está cerrada y el terminal
+escribe y ejecuta contra un doble. **Lo que falta ya no es diseño: son medidas**,
+y ninguna se puede hacer sin un RVR.
+
+### 4a · Antes de nada, dos pasos que no son de medir
+
+| | |
+|---|---|
+| 🔴 **Quitar `~/.git-credentials` de los 16** | El código del alumno corre como `sphero` y puede leerlo: es el PAT de GitHub del proyecto. Los repositorios ya son públicos, así que clonar no lo necesita |
+| **Repartir la clave pública** | `node herramientas/publicar_clave.mjs` en el PC → `/etc/atriz/testigo.pub` en cada robot. La privada vive **solo** en el `.env.local` del portátil que sirve la web |
+
+### 4b · Lo que se cierra en cualquier Linux, sin RVR
+
+Los requisitos 1 y 2 del taller —PTY y `stdin`— **no necesitan robot**, solo un
+Linux. Aquí quedaron sin medir porque este PC es Windows y no tiene ni WSL con
+Python ni el demonio de Docker arrancado:
+
+```bash
+# en la Pi, en WSL, o en un contenedor
+cd ~/atriz_ws/src/Atriz_rvr && python3 -m pytest scripts/agente/pruebas/ -q
+```
+
+⚠️ **Que salgan `skipped` NO es que pasen.** Son 13 pruebas y cada una lleva su
+**control contra una tubería**: sin el control, «funciona con PTY» no distingue
+que el PTY lo arregle de que funcionara igual.
+
+### 4c · Lo que exige el robot, y no tiene atajo
+
+| | qué hacer | qué debe pasar | 🔴 qué lo refuta |
+|---|---|---|---|
+| **4-1** | abrir `/robot/7` con el agente parado | dice que **no llega al agente**, y que eso es **otro enlace** que el de la franja de arriba | que diga «en línea» a secas: son dos sockets a dos puertos, y uno vivo no dice nada del otro |
+| **4-2** | abrirlo **sin haber entrado** | pide iniciar sesión | que abra: el terminal es lo único de esta web que ejecuta código, y sin sesión no debe |
+| **4-3** | arrancar el agente y abrir de nuevo | lista las prácticas **del robot**, y son **15** | que liste diez, o nombres que no existen: la lista la da el agente leyendo el directorio, no una tabla de la web |
+| **4-4** | abrir `01_avanzar.py` y ejecutarlo, **con cinta** | ~58-59 cm, lo mismo que por SSH (evidencia 108) | que recorra otra distancia: el `PYTHONPATH` o el entorno no serían los del SSH |
+| **4-5** | 🔴 ejecutar `05_sensor_color.py` | una fila **cada 0,5 s en vivo** | que salga a bloques al final: sería una tubería y no un PTY — el requisito 1 entero |
+| **4-6** | 🔴 ejecutar `04_giro_preciso.py` | los **cuatro** `input()` se contestan desde el navegador, con transportador en la mano | que el programa no espere: sin terminal `input()` no bloquea y **se salta la pausa sin avisar** |
+| **4-7** | 🔴 Parar a mitad de un avance, **midiendo con cinta** | el robot para, y lo que recorre después es comparable al ~1 cm medido por SSH | que recorra mucho más: el `SIGINT` no estaría llegando al grupo, o `atriz.py` no lo captura por el PTY. **Nadie lo ha medido nunca por PTY** |
+| **4-8** | 🔴 `SIGKILL` desde el desplegable de señales | el barrido **queda encendido**, y la pantalla **lo dice** | que la pantalla diga que se apagó: `comprobar_efecto()` devuelve hoy «no lo sé» en todos sus campos a propósito, y afirmar sería inventar |
+| **4-9** | arrancar SLAM y matar un guion encima | el barrido **NO se apaga** | que se apague: dejaría ciega a la navegación en curso, que es por lo que `atriz.py` no apaga lo que no encendió |
+| **4-10** | dos pestañas, dos usuarios, mismo robot | el segundo ve **quién** lo tiene y desde cuándo, y **no** puede quitárselo | un «ocupado» sin nombre: con dos robots por mesa, el nombre es la diferencia entre esperar y preguntar |
+| **4-11** | recargar la página con un programa corriendo | **se reengancha**: sigue viendo su PID y puede pararlo | que lo trate como «robot ocupado»: un F5 convertido en diez minutos de espera contra el propio robot |
+| **4-12** | `systemctl stop atriz-agente` y mirar `/run/atriz` | **sobrevive**, con la marca del vigía de DDS dentro | que desaparezca: falta `RuntimeDirectoryPreserve=yes`, y el robot se reiniciaría solo más de una vez por arranque |
+
+### 4d · Y lo que no se puede medir con uno solo
+
+Las prácticas **20 a 24 son de infrarrojos y necesitan dos robots**. Las dos
+últimas se mueven **por firmware, sin capa de seguridad** — el mismo caso que
+`conduciendo_por_ir`. Antes de ponerlas en clase, alguien tiene que verlas.
+
+---
+
 ## 3 · Lo que ya se validó y solo hay que no romper
 
 No hay que repetirlo, pero si algo de esto falla, **es una regresión**:
