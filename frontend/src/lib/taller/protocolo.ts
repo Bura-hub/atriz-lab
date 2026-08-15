@@ -36,8 +36,35 @@ export type EstadoEjecucion =
 export const SENALES = ['SIGINT', 'SIGQUIT', 'SIGTERM', 'SIGHUP', 'SIGKILL'] as const
 export type Senal = (typeof SENALES)[number]
 
-/** 64 KiB, el mismo tope que el agente. Si divergen, el agente manda. */
+/**
+ * 64 KiB, el mismo tope que el agente. Si divergen, el agente manda — y desde
+ * la auditoria del 2026-08-14 hay un control en `comprobar_contrato.mjs` que se
+ * pone en rojo si se separan.
+ *
+ * 🔴 ESTABA DECLARADO Y NO LO USABA NADIE, que era justo perder su proposito:
+ *    el tope existe para que un pegote enorme **no viaje por el WiFi del aula**,
+ *    y comprobarlo solo en el robot significa mandarlo primero. Lo vio la
+ *    auditoria del robot (evidencia 117 §6).
+ *
+ * ⚠️ Se mide en BYTES de UTF-8, no en caracteres: una `ñ` ocupa dos y un emoji
+ *    cuatro. Contar `codigo.length` daria de mas al alumno y el agente lo
+ *    rechazaria despues de haberlo enviado, que es el peor de los dos mundos.
+ */
 export const TOPE_CODIGO_BYTES = 64 * 1024
+
+/**
+ * ¿Cabe este codigo? Devuelve el motivo, o vacio si cabe.
+ *
+ * Se comprueba ANTES de mandar, y el agente lo comprueba otra vez al recibir.
+ * No es duplicacion: son dos problemas distintos —el WiFi del aula y la memoria
+ * del agente— y el de aqui es el unico que puede evitar el viaje.
+ */
+export function cabeElCodigo(codigo: string): string {
+  const bytes = new TextEncoder().encode(codigo).length
+  if (bytes <= TOPE_CODIGO_BYTES) return ''
+  return `Tu programa ocupa ${Math.round(bytes / 1024)} KiB y el máximo son `
+    + `${TOPE_CODIGO_BYTES / 1024}. No se ha enviado.`
+}
 
 /*
  * ═══════════════════════════════════════════════════════════════════════════
@@ -313,6 +340,18 @@ export function motivoDeCierre(codigo: number): string {
       return 'Esa credencial es para otro robot. Abre el terminal desde la página de este.'
     case 4409:
       return 'Ese robot ya tiene un programa corriendo.'
+    case 1001:
+      /*
+       * 🆕 El agente se está apagando ordenadamente — normalmente porque el
+       *    vigía de DDS curó un robot mudo y `PartOf=` propagó el reinicio.
+       *
+       * ⚠️ Merece su propio texto porque **el programa del alumno muere con
+       *    él**, y eso desde fuera se ve como «mi robot se paró solo». Es un
+       *    vigilante trabajando, no una avería: vuelve en ~30-40 s.
+       */
+      return 'El agente del robot se está reiniciando, así que tu programa se ha parado. '
+        + 'Suele ser el propio robot curándose de un fallo de arranque: vuelve a intentarlo '
+        + 'en medio minuto.'
     case 1006:
       return 'La conexión se cortó sin decir por qué. Suele ser que el agente del robot '
         + 'no está corriendo, o que no se llega a él por la red.'

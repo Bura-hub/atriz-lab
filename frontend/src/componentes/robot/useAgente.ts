@@ -39,8 +39,17 @@ import { type OpTaller, leerMensaje, motivoDeCierre } from '@/lib/taller/protoco
 /** El puerto del agente. rosbridge sigue en el 9090, intacto. */
 export const PUERTO_AGENTE = 9443
 
-const PREFIJO_TESTIGO = 'atriz.token.'
-const SUBPROTOCOLO = 'atriz.v1'
+/*
+ * 🔴 SE IMPORTAN, NO SE REESCRIBEN. Aqui habia dos constantes con los mismos
+ *    valores que las de `testigo_robot.ts`, y la auditoria del robot lo marco:
+ *    «duplicados… divergen en silencio» (evidencia 117 §6).
+ *
+ *    Y divergir aqui no da un error legible: el navegador ofreceria un
+ *    subprotocolo que el agente no reconoce, el agente no devolveria ninguno, y
+ *    el socket se cerraria con **1006 y sin motivo** — el peor sintoma posible,
+ *    porque no dice nada y se busca en el robot.
+ */
+import { PREFIJO_TESTIGO, SUBPROTOCOLO_AGENTE } from '@/lib/sesion/testigo_robot'
 
 /**
  * 🔴 DIEZ SEGUNDOS PARA ABRIR, Y NO ES UN ADORNO.
@@ -132,7 +141,7 @@ export function useAgente(numeroRobot: number | null, anfitrion: string): Agente
 
       try {
         ws = new WebSocket(`ws://${anfitrion}:${PUERTO_AGENTE}`,
-          [`${PREFIJO_TESTIGO}${testigo}`, SUBPROTOCOLO])
+          [`${PREFIJO_TESTIGO}${testigo}`, SUBPROTOCOLO_AGENTE])
       } catch (e) {
         setEstado((x) => trasCerrar(x,
           `No he podido abrir el socket: ${e instanceof Error ? e.message : String(e)}`))

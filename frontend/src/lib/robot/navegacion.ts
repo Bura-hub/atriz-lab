@@ -248,12 +248,25 @@ export function decidirBoton(lectura: Lectura, sistema: Sistema): Boton {
          *    0,04 s de diferencia. El de SLAM sale de esta misma web contra
          *    rvr-01 el 2026-08-09.
          *
+         * 🔴 Y AQUÍ PONÍA «28», QUE SE QUEDÓ CORTO AL DÍA SIGUIENTE. El
+         *    2026-08-14 el robot añadió `atriz-escaneo on-recordando` —que deja
+         *    el barrido como lo encontró al parar la navegación— y eso cuesta
+         *    **+2 s cuando el barrido estaba apagado**: medido **~32 s** por ese
+         *    camino, que además es el normal en reposo. Los 27,8 se midieron con
+         *    el barrido ya encendido.
+         *    → Se dice **30**, que cubre los dos, y se nombra de qué depende.
+         *    📝 Es la forma de siempre en este proyecto: **una cifra correcta en
+         *       su contexto se vuelve falsa al mudarla de sitio** — aquí no se
+         *       mudó de sitio, se movió el sistema debajo de ella.
+         *
          * ⚠️ «Suele» es la palabra exacta: son dos medidas en un robot en
          *    reposo. No es una promesa, y por eso no hay cuenta atrás.
          */
         motivo: nombre + ' está arrancando. Medido en UN robot en reposo: unos '
-          + (sistema === 'nav' ? '28' : '18')
-          + ' segundos. Con la batería baja o varios robots a la vez, no se sabe.',
+          + (sistema === 'nav' ? '30' : '18')
+          + ' segundos'
+          + (sistema === 'nav' ? ' (28 con el barrido ya encendido, 32 si estaba apagado)' : '')
+          + '. Con la batería baja o varios robots a la vez, no se sabe.',
       }
 
     case 'APAGADO':

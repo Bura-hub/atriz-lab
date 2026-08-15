@@ -7,9 +7,11 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "contrato": "node ../herramientas/comprobar_contrato.mjs"
+    "contrato": "node ../herramientas/comprobar_contrato.mjs",
+    "comprobar": "npm run typecheck && npm run lint && npm run test && npm run contrato"
   },
   "dependencies": {
     "geist": "^1.7.2",

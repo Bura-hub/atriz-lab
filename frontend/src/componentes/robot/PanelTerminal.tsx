@@ -44,7 +44,8 @@ import { Insignia } from '@/componentes/ui/Insignia'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { AVISOS_ESPACIO, ESPACIO } from '@/lib/taller/espacio'
 import {
-  SENALES, type Senal, opEjecutar, opEntrada, opLeer, opListar, opParar, opSenal,
+  SENALES, type Senal, cabeElCodigo, opEjecutar, opEntrada, opLeer, opListar, opParar,
+  opSenal,
 } from '@/lib/taller/protocolo'
 import {
   entradaViva, puedeEjecutar, textoCambiadoDesdeElLanzamiento,
@@ -112,7 +113,17 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
     return fila?.despejar ?? null
   }, [nombre])
 
+  /*
+   * 🔴 EL TOPE SE COMPRUEBA ANTES DE MANDAR, y hasta la auditoría del robot
+   *    (evidencia 117 §6) no lo comprobaba nadie: `TOPE_CODIGO_BYTES` estaba
+   *    declarado y sin usar. El tope existe para que un pegote enorme **no viaje
+   *    por el WiFi del aula** — comprobarlo solo en el robot significa mandarlo
+   *    primero, que es justo lo que se quería evitar.
+   */
+  const noCabe = useMemo(() => cabeElCodigo(codigo), [codigo])
+
   const lanzar = useCallback(() => {
+    if (cabeElCodigo(codigo) !== '') return
     limpiarSalida()
     enviar(opEjecutar(codigo, nombre))
     setConfirmando(null)
@@ -326,7 +337,7 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button
               type="button"
-              disabled={!ejecutable.puede || codigo.trim() === ''}
+              disabled={!ejecutable.puede || codigo.trim() === '' || noCabe !== ''}
               onClick={() => setConfirmando(nombre)}
               className="rounded-md border border-[rgb(var(--filo)/0.2)] bg-[rgb(var(--vidrio)/0.06)] px-4 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-45"
             >
@@ -353,6 +364,9 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
 
           {!ejecutable.puede && ejecutable.motivo !== '' && (
             <p className="mt-2 text-[13px] text-muted-foreground">{ejecutable.motivo}</p>
+          )}
+          {noCabe !== '' && (
+            <p className="mt-2 text-[13px] text-[rgb(var(--estado-mirar))]">{noCabe}</p>
           )}
 
           {/*

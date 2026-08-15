@@ -37,6 +37,23 @@ import { fileURLToPath } from 'node:url'
 const AQUI = dirname(fileURLToPath(import.meta.url))
 const DESTINO = join(AQUI, 'testigo_ejemplo.json')
 
+/*
+ * 🔴🔴 SE ESCRIBE TAMBIEN EN EL REPOSITORIO DEL OTRO LADO, Y ES LO QUE CIERRA
+ *      UN AGUJERO QUE ESTUVO ABIERTO.
+ *
+ * La prueba que cruza los dos lenguajes vive en `atriz_migracion`, que es lo que
+ * SI esta clonado en el robot; el ejemplo vivia solo aqui, que NO lo esta. O sea
+ * que en la Pi la prueba se SALTABA — y «saltada» no es «pasada»: la unica
+ * prueba que puede cazar una divergencia de contrato entre Next y Python no
+ * corria justo en la maquina donde el fallo aparece.
+ *
+ * Copiarlo es seguro: la pareja de claves se genera y se tira, asi que lo que
+ * viaja es una clave PUBLICA y un testigo que caduco a los diez minutos.
+ */
+const DESTINO_MIGRACION = join(
+  AQUI, '..', '..', 'atriz_migracion', 'scripts', 'pruebas', 'testigo_ejemplo.json',
+)
+
 const b64u = (b) => Buffer.from(b).toString('base64url')
 
 const { publicKey, privateKey } = generateKeyPairSync('ed25519')
@@ -70,6 +87,21 @@ const ejemplo = {
   emitido_s: ahora,
 }
 
-writeFileSync(DESTINO, `${JSON.stringify(ejemplo, null, 2)}\n`, 'utf8')
+const texto = `${JSON.stringify(ejemplo, null, 2)}\n`
+writeFileSync(DESTINO, texto, 'utf8')
 console.log(`escrito ${DESTINO}`)
+try {
+  writeFileSync(DESTINO_MIGRACION, texto, 'utf8')
+  console.log(`escrito ${DESTINO_MIGRACION}`)
+} catch (e) {
+  /*
+   * 🔴 Se AVISA en vez de callar. Si esta copia no se escribe, la prueba cruzada
+   *    del robot seguira verificando el ejemplo VIEJO contra la clave VIEJA —los
+   *    dos van juntos, asi que PASARA— y nadie notara que el nuevo no llego. Un
+   *    fallo silencioso aqui deja las dos mitades desincronizadas creyendo que
+   *    estan al dia, que es el peor sitio donde dejarlas.
+   */
+  console.error(`⚠️  NO he podido escribir la copia de atriz_migracion: ${e.message}`)
+  console.error('   La prueba cruzada del robot seguiria con el ejemplo anterior.')
+}
 console.log(`  robot ${ejemplo.robot} · sujeto ${ejemplo.sujeto} · emitido ${ejemplo.emitido_s}`)

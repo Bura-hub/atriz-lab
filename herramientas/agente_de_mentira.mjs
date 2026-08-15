@@ -4,6 +4,7 @@
  *     node herramientas/agente_de_mentira.mjs
  *     node herramientas/agente_de_mentira.mjs --ocupado luis
  *     node herramientas/agente_de_mentira.mjs --sin-reloj
+ *     node herramientas/agente_de_mentira.mjs --puerto 9444 --robot 3
  *
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴🔴 LO QUE ESTE DOBLE **NO** PRUEBA, Y HAY QUE LEERLO ANTES DE FIARSE
@@ -37,7 +38,6 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const AQUI = dirname(fileURLToPath(import.meta.url))
-const PUERTO = 9443
 
 /* ── Argumentos ────────────────────────────────────────────────────────── */
 const arg = (n) => {
@@ -61,9 +61,31 @@ const muereAMitad = tiene('--muere-a-mitad')
 /** `--kill-9` → termina dejando el barrido encendido, y lo dice. */
 const kill9 = tiene('--kill-9')
 const robot = Number(arg('--robot') ?? 7)
+/**
+ * `--puerto N` → dónde escuchar. Por defecto el 9443, que es el del agente de
+ * verdad. Existe para que una prueba automatizada pueda levantar el doble en un
+ * puerto libre **sin chocar con el que ya tengas abierto** para mirarlo a mano.
+ */
+const PUERTO = Number(arg('--puerto') ?? 9443)
 
 /* ── La clave pública, de la misma ATRIZ_CLAVE que firma el servidor ────── */
+/**
+ * 🔴 EL ENTORNO GANA AL FICHERO, y es lo que hace el servidor de Next.
+ *
+ * `.env.local` no es la clave: es una de las formas de POBLAR `ATRIZ_CLAVE`.
+ * Leer solo el fichero dejaba a este doble fuera de cualquier arranque que no
+ * pase por ahí —una prueba automatizada, un contenedor— y obligaba a escribir
+ * un secreto en el disco para poder probarlo.
+ */
 function publicaDelEnv() {
+  const pemDirecto = process.env.ATRIZ_CLAVE
+  if (typeof pemDirecto === 'string' && pemDirecto.trim() !== '') {
+    try {
+      return createPublicKey({ key: pemDirecto.replace(/\\n/g, '\n'), format: 'pem' })
+    } catch {
+      return null
+    }
+  }
   try {
     const env = readFileSync(join(AQUI, '..', 'frontend', '.env.local'), 'utf8')
     const linea = env.split('\n').find((l) => l.trimStart().startsWith('ATRIZ_CLAVE='))
@@ -81,6 +103,7 @@ if (PUBLICA === null && !sinFirma) {
   console.error('   Sin ella este doble no puede verificar nada, y verificar de verdad es')
   console.error('   lo único que hace de verdad. Genera una con:')
   console.error('     node herramientas/generar_clave.mjs')
+  console.error('   O pasala en el entorno: ATRIZ_CLAVE="$(cat clave.pem)" node ...')
   console.error('   O arráncalo con --sin-firma si lo que quieres es aislar otro fallo.')
   process.exit(1)
 }
@@ -258,6 +281,22 @@ let ranura = ocupadoPor === null ? null : {
 }
 
 servidor.on('upgrade', (req, socket) => {
+  /*
+   * 🔴🔴 EL MANEJADOR DE ERROR VA LO PRIMERO, Y LO ENCONTRO LA PRUEBA NUEVA.
+   *
+   * Sin esta linea, un cliente que se va ANTES de recibir el cierre del rechazo
+   * provoca un `ECONNRESET` sin manejar en este socket, y en Node un evento
+   * `error` sin manejar **tumba el proceso entero**. O sea: el doble se moria, y
+   * la siguiente conexion daba `ECONNREFUSED` — un sintoma que se lee como «la
+   * web no conecta» y se busca en la web.
+   *
+   * Estaba solo en el camino de los ACEPTADOS (`socket.on('error', ...)` mas
+   * abajo); el de los rechazados salia antes de llegar ahi. Es la forma de
+   * siempre en este proyecto: **la salvaguarda existia y no cubria el camino que
+   * acabo fallando**.
+   */
+  socket.on('error', () => { /* el cliente se fue: no es noticia */ })
+
   const clave = req.headers['sec-websocket-key']
   const acepta = createHash('sha1')
     .update(clave + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64')
@@ -431,7 +470,15 @@ servidor.on('upgrade', (req, socket) => {
 })
 
 servidor.listen(PUERTO, () => {
-  console.log(`agente de mentira en ws://localhost:${PUERTO}  (robot ${robot})`)
+  /*
+   * 🔴 SE IMPRIME EL PUERTO QUE DIO EL SISTEMA, no el que se pidio. Con
+   *    `--puerto 0` el sistema elige uno libre, y eso es lo que deja a la prueba
+   *    automatizada levantar varios dobles a la vez sin reservar numeros.
+   *    Imprimir la variable en vez de `address()` habria dicho «0».
+   */
+  const real = servidor.address().port
+  console.log(`agente de mentira en ws://localhost:${real}  (robot ${robot})`)
+  console.log(`  LISTO ${real}`)   // <- la prueba automatizada espera esta linea
   console.log(`  prácticas listadas: ${PRACTICAS.length}`)
   if (ocupadoPor) console.log(`  🔴 la ranura la tiene «${ocupadoPor}»`)
   if (sinReloj) console.log('  🔴 sin reloj: cerrará con 1013')

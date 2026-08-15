@@ -124,7 +124,7 @@ los dos servicios contestan; lo que nadie ha visto es **esta pantalla contra él
 | **1a** | entrar con sesión, `/robot/1/navegar`, pulsar «Arrancar SLAM» | el estado pasa a **arrancando** con los segundos subiendo, y a **funcionando** | que se quede en `arrancando` pasados ~60 s, o que salte a `funcionando` **sin** pasar por `arrancando` (querría decir que el latido no se está leyendo y se pinta un enlatado) |
 | **1b** | mirar los segundos | suben de 1 en 1 | que salgan `0` fijos: sería `-1` mal traducido, y este proyecto usa `-1` para «no se sabe», nunca para «cero» |
 | **1c** | con Nav2 **sin** mapa, pulsar «Arrancar Nav2» | el botón está **deshabilitado** y dice que falta el mapa | que se pueda pulsar: `hay_mapa` no se está leyendo |
-| **1b-bis** | 🆕 mirar el texto mientras arranca | dice **«unos 28 segundos»** para Nav2 y **«unos 18»** para SLAM, **con la condición al lado** («medido en UN robot en reposo… con la batería baja o varios robots a la vez, no se sabe») | que dé un plazo a secas, o una barra, o un porcentaje: n=2 sobre un robot en reposo no habla de dieciséis con la batería baja |
+| **1b-bis** | 🆕 mirar el texto mientras arranca | dice **«unos 30 segundos»** para Nav2 —con el desglose «28 con el barrido ya encendido, 32 si estaba apagado»— y **«unos 18»** para SLAM, **con la condición al lado** («medido en UN robot en reposo… con la batería baja o varios robots a la vez, no se sabe») | que dé un plazo a secas, o una barra, o un porcentaje: n=2 sobre un robot en reposo no habla de dieciséis con la batería baja |
 | **1c-bis** | 🔁 **REESCRITA el 2026-08-14.** Enciende el barrido en Conducir, arranca Nav2, **párala**, y vuelve a mirar `/scan` | **el barrido SIGUE encendido**: la unidad lo devuelve al estado que encontró | que se apague: el robot tendría el `atriz-escaneo` viejo, y entonces el alumno se va a Conducir y «no le hace caso» sin un solo error. ⚠️ Antes aquí se exigía un **aviso** en la web; el robot lo arregló en el robot (evidencia 114) y el aviso se retiró |
 | **1e** | 🆕 con la unidad **bloqueada**, leer el motivo | ofrece **las dos salidas**: esperar ~5 minutos —«se limpia solo»— **y** el `reset-failed` por SSH; y antes de las dos, «QUITA LA CAUSA» | que solo mencione el `reset-failed`: mandaría a buscar a alguien con privilegios para algo que se arregla esperando (medido: 355 s, evidencia 112) |
 | **1d** | parar el supervisor en el robot (`systemctl stop`) y esperar 5 s | los dos sistemas pasan a **«no se sabe»**, no se congelan en el último valor | que sigan diciendo `funcionando`: la guardia del latido no corre. **Es el fallo que la pantalla existe para no cometer** |
@@ -330,50 +330,81 @@ sumen exactamente lo mismo.
 
 ---
 
-## 4 · 🆕 EL TALLER — el terminal. **Nada de esto ha tocado un robot**
+## 4 · 🆕 EL TALLER — el terminal. **Ya tocó un robot, y quedan seis casillas**
 
-Construido el 2026-08-14. La cadena de tres eslabones está cerrada y el terminal
-escribe y ejecuta contra un doble. **Lo que falta ya no es diseño: son medidas**,
-y ninguna se puede hacer sin un RVR.
+Construido el 2026-08-14. ~~«Nada de esto ha tocado un robot».~~ **Falso desde la
+madrugada del 2026-08-15**: la Pi lo auditó y lo validó en vivo sobre rvr-01
+(evidencia 117) — 19 casillas en verde, **cinco fallos cazados** en la mitad del
+robot (dos de ellos solo visibles con una práctica de verdad corriendo), y
+`05_sensor_color.py` de punta a punta por el terminal.
+
+🔴 **Pero hay una frontera que no se puede difuminar, y es lo que deja abierta la
+mayoría de las casillas de abajo: aquello se midió DESDE LA PI, con un arnés
+Python y una clave Ed25519 DE PRUEBA. Ni un navegador.** Que el agente conteste
+bien a un cliente escrito para probarlo no dice que el navegador lo pinte —es la
+distinción de siempre en este proyecto entre el emisor y el testigo válido, la
+misma que hizo que `ping`, `Resolve-DnsName` y `getent` dieran verde con el
+navegador colgado.
+
+→ **Los dos pasos de 4a siguen siendo lo primero, y ahora bloquean de verdad**:
+sin la clave REAL publicada, un navegador no abre nada.
 
 ### 4a · Antes de nada, dos pasos que no son de medir
 
-| | |
-|---|---|
-| 🔴 **Quitar `~/.git-credentials` de los 16** | El código del alumno corre como `sphero` y puede leerlo: es el PAT de GitHub del proyecto. Los repositorios ya son públicos, así que clonar no lo necesita |
-| **Repartir la clave pública** | `node herramientas/publicar_clave.mjs` en el PC → `/etc/atriz/testigo.pub` en cada robot. La privada vive **solo** en el `.env.local` del portátil que sirve la web |
+| | | estado |
+|---|---|---|
+| 🔴 **Quitar `~/.git-credentials` de los 16** | El código del alumno corre como `sphero` y puede leerlo: es el PAT de GitHub del proyecto. Los repositorios ya son públicos, así que clonar no lo necesita | ⏳ **abierto, y es 👤 decisión del usuario**: quitarlo deja a esa Pi sin poder hacer `push`. Anotado, no olvidado |
+| 🔴 **Repartir la clave pública REAL** | `node herramientas/publicar_clave.mjs` en el PC → `/etc/atriz/testigo.pub` en cada robot. La privada vive **solo** en el `.env.local` del portátil que sirve la web | ⏳ **abierto, y bloquea al navegador**: hoy rvr-01 tiene una clave **DE PRUEBA**, con la que la web no abre. El agente la lee al arrancar, así que pisarla exige un `restart` |
+| ✅ **Instalar la unidad** | ~~`sudo cp` a mano~~ | ✅ **`fase_7` instala y habilita `atriz-agente`** desde el 2026-08-15, avisa si falta `testigo.pub`, y el MANIFIESTO lo vigila |
 
-### 4b · Lo que se cierra en cualquier Linux, sin RVR
+### 4b · ✅ CERRADO: lo que se hace en cualquier Linux, sin RVR
 
-Los requisitos 1 y 2 del taller —PTY y `stdin`— **no necesitan robot**, solo un
-Linux. Aquí quedaron sin medir porque este PC es Windows y no tiene ni WSL con
-Python ni el demonio de Docker arrancado:
+Los requisitos 1 y 2 del taller —PTY y `stdin`— no necesitan robot, solo un
+Linux. **En este PC (Windows) las 13 pruebas del PTY salían `skipped`, y eso no
+es que pasen.** Corridas en la Pi el 2026-08-15: **13/13 en verde**, más 31/31
+del núcleo y 5/5 del cruzado. La suite creció a **50** con los cinco fallos que
+la auditoría encontró, cada uno con su prueba escrita ANTES del arreglo.
 
 ```bash
 # en la Pi, en WSL, o en un contenedor
 cd ~/atriz_ws/src/Atriz_rvr && python3 -m pytest scripts/agente/pruebas/ -q
 ```
 
-⚠️ **Que salgan `skipped` NO es que pasen.** Son 13 pruebas y cada una lleva su
-**control contra una tubería**: sin el control, «funciona con PTY» no distingue
-que el PTY lo arregle de que funcionara igual.
+⚠️ El aviso se conserva porque **vuelve cada vez que alguien mire la suite desde
+Windows**: `skipped` no es `passed`, y cada una de esas 13 lleva su **control
+contra una tubería** — sin el control, «funciona con PTY» no distingue que el PTY
+lo arregle de que funcionara igual.
+
+📌 Y la del cruzado ya **no se salta en la Pi**: el `testigo_ejemplo.json` está
+versionado también en `atriz_migracion/scripts/pruebas/`, y si falta la prueba
+**falla** en vez de saltarse.
 
 ### 4c · Lo que exige el robot, y no tiene atajo
 
-| | qué hacer | qué debe pasar | 🔴 qué lo refuta |
-|---|---|---|---|
-| **4-1** | abrir `/robot/7` con el agente parado | dice que **no llega al agente**, y que eso es **otro enlace** que el de la franja de arriba | que diga «en línea» a secas: son dos sockets a dos puertos, y uno vivo no dice nada del otro |
-| **4-2** | abrirlo **sin haber entrado** | pide iniciar sesión | que abra: el terminal es lo único de esta web que ejecuta código, y sin sesión no debe |
-| **4-3** | arrancar el agente y abrir de nuevo | lista las prácticas **del robot**, y son **15** | que liste diez, o nombres que no existen: la lista la da el agente leyendo el directorio, no una tabla de la web |
-| **4-4** | abrir `01_avanzar.py` y ejecutarlo, **con cinta** | ~58-59 cm, lo mismo que por SSH (evidencia 108) | que recorra otra distancia: el `PYTHONPATH` o el entorno no serían los del SSH |
-| **4-5** | 🔴 ejecutar `05_sensor_color.py` | una fila **cada 0,5 s en vivo** | que salga a bloques al final: sería una tubería y no un PTY — el requisito 1 entero |
-| **4-6** | 🔴 ejecutar `04_giro_preciso.py` | los **cuatro** `input()` se contestan desde el navegador, con transportador en la mano | que el programa no espere: sin terminal `input()` no bloquea y **se salta la pausa sin avisar** |
-| **4-7** | 🔴 Parar a mitad de un avance, **midiendo con cinta** | el robot para, y lo que recorre después es comparable al ~1 cm medido por SSH | que recorra mucho más: el `SIGINT` no estaría llegando al grupo, o `atriz.py` no lo captura por el PTY. **Nadie lo ha medido nunca por PTY** |
-| **4-8** | 🔴 `SIGKILL` desde el desplegable de señales | el barrido **queda encendido**, y la pantalla **lo dice** | que la pantalla diga que se apagó: `comprobar_efecto()` devuelve hoy «no lo sé» en todos sus campos a propósito, y afirmar sería inventar |
-| **4-9** | arrancar SLAM y matar un guion encima | el barrido **NO se apaga** | que se apague: dejaría ciega a la navegación en curso, que es por lo que `atriz.py` no apaga lo que no encendió |
-| **4-10** | dos pestañas, dos usuarios, mismo robot | el segundo ve **quién** lo tiene y desde cuándo, y **no** puede quitárselo | un «ocupado» sin nombre: con dos robots por mesa, el nombre es la diferencia entre esperar y preguntar |
-| **4-11** | recargar la página con un programa corriendo | **se reengancha**: sigue viendo su PID y puede pararlo | que lo trate como «robot ocupado»: un F5 convertido en diez minutos de espera contra el propio robot |
-| **4-12** | `systemctl stop atriz-agente` y mirar `/run/atriz` | **sobrevive**, con la marca del vigía de DDS dentro | que desaparezca: falta `RuntimeDirectoryPreserve=yes`, y el robot se reiniciaría solo más de una vez por arranque |
+🔴 **Lee la columna «quién lo vio» antes de dar una fila por cerrada.** «La Pi»
+significa que lo comprobó su arnés Python contra el agente; **«el navegador»
+significa que alguien lo vio en la pantalla**, y hoy eso no lo ha visto nadie.
+Las dos cosas se pueden romper por separado: es la misma frontera que dejó
+`ping` y `getent` en verde con el navegador colgado.
+
+
+| | qué hacer | qué debe pasar | quién lo vio | 🔴 qué lo refuta |
+|---|---|---|---|---|
+| **4-1** | abrir `/robot/7` con el agente parado | dice que **no llega al agente**, y que eso es **otro enlace** que el de la franja de arriba | ⏳ nadie | que diga «en línea» a secas: son dos sockets a dos puertos, y uno vivo no dice nada del otro |
+| **4-2** | abrirlo **sin haber entrado** | pide iniciar sesión | ⏳ nadie | que abra: el terminal es lo único de esta web que ejecuta código, y sin sesión no debe |
+| **4-3** | arrancar el agente y abrir de nuevo | lista las prácticas **del robot**, y son **15** | ✅ la Pi (15 reales) · ⏳ el navegador | que liste diez, o nombres que no existen: la lista la da el agente leyendo el directorio, no una tabla de la web |
+| **4-4** | abrir `01_avanzar.py` y ejecutarlo, **con cinta** | ~58-59 cm, lo mismo que por SSH (evidencia 108) | ⏳ nadie — la Pi corrió la **05**, que no se mueve | que recorra otra distancia: el `PYTHONPATH` o el entorno no serían los del SSH. 📌 Y esta casilla ya cazó uno: `entorno_de_ejecucion` pisaba `PYTHONPATH` entero y la 05 moría en `import rclpy` — **ninguna prueba pura podía verlo** |
+| **4-5** | 🔴 ejecutar `05_sensor_color.py` | una fila **cada 0,5 s en vivo** | ✅ la Pi, de punta a punta (filas RGBC vivas, fin en 13 s) · ⏳ el navegador | que salga a bloques al final: sería una tubería y no un PTY — el requisito 1 entero |
+| **4-6** | 🔴 ejecutar `04_giro_preciso.py` | los **cuatro** `input()` se contestan desde el navegador, con transportador en la mano | ⏳ nadie — la Pi validó `stdin`+eco, pero **no las cuatro pausas de la 04** | que el programa no espere: sin terminal `input()` no bloquea y **se salta la pausa sin avisar** |
+| **4-7** | 🔴 Parar a mitad de un avance, **midiendo con cinta** | el robot para, y lo que recorre después es comparable al ~1 cm medido por SSH | ⏳ nadie | que recorra mucho más: el `SIGINT` no estaría llegando al grupo, o `atriz.py` no lo captura por el PTY. **Sigue sin medirlo nadie por PTY** |
+| **4-8** | 🔴 `SIGKILL` desde el desplegable de señales | el barrido **queda encendido**, y la pantalla **lo dice** | ⏳ nadie | que la pantalla diga que se apagó: `comprobar_efecto()` devuelve hoy «no lo sé» en varios campos a propósito, y afirmar sería inventar |
+| **4-9** | arrancar SLAM y matar un guion encima | el barrido **NO se apaga** | ⏳ nadie | que se apague: dejaría ciega a la navegación en curso, que es por lo que `atriz.py` no apaga lo que no encendió |
+| **4-10** | dos pestañas, dos usuarios, mismo robot | el segundo ve **quién** lo tiene y desde cuándo, y **no** puede quitárselo | ✅ la Pi (`NO_ES_TUYO` y «OCUPADO: lo tiene ana») · ⏳ el navegador | un «ocupado» sin nombre: con dos robots por mesa, el nombre es la diferencia entre esperar y preguntar |
+| **4-11** | recargar la página con un programa corriendo | **se reengancha**: sigue viendo su PID y puede pararlo | ✅ la Pi (sobrevive al F5 y se readopta) · ⏳ el navegador | que lo trate como «robot ocupado»: un F5 convertido en diez minutos de espera contra el propio robot |
+| **4-12** | `systemctl stop atriz-agente` y mirar `/run/atriz` | **sobrevive**, con la marca del vigía de DDS dentro | ✅ la Pi, **por efecto** (marca + stop + sigue) | que desaparezca: falta `RuntimeDirectoryPreserve=yes`, y el robot se reiniciaría solo más de una vez por arranque |
+| **4-13** | 🆕 el diluvio: ejecutar algo que escupa sin parar | la pantalla **dice cuántas líneas descartó**, y no se atasca | ✅ la Pi: **2 097 152 bytes exactos**, 42 267 líneas contadas · ⏳ el navegador | un recorte silencioso: el alumno leería una salida incompleta creyéndola entera |
+| **4-14** | 🆕 los tres cierres con motivo (4401 · 4403 · 4404) | cada uno llega **con su frase**, no un código a secas | ✅ la Pi · ⏳ el navegador | un cierre mudo: el navegador lo convierte en 1006 sin motivo, y se busca en el robot |
+| **4-15** | 🆕 ejecutar **durante** un `restart` del agente | rechazo `AGENTE_PARANDO` y la frase «reintenta en unos segundos» | ✅ la Pi · ⏳ el navegador | que acepte la ejecución: moriría a los pocos segundos con un `SIGINT` que el alumno no pidió |
 
 ### 4d · Y lo que no se puede medir con uno solo
 

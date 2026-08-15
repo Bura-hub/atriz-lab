@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  SENALES, leerMensaje, motivoDeCierre, opEjecutar, opEntrada, opLeer, opSenal,
+  SENALES, TOPE_CODIGO_BYTES, cabeElCodigo, leerMensaje, motivoDeCierre, opEjecutar,
+  opEntrada, opLeer, opSenal,
 } from './protocolo'
 
 const paquete = (o: Record<string, unknown>) => JSON.stringify(o)
@@ -155,5 +156,36 @@ describe('motivoDeCierre', () => {
   it('un código que no conocemos no inventa un motivo', () => {
     expect(motivoDeCierre(4999)).toBe('')
     expect(motivoDeCierre(1000)).toBe('')
+  })
+})
+
+describe('cabeElCodigo · el tope que hasta hoy no comprobaba nadie', () => {
+  it('🔴 cuenta BYTES, no caracteres', () => {
+    /*
+     * Es el fallo que `codigo.length` habria dejado pasar. Un fichero de
+     * comentarios en español —o con un emoji, que la 21 lleva— pesa mas de lo
+     * que mide: `'ñ'` son DOS bytes y `'🔴'` son CUATRO. Con `.length` un guion
+     * de 64 K caracteres de emoji viajaria pesando 256 KiB, que es justo el
+     * pegote que este tope existe para que no cruce el WiFi del aula.
+     */
+    const justoEnBytes = '🔴'.repeat(TOPE_CODIGO_BYTES / 4)
+    expect(justoEnBytes.length).toBeLessThan(TOPE_CODIGO_BYTES)   // por caracteres cabria de sobra
+    expect(cabeElCodigo(justoEnBytes)).toBe('')                    // y por bytes cabe JUSTO
+    expect(cabeElCodigo(`${justoEnBytes}a`)).not.toBe('')          // un byte mas, y ya no
+  })
+
+  it('lo que cabe no dice nada, y es lo normal', () => {
+    expect(cabeElCodigo('')).toBe('')
+    expect(cabeElCodigo('from atriz import Robot\nRobot().avanzar(0.2, 3)\n')).toBe('')
+    expect(cabeElCodigo('x'.repeat(TOPE_CODIGO_BYTES))).toBe('')
+  })
+
+  it('🔴 y cuando NO cabe, dice cuanto ocupa, cuanto cabe, y que no ha viajado', () => {
+    // Las tres cosas: sin la tercera, el alumno se queda mirando una pantalla
+    // quieta sin saber si se mando o no.
+    const motivo = cabeElCodigo('x'.repeat(TOPE_CODIGO_BYTES + 1024))
+    expect(motivo).toContain('65')      // lo que ocupa, en KiB
+    expect(motivo).toContain('64')      // el maximo
+    expect(motivo).toContain('No se ha enviado')
   })
 })

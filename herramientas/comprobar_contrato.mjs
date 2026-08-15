@@ -343,4 +343,128 @@ if (aceptar) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════
+// 6 · EL TALLER — el contrato con el AGENTE DE SESION
+// ═══════════════════════════════════════════════════════════════════════
+/*
+ * 🔴 NACE DE UNA AUDITORIA, Y DE LA MISMA FAMILIA QUE YA MORDIO UNA VEZ.
+ *
+ * El robot lo dijo con estas palabras (evidencia 117 §6): «comprobar_contrato
+ * NO cubre el taller — 0 menciones de taller/testigo/9443/agente: la misma
+ * familia que la ceguera de campos de .msg que ya mordio una vez».
+ *
+ * Tenia razon. Este guion vigilaba la lista blanca de rosbridge y los campos de
+ * los `.msg`, y el taller abrio un contrato NUEVO —otro puerto, otro protocolo,
+ * otro lenguaje al otro lado— que no vigilaba nadie. Y ese contrato ya se ha
+ * movido una vez sin que la web se enterara: el agente gano el rechazo
+ * `AGENTE_PARANDO` en la auditoria y `protocolo.ts` no lo conocia.
+ *
+ * ⚠️ Lo que esto NO puede hacer: comprobar el COMPORTAMIENTO. Solo mira que los
+ *    nombres y las constantes que los dos lados escriben por separado sigan
+ *    diciendo lo mismo. Es exactamente el alcance del control de campos, y con
+ *    la misma limitacion.
+ */
+const rutaNucleo = join(raizRvr, 'scripts/agente/agente_nucleo.py')
+const rutaTestigoTs = join(raizProyecto, 'frontend/src/lib/sesion/testigo_robot.ts')
+const rutaProtocoloTs = join(raizProyecto, 'frontend/src/lib/taller/protocolo.ts')
+
+if (!existsSync(rutaNucleo)) {
+  console.log(
+    '⚠️  TALLER: no encuentro `scripts/agente/agente_nucleo.py` en el robot, asi que ' +
+    'este control NO se ha hecho. No es un ✅: es que falta con que comparar.'
+  )
+} else {
+  const nucleo = readFileSync(rutaNucleo, 'utf8')
+  const protocoloTs = readFileSync(rutaProtocoloTs, 'utf8')
+  const testigoTs = readFileSync(rutaTestigoTs, 'utf8')
+  const problemas = []
+
+  // 6a · Las señales. Son el instrumento de la practica 99: si el agente
+  //      recorta la lista y la web sigue ofreciendo el boton, el alumno pulsa
+  //      algo que se rechaza en silencio.
+  const senalesPy = [...(nucleo.match(/^SENALES\s*=\s*\(([^)]*)\)/m)?.[1] ?? '')
+    .matchAll(/'([A-Z]+)'/g)].map((m) => m[1]).sort()
+  const senalesTs = [...(protocoloTs.match(/export const SENALES\s*=\s*\[([^\]]*)\]/)?.[1] ?? '')
+    .matchAll(/'([A-Z]+)'/g)].map((m) => m[1]).sort()
+  if (senalesPy.join() !== senalesTs.join()) {
+    problemas.push(`señales: el agente dice [${senalesPy}] y la web [${senalesTs}]`)
+  }
+
+  /*
+   * 6b · Los codigos de rechazo, y SOLO EN UNA DIRECCION.
+   *
+   * 🔴 LA PRIMERA VERSION DE ESTE CONTROL ERA UN FALSO POSITIVO, y se corrigio
+   *    antes de subirlo. Marcaba en rojo los diez codigos del agente que la web
+   *    «no menciona» — pero la web NO NECESITA mencionarlos: pinta el `motivo`
+   *    que manda el agente, tal cual, para cualquier rechazo que no trate
+   *    aparte. Un codigo nuevo del agente **ya se ve** sin tocar nada.
+   *
+   *    Y un comprobador que grita por algo que funciona se acaba ignorando, que
+   *    es exactamente lo que este repositorio persigue en su propio verificador
+   *    —once falsos positivos documentados—.
+   *
+   * → Lo que SI es un fallo es la direccion contraria: un codigo sobre el que la
+   *   web RAMIFICA y que el agente ya no emite. Eso es una rama muerta que
+   *   nadie ejecuta, y la pantalla se comporta distinto de como se lee.
+   */
+  const rechazosPy = new Set([
+    ...[...nucleo.matchAll(/_rechazo\(\s*[a-z]+\s*,\s*'([A-Z_]+)'/g)].map((m) => m[1]),
+    ...[...readFileSync(join(raizRvr, 'scripts/agente/agente_sesion.py'), 'utf8')
+      .matchAll(/'codigo':\s*'([A-Z_]+)'/g)].map((m) => m[1]),
+  ])
+  //: Los que la web trata APARTE, no los que enseña. Se buscan como literal.
+  const ramificaWeb = [...new Set([
+    ...[...protocoloTs.matchAll(/codigo === '([A-Z_]+)'/g)].map((m) => m[1]),
+    ...[...readFileSync(join(raizProyecto, 'frontend/src/componentes/robot/PanelTerminal.tsx'), 'utf8')
+      .matchAll(/codigo !== '([A-Z_]+)'|codigo === '([A-Z_]+)'/g)].map((m) => m[1] ?? m[2]),
+    ...[...readFileSync(join(raizProyecto, 'frontend/src/lib/taller/sesion_taller.ts'), 'utf8')
+      .matchAll(/codigo === '([A-Z_]+)'/g)].map((m) => m[1]),
+  ])]
+  const ramasMuertas = ramificaWeb.filter((c) => !rechazosPy.has(c))
+  if (ramasMuertas.length) {
+    problemas.push(
+      `la web ramifica sobre codigos que el agente YA NO manda: ${ramasMuertas.join(', ')} ` +
+      '(rama muerta: la pantalla se comporta distinto de como se lee)'
+    )
+  }
+
+  // 6c · El tope de codigo. Si divergen, el alumno manda 64 KiB que el agente
+  //      rechaza, o la web corta antes de tiempo.
+  const topePy = Number(nucleo.match(/TOPE_CODIGO_BYTES\s*=\s*(\d+)\s*\*\s*1024/)?.[1] ?? 0) * 1024
+  const topeTs = Number(protocoloTs.match(/TOPE_CODIGO_BYTES\s*=\s*(\d+)\s*\*\s*1024/)?.[1] ?? 0) * 1024
+  if (topePy !== topeTs) {
+    problemas.push(`tope de codigo: el agente ${topePy} B y la web ${topeTs} B`)
+  }
+
+  // 6d · El subprotocolo y el prefijo del testigo. Estan en el verificador de
+  //      Python (`atriz_testigo.py`) y en la web; si divergen, el navegador no
+  //      abre y el motivo no aparece por ninguna parte.
+  const rutaTestigoPy = join(raizRvr, '../atriz_migracion/scripts/atriz_testigo.py')
+  if (existsSync(rutaTestigoPy)) {
+    const testigoPy = readFileSync(rutaTestigoPy, 'utf8')
+    for (const [nombre, re] of [
+      ['PREFIJO_TESTIGO', /PREFIJO_TESTIGO\s*=\s*'([^']+)'/],
+      ['SUBPROTOCOLO', /SUBPROTOCOLO\s*=\s*'([^']+)'/],
+    ]) {
+      const py = testigoPy.match(re)?.[1]
+      const ts = testigoTs.match(new RegExp(`${nombre === 'SUBPROTOCOLO' ? 'SUBPROTOCOLO_AGENTE' : nombre}\\s*=\\s*'([^']+)'`))?.[1]
+      if (py !== undefined && ts !== undefined && py !== ts) {
+        problemas.push(`${nombre}: el robot '${py}' y la web '${ts}'`)
+      }
+    }
+  }
+
+  if (problemas.length) {
+    fallos++
+    console.error('🔴 TALLER: el contrato con el agente de sesion ha divergido')
+    for (const p of problemas) console.error(`   ${p}`)
+    console.error('   👉 gana el ROBOT: es quien ejecuta. Alinea la web.')
+  } else {
+    console.log(
+      `✅ TALLER: señales (${senalesTs.length}), rechazos, tope de codigo y subprotocolo ` +
+      'coinciden con el agente. ⚠️ Nombres y constantes, NO comportamiento'
+    )
+  }
+}
+
 process.exit(fallos ? 1 : 0)

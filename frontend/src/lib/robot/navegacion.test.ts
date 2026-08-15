@@ -225,18 +225,29 @@ describe('decidirBoton', () => {
     // 🔴 Nada con forma de promesa: ni «falta», ni porcentaje, ni cuenta atrás.
     expect(b.motivo).not.toMatch(/falta|%|restan|quedan/i)
     // ✅ Pero sí el dato medido, y SIEMPRE con la condicion que lo acota.
-    expect(b.motivo).toContain('28 segundos')
+    expect(b.motivo).toContain('30 segundos')
     expect(b.motivo).toMatch(/reposo/)
     expect(b.motivo).toMatch(/no se sabe/)
+    /*
+     * 🔴 Y con el DE QUE DEPENDE, que es lo que hizo caducar al «28». El
+     *    2026-08-14 el robot hizo que parar la navegacion devolviera el barrido
+     *    al estado que encontro, y arrancarla con el barrido apagado paso a
+     *    costar ~32 s. Un numero suelto se vuelve mentira; el numero con su
+     *    condicion, no.
+     */
+    expect(b.motivo).toMatch(/barrido/)
   })
 
-  it('🔴 y el numero es el de SU sistema: 28 s Nav2, 18 s SLAM', () => {
+  it('🔴 y el numero es el de SU sistema: 30 s Nav2, 18 s SLAM', () => {
     // Copiar el de uno al otro seria la trampa que este proyecto ya tiene
     // escrita: una cifra correcta en su contexto se vuelve falsa al mudarla.
     const nav = decidirBoton(leer(msg({ nav: ESTADO_NAV.ARRANCANDO }), 'nav', true), 'nav')
     const slam = decidirBoton(leer(msg({ slam: ESTADO_NAV.ARRANCANDO }), 'slam', true), 'slam')
-    expect(nav.motivo).toContain('28 segundos')
+    expect(nav.motivo).toContain('30 segundos')
     expect(slam.motivo).toContain('18 segundos')
+    // Y el matiz del barrido es SOLO de Nav2: SLAM se arranca con el barrido ya
+    // encendido por definicion —sin `/scan` no mapea nada—, asi que ahi no aplica.
+    expect(slam.motivo).not.toMatch(/barrido/)
   })
 
   it('🔴 CIEGO y MUDO ofrecen PARAR, no arrancar otra vez', () => {
