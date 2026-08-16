@@ -419,7 +419,7 @@ export function MuroFlota() {
         */}
         <div className={`${nadieResponde ? 'mt-3' : ''} mb-7 flex justify-end`}>
           <div className="w-full max-w-md">
-            <DondeBuscar direcciones={direcciones} poner={poner} nadieResponde={nadieResponde} />
+            <DondeBuscar direcciones={direcciones} poner={poner} />
           </div>
         </div>
 

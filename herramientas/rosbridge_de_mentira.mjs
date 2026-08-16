@@ -215,6 +215,8 @@ let t = 0
 let luzEncendida = false
 /** Tics que lleva corriendo un objetivo de navegacion. 0 = ninguno. */
 let navegando = 0
+/** Cuantas lecturas de color se han pedido. Da ruido reproducible. */
+let lecturasColor = 0
 /*
  * ═══════════════════════════════════════════════════════════════════════════
  * UN CUARTO DE MENTIRA: 3,45 x 4,10 m a 5 cm/celda = 69 x 82 celdas
@@ -534,9 +536,24 @@ servidor.on('upgrade', (req, socket) => {
           })))
         } else if (m.service === '/get_rgbc_sensor_values') {
           // Pantalla ROJA a tope, medida en los dos estados de la luz.
+          /*
+           * 🔴 CON RUIDO, Y NO ES ADORNO. Sin el, dos lecturas seguidas son
+           *    IDENTICAS y una pantalla que sondea en continuo se ve **igual**
+           *    que una que dispara una vez: el doble no distinguiria el defecto
+           *    que se acaba de arreglar del arreglo. Y ademas es lo que hace el
+           *    sensor de verdad: sobre una pantalla quieta se midieron 2-4
+           *    cuentas de dispersion.
+           *
+           * ⚠️ `t` avanza 1 por segundo; se combina con el contador de llamadas
+           *    para que dos lecturas dentro del mismo segundo tampoco coincidan.
+           *    Nada de `Math.random()`: un doble que no se puede repetir no
+           *    sirve para comparar dos capturas.
+           */
+          lecturasColor += 1
+          const ruido = (k) => ((t * 7 + lecturasColor * 3 + k * 11) % 7) - 3
           const v = luzEncendida
-            ? { red_channel_value: 817, green_channel_value: 1238, blue_channel_value: 607, clear_channel_value: 1238 }
-            : { red_channel_value: 512, green_channel_value: 100, blue_channel_value: 15, clear_channel_value: 150 }
+            ? { red_channel_value: 817 + ruido(1), green_channel_value: 1238 + ruido(2), blue_channel_value: 607 + ruido(3), clear_channel_value: 1238 + ruido(4) }
+            : { red_channel_value: 512 + ruido(1), green_channel_value: 100 + ruido(2), blue_channel_value: 15 + ruido(3), clear_channel_value: 150 + ruido(4) }
           socket.write(marco(JSON.stringify({
             op: 'service_response', id: m.id, service: m.service, result: true,
             values: { ...v, success: true,

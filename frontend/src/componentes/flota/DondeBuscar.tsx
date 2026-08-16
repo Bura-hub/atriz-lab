@@ -115,20 +115,38 @@ function Fila({ id, valor, poner }: {
   )
 }
 
-export function DondeBuscar({ direcciones, poner, nadieResponde = false }: {
+export function DondeBuscar({ direcciones, poner }: {
   direcciones: Direcciones
   poner: (id: number, texto: string) => void
-  /** El muro no llega a NINGUN robot. Entonces esto es el remedio, no un ajuste. */
-  nadieResponde?: boolean
 }) {
   const puestas = cuantasPuestas(direcciones)
-  const deberiaAbrirse = nadieResponde || puestas > 0
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 `nadieResponde` NO ABRE ESTO, Y ANTES SÍ — LO PARÓ EL USUARIO AL VERLO
+   * ═══════════════════════════════════════════════════════════════════════════
+   * El razonamiento era «si el muro no llega a ningún robot, esto es el remedio
+   * y no un ajuste». Suena bien y es falso en la escena real: **al empezar cada
+   * clase los dieciséis están apagados**, así que «nadie responde» es el estado
+   * NORMAL de arranque — y el cuadro salía desplegado, con dieciséis filas, en
+   * la única pantalla cuyo criterio es una persona a tres metros.
+   *
+   * Es la regla de este proyecto cometida en una pieza nueva: **un aviso que
+   * salta siempre deja de leerse.** La misma por la que `sinSenal` no cuenta
+   * como «pide algo» en el resumen, tres ficheros más allá.
+   *
+   * → Se abre solo cuando hay una dirección PUESTA, que es lo que de verdad no
+   *   puede quedar invisible: con un override mal escrito el muro pinta
+   *   dieciséis baldosas muertas y la causa está plegada dos líneas más arriba.
+   *   Eso no es el estado de arranque de nadie: es una configuración que alguien
+   *   escribió a mano.
+   */
+  const deberiaAbrirse = puestas > 0
   const [abierto, setAbierto] = useState(deberiaAbrirse)
 
   /*
-   * 🔴 SOLO ABRE, NUNCA CIERRA. Si `nadieResponde` deja de ser cierto mientras
-   *    alguien esta escribiendo una direccion, cerrarle el cuadro en la cara
-   *    seria peor que no haberlo abierto.
+   * 🔴 SOLO ABRE, NUNCA CIERRA. Si alguien borra el último override mientras
+   *    está escribiendo otro, cerrarle el cuadro en la cara sería peor que no
+   *    haberlo abierto.
    */
   useEffect(() => {
     if (deberiaAbrirse) setAbierto(true)
@@ -146,22 +164,23 @@ export function DondeBuscar({ direcciones, poner, nadieResponde = false }: {
     */
     /*
       ═══════════════════════════════════════════════════════════════════════
-      🔴 SE ABRE SOLO CUANDO ES LA RESPUESTA (2026-08-16, F5)
+      🔴 SE ABRE SOLO CUANDO HAY UNA DIRECCION PUESTA (2026-08-16, F5)
       ═══════════════════════════════════════════════════════════════════════
       El plan pedia que este cuadro «deje de estar plegado», y dejarlo SIEMPRE
-      abierto habria sido peor: son dieciseis filas de direcciones en la unica
-      pantalla cuyo criterio es **una persona a tres metros**.
+      abierto es peor: son dieciseis filas de direcciones en la unica pantalla
+      cuyo criterio es **una persona a tres metros**.
 
-      Lo que hacia falta es que no este escondido CUANDO IMPORTA, y este mismo
-      fichero ya tenia escrito cuando es eso: «cuando el aviso de ningun robot
-      responde tiene razon, esto es justo lo que hay que abrir». Se cumple.
+      🔴 ESTE BLOQUE DECIA ADEMAS QUE SE ABRIA CON «ningun robot responde», Y ESO
+         SE RETIRO EL MISMO DIA: el usuario lo vio desplegado y lo paro. Al
+         empezar cada clase los dieciseis estan apagados, asi que ese caso es el
+         estado NORMAL de arranque y el cuadro salia abierto siempre. Ver el
+         comentario de `deberiaAbrirse`.
 
-      🔴 Y el segundo caso es el que de verdad muerde: **si hay alguna direccion
-         puesta, se abre**. Una configuracion que NO es la de por defecto no
-         puede quedar invisible — con un override mal escrito, el muro pinta
-         dieciseis baldosas muertas y la causa esta plegada dos lineas mas
-         arriba. Es la forma de fallo de este proyecto entera: el remedio
-         escondido debajo del sintoma.
+      Lo que si se abre solo: **si hay alguna direccion puesta**. Una
+      configuracion que NO es la de por defecto no puede quedar invisible — con
+      un override mal escrito, el muro pinta dieciseis baldosas muertas y la
+      causa esta plegada dos lineas mas arriba. Es la forma de fallo de este
+      proyecto entera: el remedio escondido debajo del sintoma.
 
       ⚠️ Y se puede CERRAR. Es estado local sembrado desde fuera, no un `open`
          atado a una prop: con la prop a pelo, cualquier re-render —y aqui llegan
