@@ -533,3 +533,57 @@ la primera porque nadie preguntó al robot, la segunda porque una tanda salió b
 
 → Antes de anotar «verificado», escribe **qué habrías visto si fuera falso**. Si no
 hay respuesta, no es una medida.
+
+---
+
+## 6 · Lo que el rediseño de agosto dejó SIN VERIFICAR contra el robot
+
+> Escrito el 2026-08-16. Cada línea dice **qué se vería si fuera falso** — sin eso
+> no es una casilla, es un deseo.
+
+### 6a · 🔴 Conducir con el teclado **MUEVE EL ROBOT, y no se ha probado en uno**
+
+Flechas y WASD conducen desde `/robot/NN/conducir` (mantener pulsado, soltar para).
+Lo que hay detrás: **15 pruebas** de la lógica pura (`lib/interfaz/teclado.ts`),
+`tsc` y `eslint` limpios, y la pantalla renderiza. Lo que **no** hay: un robot
+moviéndose.
+
+⚠️ **No se probó a propósito**: mover un robot sin nadie delante es una acción
+física, y la regla del proyecto es avisar antes, no pedir perdón después.
+
+**Cómo comprobarlo, y son 30 segundos** (con el robot en el suelo y espacio libre):
+
+```
+1 · /robot/1/conducir  →  «Arrancar barrido»   (sin /scan NO se mueve, y es correcto)
+2 · pulsa ↑ y mantén    →  el robot avanza; al soltar, para
+3 · pulsa ← sin soltar ↑ →  gira; al soltar ←, vuelve a avanzar
+4 · pulsa ↑ y cambia de ventana con Alt+Tab  →  el robot PARA
+5 · pon el foco en un campo de texto y escribe «wasd» →  el robot NO se mueve
+```
+
+🔴 **Si fuera falso se vería así:** en 2, nada se mueve → el listener no está
+enganchado o el barrido está apagado. En 3, sigue recto → gana la primera tecla en
+vez de la última. En 4, **el robot sigue andando ~0,3 s hasta que el watchdog del
+driver corta** → el `blur` no llegó. En 5, el robot gira mientras escribes → la
+guarda de `escribiendo()` no está mirando el objetivo del evento.
+
+📌 El 5 es el que más importa, y tiene precedente: el gesto del mapa disparaba
+además un `click` que mandaba al robot a navegar, y **se enredó con unos cables**.
+Un gesto que significa dos cosas, y la que mueve el robot gana.
+
+### 6b · La escala impresa y la barra de batería
+
+La regla, sus umbrales y el relleno se ven contra rvr-01 a 7,79 V (medido en un
+primer plano). **Lo que no está medido**: que a 6,4 V —o sea por debajo de «baja»—
+el cursor caiga donde debe y el rótulo `BAJA` quede a su derecha. Exige una batería
+descargada, así que sale cuando salga.
+
+### 6c · 🔴 El tercer código, a TRES METROS
+
+La leyenda del muro distingue los tres bloques en escala de grises **en una
+captura**. A tres metros y proyectado, **no está comprobado** — y los alfas de la
+trama en modo proyección (0,26 y 0,34) salen de mi ojo mirando esa captura, no de
+una pared.
+
+**Si «mirar» y «hay que ir» se siguen pareciendo desde el fondo del aula, se
+suben.** Es un número, no un rediseño.

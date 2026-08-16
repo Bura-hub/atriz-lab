@@ -31,7 +31,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
-import { useTeleoperacion } from '@/hooks/useTeleoperacion'
 import {
   Punto, contarValidos, distanciaMinima, escala, puntosDelBarrido,
 } from '@/lib/interfaz/barrido'
@@ -328,10 +327,35 @@ function Coste({ cifra, unidad, etiqueta, nota }: {
 }
 
 export function PanelLidar() {
-  const { transporte } = useRobot()
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 LA TELEOPERACION SE TOMA DEL CONTEXTO, NO SE CREA (2026-08-16)
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Aqui ponia `useTeleoperacion(transporte)`, y ese hook **construye una
+   * `Teleoperacion` NUEVA** con su propio bucle de `setInterval` a 10 Hz
+   * publicando en `/cmd_vel_raw`. Con el proveedor creando ya la suya, esta
+   * pantalla tenia **DOS**.
+   *
+   * Y no es una sospecha de diseño: es el defecto que este proyecto ya nombro
+   * por escrito en TRES sitios —`BotonParada`, `PanelConducir` y el propio
+   * `ContextoRobot`— y que se subio la teleoperacion al proveedor para hacer
+   * imposible «por construccion en vez de por convencion». Esta pantalla se
+   * quedo fuera de aquella limpieza y nadie lo vio: el LIDAR no conduce, asi que
+   * el bucle de sobra no movia el robot — solo existia.
+   *
+   * ⚠️ Lo que si rompia, y por eso importa: la garantia escrita de **UNA sola
+   *    teleoperacion por conexion**. Una segunda instancia tiene su propia
+   *    bandera de parada de emergencia y su propio ciclo de vida; el dia que
+   *    alguien añada aqui un control que mueva algo, hay dos verdades sobre si
+   *    el robot esta parado.
+   *
+   * 📌 Ahora hay una guardia estatica que lo impide (`teleoperacion.test.ts`):
+   *    `useTeleoperacion()` solo puede llamarse desde `ContextoRobot`.
+   */
+  const { transporte, teleoperacion } = useRobot()
   const scan = useTopic(transporte, '/scan')
   const monitor = useTopic(transporte, '/collision_monitor_state')
-  const { arrancarBarrido } = useTeleoperacion(transporte)
+  const { arrancarBarrido } = teleoperacion
   const lienzo = useRef<HTMLCanvasElement>(null)
   const [encendiendo, setEncendiendo] = useState(false)
   const [fallo, setFallo] = useState<string | null>(null)

@@ -29,7 +29,7 @@
  * para no depender de el, pero esta ahi.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as EventoPuntero } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { ACCION_MONITOR, useTopic } from '@/hooks/useTopic'
@@ -40,6 +40,7 @@ import {
 } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
 import { seMueve } from '@/lib/interfaz/seguridad'
+import { conTecla, direccionDeTecla, escribiendo, mandoVigente, sinTecla } from '@/lib/interfaz/teclado'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { PanelEnlace } from './EstadoEnlace'
@@ -195,6 +196,98 @@ function CruzDeMando({
     e.currentTarget.setPointerCapture(e.pointerId)
     teleoperacion.mover(m.v * velocidad, m.w * GIRO)
   }
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 CONDUCIR CON EL TECLADO (2026-08-16) — Y LA INTERFAZ YA LO PROMETÍA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Las cuatro celdas llevan `focus-ring` desde que existen, o sea que se
+   * enfocan con el tabulador. Y una vez enfocadas, `Enter` o `Espacio` disparan
+   * `click`… que aquí **no hace nada**, porque el mando conduce con
+   * `pointerdown`/`pointerup`. La pantalla decía «puedes usar el teclado» con un
+   * anillo de foco y no cumplía.
+   *
+   * En el aula pesa más que la accesibilidad genérica: un alumno con el robot
+   * delante y una cinta métrica en la otra mano no está apuntando con el ratón.
+   *
+   * ⚠️ ESCUCHA EN `window`, NO EN LOS BOTONES, y es deliberado: si hubiera que
+   *    enfocar una celda primero, el teclado solo serviría después de usar el
+   *    ratón — o sea, no serviría. El precio es que hay que descartar a mano lo
+   *    que va para un campo de texto, y de eso se encarga `escribiendo()`.
+   *
+   * 🔴 `preventDefault` en las flechas: sin él, «Atrás» **hace scroll de la
+   *    página** mientras el robot anda. El mando se iría de la pantalla justo
+   *    conduciendo, que es el defecto que este rediseño acaba de cerrar con la
+   *    parada.
+   *
+   * 🔴 Y `pulsadas` es un `ref`, NO un estado: se lee y escribe dentro de los
+   *    manejadores, y un estado ahí volvería a montar los `addEventListener` en
+   *    cada tecla. Es la misma razón por la que la guarda del gesto del mapa
+   *    tuvo que ser un `ref`.
+   */
+  const pulsadas = useRef<string[]>([])
+
+  useEffect(() => {
+    if (!conectado) return
+
+    const aplicar = () => {
+      const d = mandoVigente(pulsadas.current)
+      try {
+        if (d === null) teleoperacion.parar()
+        else teleoperacion.mover(d.v * velocidad, d.w * GIRO)
+      } catch (error) {
+        alFallar(error instanceof Error ? error.message : String(error))
+      }
+    }
+
+    const abajo = (e: KeyboardEvent) => {
+      const objetivo = e.target as HTMLElement | null
+      if (escribiendo(objetivo?.tagName ?? '', objetivo?.isContentEditable ?? false)) return
+      if (direccionDeTecla(e.key) === null) return
+      /*
+       * ⚠️ Con un modificador NO se conduce. `Ctrl+ArrowLeft` es un atajo del
+       *    sistema en varios navegadores, y `Alt+←` es «atrás» en el historial:
+       *    quedarse con ellas robaría gestos que la persona espera que hagan
+       *    otra cosa.
+       */
+      if (e.ctrlKey || e.altKey || e.metaKey) return
+      e.preventDefault()
+      pulsadas.current = conTecla(pulsadas.current, e.key)
+      aplicar()
+    }
+
+    const arriba = (e: KeyboardEvent) => {
+      if (direccionDeTecla(e.key) === null) return
+      pulsadas.current = sinTecla(pulsadas.current, e.key)
+      aplicar()
+    }
+
+    /*
+     * 🔴 AL PERDER EL FOCO SE PARA, Y ESTO NO ES CORTESÍA. Si alguien cambia de
+     *    ventana con una tecla pulsada, el `keyup` **llega a la otra ventana**:
+     *    aquí no se entera nadie y el robot se queda con la orden puesta hasta
+     *    que el vigilante del driver corte a los 0,3 s. Que el watchdog lo salve
+     *    no es excusa para mandarlo mal — es la misma distinción que ya hace el
+     *    manejador de `visibilitychange` de esta pantalla.
+     */
+    const soltarTodo = () => {
+      if (pulsadas.current.length === 0) return
+      pulsadas.current = []
+      aplicar()
+    }
+
+    window.addEventListener('keydown', abajo)
+    window.addEventListener('keyup', arriba)
+    window.addEventListener('blur', soltarTodo)
+    return () => {
+      window.removeEventListener('keydown', abajo)
+      window.removeEventListener('keyup', arriba)
+      window.removeEventListener('blur', soltarTodo)
+      // Al desmontar —cambiar de pestaña del robot, por ejemplo— se suelta todo:
+      // el bucle de la teleoperación sobrevive a esta pantalla.
+      soltarTodo()
+    }
+  }, [conectado, teleoperacion, velocidad, alFallar])
 
   const mandos: readonly Mando[] = [
     { etiqueta: 'Adelante', v: 1, w: 0, columna: 'col-start-2 row-start-1', giro: 0 },
@@ -583,7 +676,17 @@ export function PanelConducir() {
       */}
       <Tarjeta
         titulo="Mando"
-        subtitulo="Se conduce manteniendo pulsado. Al soltar, se manda parar. Se publica en /cmd_vel_raw, que es la ENTRADA de la capa de seguridad."
+        /*
+         * 🔴 SE DICE QUE HAY TECLADO, y no es un extra: una función que no se
+         *    anuncia no existe. La cruz llevaba `focus-ring` desde siempre —o
+         *    sea, prometía teclado con un anillo de foco— y no hacía nada al
+         *    pulsar Enter. Ahora funciona y **se lee antes de tener que
+         *    descubrirlo**.
+         */
+        subtitulo={
+          'Se conduce manteniendo pulsado —con el ratón o con las flechas / WASD— y al soltar '
+          + 'se manda parar. Se publica en /cmd_vel_raw, que es la ENTRADA de la capa de seguridad.'
+        }
       >
         {/*
           🔴 MALLA, NO `flex-wrap`. Eran tres bloques de alturas 264 / 150 / 160
