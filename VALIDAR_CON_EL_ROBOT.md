@@ -119,6 +119,17 @@ proyecto bloqueó el sensor de color durante seis días.
 Es lo más grande sin verificar. El **supervisor sí corre** desde el 2026-08-07 y
 los dos servicios contestan; lo que nadie ha visto es **esta pantalla contra él**.
 
+📌 **COMPROBADO el 2026-08-15, porque esta frase parecía contradecir a A10** —que está
+cerrado— y al dato de `CLAUDE.md` «SLAM arrancado desde la web». **No hay contradicción: esta
+sección tiene razón.** Las dos evidencias que sostienen aquello se midieron **con guiones de
+Python**, no con un navegador: la **111** lo dice en su propia cabecera (`Guion: scratchpad
+probar_boton_nav.py`) y la **80** no menciona ni una vez pantalla, navegador ni Chrome.
+
+→ O sea: **el MECANISMO está verificado de punta a punta** (`/pedir_slam` y `/pedir_nav`
+funcionan, con sus tiempos medidos por dos caminos distintos), y **la PANTALLA sigue sin verse**.
+Son cosas distintas, y este proyecto tiene medido lo que cuesta confundirlas: `ping`,
+`Resolve-DnsName` y `getent` dieron verde los tres mientras el navegador se colgaba.
+
 | | qué hacer | qué debe pasar | 🔴 qué lo refuta |
 |---|---|---|---|
 | **1a** | entrar con sesión, `/robot/1/navegar`, pulsar «Arrancar SLAM» | el estado pasa a **arrancando** con los segundos subiendo, y a **funcionando** | que se quede en `arrancando` pasados ~60 s, o que salte a `funcionando` **sin** pasar por `arrancando` (querría decir que el latido no se está leyendo y se pinta un enlatado) |
