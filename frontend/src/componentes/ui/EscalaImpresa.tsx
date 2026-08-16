@@ -12,21 +12,35 @@
  * números se interpreta solo: Nav2 dice `SUCCEEDED` a 41 cm, `avanzar(0.20, 3)`
  * da 26 de 60, y el polígono de seguridad son 15 cm que nadie ve.
  *
- * ⚠️ NO ES UNA BARRA DE PROGRESO. No hay relleno de izquierda a valor: hay una
- *    regla impresa y **un cursor**. Un relleno diría «cuánto llevas», que sobre
- *    una batería es exactamente la lectura equivocada — y además convertiría la
- *    escala en una segunda forma de decir el nivel, compitiendo con el color.
+ * 🔴🔴 ESTE ENCABEZADO AFIRMABA DOS COSAS QUE HOY SON FALSAS, Y ERAN MÍAS
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Decía *«NO ES UNA BARRA DE PROGRESO: no hay relleno»* y *«NO DECIDE NADA: no
+ * colorea según el umbral»*. Las dos dejaron de ser ciertas el mismo día
+ * (2026-08-16), y las dos cayeron porque el usuario pidió justo eso — primero el
+ * recorrido lleno, después el color por umbral.
+ *
+ * 📌 Se corrigen en vez de borrarse porque **este es el patrón que el proyecto
+ *    persigue**: un comentario que describe un mundo anterior, en el fichero que
+ *    lo contradice. Aquí caducó en horas; el `EstadoBarrido` de Conducir llevaba
+ *    meses afirmando «apagado» sobre un LIDAR encendido.
+ *
+ * Lo que sí sigue en pie de aquellos dos párrafos:
+ *
+ * ⚠️ **El ancho NO es un porcentaje.** Esta escala no empieza en cero: la de la
+ *    batería empieza en 6,00 V. Con 7,79 V el relleno llega al 74 % y eso NO es
+ *    «74 % de batería». Por eso los extremos van rotulados con su VALOR.
+ *
+ * 🔴 **Sigue sin decidir nada.** El tono se le PASA desde fuera, y sale del
+ *    mismo `nivelBateria()` que ya tiñe la insignia: se renderiza dos veces, se
+ *    decide una. Y jamás `--destructive`, que es de la parada.
  *
  * 🔴 SE PINTA AUNQUE NO HAYA VALOR, a propósito. Con el robot apagado la regla y
  *    sus umbrales siguen ahí, igual que la serigrafía de un panel sin corriente.
  *    Es la misma decisión que ya tomó `Dato` con su `referencia`, y la que hace
  *    que esta tarjeta pase de cero cifras a tener la escala entera.
- *
- * 🔴 Y NO DECIDE NADA. No colorea según el umbral, no dice «bien» ni «mal»: eso
- *    lo sigue diciendo quien lo decía —`nivelBateria()`— en un solo sitio. Una
- *    escala que además juzgara sería una segunda fuente de verdad.
  */
 
+import { CSSProperties } from 'react'
 import { Escala, marcasVisibles, posicion } from '@/lib/interfaz/escala'
 
 export interface PropsEscalaImpresa {
@@ -53,9 +67,41 @@ export interface PropsEscalaImpresa {
    *    `herramientas/recorte.mjs`.
    */
   formato: (n: number) => string
+  /**
+   * El tono del relleno, como NOMBRE de variable CSS (`--estado-vivo`…).
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 PEDIDO POR EL USUARIO EL 2026-08-16, Y AQUÍ PONÍA LO CONTRARIO
+   * ═══════════════════════════════════════════════════════════════════════════
+   * El relleno nació en tinta neutra con este argumento mío: *«teñirlo según el
+   * umbral pondría el veredicto en un segundo sitio —la insignia ya lo da— y la
+   * escala dibuja, no juzga»*. **Era flojo, y por dos motivos:**
+   *
+   *   · Esta aplicación **busca** la redundancia: su regla central es que el
+   *     estado se codifique tres veces —color, palabra y trama— porque una de
+   *     cada doce personas no distingue el lima del coral. Decir lo mismo en la
+   *     insignia y en la barra no es duplicar: es el tercer código otra vez.
+   *   · Y no hay dos fuentes de verdad: el tono sale del MISMO `nivelBateria()`
+   *     que ya tiñe la insignia. Se renderiza dos veces, se decide una.
+   *
+   * 🔴 LO QUE SÍ SOBREVIVE DE AQUEL ARGUMENTO, y es lo que hay que respetar:
+   *    **nunca `--destructive`**. Ese rojo es exclusivo de la parada de
+   *    emergencia, y este proyecto ya descubrió que `--estado-ir` valía su mismo
+   *    RGB exacto y que `/no-obedece` tenía CUATRO cosas en el rojo del botón.
+   *    Los tonos que se pasan aquí son del eje de ESTADO (`--estado-vivo`,
+   *    `--estado-mirar`, `--estado-ir`), no el de la parada.
+   *
+   * ⚠️ Y el color NO va solo: la posición del cursor, los umbrales impresos y la
+   *    palabra de la insignia siguen diciendo lo mismo sin él. En gris los tres
+   *    tonos a este alfa se parecen — y da igual, porque no son el único código.
+   *
+   * Sin `tono`, el relleno es tinta neutra. Es lo correcto para una escala que
+   * no tiene veredicto detrás.
+   */
+  tono?: string
 }
 
-export function EscalaImpresa({ valor, escala, formato }: PropsEscalaImpresa) {
+export function EscalaImpresa({ valor, escala, formato, tono }: PropsEscalaImpresa) {
   const marcas = marcasVisibles(escala)
   const p = valor === null ? null : posicion(valor, escala)
   const pct = (n: number) => `${(n * 100).toFixed(3)}%`
@@ -79,7 +125,24 @@ export function EscalaImpresa({ valor, escala, formato }: PropsEscalaImpresa) {
              que un relleno sí dice y lo que no —esta escala no empieza en cero,
              así que el ancho NO es un porcentaje de carga—.
         */}
-        {p !== null && <span className="regla-relleno" style={{ width: pct(p) }} />}
+        {p !== null && (
+          <span
+            className="regla-relleno"
+            /*
+             * 🔴 `--relleno` ES UNA PROPIEDAD PERSONALIZADA, no `background`.
+             *    El modo oscuro forzado del navegador reescribe
+             *    `background-color`, `color`, `border-color` y `background-image`
+             *    del atributo `style` ANTES de que React hidrate — `PanelLeds` lo
+             *    documenta desde que se vio en Edge. Una variable no es ninguna
+             *    de esas cuatro, así que el HTML del servidor y el del cliente
+             *    siguen coincidiendo y no hay aviso de hidratación.
+             */
+            style={{
+              width: pct(p),
+              ...(tono === undefined ? {} : { '--relleno': `var(${tono})` }),
+            } as CSSProperties}
+          />
+        )}
         {marcas.map((m) => (
           <span
             key={m.nombre}

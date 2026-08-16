@@ -1237,7 +1237,26 @@
     top: 0;
     bottom: 0;
     left: 0;
-    background: rgb(var(--vidrio) / 0.18);
+    /*
+     * 👤 EL TONO ENTRA POR `--relleno` (2026-08-16, pedido por el usuario): el
+     *    relleno se tiñe segun el umbral en el que esta el valor. Sin variable
+     *    —una escala sin veredicto detras— se queda en tinta neutra, que es lo
+     *    correcto: teñir sin tener nada que decir seria decoracion.
+     *
+     * 🔴 0,42 y no 0,18 cuando hay tono: al alfa de la tinta neutra un color se
+     *    lava y los tres umbrales se vuelven el mismo gris sucio. Y 0,42 sigue
+     *    dejando leer POR ENCIMA las marcas de umbral y el cursor, que van a
+     *    0,45 y a tinta plena — que es lo que no se puede perder.
+     *
+     * ⚠️ NUNCA `--destructive` por esta via. Ese rojo es exclusivo de la parada
+     *    de emergencia; quien pasa el tono usa el eje de ESTADO.
+     */
+    background: rgb(var(--relleno, var(--vidrio)) / var(--relleno-alfa, 0.18));
+  }
+
+  /* Con tono, el alfa sube: ver arriba. */
+  .regla-relleno[style*="--relleno"] {
+    --relleno-alfa: 0.42;
   }
 
   /* Un umbral. Línea entera, del alto de la regla: es una división, no un dato. */

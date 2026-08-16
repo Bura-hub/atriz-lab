@@ -34,12 +34,13 @@ import type { PointerEvent as EventoPuntero } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { ACCION_MONITOR, useTopic } from '@/hooks/useTopic'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
-import { ORDEN_ENVIADA, textoDeConfirmacion } from '@/lib/interfaz/lenguaje'
 import {
   SIN_DATO, horaCorta, metrosPorSegundo, numero, partirUnidad, radianesPorSegundo,
 } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
-import { seMueve } from '@/lib/interfaz/seguridad'
+import { interpretarSeguridad, seMueve } from '@/lib/interfaz/seguridad'
+import { Monitor, Pedido, Veredicto, resumirBarrido } from '@/lib/robot/barrido'
+import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
 import { conTecla, direccionDeTecla, escribiendo, mandoVigente, sinTecla } from '@/lib/interfaz/teclado'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
@@ -57,28 +58,51 @@ const VELOCIDADES = [0.1, 0.2] as const
 /** rad/s. Entre 0,5 y 2,0 el robot cumple el 99-102 % de lo comandado. */
 const GIRO = 0.8
 
-type EstadoBarrido =
-  | { clase: 'SIN_PEDIR' }
-  | { clase: 'ARRANCANDO' }
-  | { clase: 'HAY_SCAN'; hora: string }
-  | { clase: 'FALLO'; detalle: string; hora: string }
-  | { clase: 'PARADO_PEDIDO'; hora: string }
-
+/**
+ * EL BARRIDO DEL LIDAR — el primer bloque de esta pantalla, y con motivo.
+ *
+ * 👤 Subido aqui el 2026-08-16 a peticion del usuario. Estaba de CUARTA tarjeta,
+ *    segunda de la columna izquierda, debajo de «Enlace». Y sin barrido el Mando
+ *    —la tarjeta hero, la primera— **no hace nada**: la capa de seguridad
+ *    bloquea el movimiento. O sea que el orden estaba invertido: lo que hay que
+ *    resolver primero salia el cuarto.
+ */
 function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
   const { transporte, conectado } = useRobot()
-  const [estado, setEstado] = useState<EstadoBarrido>({ clase: 'SIN_PEDIR' })
+  const [pedido, setPedido] = useState<Pedido>({ clase: 'NADA' })
+
+  /*
+   * 🔴 EL MONITOR YA ESTA SUSCRITO EN ESTA PANTALLA, asi que leerlo aqui cuesta
+   *    CERO. Es lo unico gratis que sabe algo del barrido: publica
+   *    `polygon_name: 'invalid source'` cuando no le llega `/scan`.
+   *
+   * ⚠️ Y su limite es duro: **solo habla cuando procesa una orden de
+   *    movimiento**. Con el robot quieto no llega nada, y eso es «no se sabe»,
+   *    nunca «encendido». `resumirBarrido()` lo respeta.
+   *
+   * 🔴 El testigo directo seria `/scan`, y NO se paga aqui: son 66,98 kB/s por
+   *    robot —el 83 % de todo su trafico— y con dieciseis pestañas ~8,6 Mbit/s.
+   *    El rail tiene escrito que «Lo que ve» es una pestaña aparte justo por eso.
+   */
+  const monitorCrudo = useTopic(transporte, '/collision_monitor_state')
+  const seguridad = interpretarSeguridad(monitorCrudo)
+  const monitor: Monitor = monitorCrudo === null
+    ? 'NO_SE_SABE'
+    : (seguridad.faltaBarrido ? 'FALTA_BARRIDO' : 'HAY_BARRIDO')
+
+  const veredicto = resumirBarrido(pedido, monitor)
 
   const arrancar = async () => {
-    setEstado({ clase: 'ARRANCANDO' })
+    setPedido({ clase: 'ARRANCANDO' })
     try {
       // 🔴 Esto espera un `/scan` DE VERDAD, no el codigo de retorno de
       //    `/start_scan`. El servicio puede responder que si y no llegar ni un
       //    barrido -y el sintoma seria «el robot no obedece», buscado en el sitio
       //    equivocado.
       await teleoperacion.arrancarBarrido()
-      setEstado({ clase: 'HAY_SCAN', hora: horaCorta(Date.now()) })
+      setPedido({ clase: 'ARRANCADO', hora: horaCorta(Date.now()) })
     } catch (error) {
-      setEstado({
+      setPedido({
         clase: 'FALLO',
         detalle: error instanceof Error ? error.message : String(error),
         hora: horaCorta(Date.now()),
@@ -89,9 +113,9 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
   const parar = async () => {
     try {
       await transporte.llamar('/stop_scan')
-      setEstado({ clase: 'PARADO_PEDIDO', hora: horaCorta(Date.now()) })
+      setPedido({ clase: 'PARADO', hora: horaCorta(Date.now()) })
     } catch (error) {
-      setEstado({
+      setPedido({
         clase: 'FALLO',
         detalle: error instanceof Error ? error.message : String(error),
         hora: horaCorta(Date.now()),
@@ -104,19 +128,30 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
       titulo="Barrido del LIDAR"
       subtitulo="Sin /scan el robot NO se puede conducir: la capa de seguridad bloquea el movimiento."
     >
-      {/* `px-5 pt-4`: el cuerpo de `Tarjeta` va a sangre para que las rejillas
-          lleguen al canto, asi que lo que no es rejilla pone su relleno. */}
-      <div className="flex flex-wrap gap-2 px-5 pt-4">
+      <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
+        {/*
+          🔴 EL ESTADO VA PRIMERO Y AL LADO DE LOS BOTONES, no debajo en prosa.
+             Aqui vivia una frase fija —«el barrido arranca APAGADO con el
+             robot»— que se pintaba en cada carga de pagina: una explicacion
+             general ocupando el hueco donde alguien busca el estado ACTUAL.
+             Enciende el barrido, recarga, y afirmaba «apagado» sobre un LIDAR
+             girando a 11,8 Hz.
+        */}
+        <Insignia tono={TONO_BARRIDO[veredicto.clase]}>{veredicto.titulo}</Insignia>
+        {veredicto.enVivo && <span className="microetiqueta">lo dice el robot</span>}
+      </div>
+
+      <div className="flex flex-wrap gap-2 px-5 pt-3">
         <button
           type="button"
-          disabled={!conectado || estado.clase === 'ARRANCANDO'}
+          disabled={!conectado || pedido.clase === 'ARRANCANDO'}
           onClick={() => void arrancar()}
           /* Mismo motivo que la pildora de velocidad: `--primary` vale el mismo
              RGB que `--bloque-vivo`, o sea vocabulario de ESTADO. Aqui manda el
              tono de la pantalla. */
           className="rounded-md bg-[rgb(var(--seccion-conducir))] px-4 py-2 text-sm font-medium text-white focus-ring hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
         >
-          {estado.clase === 'ARRANCANDO' ? 'Esperando un /scan real…' : 'Arrancar barrido'}
+          {pedido.clase === 'ARRANCANDO' ? 'Esperando un /scan real…' : 'Arrancar barrido'}
         </button>
         <button
           type="button"
@@ -124,7 +159,7 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
           onClick={() => void parar()}
           /* 🔴 `rounded-md`, que le faltaba: este boton y el de al lado son
              hermanos y tenian radios DISTINTOS —14 px contra 0—, o sea una
-             pildora pegada a una caja de esquina viva. Se ve a 2,4× en un
+             pildora pegada a una caja de esquina viva. Se ve a 2,4x en un
              recorte, y `PanelTerminal` ya deja escrito que la forma tambien es
              vocabulario. */
           className="rounded-md border border-border bg-secondary px-4 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
@@ -134,31 +169,66 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
       </div>
 
       <div className="mt-3 space-y-2 px-5 pb-4">
-        {estado.clase === 'SIN_PEDIR' && (
-          <p className="text-sm text-muted-foreground max-w-prose">
-            El barrido arranca <strong>apagado</strong> con el robot, a propósito: si no, el X2 giraría
-            a 11,8 Hz las 24 horas en los 16 robots en vez de a 2,7. Que el robot no se mueva antes de
-            pulsar aquí no es una avería.
-          </p>
-        )}
-        {estado.clase === 'HAY_SCAN' && (
-          <Aviso nivel="NOTA" titulo={`barrido confirmado por un /scan real · ${estado.hora}`}>
-            Ha llegado un barrido de verdad, no solo una respuesta del servicio. Es lo único que
-            prueba que el LIDAR está entregando datos.
+        <p className="max-w-prose text-sm text-muted-foreground">{veredicto.detalle}</p>
+
+        {/*
+          ═══════════════════════════════════════════════════════════════════════
+          👤 «UN MODO PARA CONDUCIR CON EL BARRIDO APAGADO» — 2026-08-16
+          ═══════════════════════════════════════════════════════════════════════
+          Pedido por el usuario. Auditado sobre el codigo del robot ANTES de
+          contestar, y la respuesta es que **por aqui no se puede, y esta cerrado
+          a proposito**:
+
+            robot.launch.py:364  ESCRIBIR = ['/cmd_vel_raw','/emergency_stop','/initialpose']
+            collision_monitor.yaml:131  source_timeout: 0.5
+                                  :128  «sin LIDAR el robot NO SE PUEDE CONDUCIR»
+
+          `move_timed`, `raw_motors`, `move_to_pose`, `move_to_pos_and_yaw` y
+          `set_ir_mode` estan los cinco FUERA de la lista blanca — y el driver lo
+          dice en `rvr_driver_node.py:3132`: «ESTOS CUATRO SE SALTAN EL
+          collision_monitor… le hablan al RVR por el puerto serie». Tampoco se
+          puede parar el monitor: no hay servicio de ciclo de vida permitido y
+          `params_glob` esta vacio.
+
+          🔴 PERO EL CAMINO EXISTE, y no es este: es el Taller. El agente del
+             9443 ejecuta Python del alumno con `rclpy` nativo y alcanza esos
+             servicios. El propio proyecto lo tiene escrito — «No es una frontera
+             de seguridad».
+
+          👤 Decision del usuario: **no se abre nada; se DICE donde si se puede**,
+             con su advertencia. Un callejon mudo se convierte en una salida
+             etiquetada, sin tocar la capa de seguridad.
+        */}
+        {veredicto.clase === 'SIN_BARRIDO' && (
+          <Aviso nivel="ATENCION" titulo="Sin barrido no se mueve, y no es una avería">
+            La capa de seguridad bloquea el movimiento cuando no le llega <code>/scan</code>: sin
+            él, el robot no puede saber si hay algo delante. <strong>Medido</strong>: 0,0 cm con el
+            barrido apagado contra 9,9 cm de control.{' '}
+            <strong>Si el LIDAR está roto</strong> y aun así necesitas mover el robot, se hace
+            desde el <strong>Taller</strong> con <code>rclpy</code> — y ahí{' '}
+            <strong>no hay capa de seguridad</strong>: nada frena al robot salvo la parada de
+            emergencia.
           </Aviso>
-        )}
-        {estado.clase === 'PARADO_PEDIDO' && (
-          <Aviso nivel="ATENCION" titulo={`${ORDEN_ENVIADA} · ${estado.hora}`}>
-            {textoDeConfirmacion('/stop_scan')} El tambor no se detiene del todo: baja de 11,8 Hz a
-            2,7, que es su reposo. Pararlo entero exigiría cortarle los 5 V.
-          </Aviso>
-        )}
-        {estado.clase === 'FALLO' && (
-          <Aviso nivel="ERROR" titulo={`no hay barrido · ${estado.hora}`}>{estado.detalle}</Aviso>
         )}
       </div>
     </Tarjeta>
   )
+}
+
+/**
+ * El tono de cada veredicto.
+ *
+ * 🔴 `SIN_BARRIDO` es ATENCION y no GRAVE: el rojo de esta aplicacion se reserva
+ *    para un HECHO POSITIVO —atasco confirmado, bateria critica— y el barrido
+ *    apagado es el **estado normal en reposo** de los dieciseis robots. Pintarlo
+ *    de rojo seria el muro siempre en alarma, que es como se deja de mirar.
+ */
+const TONO_BARRIDO: Readonly<Record<Veredicto['clase'], TonoInsignia>> = {
+  SIN_BARRIDO: 'ATENCION',
+  ENCENDIDO: 'BIEN',
+  ARRANCANDO: 'NEUTRO',
+  FALLO: 'ATENCION',
+  NO_SE_SABE: 'NEUTRO',
 }
 
 interface Mando {
@@ -663,6 +733,28 @@ export function PanelConducir() {
         su vecino dejando un hueco muerto abajo.
       */}
       {/*
+        ═══════════════════════════════════════════════════════════════════════
+        🔴🔴 EL BARRIDO VA EL PRIMERO, Y ERA EL CUARTO (2026-08-16)
+        ═══════════════════════════════════════════════════════════════════════
+        👤 Pedido por el usuario: «el barrido del LIDAR deberia reubicarse arriba
+           para que sea mas visible».
+
+        Y el argumento es mas fuerte que la visibilidad: **sin barrido el Mando
+        no hace nada**. La capa de seguridad bloquea el movimiento cuando no le
+        llega `/scan` —medido, 0,0 cm contra 9,9 del control—, asi que la tarjeta
+        hero de esta pantalla era inutil hasta resolver una precondicion que
+        vivia de CUARTA, en la segunda fila de la columna izquierda.
+
+        📝 El comentario de abajo decia «lo demas —enlace, barrido,
+           consecuencias— son PRECONDICIONES y notas. Van debajo». Media razon:
+           el enlace y las consecuencias sí; el barrido no es una nota, es **la
+           condicion de que el hero funcione**. Poner una precondicion despues de
+           lo que condiciona es lo que hace que alguien pulse una flecha, no vea
+           nada, y busque la averia en el robot.
+      */}
+      <Barrido teleoperacion={teleoperacion} />
+
+      {/*
         🔴 EL MANDO ES EL HERO DE ESTA PANTALLA, Y ANTES ERA LO ULTIMO.
         Estaba metido como tercera tarjeta de la columna IZQUIERDA de una malla
         de dos, o sea en unos 240 px y al final del scroll — mientras la mitad
@@ -764,8 +856,6 @@ export function PanelConducir() {
           <Tarjeta titulo="Enlace">
             <PanelEnlace />
           </Tarjeta>
-
-          <Barrido teleoperacion={teleoperacion} />
         </div>
 
       <Tarjeta titulo="Lo que va a pasar y no es un fallo">

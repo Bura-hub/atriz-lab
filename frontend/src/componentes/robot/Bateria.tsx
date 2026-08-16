@@ -65,7 +65,34 @@ const TONO: Readonly<Record<NivelBateria, TonoInsignia>> = {
   DESCONOCIDO: 'NEUTRO',
 }
 
-const TEXTO: Readonly<Record<NivelBateria, string>> = {
+/**
+ * EL TONO DE LA BARRA, por umbral.
+ *
+ * 👤 Pedido por el usuario el 2026-08-16: «a la barra de bateria dale color
+ *    segun el umbral en el que esta».
+ *
+ * 🔴 VIVE AL LADO DE `TONO` Y SALE DEL MISMO `nivel`. No es una segunda fuente
+ *    de verdad: `nivelBateria()` decide una vez y esto solo elige con que se
+ *    pinta. Separarlos seria como acabo el proyecto con dos copias de la
+ *    semantica de bateria, una de las cuales podia decir «bien» sobre un NaN.
+ *
+ * 🔴 Y NINGUNO ES `--destructive`. Ese rojo es EXCLUSIVO de la parada de
+ *    emergencia: `--estado-ir` es teja (168 62 40) y existe precisamente porque
+ *    antes valia el mismo RGB que la parada, y `/no-obedece` acabo con CUATRO
+ *    cosas en el rojo del boton.
+ *
+ * ⚠️ `DESCONOCIDO` no tiñe: sin dato no hay cursor que pintar, asi que este
+ *    valor no llega a usarse — pero el `Record` es total a proposito, para que
+ *    añadir un nivel nuevo sea un error de tipos y no un olvido.
+ */
+const TONO_BARRA: Readonly<Record<NivelBateria, string | undefined>> = {
+  OK: '--estado-vivo',
+  BAJA: '--estado-mirar',
+  CRITICA: '--estado-ir',
+  DESCONOCIDO: undefined,
+}
+
+const TEXTO: Readonly<Record<NivelBateria, string> > = {
   OK: 'por encima del umbral',
   BAJA: 'toca cargar',
   CRITICA: 'el RVR se va a apagar',
@@ -282,6 +309,7 @@ export function Bateria() {
             valor={v}
             escala={ESCALA_BATERIA}
             formato={voltios}
+            tono={TONO_BARRA[nivel]}
           />
         </div>
 
