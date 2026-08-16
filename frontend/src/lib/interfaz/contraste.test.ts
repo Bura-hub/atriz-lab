@@ -105,13 +105,28 @@ const PARES: ParMedido[] = [
     tinta: BLANCO, sobre: '--destructive', minimo: AA,
     porque: 'el slab de parada de emergencia, el unico rojo de la aplicacion',
   },
-  // ── La tinta del codigo, sobre el fondo REAL del editor ────────────────────
+  /*
+   * ── La tinta del codigo, sobre el fondo REAL del editor ────────────────────
+   * 🔴🔴 MEDIA CONTRA `--card` Y EL EDITOR YA NO ES BLANCO.
+   *
+   * Estos tokens se midieron sobre la ficha blanca porque el editor vivia dentro
+   * de una `<Tarjeta>`. Desde que el Taller es una consola oscura, su unico
+   * consumidor esta sobre `--consola-fondo`: seguir comprobandolos contra
+   * `--card` seria **medir una escena que no existe**, o sea una comprobacion
+   * que pasa sin mirar nada — la familia de fallo que este repositorio persigue
+   * en su verificador.
+   *
+   * 📌 Y se mueve EN EL MISMO COMMIT que los valores. Una prueba que se queda
+   *    apuntando al fondo viejo no avisa: aprueba.
+   */
   ...conPrefijo('--sintaxis-').map((tinta) => ({
-    tinta, sobre: '--card', minimo: AA,
-    // El editor vive dentro de `<Tarjeta>` -> `.vidrio` -> `rgb(var(--card))`,
-    // con `rgb(var(--vidrio)/0.03)` encima. Se resuelve la mezcla, no se estima.
-    encima: { token: '--vidrio', alfa: 0.03 },
-    porque: 'el fondo real del editor del Taller, con su velo de vidrio resuelto',
+    tinta, sobre: '--consola-fondo', minimo: AA,
+    porque: 'la tinta del codigo, sobre el fondo real de la consola del Taller',
+  })),
+  // La tinta de la propia consola, sobre su fondo.
+  ...['--consola-tinta', '--consola-apagada'].map((tinta) => ({
+    tinta, sobre: '--consola-fondo', minimo: AA,
+    porque: 'lo que imprime el programa del alumno, sobre el panel oscuro',
   })),
 ]
 
@@ -196,9 +211,16 @@ describe('el contraste, medido y no escrito a mano', () => {
       expect(enProyeccion.length).toBeGreaterThanOrEqual(3)
     })
 
-    it.each(enProyeccion)('%s sobre el editor, proyectado', (token) => {
-      const fondo = mezclar(color('--card', true), color('--vidrio', true), 0.03)
-      const c = contraste(color(token, true), fondo)
+    /*
+     * 🔴 EL FONDO TAMBIEN SE MUEVE AQUI. Media contra la ficha blanca y la
+     *    consola es oscura; y ademas la correccion de proyeccion cambia de
+     *    sentido: sobre papel habia que OSCURECER la tinta, sobre un panel
+     *    oscuro un proyector lava los negros —el fondo sube hacia el gris— y lo
+     *    que hay que hacer es ACLARARLA. El mismo razonamiento con el fondo
+     *    invertido.
+     */
+    it.each(enProyeccion)('%s sobre la consola, proyectada', (token) => {
+      const c = contraste(color(token, true), color('--consola-fondo', true))
       expect(c, `${c.toFixed(2)}:1`).toBeGreaterThanOrEqual(AA_PROYECCION)
     })
 

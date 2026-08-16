@@ -63,8 +63,11 @@ import { segmentar, type ClaseLinea, type Segmento } from '@/lib/taller/salida_r
  */
 const CLASE: Record<ClaseLinea, string> = {
   normal: '',
-  traza_cabecera: 'text-muted-foreground',
-  traza_fichero: 'text-muted-foreground',
+  // 🔴 `--consola-apagada` y no `--muted-foreground`: el gris de la aplicacion
+  //    esta calculado sobre papel y sobre el panel oscuro da **2,11:1**, o sea
+  //    ilegible. Aqui son 6,60:1, medidos sobre `--consola-fondo`.
+  traza_cabecera: 'text-[rgb(var(--consola-apagada))]',
+  traza_fichero: 'text-[rgb(var(--consola-apagada))]',
   traza_codigo: '',
   // Los `^^^^` de Python 3.11+ señalan el trozo exacto que fallo: es la
   // informacion mas util de la traza entera y lleva la tinta del mensaje.
@@ -108,7 +111,14 @@ export function SalidaPrograma({ lineas, cola }: SalidaProgramaProps) {
         ? (
           <span
             key={i}
-            className="my-1 block border-l-2 border-[rgb(var(--estado-mirar))] pl-2.5"
+            /*
+              🔴 EL FILETE SUBE A `--sintaxis-numero`. `--estado-mirar` es un ambar
+                 calculado para papel y sobre el panel oscuro cae a **3,39:1** —
+                 por debajo del suelo—, asi que el unico elemento que dice «esto
+                 es una traza» se habria vuelto casi invisible justo al oscurecer.
+                 El durazno de la consola da 9,63:1 y es de la misma familia.
+            */
+            className="my-1 block border-l-2 border-[rgb(var(--sintaxis-numero))] pl-2.5"
           >
             {g.lineas.map((l, j) => (
               <span key={j} className={`block ${CLASE[l.clase]}`}>{l.texto}</span>

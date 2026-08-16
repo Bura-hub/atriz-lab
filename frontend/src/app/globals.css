@@ -381,9 +381,50 @@
    *       añades un cuarto, mide tambien: el precedente es `--estado-ir`
    *       valiendo exactamente `--destructive` sin que nadie lo viera.
    */
-  --sintaxis-clave: 48 50 110;    /* 10,93:1 · indigo. Lo mas cerca: --muted-foreground a 40 */
-  --sintaxis-texto: 12 92 116;    /*  7,06:1 · verde azulado. Lo mas cerca: --estado-vivo a 63 */
-  --sintaxis-numero: 150 30 110;  /*  7,29:1 · ciruela. Lo mas cerca: --estado-ir a 79 */
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 LA CONSOLA DEL TALLER ES OSCURA, Y LA TINTA DEL CODIGO SE MIDE ALLI
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 Decision del usuario (2026-08-16): *«editor y salida, pero aplicando un
+   *    estilo de colores para variables y toda la sintaxis de un codigo como si
+   *    fuera un IDE»*.
+   *
+   * 🔴 EL ARGUMENTO QUE **NO** SE PUEDE USAR es «cansa menos la vista»: este
+   *    fichero eligio el mundo claro precisamente por «el alumno a 50 cm, dos
+   *    horas seguidas». El que sí vale es otro, y es de PROCEDENCIA: el
+   *    precedente que aplica no es VS Code —donde la consola sigue al tema— sino
+   *    Stripe, Vercel o un CI: aplicacion clara con un panel oscuro para la
+   *    **transcripcion de maquina**. El fondo oscuro no decora, dice «esto no lo
+   *    ha escrito la interfaz».
+   *
+   * 🔴 Y ESTOS TRES TOKENS ERAN DE PAPEL. Valian `48 50 110`, `12 92 116` y
+   *    `150 30 110`, medidos sobre la ficha blanca. Su UNICO consumidor es el
+   *    editor del Taller, asi que al oscurecerlo dejaron de medir la escena
+   *    real: seguir comprobandolos contra `--card` habria sido medir una ficcion
+   *    —la clase de comprobacion muerta que este proyecto persigue—. Se
+   *    redefinen sobre `--consola-fondo` y **la prueba de contraste se mueve con
+   *    ellos, en el mismo commit**.
+   *
+   * ⚠️ Y suben de tres a SEIS. El techo de «tres tintas y ninguna mas» estaba
+   *    escrito para papel, donde cada color de mas compite con la prosa de al
+   *    lado; dentro de una consola no hay prosa con la que competir, y la peticion
+   *    era explicita. Lo que NO cambia es que **ninguno es rojo**: ese sigue
+   *    siendo exclusivo de la parada de emergencia, que esta en el mismo raíl.
+   *
+   * Todos MEDIDOS sobre `--consola-fondo`, con la formula de `contraste.ts`
+   * validada antes reproduciendo las tres cifras viejas (10,94 · 7,07 · 7,30):
+   */
+  --consola-fondo: 22 24 44;
+  --consola-tinta: 228 230 238;    /* 14,03:1 · la salida y el codigo sin tipo */
+  --consola-apagada: 154 158 180;  /*  6,60:1 · comentarios y trazas */
+  --consola-filo: 118 122 150;     /*  4,16:1 · separadores, no texto */
+
+  --sintaxis-clave: 198 150 246;      /*  7,57:1 · lila   · def, for, if, import */
+  --sintaxis-texto: 152 214 140;      /* 10,27:1 · verde  · cadenas */
+  --sintaxis-numero: 246 178 122;     /*  9,63:1 · durazno· numeros */
+  --sintaxis-constante: 122 196 246;  /*  9,20:1 · azul   · True, False, None */
+  --sintaxis-definicion: 246 220 130; /* 12,89:1 · ambar  · el nombre tras def/class */
+  --sintaxis-llamada: 124 214 214;    /* 10,36:1 · turquesa· una funcion invocada */
 
   /*
    * 🔴🔴 NINGUNO ES ROJO, Y ES DELIBERADO — incluida la traza de error.
@@ -661,9 +702,31 @@
      *       editor de codigo. Estos tres valores estan para que nada se rompa si
      *       alguien pulsa el boton, no porque ese sea el caso de uso.
      */
-    --sintaxis-clave: 36 38 92;
-    --sintaxis-texto: 8 74 96;
-    --sintaxis-numero: 126 22 92;
+    /*
+     * 🔴 EL MISMO CONJUNTO QUE `:root`, y hay una prueba que lo exige: un
+     *    `--sintaxis-*` que solo exista arriba se HEREDA, o sea que existiria y
+     *    no haria nada — el patron que este proyecto persigue.
+     *
+     * ⚠️ Y AHORA LA CORRECCION VA EN EL SENTIDO CONTRARIO. Con el editor en
+     *    papel, proyectar exigia OSCURECER la tinta. Con la consola oscura, un
+     *    proyector **lava los negros**: el fondo sube hacia el gris y lo que se
+     *    pierde es el contraste por abajo, asi que la tinta tiene que ACLARARSE.
+     *    Es el mismo razonamiento con el fondo invertido.
+     *
+     * 📌 Que el Taller no sea una superficie de proyeccion —lo dice este fichero
+     *    unas lineas mas abajo— no exime: la clase se puede aplicar, y un token
+     *    sin decision es un token que alguien tendra que adivinar.
+     */
+    --consola-tinta: 244 246 252;
+    --consola-apagada: 186 190 208;
+    --consola-filo: 150 154 180;
+
+    --sintaxis-clave: 216 180 252;
+    --sintaxis-texto: 178 230 168;
+    --sintaxis-numero: 250 200 156;
+    --sintaxis-constante: 158 214 250;
+    --sintaxis-definicion: 250 232 172;
+    --sintaxis-llamada: 158 228 228;
   }
 
   /*
@@ -1601,6 +1664,24 @@
     box-shadow:
       inset 0 1px 0 0 rgb(var(--sombra) / 0.09),
       inset 0 -1px 0 0 rgb(255 255 255 / 0.85);
+  }
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * LA CONSOLA — la unica superficie oscura de la aplicacion
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Es una clase y no un tema: la aplicacion sigue siendo clara y esto es un
+   * PANEL dentro de ella. El fondo oscuro marca procedencia —«esto lo escribio
+   * la maquina, no la interfaz»—, que es el argumento que la sostiene.
+   *
+   * 🔴 `color-scheme: dark` DENTRO de la clase, y no es decorativo: sin el, la
+   *    barra de desplazamiento del `<textarea>` y de la caja de salida se pintan
+   *    CLARAS sobre el fondo oscuro. Es una barra por panel, y se ve.
+   */
+  .consola {
+    background: rgb(var(--consola-fondo));
+    color: rgb(var(--consola-tinta));
+    color-scheme: dark;
   }
 
   /*

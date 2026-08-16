@@ -55,6 +55,22 @@ const SALIDA = arg('--salida', 'capturas/recortes')
 const ALMACEN = arg('--almacen', '')
 const CLIC = arg('--clic', '')
 const ESPERA_CLIC = Number(arg('--espera-clic', '4000'))
+/*
+ * `--teclear`: escribe en lo que acabe de recibir el foco con `--clic`.
+ *
+ * 🔴 HACE FALTA PARA UNA PANTALLA ENTERA. El editor del Taller arranca VACIO —lo
+ *    que se ve es su marcador de posicion— asi que los colores de sintaxis **no
+ *    existen hasta que alguien escribe**. Sin esto, una captura del editor
+ *    enseña un placeholder gris y se lee como «el resaltado no funciona»: me
+ *    paso, y estuve mirando el CSS servido buscando un fallo que no habia.
+ *
+ * Un salto de linea se escribe con la secuencia de dos caracteres barra-ene.
+ *
+ * Se usa `Input.insertText`, que entrega el texto al elemento con el foco de una
+ * vez. No simula pulsaciones: para eso haria falta `dispatchKeyEvent` tecla a
+ * tecla, y lo que aqui interesa es el CONTENIDO, no el camino del teclado.
+ */
+const TECLEAR = arg('--teclear', '')
 const ESPERA = Number(arg('--espera', '9000'))
 
 if (!RUTA.startsWith('/')) {
@@ -284,6 +300,10 @@ if (CLIC !== '') {
       if (e === null) return 'null'
       const r = e.getBoundingClientRect()
       const x = r.x + r.width / 2, y = r.y + r.height / 2
+      /* El foco se pide a mano: un clic sintetizado NO lo mueve -eso solo lo
+         hace el raton de verdad-, asi que insertar texto escribia en el vacio y
+         el editor seguia enseñando su marcador de posicion. */
+      if (typeof e.focus === 'function') e.focus()
       for (const tipo of ['mousedown', 'mouseup', 'click']) {
         e.dispatchEvent(new MouseEvent(tipo, {
           bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0,
@@ -299,6 +319,14 @@ if (CLIC !== '') {
   }
   const donde = JSON.parse(hecho.result.value)
   console.log(`  pulsado «${CLIC}» en ${donde.x},${donde.y}`)
+  if (TECLEAR !== '') {
+    // Un `\n` escrito en la linea de ordenes llega como dos caracteres; se
+    // convierte en salto de verdad, porque un Python de una sola linea no
+    // ejercita casi nada del resaltado.
+    const texto = TECLEAR.split(String.raw`\n`).join('\n')
+    await cmd('Input.insertText', { text: texto })
+    console.log('  tecleados ' + texto.length + ' caracteres')
+  }
   await dormir(ESPERA_CLIC)
 }
 

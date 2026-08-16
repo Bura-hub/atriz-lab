@@ -80,15 +80,34 @@ import { tokenizar, type TipoToken } from '@/lib/taller/resaltado'
  * `Record` y no un objeto suelto: `tsc` obliga a que esten los ocho tipos, asi
  * que añadir uno a `TipoToken` sin darle clase no compila.
  */
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 👤 SEIS COLORES Y NO TRES, sobre la consola oscura (2026-08-16)
+ * ═══════════════════════════════════════════════════════════════════════════
+ * *«aplicando un estilo de colores para variables y toda la sintaxis de un
+ * código como si fuera un IDE»*.
+ *
+ * Antes eran tres tintas y dos categorías compartían: `constante` iba con
+ * `palabra_clave`, y `definicion` y `llamada` se separaban **solo con el peso de
+ * la letra**. Ahora cada una tiene la suya, que es lo que hace un editor.
+ *
+ * 🔴 `normal` NO LLEVA CLASE, y es donde caen las variables: heredan la tinta de
+ *    la consola. Un IDE tampoco colorea cada identificador — colorear todo es no
+ *    colorear nada. Lo que se tiñe es lo que tiene un papel gramatical.
+ *
+ * 🔴 Y NINGUNO ES ROJO. Los seis están medidos sobre `--consola-fondo` y ninguno
+ *    entra en la familia de `--destructive`, que es exclusivo de la parada de
+ *    emergencia — y esta pantalla la tiene a la vista en el mismo raíl.
+ */
 const CLASE: Record<TipoToken, string> = {
   normal: '',
-  comentario: 'italic text-muted-foreground',
+  comentario: 'italic text-[rgb(var(--consola-apagada))]',
   cadena: 'text-[rgb(var(--sintaxis-texto))]',
   numero: 'text-[rgb(var(--sintaxis-numero))]',
   palabra_clave: 'text-[rgb(var(--sintaxis-clave))]',
-  constante: 'text-[rgb(var(--sintaxis-clave))]',
-  definicion: 'font-semibold',
-  llamada: 'font-semibold',
+  constante: 'text-[rgb(var(--sintaxis-constante))]',
+  definicion: 'font-semibold text-[rgb(var(--sintaxis-definicion))]',
+  llamada: 'text-[rgb(var(--sintaxis-llamada))]',
 }
 
 /**
@@ -111,7 +130,12 @@ export function EditorPython({ codigo, alCambiar, ejemplo }: EditorPythonProps) 
   const espejo = useRef<HTMLPreElement>(null)
 
   return (
-    <div className="relative">
+    /*
+     * 🔴 `.consola` VA AQUÍ Y NO EN EL `<textarea>`: el espejo coloreado y la caja
+     *    de escritura tienen que compartir fondo o se ve el borde entre los dos.
+     *    El `<textarea>` sigue transparente, como siempre.
+     */
+    <div className="consola relative rounded-md">
       {/*
         El espejo. `aria-hidden` porque es una COPIA: sin eso, un lector de
         pantalla leeria el programa dos veces.
@@ -119,7 +143,7 @@ export function EditorPython({ codigo, alCambiar, ejemplo }: EditorPythonProps) 
       <pre
         ref={espejo}
         aria-hidden="true"
-        className={`pointer-events-none absolute inset-0 overflow-hidden text-foreground ${MAQUETA}`}
+        className={`pointer-events-none absolute inset-0 overflow-hidden text-[rgb(var(--consola-tinta))] ${MAQUETA}`}
       >
         {/*
           El indice ES la identidad: los tokens se regeneran enteros en cada
@@ -162,7 +186,7 @@ export function EditorPython({ codigo, alCambiar, ejemplo }: EditorPythonProps) 
           🔴 Y `selection:` es obligatorio: el `textarea` esta ENCIMA, asi que su
              fondo de seleccion opaco taparia el color. Con alfa se ve a traves.
         */
-        className={`relative w-full resize-y bg-transparent text-transparent caret-[rgb(var(--foreground))] outline-none min-h-[260px] selection:bg-[rgb(var(--marca)/0.22)] placeholder:text-muted-foreground/40 ${MAQUETA}`}
+        className={`relative w-full resize-y bg-transparent text-transparent caret-[rgb(var(--consola-tinta))] outline-none min-h-[260px] selection:bg-[rgb(var(--marca)/0.22)] placeholder:text-[rgb(var(--consola-apagada)/0.55)] ${MAQUETA}`}
       />
     </div>
   )

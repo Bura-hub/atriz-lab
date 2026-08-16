@@ -103,6 +103,47 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
   const [entrada, setEntrada] = useState('')
   const [huellaActual, setHuellaActual] = useState('')
   const [confirmando, setConfirmando] = useState<string | null>(null)
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 EL MODO EXPANDIDO — y por qué NO es la Fullscreen API
+   * ═══════════════════════════════════════════════════════════════════════════
+   * *«que esta sección se pueda poner en pantalla completa»*.
+   *
+   * 🔴🔴 Y LA FULLSCREEN API HABRÍA HECHO DESAPARECER LA PARADA DE EMERGENCIA.
+   *      No taparla: **desaparecer**. La parada se teletransporta al `<nav>` del
+   *      raíl con `createPortal`, y ese `<nav>` es **hermano** del Taller, no
+   *      antepasado: en pantalla completa el navegador solo pinta el elemento y
+   *      sus descendientes, así que el botón deja de renderizarse. Y no se puede
+   *      reubicar sobre la marcha, porque el destino del portal se resuelve una
+   *      sola vez.
+   *
+   * → Modo expandido en CSS que ocupa todo **menos los 272 px del raíl**. Se gana
+   *   casi la misma superficie y la única pieza que frena un robot en marcha
+   *   sigue estando a la vista y pulsable.
+   *
+   * ⚠️ Y UN HALLAZGO QUE HAY QUE DECIR: hoy **tapar la parada deja las pruebas en
+   *    verde**. La única guardia comprueba CONTENCIÓN en el DOM —que el botón
+   *    esté dentro del `<nav>`— y no visibilidad, y además se salta sin robot.
+   *    Por eso este modo respeta el raíl por construcción en vez de fiarse.
+   */
+  const [expandido, setExpandido] = useState(false)
+
+  /*
+   * 🔴 ESCAPE SALE, y es obligatorio en cualquier capa que ocupe la pantalla:
+   *    sin él, quien no encuentre el botón se queda dentro. Se registra solo
+   *    mientras está expandido, para no robarle la tecla a nadie más.
+   *
+   * ⚠️ Y NO se cierra al perder el foco ni al cambiar de pestaña: el programa del
+   *    alumno puede estar corriendo, y plegar la salida sola mientras imprime
+   *    sería perder de vista justo lo que se está mirando.
+   */
+  useEffect(() => {
+    if (!expandido) return
+    const salir = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpandido(false) }
+    window.addEventListener('keydown', salir)
+    return () => window.removeEventListener('keydown', salir)
+  }, [expandido])
   const cajaSalida = useRef<HTMLPreElement | null>(null)
 
   // Al abrir una práctica, su texto entra en el editor.
@@ -287,6 +328,37 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
         </Aviso>
       )}
 
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        EL MODO EXPANDIDO — ocupa todo MENOS el raíl, a propósito
+        ═══════════════════════════════════════════════════════════════════════
+        `lg:left-[272px]` es exactamente el ancho del raíl (`RailNavegacion`), así
+        que la parada de emergencia sigue **visible y pulsable** con el terminal
+        a pantalla casi completa. Por debajo de `lg` el raíl va arriba y no al
+        lado, así que ahí se ocupa todo: en un portátil de aula —la escena que
+        manda— siempre estamos en `lg`.
+
+        🔴 `z-40` y NO más: el raíl es `z-30` y la capa tiene que quedar por
+           encima del contenido y por DEBAJO de nada que importe. Subirlo a 50
+           empezaría una carrera con la única pieza que no puede perderla.
+      */}
+      <div
+        className={expandido
+          ? 'fixed inset-0 z-40 overflow-auto bg-background p-4 lg:left-[272px] lg:p-6'
+          : ''}
+      >
+      <div className="mb-3 flex justify-end">
+        <button
+          type="button"
+          // Ancla estable: sirve para enlazar y para que la herramienta de
+          // capturas pueda pulsarlo sin adivinar un selector.
+          id="expandir-taller"
+          onClick={() => setExpandido((v) => !v)}
+          className="pulsable focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] px-3 py-1.5 text-[13px]"
+        >
+          {expandido ? 'Plegar el terminal' : 'Expandir el terminal'}
+        </button>
+      </div>
       <Tarjeta
         titulo={`Terminal · ${etiqueta}`}
         subtitulo="Escribe tu programa o abre una práctica, y ejecútalo en el robot."
@@ -335,12 +407,23 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
 
           {/* ── LA SALIDA ─────────────────────────────────────────────── */}
           <div className="lg:col-span-2">
-            <div className="flex h-full flex-col rounded-md border border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
+            <div className="flex h-full flex-col overflow-hidden rounded-md border border-[rgb(var(--filo)/0.16)] bg-[rgb(var(--vidrio)/0.03)]">
               <p className="microetiqueta border-b border-[rgb(var(--filo)/0.12)] px-4 py-2.5">
                 Salida del programa
               </p>
               {estaVacia(salida) ? (
-                <div className="flex flex-1 items-start px-4 py-5">
+                /*
+                  🔴 EL PANEL ES OSCURO TAMBIÉN VACÍO, y se probó al revés. Con la
+                     caja clara mientras no hay salida y oscura en cuanto llega
+                     una línea, la superficie **cambia de identidad delante de
+                     quien la mira**: parecen dos cosas distintas según el momento.
+                     Lo que el fondo oscuro dice es «aquí escribe la máquina», y
+                     eso es cierto antes de que escriba.
+                  ⚠️ La prosa del vacío sí baja a `--consola-apagada`: es la
+                     interfaz hablando, no el programa, y no puede tener el mismo
+                     peso que una línea de salida.
+                */
+                <div className="consola flex flex-1 items-start rounded-b-md px-4 py-5 text-[rgb(var(--consola-apagada))]">
                   {/*
                     🔴 VACIO DE VERDAD MIENTRAS NO HAYA NADA: ni prompt, ni
                        cursor, ni una línea de ejemplo. Es la regla que traía esta
@@ -354,7 +437,26 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
               ) : (
                 <pre
                   ref={cajaSalida}
-                  className="min-h-[260px] flex-1 overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-mono text-[12.5px] leading-relaxed text-foreground"
+                  /*
+                    ═══════════════════════════════════════════════════════════
+                    🔴 TRES ARREGLOS EN UNA LÍNEA, Y DOS SON DE ACCESIBILIDAD
+                    ═══════════════════════════════════════════════════════════
+                    · `.consola`: el panel oscuro. Marca procedencia — esto lo
+                      escribió el programa del alumno, no la interfaz.
+                    · `tabIndex={0}`: **con `overflow-auto` y sin foco, un usuario
+                      de teclado NO PODÍA DESPLAZAR LA SALIDA.** Es WCAG 2.1.1, y
+                      es la única forma de leer un programa que imprime más de lo
+                      que cabe.
+                    · `role="log"` + `aria-live="polite"`: un lector de pantalla
+                      **no se enteraba de nada de lo que imprime el programa**.
+                      `log` es el rol que existe para esto: anuncia lo que se
+                      AÑADE, no relee todo el bloque en cada línea.
+                  */
+                  tabIndex={0}
+                  role="log"
+                  aria-live="polite"
+                  aria-label="Salida del programa"
+                  className="consola focus-ring min-h-[260px] flex-1 overflow-auto whitespace-pre-wrap break-words rounded-md px-4 py-3 font-mono text-[12.5px] leading-relaxed"
                 >
                   <SalidaPrograma lineas={salida.lineas} cola={salida.cola} />
                 </pre>
@@ -509,6 +611,7 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
           </div>
         )}
       </Tarjeta>
+      </div>
 
       {/* ── EL DESENLACE ───────────────────────────────────────────────── */}
       {estado.desenlace !== null && (
