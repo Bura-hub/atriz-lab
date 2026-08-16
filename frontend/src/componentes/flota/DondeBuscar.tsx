@@ -115,11 +115,24 @@ function Fila({ id, valor, poner }: {
   )
 }
 
-export function DondeBuscar({ direcciones, poner }: {
+export function DondeBuscar({ direcciones, poner, nadieResponde = false }: {
   direcciones: Direcciones
   poner: (id: number, texto: string) => void
+  /** El muro no llega a NINGUN robot. Entonces esto es el remedio, no un ajuste. */
+  nadieResponde?: boolean
 }) {
   const puestas = cuantasPuestas(direcciones)
+  const deberiaAbrirse = nadieResponde || puestas > 0
+  const [abierto, setAbierto] = useState(deberiaAbrirse)
+
+  /*
+   * 🔴 SOLO ABRE, NUNCA CIERRA. Si `nadieResponde` deja de ser cierto mientras
+   *    alguien esta escribiendo una direccion, cerrarle el cuadro en la cara
+   *    seria peor que no haberlo abierto.
+   */
+  useEffect(() => {
+    if (deberiaAbrirse) setAbierto(true)
+  }, [deberiaAbrirse])
 
   return (
     /*
@@ -131,7 +144,34 @@ export function DondeBuscar({ direcciones, poner }: {
       ⚠️ `overflow-hidden` no es adorno: sin él la lista de dieciséis filas y
          sus separadores de 1 px salen por las esquinas redondeadas.
     */
-    <details className="vidrio group overflow-hidden rounded-ficha">
+    /*
+      ═══════════════════════════════════════════════════════════════════════
+      🔴 SE ABRE SOLO CUANDO ES LA RESPUESTA (2026-08-16, F5)
+      ═══════════════════════════════════════════════════════════════════════
+      El plan pedia que este cuadro «deje de estar plegado», y dejarlo SIEMPRE
+      abierto habria sido peor: son dieciseis filas de direcciones en la unica
+      pantalla cuyo criterio es **una persona a tres metros**.
+
+      Lo que hacia falta es que no este escondido CUANDO IMPORTA, y este mismo
+      fichero ya tenia escrito cuando es eso: «cuando el aviso de ningun robot
+      responde tiene razon, esto es justo lo que hay que abrir». Se cumple.
+
+      🔴 Y el segundo caso es el que de verdad muerde: **si hay alguna direccion
+         puesta, se abre**. Una configuracion que NO es la de por defecto no
+         puede quedar invisible — con un override mal escrito, el muro pinta
+         dieciseis baldosas muertas y la causa esta plegada dos lineas mas
+         arriba. Es la forma de fallo de este proyecto entera: el remedio
+         escondido debajo del sintoma.
+
+      ⚠️ Y se puede CERRAR. Es estado local sembrado desde fuera, no un `open`
+         atado a una prop: con la prop a pelo, cualquier re-render —y aqui llegan
+         datos cada segundo— lo volveria a abrir y nadie podria cerrarlo.
+    */
+    <details
+      className="vidrio group overflow-hidden rounded-ficha"
+      open={abierto}
+      onToggle={(e) => setAbierto(e.currentTarget.open)}
+    >
       <summary className="focus-ring flex cursor-pointer list-none items-center gap-2 rounded-ficha px-4 py-2.5 text-xs text-muted-foreground hover:text-foreground">
         {/*
           📝 El ` · ` entre etiqueta y valor. Sin él se leía «Dónde buscar a los

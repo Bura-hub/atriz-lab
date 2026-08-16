@@ -31,6 +31,7 @@ import { destinoDe } from '@/lib/interfaz/direcciones'
 import { numero } from '@/lib/interfaz/formato'
 import { Grupo } from '@/componentes/ui/Grupo'
 import { AlResumir, BaldosaConectada } from './BaldosaConectada'
+import { resumenDeFlota } from '@/lib/flota/resumen_muro'
 import { DondeBuscar, useDirecciones } from './DondeBuscar'
 import { useSesion } from '@/hooks/ContextoSesion'
 import { evaluarPrecondicion, hayQueAvisar } from '@/lib/rosbridge/precondicion'
@@ -137,6 +138,17 @@ export function MuroFlota() {
    * WebSockets: el muro entero se reconectaria cada vez que un robot cruzara un
    * umbral. Con `order` cambia la posicion VISUAL y el arbol se queda quieto.
    */
+  /*
+   * 🔴 LO QUE LA BANDA CONTESTA. Sale de los mismos mapas que ya alimentan las
+   *    baldosas —`atenciones` y `estados`—, asi que no hay una segunda fuente de
+   *    verdad: si una baldosa dice «hay que ir», el recuento la incluye por
+   *    construccion.
+   */
+  const resumen = useMemo(
+    () => resumenDeFlota(atenciones, estados, ROBOTS),
+    [atenciones, estados],
+  )
+
   const posicion = useMemo(() => {
     const fichas = ROBOTS.map((id) => ({
       id,
@@ -258,38 +270,66 @@ export function MuroFlota() {
             alCambiarOrden={setOrden}
           />
           {/*
-            🔴 LAS DOS DEL MISMO ANCHO, Y NO ES SIMETRÍA POR GUSTO: son la MISMA
-               magnitud a dos escalas -lo que cuesta un robot y lo que cuestan los
-               dieciséis-, así que tienen que leerse como pareja. Dimensionadas al
-               contenido, «POR ROBOT» y «LOS 16» daban dos cajas distintas y la
-               comparación se perdía. `grid-cols-2` iguala las dos columnas a la
-               más ancha sin fijar ninguna medida a mano.
+            ═══════════════════════════════════════════════════════════════════
+            🔴🔴 LAS DOS CIFRAS MAS GRANDES DEL MURO ERAN EL CAUDAL (2026-08-16)
+            ═══════════════════════════════════════════════════════════════════
+            `POR ROBOT 0,83 kB/s` y `LOS 16 13,28` ocupaban esta banda con peso de
+            titular. El caudal **importa** —el punto de acceso del aula es un
+            recurso compartido y hay medidas de sobra— pero **no es lo que
+            alguien decide mirando esta pantalla**.
 
-            📝 Y las cifras van en `.cifra-menor` con la unidad en `.unidad`, que
-               es la escala que la aplicación ya define: antes eran un `text-[21px]`
-               inventado con la unidad a 11 px, o sea la misma decisión tomada dos
-               veces y con otros números.
+            La pregunta del profesor, de pie al fondo del aula, es una: **¿tengo
+            que ir a algun robot?** Y esa cifra no estaba en ninguna parte: habia
+            que contar baldosas de color a ojo, sobre una losa de dieciseis,
+            proyectada y a tres metros.
 
-            ⚠️ Sobre el campo dejan de ser `.vidrio`: una ficha de papel blanco
-               encima del cobalto se lee como una tarjeta suelta, no como parte de
-               la banda. El relleno lo pone el blanco al 10 % SOBRE UN CAMPO
-               OPACO, así que vale lo mismo en cualquier punto de la pantalla — es
-               la misma regla que hizo opacos los fondos de aviso.
+            🔴 LOS CUATRO CUBOS PARTEN LOS DIECISEIS, y hay una prueba que lo
+               exige sobre las 144 combinaciones. Un resumen cuyas partes no
+               suman invita a restar mentalmente y a inventar una quinta
+               categoria.
+
+            📝 Lo que se conserva de la version anterior: las cajas van del mismo
+               ancho porque son la misma pregunta a cuatro respuestas, y sobre el
+               campo NO son `.vidrio` —una ficha de papel blanco encima del
+               cobalto se lee como una tarjeta suelta, no como parte de la banda—.
           */}
-          <dl className="grid grid-cols-2 gap-2.5">
-            <div className="rounded-md border border-white/25 bg-white/10 px-[18px] py-[13px]">
-              <dt className="microetiqueta !text-white/70">por robot</dt>
-              <dd className="cifra-menor mt-1 text-white">
-                {prefijo}{numero(porRobot, 2)}<span className="unidad !text-white/70">kB/s</span>
-              </dd>
-            </div>
-            <div className="rounded-md border border-white/25 bg-white/10 px-[18px] py-[13px]">
-              <dt className="microetiqueta !text-white/70">los {TOTAL_ROBOTS}</dt>
-              <dd className="cifra-menor mt-1 text-white">
-                {prefijo}{numero(total, 2)}<span className="unidad !text-white/70">kB/s</span>
-              </dd>
-            </div>
+          <dl className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+            {[
+              { k: 'hay que ir', v: resumen.ir },
+              { k: 'mirar', v: resumen.mirar },
+              /* 📝 Con tilde: los escribi sin ellas y salieron asi en la
+                 captura. El proyecto entero es en español y `lenguaje.ts` lleva
+                 la regla; un rotulo de tres letras no es una excepcion. */
+              { k: 'en línea', v: resumen.enLinea },
+              { k: 'sin señal', v: resumen.sinSenal },
+            ].map((c) => (
+              <div
+                key={c.k}
+                className="rounded-md border border-white/25 bg-white/10 px-[18px] py-[13px]"
+              >
+                <dt className="microetiqueta !text-white/70">{c.k}</dt>
+                {/*
+                  🔴 SIN COLOR EN LA CIFRA. Los tres tonos de estado significan
+                     algo en las BALDOSAS, y repartirlos aqui los gastaria: un
+                     recuento no es un robot que pide algo. Lo que distingue a
+                     estas cuatro es su rotulo y su posicion, que no cambian.
+                */}
+                <dd className="cifra-menor mt-1 text-white">{c.v}</dd>
+              </div>
+            ))}
           </dl>
+
+          {/*
+            🔴 EL CAUDAL BAJA A UNA LINEA, y no se borra: es un dato medido que
+               este proyecto usa para decidir a que topics se suscribe una
+               pantalla. Lo que cambia es su PESO — deja de competir con la unica
+               pregunta que esta banda tiene que contestar.
+          */}
+          <p className="mt-2.5 text-[12px] leading-snug text-white/75">
+            <span className="microetiqueta !text-white/60">caudal</span>{' '}
+            {prefijo}{numero(porRobot, 2)} kB/s por robot · {prefijo}{numero(total, 2)} kB/s los{' '}
+            {TOTAL_ROBOTS}
+          </p>
           {/*
             🔴 La nota que impide leer la cifra de arriba como un total. Sale
                SOLO cuando falta algo por medir: en cuanto el robot dé el caudal
@@ -379,7 +419,7 @@ export function MuroFlota() {
         */}
         <div className={`${nadieResponde ? 'mt-3' : ''} mb-7 flex justify-end`}>
           <div className="w-full max-w-md">
-            <DondeBuscar direcciones={direcciones} poner={poner} />
+            <DondeBuscar direcciones={direcciones} poner={poner} nadieResponde={nadieResponde} />
           </div>
         </div>
 
