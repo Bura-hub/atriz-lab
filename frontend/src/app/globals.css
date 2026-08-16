@@ -1188,6 +1188,135 @@
 
   /*
    * ═══════════════════════════════════════════════════════════════════════════
+   * ── LA PALANCA · el mando analógico de conducir ──────────────────────────
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 Sustituye a la cruz de cuatro botones (2026-08-16). La aritmética y su
+   *    honestidad viven en `lib/interfaz/palanca.ts`; aquí solo está el dibujo.
+   *
+   * 🔴 Y ES UNA PIEZA DE PANEL, no un mando de videojuego: sin degradados, sin
+   *    brillos y sin sombra. Un frontal de banco tiene el hueco fresado y el
+   *    pomo encima — que es exactamente lo que se dibuja.
+   */
+  .palanca {
+    border-radius: 50%;
+    /* El hueco: rebajado, con el mismo bisel que la ventana de lectura. Es la
+       misma gramática, así que se lee como parte del mismo instrumento. */
+    background: rgb(var(--vidrio) / 0.05);
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--sombra) / 0.10),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.85);
+    border: 1px solid rgb(var(--filo) / 0.14);
+  }
+
+  /*
+   * La zona muerta, DIBUJADA. Es lo que explica que un gesto pequeño no mueva
+   * nada sin gastar una frase — y sin ella la palanca parecería estropeada
+   * durante el primer 18 % del recorrido.
+   */
+  .palanca-muerta {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    border: 1px dashed rgb(var(--filo) / 0.28);
+    pointer-events: none;
+  }
+
+  /* Las dos guías: dicen que los ejes son independientes. */
+  .palanca-eje {
+    position: absolute;
+    background: rgb(var(--filo) / 0.12);
+    pointer-events: none;
+  }
+
+  .palanca-eje-h { left: 8%; right: 8%; top: 50%; height: 1px; }
+  .palanca-eje-v { top: 8%; bottom: 8%; left: 50%; width: 1px; }
+
+  /*
+   * EL PUÑO. Tinta plena: en una regla serigrafiada todo es grabado menos la
+   * pieza que se mueve — la misma decisión que el cursor de la escala.
+   */
+  .palanca-puno {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 46px;
+    height: 46px;
+    margin: -23px 0 0 -23px;
+    border-radius: 50%;
+    background: rgb(var(--seccion-conducir));
+    border: 2px solid rgb(var(--card));
+    pointer-events: none;
+  }
+
+  /*
+   * 🔴 LA VUELTA AL CENTRO SE ANIMA; EL ARRASTRE NO. Mientras el dedo manda, el
+   *    puño tiene que ir DONDE ESTÁ EL DEDO —una transición ahí sería un mando
+   *    que va por detrás de la mano—. Al soltar, el muelle es lo que hace creer
+   *    que la palanca vuelve sola.
+   *
+   * ⚠️ 140 ms, la duración de una pulsación: es realimentación, no un viaje.
+   */
+  .palanca-puno-suelto {
+    transition: transform var(--t-pulsacion) var(--curva-salida);
+  }
+
+  /*
+   * ── EL DESLIZADOR DE VELOCIDAD ───────────────────────────────────────────
+   * 🔴 Se estiliza a mano porque el de fábrica es una pastilla de sistema
+   *    operativo: en un panel de instrumento el mando va sobre una RANURA
+   *    fresada, y el pomo es una pieza, no una gota de color.
+   */
+  .deslizador {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 24px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .deslizador::-webkit-slider-runnable-track {
+    height: 9px;
+    background: rgb(var(--vidrio) / 0.05);
+    border-left: 1px solid rgb(var(--filo) / 0.45);
+    border-right: 1px solid rgb(var(--filo) / 0.45);
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--sombra) / 0.09),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.85);
+  }
+
+  .deslizador::-moz-range-track {
+    height: 9px;
+    background: rgb(var(--vidrio) / 0.05);
+    border-left: 1px solid rgb(var(--filo) / 0.45);
+    border-right: 1px solid rgb(var(--filo) / 0.45);
+  }
+
+  /* El pomo: la misma aguja de la escala impresa, con cuerpo para agarrarla. */
+  .deslizador::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 22px;
+    margin-top: -7px;
+    border-radius: 2px;
+    background: rgb(var(--seccion-conducir));
+    border: 1px solid rgb(var(--card));
+  }
+
+  .deslizador::-moz-range-thumb {
+    width: 14px;
+    height: 22px;
+    border-radius: 2px;
+    background: rgb(var(--seccion-conducir));
+    border: 1px solid rgb(var(--card));
+  }
+
+  .deslizador:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
    * ── LA REGLA SERIGRAFIADA · la escala impresa bajo una medida ────────────
    * ═══════════════════════════════════════════════════════════════════════════
    * La firma de la dirección: un frontal de banco lleva el rango y sus umbrales

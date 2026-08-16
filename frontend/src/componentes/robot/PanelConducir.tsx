@@ -29,34 +29,41 @@
  * para no depender de el, pero esta ahi.
  */
 
-import { useEffect, useRef, useState } from 'react'
-import type { PointerEvent as EventoPuntero } from 'react'
+import { useEffect, useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { ACCION_MONITOR, useTopic } from '@/hooks/useTopic'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
 import {
-  SIN_DATO, horaCorta, metrosPorSegundo, numero, partirUnidad, radianesPorSegundo,
+  SIN_DATO, horaCorta, metrosPorSegundo, partirUnidad, radianesPorSegundo,
 } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
 import { interpretarSeguridad, seMueve } from '@/lib/interfaz/seguridad'
 import { Monitor, Pedido, Veredicto, resumirBarrido } from '@/lib/robot/barrido'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
-import { conTecla, direccionDeTecla, escribiendo, mandoVigente, sinTecla } from '@/lib/interfaz/teclado'
+import { OrdenMando, V_MIN } from '@/lib/interfaz/palanca'
+import { DeslizadorVelocidad, LoQuePido, Palanca } from './MandoPalanca'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { PanelEnlace } from './EstadoEnlace'
 import { useMuestreo } from './useMuestreo'
 
-/**
- * Las dos velocidades que ofrece esta pantalla, en m/s. Las dos estan MEDIDAS:
- * pidiendo 0,20 la meseta real es 0,199 (100 %) y se alcanza en ~0,5 s de rampa.
- * El tope del robot es 0,40, que aqui no se ofrece: teleoperar a ciegas desde un
- * navegador no es el sitio para la velocidad maxima.
+/*
+ * 📝 AQUI VIVIAN `VELOCIDADES` (0,10 y 0,20) y `GIRO` (0,8 rad/s), y se fueron
+ *    con la cruz de mando el 2026-08-16.
+ *
+ * Las dos velocidades eran las UNICAS que ofrecia esta pantalla, y su comentario
+ * decia lo importante: **estan medidas** —pidiendo 0,20 la meseta real es 0,199,
+ * el 100 %, y se alcanza en ~0,5 s de rampa—. Eso no se pierde: siguen siendo
+ * los dos extremos del deslizador, y `lib/interfaz/palanca.ts` usa 0,10 como
+ * suelo por el mismo motivo.
+ *
+ * `GIRO` era fijo. Ahora el giro es continuo entre 0,5 y 1,2 rad/s, que sigue
+ * dentro de la banda donde esta medido que el robot cumple el 99-102 %.
+ *
+ * 🔴 Y el tope de 0,40 m/s sigue SIN ofrecerse, que es una decision escrita:
+ *    «teleoperar a ciegas desde un navegador no es el sitio para la velocidad
+ *    maxima». El deslizador llega a 0,20, no a 0,40.
  */
-const VELOCIDADES = [0.1, 0.2] as const
-
-/** rad/s. Entre 0,5 y 2,0 el robot cumple el 99-102 % de lo comandado. */
-const GIRO = 0.8
 
 /**
  * EL BARRIDO DEL LIDAR — el primer bloque de esta pantalla, y con motivo.
@@ -123,12 +130,26 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
     }
   }
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 UNA FRANJA, NO UNA TARJETA (2026-08-16) — «hay una seccion muy grande
+   *    para el barrido del LIDAR»
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Tenia razon, y era culpa mia de esta misma sesion: al subirla al primer
+   * puesto le puse titulo, subtitulo, insignia, dos botones, un parrafo y un
+   * aviso — o sea que la PRECONDICION del Mando ocupaba mas que el Mando.
+   *
+   * Ahora es una franja de una linea: **estado + dos botones**, y nada mas. La
+   * explicacion larga aparece SOLO cuando hace falta, que es cuando la capa de
+   * seguridad esta bloqueando.
+   *
+   * 📌 Es la misma leccion que la parada: lo que tiene que estar SIEMPRE a la
+   *    vista tiene que ocupar lo que ocupa un mando, no lo que ocupa un texto.
+   */
   return (
-    <Tarjeta
-      titulo="Barrido del LIDAR"
-      subtitulo="Sin /scan el robot NO se puede conducir: la capa de seguridad bloquea el movimiento."
-    >
-      <div className="flex flex-wrap items-center gap-3 px-5 pt-4">
+    <div className="vidrio rounded-ficha">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-3.5">
+        <span className="microetiqueta shrink-0">barrido del LIDAR</span>
         {/*
           🔴 EL ESTADO VA PRIMERO Y AL LADO DE LOS BOTONES, no debajo en prosa.
              Aqui vivia una frase fija —«el barrido arranca APAGADO con el
@@ -139,9 +160,9 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
         */}
         <Insignia tono={TONO_BARRIDO[veredicto.clase]}>{veredicto.titulo}</Insignia>
         {veredicto.enVivo && <span className="microetiqueta">lo dice el robot</span>}
-      </div>
 
-      <div className="flex flex-wrap gap-2 px-5 pt-3">
+        {/* `ml-auto`: los mandos al canto derecho, como en un frontal. */}
+        <div className="ml-auto flex flex-wrap gap-2">
         <button
           type="button"
           disabled={!conectado || pedido.clase === 'ARRANCANDO'}
@@ -166,10 +187,18 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
         >
           Parar barrido
         </button>
+        </div>
       </div>
 
-      <div className="mt-3 space-y-2 px-5 pb-4">
-        <p className="max-w-prose text-sm text-muted-foreground">{veredicto.detalle}</p>
+      {/*
+        🔴 EL DETALLE SOLO CUANDO APORTA. Con «no se sabe» —el caso mas
+           frecuente— la frase explica por que no se sabe, y eso cabe en una
+           linea pequeña. Cuando la capa de seguridad bloquea, el aviso entero.
+      */}
+      <div className="space-y-2 px-5 pb-3.5">
+        <p className="max-w-prose text-[12.5px] leading-relaxed text-muted-foreground">
+          {veredicto.detalle}
+        </p>
 
         {/*
           ═══════════════════════════════════════════════════════════════════════
@@ -211,7 +240,7 @@ function Barrido({ teleoperacion }: { teleoperacion: ControlTeleoperacion }) {
           </Aviso>
         )}
       </div>
-    </Tarjeta>
+    </div>
   )
 }
 
@@ -231,277 +260,33 @@ const TONO_BARRIDO: Readonly<Record<Veredicto['clase'], TonoInsignia>> = {
   NO_SE_SABE: 'NEUTRO',
 }
 
-interface Mando {
-  etiqueta: string
-  v: number
-  w: number
-  columna: string
-  /** Grados que se gira el chevron. 0 = adelante, y el resto en sentido horario. */
-  giro: number
-}
-
-function CruzDeMando({
-  teleoperacion, velocidad, alFallar,
-}: {
-  teleoperacion: ControlTeleoperacion
-  velocidad: number
-  alFallar: (mensaje: string) => void
-}) {
-  const { conectado } = useRobot()
-
-  const pararSeguro = () => {
-    try {
-      teleoperacion.parar()
-    } catch (error) {
-      // `parar()` corta el bucle ANTES de publicar, asi que aunque el publish
-      // falle el robot deja de recibir mando y el watchdog lo para en <=0,3 s.
-      // Se cuenta igual: quien conduce tiene que saber que el enlace se cayo.
-      alFallar(error instanceof Error ? error.message : String(error))
-    }
-  }
-
-  const empezar = (m: Mando) => (e: EventoPuntero<HTMLButtonElement>) => {
-    // Con captura de puntero, el `pointerup` llega a este mismo boton aunque el
-    // dedo o el raton se salgan de el mientras se conduce.
-    e.currentTarget.setPointerCapture(e.pointerId)
-    teleoperacion.mover(m.v * velocidad, m.w * GIRO)
-  }
-
-  /*
-   * ═══════════════════════════════════════════════════════════════════════════
-   * 🔴🔴 CONDUCIR CON EL TECLADO (2026-08-16) — Y LA INTERFAZ YA LO PROMETÍA
-   * ═══════════════════════════════════════════════════════════════════════════
-   * Las cuatro celdas llevan `focus-ring` desde que existen, o sea que se
-   * enfocan con el tabulador. Y una vez enfocadas, `Enter` o `Espacio` disparan
-   * `click`… que aquí **no hace nada**, porque el mando conduce con
-   * `pointerdown`/`pointerup`. La pantalla decía «puedes usar el teclado» con un
-   * anillo de foco y no cumplía.
-   *
-   * En el aula pesa más que la accesibilidad genérica: un alumno con el robot
-   * delante y una cinta métrica en la otra mano no está apuntando con el ratón.
-   *
-   * ⚠️ ESCUCHA EN `window`, NO EN LOS BOTONES, y es deliberado: si hubiera que
-   *    enfocar una celda primero, el teclado solo serviría después de usar el
-   *    ratón — o sea, no serviría. El precio es que hay que descartar a mano lo
-   *    que va para un campo de texto, y de eso se encarga `escribiendo()`.
-   *
-   * 🔴 `preventDefault` en las flechas: sin él, «Atrás» **hace scroll de la
-   *    página** mientras el robot anda. El mando se iría de la pantalla justo
-   *    conduciendo, que es el defecto que este rediseño acaba de cerrar con la
-   *    parada.
-   *
-   * 🔴 Y `pulsadas` es un `ref`, NO un estado: se lee y escribe dentro de los
-   *    manejadores, y un estado ahí volvería a montar los `addEventListener` en
-   *    cada tecla. Es la misma razón por la que la guarda del gesto del mapa
-   *    tuvo que ser un `ref`.
-   */
-  const pulsadas = useRef<string[]>([])
-
-  useEffect(() => {
-    if (!conectado) return
-
-    const aplicar = () => {
-      const d = mandoVigente(pulsadas.current)
-      try {
-        if (d === null) teleoperacion.parar()
-        else teleoperacion.mover(d.v * velocidad, d.w * GIRO)
-      } catch (error) {
-        alFallar(error instanceof Error ? error.message : String(error))
-      }
-    }
-
-    const abajo = (e: KeyboardEvent) => {
-      const objetivo = e.target as HTMLElement | null
-      if (escribiendo(objetivo?.tagName ?? '', objetivo?.isContentEditable ?? false)) return
-      if (direccionDeTecla(e.key) === null) return
-      /*
-       * ⚠️ Con un modificador NO se conduce. `Ctrl+ArrowLeft` es un atajo del
-       *    sistema en varios navegadores, y `Alt+←` es «atrás» en el historial:
-       *    quedarse con ellas robaría gestos que la persona espera que hagan
-       *    otra cosa.
-       */
-      if (e.ctrlKey || e.altKey || e.metaKey) return
-      e.preventDefault()
-      pulsadas.current = conTecla(pulsadas.current, e.key)
-      aplicar()
-    }
-
-    const arriba = (e: KeyboardEvent) => {
-      if (direccionDeTecla(e.key) === null) return
-      pulsadas.current = sinTecla(pulsadas.current, e.key)
-      aplicar()
-    }
-
-    /*
-     * 🔴 AL PERDER EL FOCO SE PARA, Y ESTO NO ES CORTESÍA. Si alguien cambia de
-     *    ventana con una tecla pulsada, el `keyup` **llega a la otra ventana**:
-     *    aquí no se entera nadie y el robot se queda con la orden puesta hasta
-     *    que el vigilante del driver corte a los 0,3 s. Que el watchdog lo salve
-     *    no es excusa para mandarlo mal — es la misma distinción que ya hace el
-     *    manejador de `visibilitychange` de esta pantalla.
-     */
-    const soltarTodo = () => {
-      if (pulsadas.current.length === 0) return
-      pulsadas.current = []
-      aplicar()
-    }
-
-    window.addEventListener('keydown', abajo)
-    window.addEventListener('keyup', arriba)
-    window.addEventListener('blur', soltarTodo)
-    return () => {
-      window.removeEventListener('keydown', abajo)
-      window.removeEventListener('keyup', arriba)
-      window.removeEventListener('blur', soltarTodo)
-      // Al desmontar —cambiar de pestaña del robot, por ejemplo— se suelta todo:
-      // el bucle de la teleoperación sobrevive a esta pantalla.
-      soltarTodo()
-    }
-  }, [conectado, teleoperacion, velocidad, alFallar])
-
-  const mandos: readonly Mando[] = [
-    { etiqueta: 'Adelante', v: 1, w: 0, columna: 'col-start-2 row-start-1', giro: 0 },
-    { etiqueta: 'Izquierda', v: 0, w: 1, columna: 'col-start-1 row-start-2', giro: -90 },
-    { etiqueta: 'Derecha', v: 0, w: -1, columna: 'col-start-3 row-start-2', giro: 90 },
-    { etiqueta: 'Atrás', v: -1, w: 0, columna: 'col-start-2 row-start-3', giro: 180 },
-  ]
-
-  /*
-   * ═══════════════════════════════════════════════════════════════════════════
-   * 🔴 LA CRUZ, CON LA FORMA DE LA MAQUETA Y NO CON LA QUE HABIA
-   * ═══════════════════════════════════════════════════════════════════════════
-   * Esto eran cinco pastillas grises con las palabras «Adelante / Izquierda /
-   * Parar / Derecha / Atrás» en una malla de 3×3, y no se parecia en nada a
-   * `conducir_laboratorio_atriz/screen.png`: alli es una CRUZ de celdas
-   * cuadradas con chevrones, y **la parada en el centro**, marcada.
-   *
-   * La forma no es capricho: un mando direccional se reconoce por su silueta
-   * antes de leer nada, y con la palabra dentro cada celda tenia un ancho
-   * distinto — la cruz se deshacia.
-   *
-   * ⚠️ Y LAS PALABRAS NO SE PIERDEN. Cada celda lleva su `aria-label` y su
-   *    `title`: el glifo es para el ojo, el nombre sigue estando para un lector
-   *    de pantalla y para quien deja el puntero encima. Una flecha es una
-   *    convencion universal; el centro, que es el que para, ademas lleva su
-   *    palabra escrita debajo del punto.
-   */
-  const celda = 'flex aspect-square select-none touch-none items-center justify-center '
-    + 'rounded-[14px] border border-[rgb(var(--filo)/0.14)] bg-[rgb(var(--vidrio)/0.025)] '
-    + 'text-foreground focus-ring transition-[background-color,border-color,transform] '
-    + 'duration-[var(--t-pulsacion)] ease-[cubic-bezier(0.23,1,0.32,1)] '
-    // 🔴 0.6 y no 0.35: la silueta del mando es lo que ENSEÑA de que va esta
-    //    pantalla, y con el robot apagado —el estado mas frecuente— se borraba.
-    //    Que este desactivado ya lo dicen el cursor, el pie y la franja.
-    + 'disabled:opacity-60 disabled:cursor-not-allowed'
-
-  return (
-    // 🔴 `shrink-0` Y ANCHO FIJO. Con `max-w-` dentro de un flex, el padre lo
-    //    comprimia hasta ~34 px por celda: la cruz salia del tamaño de un icono
-    //    y las celdas, al ser cuadradas con radio 14, se veian como circulos.
-    //    Un mando direccional se reconoce por su silueta antes de leer nada.
-    <div className="grid w-[16.5rem] shrink-0 grid-cols-3 grid-rows-3 gap-2.5">
-      {mandos.map((m) => (
-        <button
-          key={m.etiqueta}
-          type="button"
-          disabled={!conectado}
-          aria-label={m.etiqueta}
-          title={m.etiqueta}
-          onPointerDown={empezar(m)}
-          onPointerUp={pararSeguro}
-          onPointerCancel={pararSeguro}
-          onLostPointerCapture={pararSeguro}
-          /*
-            Al pulsar, la celda se llena con el tono de ESTA pantalla. Es
-            realimentacion de la interaccion —«te he oido»—, no un estado del
-            robot: por eso usa el eje de identidad y no uno de los tres colores
-            del vocabulario de estado, que significan otra cosa.
-          */
-          className={`${m.columna} ${celda} hover:border-[rgb(var(--seccion-conducir)/0.45)] hover:bg-[rgb(var(--seccion-conducir)/0.07)] active:scale-[0.96] active:border-[rgb(var(--seccion-conducir))] active:bg-[rgb(var(--seccion-conducir))] active:text-white`}
-        >
-          {/*
-            🔴 EL CHEVRON LLENA SU VIEWBOX, Y ANTES OCUPABA 9/24 DE ALTO.
-               Con `h-7` sobre una celda de 80 px el triangulo medía ~15×10 px:
-               el objeto principal de la pantalla —lo unico que hace que esto se
-               llame «Conducir»— era lo mas tenue que habia en ella. El path va
-               ahora de y=3,5 a y=18 y el svg sube a `h-9`, asi que el chevron
-               pasa de ~15 px a ~34, a la altura de las cifras de al lado.
-          */}
-          {/*
-            🔴 LA RONDA ANTERIOR MIDIO LA CAJA Y NO LA TINTA. Se lleno el viewBox
-               y se subio a `h-9`, pero sobre una celda de 81 px eso sigue siendo
-               un triangulo de ~22×26: el 27 % de la celda, no el 34 que se creia
-               haber conseguido. Es la misma forma de error que persigue este
-               proyecto —comprobar el numero que se toco en vez del efecto— y la
-               pillo un revisor midiendo pixeles sobre un recorte a 2,4×.
-          */}
-          <svg viewBox="0 0 24 24" className="h-11 w-11" aria-hidden="true"
-            style={{ transform: `rotate(${m.giro}deg)` }}>
-            <path d="M12 2 L22 20 H2 Z" fill="currentColor" />
-          </svg>
-        </button>
-      ))}
-
-      {/*
-        EL CENTRO ES LA PARADA, como en la maqueta. No manda `v=0 w=0` por un
-        camino distinto: llama al mismo `parar()` que el soltar de las flechas,
-        que corta el bucle ANTES de publicar.
-      */}
-      <button
-        type="button"
-        disabled={!conectado}
-        aria-label="Parar"
-        title="Parar"
-        onClick={pararSeguro}
-        className={`col-start-2 row-start-2 ${celda} hover:border-[rgb(var(--destructive)/0.5)] active:scale-[0.96]`}
-      >
-        {/*
-          🔴 LA TECLA MAS PESADA DE LA CRUZ, Y ERA LA MAS LIGERA. Un punto de
-             14 px contra flechas de ~22, con la palabra a 9 px debajo: la tecla
-             que se pulsa CON PRISA tenia la menor masa de las cinco. Ahora es un
-             disco lleno de 34 px con la palabra dentro. En un mando, la tecla de
-             parar tiene que encontrarse sin mirar.
-
-          📝 `--destructive` y no `--estado-ir`: los `--estado-*` significan «esto
-             es un HECHO sobre el robot», y este control esta en reposo. Desde que
-             los dos tokens dejaron de valer lo mismo, la diferencia se ve.
-        */}
-        <span className="flex h-[2.1rem] w-[2.1rem] items-center justify-center rounded-full bg-[rgb(var(--destructive))]">
-          {/*
-            ⚠️ 8 px y sin traqueo: a 9 px con `tracking-[0.06em]` la palabra medía
-               32,5 px dentro de un disco de 33,6, así que **las esquinas de la P
-               y de la última R caían fuera del círculo** y se pintaban sobre el
-               papel. A 1× la tecla se leía como un borrón. Medido en un recorte
-               a 8×; a tamaño normal no se ve, y por eso la hizo mal quien la
-               escribió —yo— y la encontró quien la miró con lupa.
-          */}
-          <span className="text-[8px] font-semibold uppercase text-white">parar</span>
-        </span>
-      </button>
-    </div>
-  )
-}
-
-/**
- * PEDIDO CONTRA MEDIDO — la pareja de la maqueta, y la pregunta real al conducir.
- *
+/*
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 POR QUE «PEDIDO» Y NO «MANDADO», QUE ES LO QUE DICE LA MAQUETA
+ * 🔴 AQUI VIVIA `CruzDeMando`, Y SE FUE CON SU MANDO (2026-08-16)
  * ═══════════════════════════════════════════════════════════════════════════
- * La maqueta rotula `MANDADO (V)`, y esa palabra afirma algo que esta pantalla
- * **no sabe**: que la orden salio y llego. Lo unico cierto es la velocidad que
- * hay SELECCIONADA aqui, que es lo que se mandaria al pulsar. Un robot con el
- * enlace caido tendria un «mandado» de 0,20 m/s y un medido de 0,00, y el par se
- * leeria como «no obedece» cuando la causa es que no salio nada.
+ * 👤 «los mandos no me acaban de gustar, deberia haber algo como un joystick».
  *
- * ⚠️ Y el MEDIDO sale de `/odom`, que **ya se paga en esta pantalla**:
- *    `PanelEnlace` se suscribe por `useSalud` para tener un latido a 16,5 Hz.
- *    Esto no añade caudal — si lo añadiera, no se pondria: `/odom` son 13 kB/s.
+ * Eran cuatro celdas con chevrones en una malla de 3x3 y la parada en el centro,
+ * conduciendo con `pointerdown`/`pointerup`. Funcionaba, y su limite era real:
+ * **cuatro botones son cuatro ordenes excluyentes**. Para trazar un arco habia
+ * que pulsar «adelante», soltar, pulsar «izquierda» — conducir a saltos.
  *
- * 📝 `useMuestreo` y no `useTopic`: a 16,5 Hz un numero re-renderizado en cada
- *    mensaje parpadea y no se puede leer. Es la misma decision que telemetria.
+ * 📝 LO QUE SE CONSERVA DE ELLA, porque costo encontrarlo y sigue valiendo:
+ *   · **captura de puntero**: sin ella, salirse del control mientras se conduce
+ *     deja la orden puesta y el `pointerup` no llega. La palanca la usa igual.
+ *   · **`touch-none`**: sin esto, arrastrar en una tableta desplaza la pagina y
+ *     el navegador se queda el gesto — robot con la ultima orden y sin soltar.
+ *   · **la silueta importa**: la cruz aprendio que sobre papel blanco un mando
+ *     sin campo detras se lee como una rejilla a la que le faltan piezas. La
+ *     palanca lleva su hueco fresado por lo mismo.
+ *   · y que el mando **se reconoce por su forma antes de leer nada**, que es por
+ *     lo que la palanca es un circulo con un puño y no una caja con flechas.
+ *
+ * 🔴 Se borra en vez de dejarse «por si acaso»: un componente sin consumidor es
+ *    la misma familia que una clase CSS huerfana, y este repositorio lleva cinco.
  */
-function PedidoContraMedido({ velocidad }: { velocidad: number }) {
+
+function LoQueResponde() {
   const { transporte } = useRobot()
   const { ultimo } = useMuestreo(transporte, '/odom')
   /*
@@ -532,10 +317,19 @@ function PedidoContraMedido({ velocidad }: { velocidad: number }) {
   const lineal = ultimo?.twist?.twist?.linear
   const angular = ultimo?.twist?.twist?.angular
 
+  /*
+   * 🔴 SOLO LO MEDIDO DESDE EL 2026-08-16. Aqui habia CUATRO celdas —pedido y
+   *    medido, lineal y giro— mezcladas en la misma rejilla. Con el mando nuevo,
+   *    lo que se PIDE lo pinta `LoQuePido` al lado de la palanca, que es donde
+   *    se decide; esto es lo que el robot RESPONDE, que es otra pregunta y llega
+   *    por otro camino (`/odom`, a 16,5 Hz).
+   *
+   * 📌 Y no es solo orden: mezclarlas hacia que el «pedido» —un numero que sale
+   *    de esta misma pantalla— tuviera el mismo peso visual que una medida del
+   *    robot. Uno es una intencion y el otro un hecho.
+   */
   const celdas: readonly { etiqueta: string; valor: string; propio: boolean }[] = [
-    { etiqueta: 'pedido · lineal', valor: metrosPorSegundo(velocidad), propio: true },
     { etiqueta: 'medido · lineal', valor: metrosPorSegundo(numeroValido(lineal?.x)), propio: false },
-    { etiqueta: 'pedido · giro', valor: `${numero(GIRO, 1)} rad/s`, propio: true },
     {
       etiqueta: 'medido · giro',
       valor: radianesPorSegundo(numeroValido(angular?.z)),
@@ -671,7 +465,18 @@ export function PanelConducir() {
   //    10 Hz publicando en `/cmd_vel_raw` a la vez, que es exactamente lo que la
   //    regla 2 de la cabecera de este fichero prohíbe.
   const { conectado, teleoperacion } = useRobot()
-  const [velocidad, setVelocidad] = useState<number>(VELOCIDADES[0])
+  /*
+   * 🔴 EL TECHO ARRANCA EN EL MINIMO MEDIDO. Era una de dos pildoras (0,10 y
+   *    0,20); ahora es continuo entre las dos, y el valor de partida sigue
+   *    siendo el mas lento — teleoperar empieza despacio, no a medio gas.
+   */
+  const [velocidad, setVelocidad] = useState<number>(V_MIN)
+  /*
+   * Lo que se esta pidiendo AHORA, venga de la palanca o del teclado. Vive aqui
+   * y no dentro de la palanca porque lo pinta `LoQuePido`, que es su hermano:
+   * dos estados serian dos verdades sobre la misma orden.
+   */
+  const [orden, setOrden] = useState<OrdenMando>({ v: 0, w: 0 })
   const [falloLocal, setFalloLocal] = useState<string | null>(null)
 
   /**
@@ -775,9 +580,15 @@ export function PanelConducir() {
          *    pulsar Enter. Ahora funciona y **se lee antes de tener que
          *    descubrirlo**.
          */
+        /*
+         * 📝 El texto describe el GESTO, y el gesto cambio el 2026-08-16: era
+         *    «manteniendo pulsado» cuando el mando eran cuatro botones. Con una
+         *    palanca se ARRASTRA. Una instruccion que describe un mando que ya
+         *    no existe es de las que nadie relee.
+         */
         subtitulo={
-          'Se conduce manteniendo pulsado —con el ratón o con las flechas / WASD— y al soltar '
-          + 'se manda parar. Se publica en /cmd_vel_raw, que es la ENTRADA de la capa de seguridad.'
+          'Arrastra la palanca, o mantén pulsadas las flechas / WASD. Al soltar se manda parar. '
+          + 'Se publica en /cmd_vel_raw, que es la ENTRADA de la capa de seguridad.'
         }
       >
         {/*
@@ -787,56 +598,54 @@ export function PanelConducir() {
              L. Con `grid-cols-[auto_1fr]` la cruz ocupa lo que necesita y todo
              lo demas se apila a su derecha llenando la altura.
         */}
+        {/*
+          ═══════════════════════════════════════════════════════════════════════
+          👤 EL MANDO, REDISEÑADO (2026-08-16) — «los mandos no me acaban de
+             gustar, deberia haber algo como un joystick… la velocidad deberia
+             poder regularse con un deslizador»
+          ═══════════════════════════════════════════════════════════════════════
+          Y la cruz de cuatro botones tenia un limite real, no solo estetico:
+          **cuatro botones son cuatro ordenes excluyentes**. Para trazar un arco
+          habia que pulsar «adelante», soltar, pulsar «izquierda» — conducir a
+          saltos. La palanca da las dos componentes en un gesto.
+
+          🔴 LA DISTRIBUCION TAMBIEN CAMBIA, y ese era el tercer punto del
+             encargo. Antes: cruz a la izquierda y a su derecha una columna con
+             velocidad, CUATRO celdas de pedido/medido y dos parrafos — o sea el
+             mando compitiendo por el ancho con ocho cosas.
+             Ahora: **la palanca manda en su fila** con lo que se le esta
+             pidiendo justo al lado, y lo que el robot RESPONDE baja a su propia
+             banda. Pedir y medir son dos preguntas distintas y estaban mezcladas
+             en la misma rejilla.
+        */}
         <div className="grid items-start gap-x-10 gap-y-6 px-5 py-5 lg:grid-cols-[auto_1fr]">
-          {/*
-            La cruz sobre un campo tenue: `craft-floor` pide que una silueta se
-            recorte contra algo. Sobre papel blanco las cuatro esquinas vacias de
-            la malla de 3×3 hacian que el bloque se leyera como una rejilla a la
-            que le faltan piezas, no como una cruz.
-          */}
-          <div className="rounded-[18px] bg-[rgb(var(--vidrio)/0.025)] p-3">
-            <CruzDeMando teleoperacion={teleoperacion} velocidad={velocidad} alFallar={setFalloLocal} />
-          </div>
+          <Palanca
+            teleoperacion={teleoperacion}
+            vMax={velocidad}
+            alFallar={setFalloLocal}
+            alCambiar={setOrden}
+          />
 
-          {/* Velocidad y lecturas en UNA columna: son los dos hijos de la
-              segunda celda de la malla, no dos celdas mas. */}
           <div className="space-y-5">
-            <div>
-              <p className="microetiqueta mb-1.5">Velocidad</p>
-              <div className="flex gap-2">
-                {VELOCIDADES.map((v) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => setVelocidad(v)}
-                    /*
-                      🔴 EL TONO DE LA SECCION, NO `--primary`. `--primary` vale
-                         `30 58 210`, que es **exactamente el mismo RGB que
-                         `--bloque-vivo`**: la pildora seleccionada era un bloque
-                         saturado del vocabulario de ESTADO usado como adorno de
-                         un selector, y el segundo bloque saturado de una pantalla
-                         cuyo unico color reservado deberia ser el rojo de la
-                         parada. El seleccionado va en teal, igual que ya hacen
-                         las celdas de PEDIDO y el `active:` del mando.
-                    */
-                    className={`rounded-md border px-3.5 py-2 text-sm focus-ring ${
-                      velocidad === v
-                        ? 'border-[rgb(var(--seccion-conducir))] bg-[rgb(var(--seccion-conducir))] text-white'
-                        : 'border-border bg-secondary text-secondary-foreground hover:bg-muted'
-                    }`}
-                  >
-                    {metrosPorSegundo(v)}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <PedidoContraMedido velocidad={velocidad} />
-
-            <p className="max-w-prose text-[13px] leading-relaxed text-muted-foreground">
-              Giro fijo a {numero(GIRO, 1)} rad/s. Entre 0,5 y 2,0 rad/s el robot cumple el 99-102 %
-              de lo que se le pide. El tope del robot son 0,40 m/s y esta pantalla no lo ofrece.
-            </p>
+            <DeslizadorVelocidad
+              valor={velocidad}
+              alCambiar={setVelocidad}
+              desactivado={!conectado}
+            />
+            <LoQuePido orden={orden} />
           </div>
+        </div>
+
+        {/*
+          🔴 LO QUE RESPONDE EL ROBOT VA EN SU PROPIA BANDA, debajo de la que
+             decide. Pedir y medir son dos preguntas distintas y llegan por
+             caminos distintos: lo primero sale de esta pantalla, lo segundo de
+             `/odom` a 16,5 Hz. Tenerlas en la misma rejilla le daba a una
+             intencion el peso visual de un hecho.
+        */}
+        <div className="border-t border-[rgb(var(--filo)/0.10)] px-5 py-4">
+          <p className="microetiqueta mb-2.5">lo que responde el robot</p>
+          <LoQueResponde />
         </div>
 
         {!conectado && (
