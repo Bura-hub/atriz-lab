@@ -24,24 +24,18 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { ReactNode } from 'react'
-import { cookies } from 'next/headers'
-import { abrir } from '@/lib/sesion/testigo'
-import { COOKIE } from '@/lib/sesion/peticion'
-import { secreto } from '@/lib/sesion/almacen'
+import { haySesion } from '@/lib/sesion/servidor'
 import { Armazon } from '@/componentes/comun/Armazon'
 
 export default async function LayoutPrivado({ children }: { children: ReactNode }) {
-  const s = secreto()
   /*
-   * 🔴 SIN SECRETO NO SE DEJA PASAR A NADIE. Es el lado seguro y hay que
-   *    escribirlo: sin `ATRIZ_SECRETO` no se puede validar ninguna sesion, y
-   *    tratar «no puedo comprobar» como «adelante» convertiria una variable de
-   *    entorno olvidada en una aplicacion abierta de par en par.
+   * 📝 Esto eran cinco líneas a mano hasta el 2026-08-16. Se extrajeron a
+   *    `haySesion()` al hacer falta la misma pregunta en la portada y en
+   *    `/entrar`: tres copias de una comprobación de seguridad es cómo dos de
+   *    ellas acaban discrepando. El razonamiento entero —incluido por qué sin
+   *    `ATRIZ_SECRETO` no pasa nadie— vive ahora ahí.
    */
-  const crudo = s === null ? undefined : (await cookies()).get(COOKIE)?.value
-  const valido = s !== null && crudo !== undefined && abrir(crudo, s, Date.now()).valido
-
-  if (!valido) {
+  if (!await haySesion()) {
     // El middleware dejo aqui a donde iba esta peticion, para poder devolver a
     // la persona a su sitio despues de entrar.
     const ruta = (await headers()).get('x-atriz-ruta') ?? '/flota'

@@ -1195,6 +1195,38 @@
     border-right: 1px solid rgb(var(--filo) / 0.45);
   }
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 EL RECORRIDO LLENO, DESDE EL MÍNIMO HASTA DONDE LLEGA EL VALOR
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 Pedido por el usuario el 2026-08-16, y aquí ponía lo contrario: *«NO es
+   *    una barra de progreso; un relleno diría cuánto llevas, que sobre una
+   *    batería es la lectura equivocada»*. **Ese argumento era mío y es flojo**:
+   *    vale para una barra de TAREA, no para un indicador de NIVEL. Un depósito
+   *    de gasolina y la batería de un móvil se leen llenos, y un multímetro de
+   *    banco lleva su bargraph analógico debajo de los dígitos precisamente
+   *    porque el nivel se ve antes de leerse.
+   *
+   * ⚠️ LA PEGA REAL, QUE SÍ EXISTE Y NO ES LA QUE YO DIJE: un relleno desde el
+   *    canto izquierdo se lee como un PORCENTAJE, y esta escala **no empieza en
+   *    cero** — empieza en 6,00 V. Con 7,79 V el relleno llega al 74 %, y eso
+   *    NO es «74 % de batería»: es 7,79 dentro de 6,00-8,40. Por eso los dos
+   *    extremos van rotulados con su valor y no con `0 %` y `100 %`. Es un
+   *    tramo entre dos límites impresos, como en un panel.
+   *
+   * 🔴 Y VA EN TINTA NEUTRA, NUNCA EN EL COLOR DEL ESTADO. Teñirlo de rojo bajo
+   *    el umbral pondría el veredicto en un segundo sitio —la insignia ya lo
+   *    da— y metería el rojo de la parada en una pieza que no es la parada. La
+   *    escala dibuja; no juzga.
+   */
+  .regla-relleno {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: rgb(var(--vidrio) / 0.18);
+  }
+
   /* Un umbral. Línea entera, del alto de la regla: es una división, no un dato. */
   .regla-marca {
     position: absolute;

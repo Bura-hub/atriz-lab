@@ -70,6 +70,16 @@ export function EscalaImpresa({ valor, escala, formato }: PropsEscalaImpresa) {
      */
     <div aria-hidden="true" className="select-none pt-1.5">
       <div className="regla-escala">
+        {/*
+          🔴 EL RELLENO VA PRIMERO, Y EL ORDEN ES LA RAZÓN. Los umbrales y el
+             cursor se pintan DESPUÉS, así que quedan por encima: un relleno que
+             tapara la marca de «crítica» escondería justamente el dato que hace
+             falta comparar con el nivel.
+          👤 Pedido el 2026-08-16. Ver `.regla-relleno` en `globals.css` para lo
+             que un relleno sí dice y lo que no —esta escala no empieza en cero,
+             así que el ancho NO es un porcentaje de carga—.
+        */}
+        {p !== null && <span className="regla-relleno" style={{ width: pct(p) }} />}
         {marcas.map((m) => (
           <span
             key={m.nombre}

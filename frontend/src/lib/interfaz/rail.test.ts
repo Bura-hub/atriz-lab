@@ -58,10 +58,32 @@ describe('el raíl', () => {
     }
   })
 
-  it('la portada es la primera de las generales', () => {
-    // La puerta de entrada no puede estar por debajo de los sitios a los que se
-    // llega desde ella. Se comprueba porque ya estuvo mal.
-    expect(GENERALES[0].href).toBe('/')
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 EL RAÍL NO PUEDE OFRECER LA PORTADA, Y ESTA PRUEBA DECÍA LO CONTRARIO
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Exigía `GENERALES[0].href === '/'`, con el argumento de que «la puerta de
+   * entrada no puede estar por debajo de los sitios a los que se llega desde
+   * ella». Correcto mientras la portada fuera un destino para quien ya está
+   * dentro. **No lo es.**
+   *
+   * 👤 Lo destapó el usuario el 2026-08-16: al pulsar «Inicio» perdía el raíl
+   *    —la portada vive en `(publico)`, que no monta `Armazon`— y desde allí lo
+   *    único que había era un «Entrar» que tampoco llevaba a ningún sitio.
+   *
+   * Este raíl SOLO se ve con sesión, y desde hoy la portada REDIRIGE al resumen
+   * cuando hay sesión. Ofrecerla aquí sería un destino de menú que en silencio
+   * te lleva a otro — peor que no tenerlo.
+   *
+   * La prueba se INVIERTE en vez de borrarse: sin ella, alguien vuelve a añadir
+   * «Inicio» dentro de seis meses y nada se pone rojo.
+   */
+  it('🔴 el raíl NO ofrece la portada: con sesión, esa pantalla redirige', () => {
+    const hrefs = GENERALES.map((e) => e.href)
+    expect(hrefs, `el raíl ofrece «/»: ${hrefs.join(' · ')}`).not.toContain('/')
+    // Control de tamaño: si `GENERALES` se vaciara, el `not.toContain` pasaría
+    // solo. Cero entradas se leen igual que cero fallos.
+    expect(hrefs.length).toBeGreaterThanOrEqual(2)
   })
 
   describe('entradaDeRuta', () => {

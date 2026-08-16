@@ -39,7 +39,7 @@ import { usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
 import {
   IconoConducir, IconoCuaderno, IconoDiagnostico, IconoEntrar, IconoFlota, IconoLidar,
-  IconoNavegar, IconoNoObedece, IconoPortada, IconoTaller, IconoTelemetria, IconoUsuarios,
+  IconoNavegar, IconoNoObedece, IconoTaller, IconoTelemetria, IconoUsuarios,
   PropsIcono,
 } from './Iconos'
 import { useSesion } from '@/hooks/ContextoSesion'
@@ -106,34 +106,50 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
 }
 
 /**
- * Los tres destinos que existen siempre, haya robot o no.
+ * Los destinos que existen siempre, haya robot o no.
  *
  * 📝 Exportado para que `rail.test.ts` pueda comprobarlo. No lo usa ningún otro
  *    componente: la navegación se dibuja aquí y solo aquí.
+ *
+ * 📝 Eran TRES y ahora son dos: ver abajo por qué se fue «Inicio». La historia
+ *    de aquella entrada se conserva porque su lección sigue viva —«un menú de
+ *    navegación que repite un destino es de las cosas que un cliente ve antes
+ *    que el contenido»— y porque un enlace que desaparece sin explicación es lo
+ *    que hace que alguien lo vuelva a añadir dentro de seis meses:
+ *
+ *      · Nació la ÚLTIMA de las tres y se subió a la primera, con el argumento
+ *        de que «la puerta de entrada no puede estar por debajo de los sitios a
+ *        los que se llega desde ella».
+ *      · Al subirla, la primera versión la AÑADIÓ sin borrar la de abajo: el
+ *        raíl salió con «Portada» dos veces. Se vio en una captura, no
+ *        compilando — el HTML era correcto y las pruebas pasaban.
+ *      · Se llamó «Inicio» y no «Portada» por decisión del usuario (2026-08-06).
+ *      · Y su tono era `--seccion-portada`, no `--seccion-flota`: llevaba el
+ *        cobalto del muro, así que el raíl decía COBALTO y la banda de la
+ *        pantalla decía VIOLETA para el mismo sitio.
  */
 export const GENERALES: EntradaRail[] = [
   /*
-    🔴 LA PORTADA VA PRIMERA. Estaba la ULTIMA de las tres, asi que la puerta de
-       entrada de la aplicacion aparecia debajo de todo y su pastilla activa se
-       pintaba al final de la lista. El logotipo de arriba tambien lleva a la
-       portada, pero un enlace ROTULADO no puede estar por debajo de los sitios a
-       los que se llega desde el.
-
-    ⚠️ Y va UNA sola vez. Al subirla, la primera version la AÑADIO sin borrar la
-       de abajo: el rail salio con «Portada» dos veces, arriba y al final. Se vio
-       en la primera captura despues del cambio, no compilando — el HTML era
-       correcto y las pruebas pasaban. Un menu de navegacion que repite un destino
-       es de las cosas que un cliente ve antes que el contenido.
-
-    📝 Y su tono es `--seccion-portada`, no `--seccion-flota`: llevaba el cobalto
-       del muro, asi que desde que su cabecera tiene campo de color el rail decia
-       COBALTO y la banda de la pantalla decia VIOLETA para el mismo sitio.
-  */
-  // 📝 «Inicio» y no «Portada» (decision del usuario, 2026-08-06). El nombre
-  //    interno del token —`--seccion-portada`— y el del componente se dejan: son
-  //    identificadores, no texto de pantalla, y renombrarlos moveria un fichero
-  //    de estilos entero para cambiar una etiqueta.
-  { href: '/', texto: 'Inicio', Icono: IconoPortada, color: '--seccion-portada' },
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 «INICIO» SE FUE DEL RAIL EL 2026-08-16, Y ERA UN CALLEJON SIN SALIDA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 Lo reporto el usuario: «si le doy [a Inicio] me regresa al login aunque
+   *    tenga cuenta, el rail se pierde, y si le doy entrar me deja en /entrar y
+   *    no sigue al resto».
+   *
+   * Los tres sintomas son el mismo defecto de diseño, y es mio: **este rail solo
+   * se ve CON sesion, y apuntaba a una pantalla que existe para quien NO la
+   * tiene**. La portada vive en el grupo `(publico)`, que no monta `Armazon`,
+   * asi que al pulsar aqui la navegacion desaparecia — y lo unico que ofrecia
+   * esa pantalla era un boton «Entrar» que llevaba a otro sitio sin salida.
+   *
+   * Dos publicos opuestos en el mismo enlace. Desde hoy la portada REDIRIGE al
+   * resumen cuando hay sesion, asi que dejar la entrada aqui seria un destino
+   * del menu que en silencio te lleva a otro: peor que no tenerla.
+   *
+   * 📝 Y el logotipo de arriba sigue llevando a casa. Lo que se quita es el
+   *    enlace ROTULADO, que era ademas un duplicado suyo.
+   */
   { href: '/flota', texto: 'Flota', Icono: IconoFlota, color: '--seccion-flota' },
   { href: '/cuaderno', texto: 'Cuaderno', Icono: IconoCuaderno, color: '--seccion-cuaderno' },
 ]
@@ -183,18 +199,36 @@ function Entrada({ e, activa }: { e: EntradaRail; activa: boolean }) {
       href={e.href}
       aria-current={activa ? 'page' : undefined}
       /*
-        La entrada activa se pinta con el tono de SU pantalla, no con un azul
-        único: así el raíl deja de ser una lista gris y el color dice dónde
-        estás. En reposo el icono ya lleva su tono a media tinta, que es lo que
-        hace que la columna tenga color sin gritar.
+        ═══════════════════════════════════════════════════════════════════════
+        🔴🔴 EL RAÍL ERA UN ARCOÍRIS, Y ESO SE ACABÓ (2026-08-16)
+        ═══════════════════════════════════════════════════════════════════════
+        Aquí ponía: *«en reposo el icono ya lleva su tono a media tinta, que es
+        lo que hace que la columna tenga color sin gritar»*. En una entrada,
+        cierto. En **once** —siete pestañas de robot más Inicio, Flota, Cuaderno
+        y Usuarios—, la columna entera salía en once hues distintos: violeta,
+        teal, ámbar, verde, azul, magenta, ciruela, morado, cobalto, pizarra y
+        tinta. Eso no es «color sin gritar»: es una lista de colores donde el
+        color **ya no distingue nada**, porque todo lo tiene.
+
+        Y choca de frente con la dirección: en un frontal de instrumento la
+        nomenclatura va **grabada en una sola tinta**. La serigrafía de un panel
+        no cambia de color por cada conector.
+
+        → TODAS en tinta. El color aparece **una vez**, en la activa, y es el
+          tono de la pantalla a la que lleva — así el raíl sigue diciendo «dónde
+          estás» y sigue enganchando con la banda de esa pantalla, que es la
+          continuidad que este proyecto ya construyó. Escaso otra vez, y por eso
+          otra vez significa algo.
+
+        📝 `rounded-none`: la píldora era la firma del «cualquier dashboard» que
+           el encargo nombra como la primera forma de fallar, y en un panel nada
+           es una cápsula.
       */
-      style={
+      style={activa ? { backgroundColor: `rgb(var(${e.color}))` } : undefined}
+      className={`pulsable focus-ring flex items-center gap-3 rounded-none px-4 py-2.5 text-sm font-medium transition-colors duration-[var(--t-estado)] ${
         activa
-          ? { backgroundColor: `rgb(var(${e.color}))` }
-          : { color: `rgb(var(${e.color}) / 0.85)` }
-      }
-      className={`pulsable focus-ring flex items-center gap-3 rounded-full px-4 py-2.5 text-sm font-medium transition-colors duration-[var(--t-estado)] ${
-        activa ? 'text-white' : 'hover:bg-[rgb(var(--vidrio)/0.05)]'
+          ? 'text-white'
+          : 'text-muted-foreground hover:bg-[rgb(var(--vidrio)/0.05)] hover:text-foreground'
       }`}
     >
       <e.Icono className="shrink-0" />
@@ -345,7 +379,7 @@ export function RailNavegacion({ pestanas = [] }: PropsRail) {
           {usuario === null ? (
             <Link
               href="/entrar"
-              className="pulsable focus-ring flex items-center gap-2 rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-[rgb(var(--vidrio)/0.05)]"
+              className="pulsable focus-ring flex items-center gap-2 rounded-none px-4 py-2 text-sm text-muted-foreground hover:bg-[rgb(var(--vidrio)/0.05)]"
             >
               {caduco ? 'Volver a entrar' : 'Entrar'}
             </Link>
@@ -353,12 +387,31 @@ export function RailNavegacion({ pestanas = [] }: PropsRail) {
             <div className="px-4">
               <p className="microetiqueta">Sesión</p>
               <p className="mt-1 truncate text-sm font-medium">{usuario}</p>
+              {/*
+                ═══════════════════════════════════════════════════════════════
+                🔴 UN BOTÓN, NO UN ENLACE SUBRAYADO DE 13 px
+                ═══════════════════════════════════════════════════════════════
+                👤 El usuario pidió el 2026-08-16 «un botón de cerrar sesión».
+                   Lo había —esto mismo— y era un `Salir` subrayado, del tamaño
+                   de un pie de foto, debajo del nombre: lo bastante discreto
+                   como para que quien lo buscaba no lo encontrara. Que exista
+                   no basta si no se ve; es la misma regla que este proyecto
+                   aplica a la parada de emergencia.
+
+                🔴 Y desde hoy es **el único camino para cambiar de cuenta**:
+                   con sesión abierta, `/entrar` redirige al resumen. Si el
+                   botón no se ve, el aula se queda con la cuenta del anterior.
+
+                📝 «Cerrar sesión» y no «Salir». `Salir` es ambiguo en una
+                   pantalla llena de destinos —¿salir de dónde, del robot?— y
+                   fue justo lo que el usuario no encontró.
+              */}
               <button
                 type="button"
                 onClick={() => { void salir() }}
-                className="focus-ring mt-1.5 rounded text-[13px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                className="pulsable focus-ring mt-2.5 w-full rounded-none border border-[rgb(var(--filo)/0.22)] px-3 py-1.5 text-[13px] font-medium text-muted-foreground hover:border-[rgb(var(--filo)/0.4)] hover:text-foreground"
               >
-                Salir
+                Cerrar sesión
               </button>
             </div>
           )}

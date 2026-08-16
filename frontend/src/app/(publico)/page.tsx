@@ -27,10 +27,46 @@
  */
 
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { CSSProperties } from 'react'
 import { TOTAL_ROBOTS } from '@/lib/interfaz/identidad'
+import { DESTINO_POR_DEFECTO } from '@/lib/sesion/regreso'
+import { haySesion } from '@/lib/sesion/servidor'
 
-export default function Portada() {
+export default async function Portada() {
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 CON SESIÓN, ESTA PANTALLA NO SE VE. Y ANTES ERA UN CALLEJÓN SIN SALIDA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 Lo reportó el usuario el 2026-08-16, y era un fallo de flujo de los que no
+   *    dan error:
+   *
+   *      «si le doy [a Inicio] me regresa al login aunque tenga cuenta, el raíl
+   *       se pierde, y si le doy entrar me deja en /entrar y no sigue al resto»
+   *
+   * Los tres síntomas son el mismo defecto. Esta portada vive en `(publico)`,
+   * que **no monta `Armazon`** — así que al pulsar «Inicio» en el raíl, el raíl
+   * desaparecía. Y desde aquí lo único que hay es un botón «Entrar» que lleva a
+   * `/entrar`, donde alguien con sesión no tiene nada que hacer. O sea: el raíl
+   * ofrecía un destino que **quitaba la navegación y no devolvía a ningún
+   * sitio**.
+   *
+   * 🔴 Y la causa de fondo es mía y de diseño: metí «Inicio» en el raíl —que
+   *    solo se ve CON sesión— apuntando a una pantalla que existe **para quien
+   *    no la tiene**. Dos públicos opuestos en el mismo enlace.
+   *
+   * → Con sesión válida, aquí se redirige al resumen. La portada es lo que ve
+   *   quien llega **sin cuenta**, y nada más. Decisión del usuario, y es la
+   *   correcta: *«que solo se muestre el resumen inicial si no hay cuenta»*.
+   *
+   * ⚠️ Se comprueba la FIRMA, no que haya cookie: una inventada pasa el
+   *    middleware. Ver `haySesion()`.
+   */
+  if (await haySesion()) redirect(DESTINO_POR_DEFECTO)
+  return <PortadaPublica />
+}
+
+function PortadaPublica() {
   const tono = { '--tono-seccion': 'var(--seccion-portada)' } as CSSProperties
 
   return (
