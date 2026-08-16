@@ -25,8 +25,17 @@ export type DestinoRobot =
  * ⚠️ Es deliberadamente estrecho. El override documentado del proyecto es «la IP
  * como override» de `rvr-NN.local`, y aceptar un nombre de maquina cualquiera
  * convertiria esta ruta en un «abre un WebSocket a donde diga la URL» -no hay
- * ninguna necesidad de eso, y esta aplicacion **no tiene autenticacion** (ni
- * puede tenerla mientras hable con rosbridge 2.7.0, que no la implementa).
+ * ninguna necesidad de eso.
+ *
+ * 🔴 CORREGIDO el 2026-08-15: aqui ponia «esta aplicacion no tiene autenticacion
+ *    (ni puede tenerla mientras hable con rosbridge 2.7.0, que no la
+ *    implementa)». **Ya no es cierto**: rosbridge sigue sin implementarla, pero
+ *    el robot la exige por su cuenta —`atriz_rosbridge.py` parchea su
+ *    manejador— y este servidor firma la credencial. A7, evidencia 124.
+ *
+ * ⚠️ Y esto refuerza el motivo de esta funcion, no lo debilita: **una IP no
+ *    lleva numero de robot**, asi que no se le puede firmar un testigo. Aceptar
+ *    un nombre cualquiera abriria un camino sin credencial posible.
  */
 export function esIPv4(s: string): boolean {
   const partes = s.split('.')

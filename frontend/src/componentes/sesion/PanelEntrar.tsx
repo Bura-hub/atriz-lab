@@ -146,10 +146,14 @@ export function PanelEntrar() {
           <div className="mt-5">
             <Aviso nivel="ATENCION" titulo="Qué protege esta sesión">
               Identifica a quien usa <strong>esta interfaz</strong>, y es lo que evita que se
-              libere una parada por curiosidad o por error. <strong>No protege al robot</strong>:
-              rosbridge 2.7.0 no tiene autenticación, así que cualquiera en la misma red puede
-              hablar con cualquier robot sin pasar por aquí. Eso se cierra en el robot, y no está
-              construido.
+              libere una parada por curiosidad o por error. Desde el 15 de agosto de 2026 también{' '}
+              <strong>abre el robot</strong>: al entrar, este servidor te firma una credencial para
+              ese robot en concreto, y el robot la comprueba. Sin ella te cierra la puerta, y una
+              credencial del robot 2 no abre el 1.{' '}
+              <strong>Lo que todavía no protege</strong>: lo que viaja va{' '}
+              <strong>sin cifrar</strong>, así que alguien en la misma red puede leer la
+              telemetría aunque no pueda conducir. Y quien ejecute código{' '}
+              <em>dentro</em> del robot desde el Taller tiene más permisos que esta pantalla.
             </Aviso>
           </div>
 

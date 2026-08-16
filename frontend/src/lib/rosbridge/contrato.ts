@@ -71,10 +71,15 @@ export const SERVICIOS = [
    *    y sus dos hermanos no.
    *
    * 🔴 `/set_ir_mode` y `/set_ir_evading` se quedan FUERA a proposito, y no es
-   *    un olvido que haya que corregir: ponen al robot a CONDUCIR saltandose la
-   *    capa de seguridad, y rosbridge no tiene identidad por usuario. Abrirlos
-   *    hoy seria que cualquiera en el aula ponga a conducir cualquier robot.
-   *    Se reabren cuando exista esa identidad (Fase B), no por comodidad.
+   *    un olvido que haya que corregir: ponen al robot a CONDUCIR **saltandose
+   *    la capa de seguridad**. Ese es el motivo, y NO caduca.
+   *
+   * 🔴 CORREGIDO el 2026-08-15: aqui ponia ademas «y rosbridge no tiene
+   *    identidad por usuario … se reabren cuando exista esa identidad (Fase B)».
+   *    La identidad **ya existe** (A7, evidencia 124), y aun asi **NO se
+   *    reabren**: saltarse el `collision_monitor` sigue siendo saltarselo, lo
+   *    haga un desconocido o un alumno identificado. La Fase B cierra QUIEN
+   *    entra; la lista blanca cierra QUE puede pedir. Son cosas distintas.
    */
   '/send_infrared_message',
 ] as const
