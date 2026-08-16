@@ -89,6 +89,29 @@ export interface EntradaNoObedece {
    *    afirma nada.
    */
   conduciendoPorIR?: boolean | null
+  /**
+   * ¿Hay un programa del Taller corriendo en este robot?
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 ES LA CAUSA MÁS COMÚN DE UN AULA, Y ESTA PANTALLA NO LA MIRABA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Un programa de alumno publica en **el mismo `/cmd_vel_raw`** que la palanca:
+   * si hay uno corriendo, el robot obedece — pero a otro. Y el caso peor no es
+   * el propio: es el de OTRO alumno sobre el mismo robot, porque entonces quien
+   * mira esta pantalla no tiene ni idea de que hay alguien más.
+   *
+   * ⚠️ `undefined` = **no se sabe desde aquí**, y es el valor normal hoy. El
+   *    estado del programa vive en el agente del Taller (puerto 9443), que es
+   *    OTRO enlace: esta pantalla no lo tiene abierto, y abrirlo costaría un
+   *    socket y un testigo por robot solo para diagnosticar.
+   *
+   * 🔴 Por eso la causa se lista igualmente, en `NO_SE_SABE`, con el remedio de
+   *    ir a mirarlo. Callarla porque no se puede medir sería peor: quien
+   *    enumera causas y omite la más frecuente hace que la lista **parezca
+   *    completa** cuando no lo está. Es la regla de esta pantalla —«nunca dice
+   *    que el robot esté bien»— aplicada a su propio alcance.
+   */
+  programaDelTaller?: { corriendo: boolean; sujeto: string | null } | null
 }
 
 export type EstadoCausa = 'CONFIRMADA' | 'POSIBLE' | 'DESCARTADA' | 'NO_SE_SABE'
@@ -415,15 +438,55 @@ export function diagnosticar(e: EntradaNoObedece): Causa[] {
     })
   }
 
+  // ── 6 · Un programa del Taller conduciendo ────────────────────────────────
+  const prog = e.programaDelTaller
+  if (prog === undefined || prog === null) {
+    causas.push({
+      id: 'taller',
+      titulo: 'Puede haber un programa tuyo —o de otro— corriendo',
+      estado: 'NO_SE_SABE',
+      evidencia:
+        'Un programa del Taller publica en el MISMO /cmd_vel_raw que la palanca, así que si hay '
+        + 'uno corriendo el robot sí obedece: obedece a otro. Y esta pantalla no lo puede ver — el '
+        + 'estado del programa vive en el agente del Taller, que es otro enlace.',
+      remedio: 'Abre «Programar» y mira si hay algo corriendo. Si es de otra persona, aparecerá su nombre.',
+    })
+  } else if (prog.corriendo) {
+    causas.push({
+      id: 'taller',
+      titulo: prog.sujeto === null
+        ? 'Hay un programa corriendo en este robot'
+        : `Hay un programa de ${prog.sujeto} corriendo en este robot`,
+      estado: 'CONFIRMADA',
+      evidencia:
+        'El agente del Taller dice que hay un programa en marcha, y publica en el MISMO '
+        + '/cmd_vel_raw que la palanca. El robot obedece: obedece al programa.',
+      remedio: 'Párale desde «Programar». La parada de emergencia también lo detiene, y además cancela la navegación.',
+    })
+  } else {
+    causas.push({
+      id: 'taller',
+      titulo: 'No hay ningún programa del Taller corriendo',
+      estado: 'DESCARTADA',
+      evidencia: 'El agente del Taller dice que no hay ninguna ejecución en marcha.',
+      remedio: '',
+    })
+  }
+
   return causas
 }
 
 /**
  * El titular de la pantalla: cuántas causas están confirmadas.
  *
- * 🔴 Nunca dice «el robot está bien». Que ninguna de las cinco causas conocidas
- *    encaje **no prueba que el robot obedezca**: solo que no es ninguna de las
- *    que esta pantalla sabe mirar.
+ * 🔴 Nunca dice «el robot está bien». Que ninguna de las causas conocidas encaje
+ *    **no prueba que el robot obedezca**: solo que no es ninguna de las que esta
+ *    pantalla sabe mirar.
+ *
+ * 📝 Aquí ponía «las CINCO causas conocidas» y ya son seis. Un número escrito a
+ *    mano en una frase envejece en cuanto alguien añade una — y este proyecto
+ *    tiene el precedente: «estas tres piezas» sobre dos que se movieron.
+ *    Sin número, no puede quedarse rancio.
  */
 export function resumen(causas: readonly Causa[]): string {
   const n = causas.filter((c) => c.estado === 'CONFIRMADA').length

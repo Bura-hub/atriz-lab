@@ -313,3 +313,65 @@ describe('🔴 la constante local no puede quedarse atrás del .msg del robot', 
     expect(ACCION_APROXIMACION).toBe(ACCION_MONITOR.APROXIMACION)
   })
 })
+
+describe('🆕 un programa del Taller conduciendo el robot', () => {
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 ES LA CAUSA MÁS COMÚN DE UN AULA, Y ESTA PANTALLA NO LA MIRABA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Un programa de alumno publica en **el mismo `/cmd_vel_raw`** que la palanca:
+   * con uno corriendo el robot obedece, pero a otro. Y el caso peor no es el
+   * propio, es el de OTRO alumno sobre el mismo robot — entonces quien mira esta
+   * pantalla no tiene ni idea de que hay alguien más.
+   */
+  it('🔴 se lista aunque NO se pueda saber, en vez de callarse', () => {
+    const c = causa(diagnosticar(sano), 'taller')
+    expect(c.estado).toBe('NO_SE_SABE')
+    // Y el remedio manda al sitio donde SÍ está la respuesta.
+    expect(c.remedio).toMatch(/programar/i)
+  })
+
+  /*
+   * 🔴 CALLARLA PORQUE NO SE PUEDE MEDIR SERÍA PEOR: quien enumera causas y
+   *    omite la más frecuente hace que la lista **parezca completa** cuando no
+   *    lo está. Es la regla de esta pantalla —«nunca dice que el robot esté
+   *    bien»— aplicada a su propio alcance.
+   */
+  it('🔴 con todo sano, la lista NO se queda sin ella', () => {
+    expect(diagnosticar(sano).map((c) => c.id)).toContain('taller')
+  })
+
+  it('con un programa corriendo, se confirma y dice de quién es', () => {
+    const c = causa(diagnosticar({
+      ...sano, programaDelTaller: { corriendo: true, sujeto: 'luis' },
+    }), 'taller')
+    expect(c.estado).toBe('CONFIRMADA')
+    expect(c.titulo).toContain('luis')
+    expect(c.evidencia).toContain('/cmd_vel_raw')
+  })
+
+  it('sin dueño conocido, se confirma igual y no inventa un nombre', () => {
+    const c = causa(diagnosticar({
+      ...sano, programaDelTaller: { corriendo: true, sujeto: null },
+    }), 'taller')
+    expect(c.estado).toBe('CONFIRMADA')
+    expect(c.titulo).not.toMatch(/null|undefined/)
+  })
+
+  it('y si el agente dice que no hay nada, se descarta', () => {
+    const c = causa(diagnosticar({
+      ...sano, programaDelTaller: { corriendo: false, sujeto: null },
+    }), 'taller')
+    expect(c.estado).toBe('DESCARTADA')
+    expect(c.remedio).toBe('')
+  })
+
+  /*
+   * 📌 Una causa en `NO_SE_SABE` NO puede contar como confirmada en el titular:
+   *    «no lo sé» y «lo he comprobado» son justo lo que esta pantalla existe para
+   *    separar.
+   */
+  it('🔴 «no se sabe» no engorda el recuento de confirmadas', () => {
+    expect(resumen(diagnosticar(sano))).not.toMatch(/1 causa confirmada/i)
+  })
+})
