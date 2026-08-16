@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react'
+import type { ProveedorTestigo } from '@/lib/rosbridge/proveedor_testigo'
 import { Aviso, Transporte } from '../lib/rosbridge/transporte'
 
 /**
@@ -100,12 +101,23 @@ export function useLatido(periodoMs: number = PERIODO_MUESTREO_MS): number {
  * abajo -que depende de el- corre su limpieza sobre el ANTERIOR (lo tiene
  * capturado en el cierre) y lo cierra antes de montar el nuevo.
  */
-export function useTransporte(url: string, fabrica?: FabricaWS): EstadoTransporte {
+export function useTransporte(
+  url: string,
+  fabrica?: FabricaWS,
+  /*
+   * 🆕 FASE B (A7): de donde sale el testigo, si este despliegue lo usa.
+   *
+   * ⚠️ TIENE QUE SER ESTABLE. Va en las dependencias del `useMemo`, asi que una
+   *    funcion nueva en cada render recrearia el `Transporte` —y con el, el
+   *    socket— en cada pintada. Quien lo pasa lo memoriza (`ContextoRobot`).
+   */
+  testigo?: ProveedorTestigo,
+): EstadoTransporte {
   const transporte = useMemo(
     // `reconectar: true` es del transporte, no del hook: espera creciente de
     // 1 s a 30 s con ruido, para que 16 navegadores no reintenten a la vez.
-    () => new Transporte(url, fabrica, { reconectar: true }),
-    [url, fabrica],
+    () => new Transporte(url, fabrica, { reconectar: true, testigo }),
+    [url, fabrica, testigo],
   )
 
   const [conectado, setConectado] = useState(false)

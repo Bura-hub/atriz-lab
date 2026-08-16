@@ -17,6 +17,7 @@
  */
 
 import { ReactNode, createContext, useContext, useMemo } from 'react'
+import { proveedorDeTestigo } from '@/lib/rosbridge/proveedor_testigo'
 import { Aviso, Transporte, urlDeRobot } from '../lib/rosbridge/transporte'
 import { ControlTeleoperacion, useTeleoperacion } from './useTeleoperacion'
 import { FabricaWS, useTransporte } from './useTransporte'
@@ -74,7 +75,17 @@ export function ProveedorRobot({ robot, fabrica, children }: PropsProveedorRobot
   // `rvr-NN.local` por mDNS, con la IP como override: es lo que hace que el
   // mismo codigo funcione en casa y en el laboratorio sin tocar nada.
   const url = useMemo(() => urlDeRobot(robot), [robot])
-  const { transporte, conectado, ultimoAviso } = useTransporte(url, fabrica)
+  /*
+   * 🔴 Memorizado sobre `robot`: si fuera una funcion nueva en cada render, el
+   *    `useMemo` de `useTransporte` recrearia el `Transporte` y su socket en
+   *    cada pintada. Se veria como una reconexion constante.
+   *
+   * Devuelve `undefined` mientras `NEXT_PUBLIC_ATRIZ_TESTIGO` no este puesto,
+   * y entonces todo esto es exactamente lo de antes. Ver `proveedor_testigo.ts`
+   * para por que es un interruptor y no algo que se mande siempre.
+   */
+  const testigo = useMemo(() => proveedorDeTestigo(robot), [robot])
+  const { transporte, conectado, ultimoAviso } = useTransporte(url, fabrica, testigo)
   // La unica de este robot. Ver el comentario de `ValorContextoRobot`.
   const teleoperacion = useTeleoperacion(transporte)
 

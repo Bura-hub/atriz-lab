@@ -40,7 +40,7 @@ function diferida<T>() {
 
 function montar(pedirTestigo: () => Promise<string | null>, opciones: Record<string, unknown> = {}) {
   const creados: WSEspia[] = []
-  const programar = vi.fn((_fn: () => void, _ms: number) => 0 as unknown as ReturnType<typeof setTimeout>)
+  const programar = vi.fn(() => 0 as unknown as ReturnType<typeof setTimeout>)  // sin parametros: TS acepta una funcion de menos aridad, y eslint no se queja
   const t = new Transporte(
     'ws://robot:9090',
     (u, p) => { const w = new WSEspia(u, p); creados.push(w); return w as unknown as WebSocket },
