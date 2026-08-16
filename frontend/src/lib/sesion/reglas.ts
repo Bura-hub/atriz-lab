@@ -19,21 +19,47 @@
  *    ninguna pantalla.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 UNA SOLA CLASE DE CUENTA, Y NO ES UN ATAJO
+ * 🔴 AHORA SÍ HAY DOS ROLES, Y EL MOTIVO ES QUE CAMBIÓ EL HECHO
  * ═══════════════════════════════════════════════════════════════════════════
- * No hay `rol`. Quien tiene cuenta puede liberar una parada y crear otras
- * cuentas; los dieciséis alumnos usan la aplicación **sin entrar**, igual que
- * hasta ahora.
+ * Aquí ponía que **no hay `rol`**, y el argumento era bueno:
  *
- * Se planteó un campo `rol` con dos valores y se descartó por una razón de este
- * repositorio: hoy solo habría uno en uso, y un campo con un único valor no es
- * una jerarquía — es la promesa de una que no existe. Cuando haga falta separar
- * «administrar» de «operar» se añade, y entonces significará algo.
+ *   > «Se planteó un campo `rol` con dos valores y se descartó: hoy solo habría
+ *   >  uno en uso, y un campo con un único valor no es una jerarquía — es la
+ *   >  promesa de una que no existe.»
  *
- * 📝 La decisión de fondo: en un laboratorio de 16 robots con un administrador
- *    presente, la persona que libera una parada y la que da de alta a un monitor
- *    son la misma.
+ * Se apoyaba en un hecho, escrito dos líneas más arriba: *«los dieciséis alumnos
+ * usan la aplicación **sin entrar**»*. **Ese hecho dejó de ser cierto el
+ * 2026-08-15**, cuando la Fase B hizo obligatorio el testigo: hoy, sin sesión,
+ * no se abre ni un socket con ningún robot.
+ *
+ * Así que el segundo valor **existe de verdad**: dieciséis personas que operan y
+ * unas pocas que administran. No se revoca una decisión buena — se revoca el
+ * hecho en el que se apoyaba, que es distinto y hay que decirlo así.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * QUÉ SEPARA UN ROL DEL OTRO
+ * ═══════════════════════════════════════════════════════════════════════════
+ *   conducir · medir · LIDAR · Taller · cuaderno · ver el muro   los DOS
+ *   liberar la parada de emergencia                              los DOS  ← 👤
+ *   arrancar y parar SLAM y Nav2                                 profesor
+ *   crear, borrar y resetear cuentas                             profesor
+ *
+ * 👤 **La parada la libera cualquiera con sesión, y no es una concesión.** Lo
+ *    decidió el usuario con un dato de la Pi delante: liberar es seguro del lado
+ *    del robot —`cancelar_nav2` está verificado **con control**: el objetivo
+ *    queda `CANCELED` y el robot se mueve **0,0 cm**, o sea que no arranca solo—.
+ *    Y el riesgo de reservarla era real: si solo el profesor puede liberar y no
+ *    está en el aula, un robot se queda parado hasta que aparezca.
+ *
+ * ⚠️ EL ROL NO VIAJA EN LA COOKIE, y esto no es un detalle de implementación:
+ *    se resuelve en el servidor leyendo la cuenta. Si viajara firmado dentro,
+ *    degradar a alguien exigiría esperar a que caduque su sesión —hasta **ocho
+ *    horas**— y un profesor recién retirado seguiría administrando cuentas
+ *    durante toda una clase.
  */
+
+/** Quién es quien mira. Dos valores, y los dos se usan. */
+export type Rol = 'profesor' | 'alumno'
 
 /** Lo que se guarda por cuenta. **Nunca** la contraseña en claro. */
 export interface Cuenta {
@@ -42,6 +68,32 @@ export interface Cuenta {
   clave: string
   /** Milisegundos desde la época. Se enseña en la tabla; el hash no. */
   creada: number
+  /**
+   * 🔴 OPCIONAL, Y SU AUSENCIA SE LEE COMO `profesor`. Ver `rolDe`.
+   */
+  rol?: Rol
+}
+
+/**
+ * El rol de una cuenta, con las que ya existen resueltas.
+ *
+ * 🔴 **La ausencia se lee como `profesor`, y es deliberado.** Las cuentas que ya
+ *    están en `usuarios.json` cuando esto se despliega son las de administración
+ *    —hoy hay una— y leerlas como `alumno` **degradaría en silencio al único que
+ *    puede administrar**, dejando la instalación sin nadie capaz de crear
+ *    cuentas. La única salida sería editar el JSON a mano en el portátil del
+ *    aula, que es exactamente el estado del que esta pantalla existe para sacar.
+ *
+ * 📝 El lado seguro de un campo nuevo depende de qué había antes, no de cuál es
+ *    el valor «menor». Aquí lo que había antes era administración.
+ */
+export function rolDe(c: Pick<Cuenta, 'rol'>): Rol {
+  return c.rol ?? 'profesor'
+}
+
+/** ¿Puede esta cuenta administrar cuentas y arrancar la navegación? */
+export function esProfesor(c: Pick<Cuenta, 'rol'> | null | undefined): boolean {
+  return c !== null && c !== undefined && rolDe(c) === 'profesor'
 }
 
 /** Mínimo de la contraseña. Corto a propósito: ver `revisarAlta`. */

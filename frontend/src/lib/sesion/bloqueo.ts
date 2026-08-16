@@ -46,16 +46,25 @@ export const SIN_INTENTOS: Intentos = { fallos: 0, bloqueadoHasta: 0 }
  *    una parada de emergencia**. Bloquear al segundo intento deja a esa persona
  *    fuera hasta `BLOQUEO_MAXIMO_S` —cinco minutos— con un robot parado delante
  *    y una clase esperando. Por eso la curva empieza tarde y tiene tope.
+ *
+ * @param desde  a partir de cuantos fallos se castiga. Se parametriza —con el
+ *               valor de siempre por defecto— porque hay **dos cubos con
+ *               umbrales distintos**: el de usuario empieza a los 5, y el de
+ *               cliente mucho mas tarde. Ver `cliente.ts` para por que: sin
+ *               proxy delante el aula entera comparte cubo, y castigar pronto
+ *               ahi deja fuera a la clase por un alumno torpe.
  */
-export function castigoS(fallos: number): number {
-  if (fallos < FALLOS_ANTES_DE_BLOQUEAR) return 0
-  return Math.min(30 * 2 ** (fallos - FALLOS_ANTES_DE_BLOQUEAR), BLOQUEO_MAXIMO_S)
+export function castigoS(fallos: number, desde: number = FALLOS_ANTES_DE_BLOQUEAR): number {
+  if (fallos < desde) return 0
+  return Math.min(30 * 2 ** (fallos - desde), BLOQUEO_MAXIMO_S)
 }
 
 /** Un fallo más, con su bloqueo ya calculado. */
-export function trasFallar(previo: Intentos, ahora: number): Intentos {
+export function trasFallar(
+  previo: Intentos, ahora: number, desde: number = FALLOS_ANTES_DE_BLOQUEAR,
+): Intentos {
   const fallos = previo.fallos + 1
-  const castigo = castigoS(fallos)
+  const castigo = castigoS(fallos, desde)
   return {
     fallos,
     bloqueadoHasta: castigo === 0 ? 0 : ahora + castigo * 1000,
