@@ -347,9 +347,22 @@
    *    prueba: hace falta una persona mirandolo. Casilla en `VALIDAR_CON_EL_ROBOT.md`.
    */
 
-  /* 20px estaba por encima del suelo de calidad, que fija los radios de tarjeta
-     en 12-16 px; por encima la ficha empieza a leerse como pastilla. */
-  --radio: 16px;
+  /*
+   * ── EL RADIO ─────────────────────────────────────────────────────────────
+   * 🔴 **3 px, Y ANTES ERAN 16.** El comentario decía: *«20 px estaba por encima
+   *    del suelo de calidad, que fija los radios de tarjeta en 12-16; por encima
+   *    la ficha empieza a leerse como pastilla»*. Correcto para una TARJETA — y
+   *    aquí ya no hay tarjetas.
+   *
+   * La dirección es un frontal de instrumento de banco, y un panel de
+   * laboratorio no tiene esquinas de 16 px: tiene **cantos fresados**, 2-3 px,
+   * lo justo para que no corte. 16 px es la firma exacta del «cualquier
+   * dashboard» que el encargo nombra como la primera forma de fallar.
+   *
+   * ⚠️ Y no es volver al radio 0: a 0 los cantos se ven duros en pantalla y las
+   *    esquinas del borde de 1 px salen dentadas. 3 px es una arista mecanizada.
+   */
+  --radio: 3px;
 
   /*
    * ── LAS CURVAS ───────────────────────────────────────────────────────────
@@ -483,12 +496,33 @@
    * 📝 Fuera el `backdrop-filter`: sobre papel no tiene nada que desenfocar, y
    *    costaba GPU por dieciséis baldosas en el muro.
    */
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 2026-08-16 · DEJA DE FLOTAR. UN PANEL NO TIENE SOMBRA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Esto era una ficha de papel con dos sombras —una de contacto y una larga—,
+   * o sea una TARJETA. La dirección es un frontal de instrumento de banco: sus
+   * superficies son **placas atornilladas al mismo plano**, y lo que las separa
+   * no es la altura, es el **canto**. Una placa con sombra larga se lee como
+   * pegatina.
+   *
+   * → Fuera las dos sombras. El borde sube de 0,08 a **0,14** para que el canto
+   *   siga existiendo: era tenue a propósito porque la elevación ya la declaraba
+   *   la sombra, y quitando una hay que subir la otra o la placa se disuelve en
+   *   el papel. La regla del suelo de calidad —*elevación una sola vez: sombra
+   *   O borde, nunca las dos*— se sigue cumpliendo; lo que cambia es cuál.
+   *
+   * 📝 Y sale gratis en rendimiento: eran dos sombras por baldosa × 16 en el
+   *    muro, más las de cada tarjeta de cada pestaña.
+   *
+   * 📝 El modo proyección ya hacía esto —`box-shadow: none` y borde de verdad—
+   *    porque un proyector no reproduce una sombra. Otra vez la EXCEPCIÓN
+   *    llevaba razón antes que la regla, igual que cuando destapó que el tema
+   *    tenía que ser claro.
+   */
   .vidrio {
     background: rgb(var(--card));
-    border: 1px solid rgb(var(--filo) / 0.08);
-    box-shadow:
-      0 1px 2px -1px rgb(var(--sombra) / 0.10),
-      0 12px 28px -18px rgb(var(--sombra) / 0.22);
+    border: 1px solid rgb(var(--filo) / 0.14);
     /*
      * 🔴 SIN `transform` EN ESTA LISTA, Y SIN LA CURVA DE CAJÓN.
      *
@@ -511,12 +545,14 @@
    *    y **la ficha se queda elevada** hasta que se toca otra cosa — o sea, un
    *    muro de dieciséis con una permanentemente resaltada sin motivo.
    */
+  /*
+   * 🔴 Y EL HOVER YA NO LEVANTA: OSCURECE EL CANTO. Una placa no se despega del
+   *    panel al pasar el ratón. Lo que hace un canto mecanizado bajo la luz es
+   *    marcarse más, y eso es lo que se imita.
+   */
   @media (hover: hover) and (pointer: fine) {
     .vidrio:hover {
-      border-color: rgb(var(--filo) / 0.16);
-      box-shadow:
-        0 2px 4px -2px rgb(var(--sombra) / 0.13),
-        0 18px 36px -20px rgb(var(--sombra) / 0.28);
+      border-color: rgb(var(--filo) / 0.30);
     }
   }
 
@@ -1187,10 +1223,32 @@
    *       «esto no se usa» caduca en cuanto alguien lo usa, y nadie vuelve a
    *       leerlo.** Por eso la afirmación la sostiene ahora un ejecutor.
    */
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 2026-08-16 · PASA A SER LA **VENTANA DE LECTURA** DEL PANEL
+   * ═══════════════════════════════════════════════════════════════════════════
+   * En un frontal de banco, la cifra viva no se pinta sobre el panel: vive
+   * detrás de una **ventana rebajada** en la chapa. Ese rebaje es lo que separa
+   * «el instrumento» de «lo que el instrumento está midiendo ahora mismo», sin
+   * gastar una línea ni un color.
+   *
+   * El bisel son dos sombras INTERIORES de 1 px —clara arriba, oscura abajo—,
+   * que es como se ve un canto fresado bajo luz cenital. Cuesta nada: no hay
+   * desenfoque, así que no reproyecta.
+   *
+   * 🔴 Y NO ES UNA SOMBRA DE ELEVACIÓN, así que no rompe la regla de «elevación
+   *    una sola vez»: no dice que esto esté por encima de nada, dice que está
+   *    por DEBAJO del plano de la placa. Son direcciones contrarias.
+   *
+   * ⚠️ El radio baja de 12 px a `--radio`: 12 era radio de tarjeta dentro de
+   *    tarjeta. Un rebaje en chapa tiene el mismo canto que la placa.
+   */
   .pozo-interior {
-    background: rgb(var(--vidrio) / 0.04);
-    border: 1px solid rgb(var(--filo) / 0.05);
-    border-radius: 12px;
+    background: rgb(var(--vidrio) / 0.035);
+    border-radius: var(--radio);
+    box-shadow:
+      inset 0 1px 0 0 rgb(var(--sombra) / 0.09),
+      inset 0 -1px 0 0 rgb(255 255 255 / 0.85);
   }
 
   /*

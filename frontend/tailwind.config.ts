@@ -136,13 +136,34 @@ const config: Config = {
          * 2 px sacados de un objeto real, y la píldora sigue existiendo para los
          * controles pequeños, que es donde toca.
          */
-        sm: '8px',
-        DEFAULT: '12px',
-        md: '14px',
-        lg: '16px',
-        xl: '20px',
-        '2xl': '24px',
-        ficha: '20px',
+        /*
+         * ═══════════════════════════════════════════════════════════════════
+         * 🔴🔴 2026-08-16 · LA ESCALA ENTERA BAJA A CANTOS MECANIZADOS
+         * ═══════════════════════════════════════════════════════════════════
+         * Era `8 · 12 · 14 · 16 · 20 · 24`, y el comentario de arriba la
+         * defendía desde el mundo de «Galón» —una placa troquelada— con un
+         * argumento que sigue siendo bueno **y que la escala no cumplía**: una
+         * chapa con el canto «apenas roto» no tiene 20 px de radio, tiene 2-3.
+         * La ficha iba a `ficha: 20px`, que es radio de tarjeta de dashboard.
+         *
+         * La dirección nueva es un frontal de instrumento de banco y pide lo
+         * mismo con más motivo. Aquí un radio grande es la firma exacta del
+         * «cualquier dashboard» que el encargo nombra como la primera forma de
+         * fallar.
+         *
+         * ⚠️ No baja a 0: a 0 las esquinas de un borde de 1 px salen dentadas y
+         *    el canto se ve duro. 2-4 px es una arista mecanizada de verdad.
+         *
+         * 📝 `ficha` se conserva como NOMBRE porque lo usan nueve componentes;
+         *    cambiar aquí el valor los cambia los nueve sin tocar ninguno.
+         */
+        sm: '2px',
+        DEFAULT: '3px',
+        md: '3px',
+        lg: '4px',
+        xl: '4px',
+        '2xl': '6px',
+        ficha: '3px',
       },
       boxShadow: {
         /*
@@ -164,7 +185,21 @@ const config: Config = {
          *    Configuracion que existe y no hace nada — el patron que este
          *    proyecto persigue.
          */
-        bloque: '0 20px 44px -20px rgb(var(--sombra) / 0.75)',
+        /*
+         * 🔴 `bloque` VIVIA AQUI Y SE BORRO (2026-08-16), con sus dos usos.
+         *
+         * Era `0 20px 44px -20px` bajo la baldosa de color del muro. Con la
+         * direccion nueva —frontal de instrumento— **nada flota**: las
+         * superficies son placas atornilladas al mismo plano y lo que las
+         * separa es el canto, no la altura. Una baldosa saturada con 44 px de
+         * sombra difusa se lee como pegatina sobre el panel.
+         *
+         * 📝 Y era lo unico que quedaba de la elevacion: `.vidrio` dejo de tener
+         *    sombra en el mismo commit. Dejar la utilidad «por si acaso» seria
+         *    configuracion que existe y no hace nada, que es el patron que este
+         *    proyecto persigue — y ya paso con `ficha` y `ficha-alta` aqui
+         *    mismo.
+         */
         barra: '0 10px 28px -18px rgb(var(--sombra) / 0.60)',
       },
       /*

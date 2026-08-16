@@ -86,9 +86,9 @@ const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
 const BLOQUE: Readonly<Record<Baldosa['atencion'], string>> = {
   // En línea y sin nada que mirar: cobalto. Es un bloque igual, porque «este
   // robot está vivo» ya es algo que decir cuando quince no lo están.
-  NINGUNA: 'bg-bloque-vivo text-white shadow-bloque',
-  MIRAR: 'bg-bloque-mirar text-[rgb(16,18,6)] shadow-bloque trama-mirar',
-  IR: 'bg-bloque-ir text-white shadow-bloque trama-ir',
+  NINGUNA: 'bg-bloque-vivo text-white',
+  MIRAR: 'bg-bloque-mirar text-[rgb(16,18,6)] trama-mirar',
+  IR: 'bg-bloque-ir text-white trama-ir',
 }
 const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
   NINGUNA: '',
