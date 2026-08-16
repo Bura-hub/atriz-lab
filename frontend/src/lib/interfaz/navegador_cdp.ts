@@ -27,9 +27,11 @@
  */
 
 import { ChildProcess, spawn } from 'node:child_process'
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { COOKIE } from '@/lib/sesion/peticion'
+import { DURACION_SESION_MS, firmar } from '@/lib/sesion/testigo'
 
 const CANDIDATOS = [
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
@@ -42,6 +44,43 @@ const CANDIDATOS = [
 ]
 
 export const dormir = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
+/**
+ * El secreto con el que firma el SERVIDOR, para poder firmar igual.
+ *
+ * 🔴 LEE `.env.local` A MANO, y solo aquí. Next lo carga en `dev` y en `build`;
+ *    **vitest no**, así que sin esto la primera prueba de navegador tras la
+ *    puerta muere con «no hay ATRIZ_SECRETO» — que es lo que pasó al estrenarla.
+ *
+ * ⚠️ Y NO se carga el fichero entero en `process.env` desde un `setupFiles`
+ *    global, que era la solución cómoda: ahí dentro vive también
+ *    `NEXT_PUBLIC_ATRIZ_TESTIGO=1`, y meterlo en las 1031 pruebas cambiaría el
+ *    comportamiento por defecto que varias de ellas comprueban. Se coge **una
+ *    variable**, en **un sitio**, para **un uso**.
+ *
+ * 🔴 Falla RUIDOSO si no lo encuentra. Un `return` silencioso dejaría la prueba
+ *    mirando `/entrar` y pasando: el «saltada = pasada» que esto viene a cerrar.
+ */
+function secretoDePruebas(): string {
+  const puesto = process.env.ATRIZ_SECRETO
+  if (puesto !== undefined && puesto !== '') return puesto
+
+  const fichero = join(process.cwd(), '.env.local')
+  if (existsSync(fichero)) {
+    for (const linea of readFileSync(fichero, 'utf8').split(/\r?\n/)) {
+      if (!linea.startsWith('ATRIZ_SECRETO=')) continue
+      // El valor puede llevar `=` dentro; se corta por el PRIMER `=` y se le
+      // quitan las comillas si las trae.
+      const v = linea.slice(linea.indexOf('=') + 1).trim().replace(/^["']|["']$/g, '')
+      if (v !== '') return v
+    }
+  }
+  throw new Error(
+    'no encuentro ATRIZ_SECRETO ni en el entorno ni en frontend/.env.local. Sin el no se puede '
+    + 'firmar la cookie, el navegador se quedaria en /entrar, y esta prueba comprobaria la '
+    + 'pantalla equivocada.',
+  )
+}
 
 export function rutaDelNavegador(): string {
   const puesta = process.env.ATRIZ_NAVEGADOR
@@ -74,6 +113,11 @@ export interface Informe {
    *    comprueba sobre esa tarjeta**, no sobre todo lo que hay alrededor.
    */
   estados: string[]
+  /**
+   * Donde acabo el navegador DE VERDAD, que no tiene por que ser donde se le
+   * mando: `(privado)` redirige a `/entrar` sin sesion. Ver `mirar()`.
+   */
+  url: string
 }
 
 /**
@@ -140,6 +184,50 @@ export class Navegador {
       { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false })
   }
 
+  /**
+   * ═════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 SIN ESTO, TODA PRUEBA DE NAVEGADOR MIRA LA PANTALLA DE ENTRAR
+   * ═════════════════════════════════════════════════════════════════════════
+   * Desde que existe la puerta —el 2026-08-16—, `/flota`, `/robot/NN` y las
+   * demas contestan **307 a `/entrar`** a un navegador sin cookie. Las dos
+   * pruebas que usan esta clase abren paginas sin sesion, asi que sin este
+   * metodo dejarian de comprobar lo que dicen comprobar.
+   *
+   * 🔴 Y NO FALLARIAN: se saltan solas cuando falta su variable de entorno, asi
+   *    que **«saltada» se lee como «pasada»** en la salida de vitest. Es el modo
+   *    de fallo que este proyecto lleva doce veces pagando en su verificador —
+   *    una comprobacion que se salta en silencio— y por eso esto se escribio en
+   *    la MISMA fase que la puerta, no como arreglo posterior.
+   *
+   * 🔴 La cookie se FIRMA con el mismo secreto que el servidor, no se falsifica.
+   *    Una cookie inventada pasaria el `middleware` —que solo mira que exista— y
+   *    moriria en el layout de `(privado)`, que si comprueba la firma: la prueba
+   *    acabaria mirando `/entrar` igualmente y sin decir por que.
+   *
+   * ⚠️ `httpOnly: true` a proposito, para que la cookie sea **la misma que emite
+   *    `conSesion()`**. CDP la pone desde fuera del documento, asi que no
+   *    estorba; ponerla legible seria probar contra una cookie que en
+   *    produccion no existe.
+   *
+   * @throws si no encuentra el secreto (ver `secretoDePruebas`). Falla RUIDOSO
+   *         a proposito: un `return` silencioso aqui es exactamente el
+   *         «saltada = pasada» que esto viene a cerrar.
+   */
+  async entrarComo(usuario: string): Promise<void> {
+    const s = secretoDePruebas()
+    const url = new URL(this.base)
+    await this.cmd('Network.enable')
+    await this.cmd('Network.setCookie', {
+      name: COOKIE,
+      value: firmar({ usuario, exp: Date.now() + DURACION_SESION_MS }, s),
+      domain: url.hostname,
+      path: '/',
+      httpOnly: true,
+      secure: false,
+      sameSite: 'Lax',
+    })
+  }
+
   private cmd(method: string, params: Record<string, unknown> = {}): Promise<unknown> {
     const ws = this.ws
     if (ws === null) throw new Error('el navegador no esta arrancado')
@@ -176,6 +264,7 @@ export class Navegador {
         hojas,
         texto: document.body.innerText,
         estados,
+        url: location.pathname + location.search,
       }
     })()`
     const r = await this.cmd('Runtime.evaluate',
@@ -183,6 +272,27 @@ export class Navegador {
       { result?: { value?: Informe }; exceptionDetails?: unknown }
     const valor = r.result?.value
     if (valor === undefined) throw new Error(`no pude leer ${ruta}: ${JSON.stringify(r)}`)
+
+    /*
+     * 🔴 EL CONTROL QUE IMPIDE COMPROBAR LA PANTALLA EQUIVOCADA.
+     *
+     * Si la puerta redirige, `mirar('/robot/1')` devuelve el HTML de `/entrar`
+     * — una pagina perfectamente valida, con su texto, que hace fallar las
+     * comprobaciones por el motivo equivocado («no encuentro APROXIMACION») o,
+     * peor, las hace PASAR si lo que se busca es la ausencia de algo. Una
+     * prueba de ausencia sobre la pantalla equivocada pasa siempre.
+     *
+     * Lo mismo que la regla del proyecto para `tf2_echo`: **comprueba el
+     * transform que pide el consumidor, con sus frames exactos.** Que resuelva
+     * algo no prueba que resolviera lo tuyo.
+     */
+    const pedida = new URL(this.base + ruta).pathname
+    if (valor.url !== pedida && valor.url.startsWith('/entrar')) {
+      throw new Error(
+        `pedi ${pedida} y el navegador acabo en ${valor.url}: la puerta de sesion lo echo. `
+        + 'Llama a `entrarComo(...)` antes de `mirar(...)`.',
+      )
+    }
     return valor
   }
 

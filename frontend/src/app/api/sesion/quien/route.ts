@@ -8,7 +8,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { sesionDe } from '@/lib/sesion/peticion'
+import { rolDe } from '@/lib/sesion/reglas'
+import { cuentaDeSesion, sesionDe } from '@/lib/sesion/peticion'
+import { abrir } from '@/lib/sesion/testigo'
+import { secreto } from '@/lib/sesion/almacen'
+import { COOKIE } from '@/lib/sesion/peticion'
 
 /**
  * 🔴🔴 200 CON `usuario: null`, **NO 401** — y este endpoint es el ÚNICO de los
@@ -37,6 +41,38 @@ import { sesionDe } from '@/lib/sesion/peticion'
  *    esto es una PREGUNTA. «¿Quién soy?» respondido con «nadie» es una respuesta
  *    correcta, no un fallo.
  */
-export function GET(pet: NextRequest) {
-  return NextResponse.json({ usuario: sesionDe(pet) })
+/**
+ * ⚠️ AHORA DEVUELVE TAMBIEN `rol` Y `expira`, y los dos son necesarios:
+ *
+ *  · **`rol`** — la interfaz tiene que poder no ofrecer lo que no se puede hacer.
+ *    Se lee del fichero, **no de la cookie**: si viajara firmado dentro,
+ *    degradar a alguien tardaria hasta ocho horas en surtir efecto.
+ *  · 🔴 **`expira`** — es lo que cierra el punto ciego de la caducidad a mitad de
+ *    clase. Hasta hoy `ProveedorSesion` preguntaba **una sola vez, al montar**,
+ *    asi que una sesion de 8 h que vencia dentro de una clase de 2 dejaba el
+ *    rail **diciendo tu nombre** con el testigo ya rechazado, y el unico aviso
+ *    vivia en `/diagnostico`. Con la fecha, el navegador pone UN temporizador y
+ *    se entera solo.
+ *
+ * 📌 No filtra nada: `exp` ya viaja dentro de la cookie que el navegador tiene.
+ */
+export async function GET(pet: NextRequest) {
+  const usuario = sesionDe(pet)
+  if (usuario === null) return NextResponse.json({ usuario: null })
+
+  const s = secreto()
+  const crudo = pet.cookies.get(COOKIE)?.value
+  const r = s !== null && crudo !== undefined ? abrir(crudo, s, Date.now()) : null
+  const cuenta = await cuentaDeSesion(pet)
+
+  return NextResponse.json({
+    usuario,
+    /*
+     * ⚠️ `undefined` si la cuenta ya no existe —alguien la borro con la sesion
+     *    abierta—. No se inventa un rol: es exactamente el caso en que la
+     *    interfaz no debe ofrecer nada.
+     */
+    rol: cuenta === undefined ? null : rolDe(cuenta),
+    expira: r !== null && r.valido ? r.carga.exp : null,
+  })
 }

@@ -106,6 +106,20 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
 
   beforeAll(async () => {
     await nav.arrancar()
+    /*
+     * 🔴 LA SESION VA ANTES QUE LA PRIMERA PAGINA, desde el 2026-08-16.
+     *
+     * Todas estas rutas viven en `(privado)`: sin cookie firmada, el navegador
+     * acaba en `/entrar` y esta prueba comprobaria la pantalla de entrar
+     * creyendo que mira el Taller. Y como sus comprobaciones son de AUSENCIA
+     * —«ninguna repeticion», «ningun hueco disfrazado de dato»— pasarian TODAS
+     * sobre la pantalla equivocada. Un verde que no mira nada.
+     *
+     * `entrarComo` lanza si falta `ATRIZ_SECRETO` y `mirar` lanza si aun asi
+     * acaba en `/entrar`: los dos ruidosos, porque el fallo que hay que impedir
+     * es el silencioso.
+     */
+    await nav.entrarComo('prueba-pantallas')
     for (const [nombre, ruta] of RUTAS) informes.set(nombre, await nav.mirar(ruta))
   }, 60000 + RUTAS.length * (ESPERA_MS + 5000))
 

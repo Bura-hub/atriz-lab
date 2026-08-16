@@ -291,15 +291,29 @@ export function MarcoRobot({ destino, children }: PropsMarcoRobot) {
  * robot de un fallo del PC**: la forma que este proyecto lleva contada desde
  * `ros2 topic hz` — *el fallo estaba en el medidor y se atribuyo a lo medido*.
  *
- * ⚠️ NO sustituye al aviso del transporte (`ultimoAviso`), lo PRECEDE. Una sesion
- *    que caduca a mitad de clase no la ve esto: eso sigue saliendo por ahi.
+ * ⚠️ NO sustituye al aviso del transporte (`ultimoAviso`), lo PRECEDE.
+ *
+ * 🔴 AQUI PONIA que *«una sesion que caduca a mitad de clase no la ve esto»*, y
+ *    era cierto **hasta hoy**: `ProveedorSesion` preguntaba una sola vez, al
+ *    montar. Ahora pone un temporizador a la hora exacta de caducidad y
+ *    revalida al recuperar el foco, asi que `usuario` pasa a `null` sin recargar
+ *    y este aviso aparece solo. La frase se corrige en vez de borrarse porque el
+ *    hecho que la sostenia cambio, y eso es lo que hay que poder rastrear.
  */
 function AvisoDePrecondicion({ destino }: { destino: Destino }) {
   const { usuario, cargando } = useSesion()
   const p = evaluarPrecondicion({ exigido: TESTIGO_EXIGIDO, usuario, cargando, destino })
-  // `NO_SE_SABE` no se pinta: seria un aviso que aparece y desaparece en cada
-  // carga mientras la sesion responde.
-  if (!hayQueAvisar(p) || p.estado === 'LISTO' || p.estado === 'NO_SE_SABE') return null
+  /*
+   * `NO_SE_SABE` no se pinta: seria un aviso que aparece y desaparece en cada
+   * carga mientras la sesion responde.
+   *
+   * 📝 Aqui habia ademas `|| p.estado === 'LISTO' || p.estado === 'NO_SE_SABE'`,
+   *    que era la MISMA condicion escrita dos veces solo para que TypeScript
+   *    dejara leer `p.titulo`. Sobra desde que `hayQueAvisar` es una guarda de
+   *    tipo: dos condiciones equivalentes que hay que mantener a la vez son una
+   *    invitacion a que se separen.
+   */
+  if (!hayQueAvisar(p)) return null
 
   return (
     <div className="mb-5 rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">

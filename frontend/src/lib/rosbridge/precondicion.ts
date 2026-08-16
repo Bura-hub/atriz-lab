@@ -129,5 +129,18 @@ export function evaluarPrecondicion(o: Observaciones): Precondicion {
  *    sesion carga, y pintarlo produciria un aviso que aparece y desaparece en
  *    cada carga de cada pagina.
  */
-export const hayQueAvisar = (p: Precondicion): boolean =>
+export const hayQueAvisar = (p: Precondicion): p is Impedimento =>
   p.estado === 'SIN_SESION' || p.estado === 'POR_DIRECCION'
+
+/**
+ * Las dos ramas que TIENEN algo que contar. Se extrae del propio union para que
+ * no pueda quedarse atras: añadir un tercer impedimento con `titulo` lo mete
+ * aqui solo, y olvidarse de enseñarlo pasa a ser un error de tipos.
+ *
+ * 🔴 Y `hayQueAvisar` es una GUARDA DE TIPO, no un booleano. Con un booleano,
+ *    quien lo usaba tenia que repetir despues `p.estado !== 'LISTO' && p.estado
+ *    !== 'NO_SE_SABE'` para poder leer `p.titulo` — dos condiciones que dicen lo
+ *    mismo y que pueden separarse al editar. Este proyecto ya sabe cómo acaba
+ *    eso: la guarda del gesto del mapa que se desactivaba a si misma.
+ */
+export type Impedimento = Extract<Precondicion, { titulo: string }>

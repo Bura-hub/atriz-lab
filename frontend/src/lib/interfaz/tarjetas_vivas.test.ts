@@ -25,10 +25,34 @@
  * Esta prueba arranca ella misma el rosbridge de mentira —una vez por caso, con
  * banderas distintas— y necesita el servidor de Next ya levantado:
  *
- *     cd frontend && npm run dev              # en otra terminal
- *     ATRIZ_VIVAS=1 npx vitest run src/lib/interfaz/tarjetas_vivas.test.ts
+ *     cd frontend && PORT=3001 npm run dev:sin-testigo         # en otra terminal
+ *     ATRIZ_VIVAS=1 ATRIZ_WEB=http://localhost:3001 \
+ *       npx vitest run src/lib/interfaz/tarjetas_vivas.test.ts
  *
  * Sin `ATRIZ_VIVAS=1` se salta, y vitest lo reporta como `skipped`.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 POR QUE `dev:sin-testigo` Y NO `dev` — ESTUVO MUERTA DIEZ MESES DE UN DIA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Esta prueba habla con un doble en `127.0.0.1`, o sea **por IP**. Desde la
+ * Fase B (2026-08-15) el testigo lleva dentro el NUMERO del robot y una
+ * direccion no tiene numero que firmar, asi que `proveedorDeTestigo` devuelve
+ * `null` **a proposito** y el navegador ni siquiera abre el socket. Con
+ * `NEXT_PUBLIC_ATRIZ_TESTIGO=1` esta prueba **no puede pasar**.
+ *
+ * 🔴 Y quedo asi el mismo dia de la Fase B sin que nadie lo notara, porque se
+ *    salta por defecto: en la salida de vitest **`skipped` se lee igual que
+ *    `passed`**. Es la forma que este proyecto lleva doce veces pagando en el
+ *    verificador del robot — una comprobacion que se salta en silencio— y aqui
+ *    la destapo cablearle la cookie de sesion el 2026-08-16, no una revision.
+ *
+ * 🔴 El sintoma, si se corre contra `npm run dev`, son **seis fallos de TEXTO**
+ *    («no encuentro *copiar un mapa viejo*») que mandan a revisar la redaccion
+ *    de las tarjetas. La redaccion esta bien: lo que falta es el WebSocket. Por
+ *    eso `pintado()` lleva un guardia que lo dice con todas las letras.
+ *
+ * ⚠️ `dev:sin-testigo` es un BANCO, no un modo de trabajo: lo que se ve ahi no
+ *    es lo que ve un alumno. Ver la cabecera de `herramientas/dev_sin_testigo.mjs`.
  *
  * 🔴 `ATRIZ_HOST` VALE `127.0.0.1` POR DEFECTO, Y NO ES UN DETALLE. Esta prueba
  *    levanta su propio rosbridge de mentira en `localhost`, asi que la
@@ -93,12 +117,48 @@ afterEach(() => {
  * `[role="status"]`, o sea las TARJETAS VIVAS. Una comprobacion de AUSENCIA
  * sobre la pagina entera acusa a bloques legitimos que estan mas abajo.
  */
-async function pintado(banderas: string[], ruta: string):
+async function pintado(banderas: string[], ruta: string, exigeSocket = true):
 Promise<{ texto: string; avisos: string }> {
   doble = await conDoble(banderas)
   nav = new Navegador(PUERTO_CDP, WEB)
   await nav.arrancar()
+  /*
+   * 🔴 SIN ESTO, DESDE EL 2026-08-16 ESTA PRUEBA MIRA `/entrar`. Las rutas de
+   *    robot estan detras de la puerta, y las comprobaciones de aqui son de
+   *    AUSENCIA sobre `[role="status"]`: en la pantalla de entrar no hay
+   *    ninguno, asi que **pasarian todas** sin haber mirado una sola tarjeta.
+   *    Es el «saltada = pasada» del verificador del robot, con otra cara.
+   */
+  await nav.entrarComo('prueba-tarjetas')
   const informe = await nav.mirar(ruta)
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 EL SEGUNDO MURO, Y ES EL QUE DE VERDAD MATA A ESTA PRUEBA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Con `NEXT_PUBLIC_ATRIZ_TESTIGO=1`, el navegador **no abre el socket contra
+   * una IP**: el testigo lleva dentro el numero del robot y una direccion no
+   * tiene numero que firmar (`proveedorDeTestigo` devuelve `null` a proposito).
+   * Y esta prueba habla con un doble en `127.0.0.1` — o sea, por IP — porque es
+   * lo unico que se puede hacer sin un robot delante.
+   *
+   * 🔴 O sea que la Fase B (2026-08-15) la dejo INSERVIBLE ese mismo dia, y
+   *    nadie lo vio **porque se salta por defecto**: en la salida de vitest
+   *    `skipped` se lee como `passed`. Es el fallo del verificador del robot —
+   *    una comprobacion que se salta en silencio— cometido aqui.
+   *
+   * 🔴 Sin este guardia el sintoma es una lista de seis fallos de TEXTO («no
+   *    encuentro *copiar un mapa viejo*»), que manda a revisar la redaccion de
+   *    las tarjetas. La redaccion esta bien: lo que falta es el WebSocket. Un
+   *    fallo que senala al sitio equivocado cuesta mas que no tenerlo.
+   */
+  if (exigeSocket && /puesto por direcci[oó]n/i.test(informe.texto)) {
+    throw new Error(
+      'esta prueba habla con un doble por IP, y el servidor de Next esta sirviendo con '
+      + 'NEXT_PUBLIC_ATRIZ_TESTIGO=1: asi el navegador NO abre el socket, y lo que se comprueba '
+      + 'no son las tarjetas. Levanta el servidor con `npm run dev:sin-testigo` y repite.',
+    )
+  }
   return { texto: informe.texto, avisos: informe.estados.join('\n') }
 }
 
@@ -117,7 +177,14 @@ describe.skipIf(!CORRER)('🆕 EL TALLER por dirección IP: el caso que no puede
      *    delante (o con una entrada en el fichero hosts). Está escrito en
      *    VALIDAR_CON_EL_ROBOT.md y no se da por probado.
      */
-    const { texto } = await pintado([], `/robot/${HOST}`)
+    /*
+     * 🔴 `exigeSocket: false` — ESTE caso es el unico del fichero que NO quiere
+     *    un socket vivo: comprueba justamente que la pantalla DICE que por IP no
+     *    se puede. El guardia de `pintado()` mira lo mismo y lo trata como un
+     *    montaje equivocado, asi que aqui hay que apagarlo o se acusaria al
+     *    unico caso que esta haciendo lo correcto.
+     */
+    const { texto } = await pintado([], `/robot/${HOST}`, false)
     expect(texto).toMatch(/dirección IP/i)
     expect(texto).toMatch(/de 1 a 16/)
     // Y no finge un editor utilizable sobre un enlace que no puede abrir… pero

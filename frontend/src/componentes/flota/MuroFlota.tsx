@@ -338,7 +338,13 @@ export function MuroFlota() {
              FALSA —los robots pueden estar perfectos— y dejarla sería seguir
              mandando a cruzar el laboratorio.
         */}
-        {faltaAlgoAqui && precondicion.estado !== 'LISTO' && precondicion.estado !== 'NO_SE_SABE' && (
+        {/*
+          📝 Aqui iba ademas `&& precondicion.estado !== 'LISTO' && … !== 'NO_SE_SABE'`.
+             Desde que `hayQueAvisar` es una guarda de tipo, TypeScript **demuestra**
+             que esas dos comparaciones no pueden ser falsas — lo dijo con un error,
+             no con un aviso. Codigo muerto que aparentaba ser una salvaguarda.
+        */}
+        {faltaAlgoAqui && (
           <div className="rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">
             <p className="font-semibold">{precondicion.titulo}</p>
             <p className="mt-1.5 max-w-prose">{precondicion.mensaje}</p>

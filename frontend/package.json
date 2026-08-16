@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
+    "dev:sin-testigo": "node herramientas/dev_sin_testigo.mjs",
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",

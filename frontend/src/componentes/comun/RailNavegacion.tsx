@@ -223,7 +223,7 @@ export interface PropsRail {
 
 export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
   const ruta = usePathname()
-  const { usuario, cargando, refrescar } = useSesion()
+  const { usuario, cargando, caduco, refrescar } = useSesion()
 
   const salir = async () => {
     await fetch('/api/sesion/salir', { method: 'POST' })
@@ -232,8 +232,13 @@ export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
      *    la tiene el servidor: si el borrado de la cookie fallara, poner `null`
      *    aquí enseñaría «has salido» con la sesión todavía viva — un estado
      *    engañoso sobre lo único que abre la liberación de una parada.
+     *
+     * 🔴 Y `'salida'` NO es decoración: sin él, salir a propósito encendería el
+     *    aviso de «se acabó sola». Un aviso que también sale cuando no hay nada
+     *    que avisar deja de leerse, y este proyecto lleva media docena de casos
+     *    pagando exactamente eso.
      */
-    await refrescar()
+    await refrescar('salida')
   }
 
   return (
@@ -308,12 +313,37 @@ export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
       */}
       {!cargando && (
         <div className="shrink-0 border-t border-[rgb(var(--filo)/0.08)] pt-3">
+          {/*
+            ═══════════════════════════════════════════════════════════════════
+            🔴🔴 LA CADUCIDAD SE DICE, NO SE DEDUCE DE QUE EL BOTÓN CAMBIE
+            ═══════════════════════════════════════════════════════════════════
+            Sin esto, una sesión que vence a mitad de práctica solo se nota en
+            que este pie pasa de tu nombre a «Entrar» — idéntico a haber salido
+            tú. Y lo que la persona ve NO es el raíl: ve un robot que deja de
+            contestar, y va a mirar el robot.
+
+            🔴 NO es un diálogo que bloquee la pantalla, a propósito. Debajo de
+               este raíl vive la parada de emergencia, y un modal encima de ella
+               convertiría un problema de sesión en un problema de seguridad.
+               Avisa, no secuestra.
+          */}
+          {caduco && (
+            <p
+              role="status"
+              className="mb-3 border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-3 py-2 text-[13px] leading-relaxed text-foreground"
+            >
+              <strong>Tu sesión se ha acabado.</strong> No la has cerrado tú: ha vencido sola. Los
+              robots dejan de aceptar este navegador hasta que vuelvas a entrar —{' '}
+              <strong>no es que estén apagados</strong>.
+            </p>
+          )}
+
           {usuario === null ? (
             <Link
               href="/entrar"
               className="pulsable focus-ring flex items-center gap-2 rounded-full px-4 py-2 text-sm text-muted-foreground hover:bg-[rgb(var(--vidrio)/0.05)]"
             >
-              Entrar
+              {caduco ? 'Volver a entrar' : 'Entrar'}
             </Link>
           ) : (
             <div className="px-4">

@@ -27,9 +27,13 @@
  * `/motor_status` y su propio umbral. No se unifican.
  */
 
+import Link from 'next/link'
 import { useRobot } from '@/hooks/ContextoRobot'
+import { useSesion } from '@/hooks/ContextoSesion'
 import { useSalud } from '@/hooks/useSalud'
 import { Salud } from '@/lib/rosbridge/salud'
+import { evaluarPrecondicion, hayQueAvisar } from '@/lib/rosbridge/precondicion'
+import { TESTIGO_EXIGIDO } from '@/lib/rosbridge/proveedor_testigo'
 import { NOTA_SIN_DATOS, TITULO_EN_LINEA, TITULO_SIN_CONEXION, TITULO_SIN_DATOS } from '@/lib/interfaz/lenguaje'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
 
@@ -74,8 +78,38 @@ export function InsigniaEnlace({ sobreBarra = false }: { sobreBarra?: boolean } 
  * pintan.
  */
 export function PanelEnlace() {
-  const { transporte, conectado } = useRobot()
+  const { robot, transporte, conectado, ultimoAviso } = useRobot()
   const salud = useSalud(transporte)
+  const { usuario, cargando } = useSesion()
+
+  /*
+   * ═════════════════════════════════════════════════════════════════════════
+   * 🔴 POR QUE ESTE PANEL PREGUNTA POR LA SESION ANTES DE HABLAR DEL ROBOT
+   * ═════════════════════════════════════════════════════════════════════════
+   * El 2026-08-16 este panel decia, con el robot **perfecto**, *«puede estar
+   * apagado, fuera de la red, o con el servicio parado»*. Lo era todo menos eso:
+   * faltaba la sesion del PC, asi que el transporte **ni siquiera llegaba a
+   * abrir un socket** — no habia cliente en el journal del robot, que desde el
+   * lado del robot es indistinguible de que nadie abriera la pestaña. Costo un
+   * diagnostico entero, y la persona lo pago yendo a mirar un robot que estaba
+   * bien.
+   *
+   * 🔴 Y no basta con la puerta de `(privado)`. La puerta se comprueba **al
+   *    navegar**; una sesion que vence a mitad de clase deja la pestaña abierta,
+   *    el socket se cae al reintentar, y sin esto el panel volveria a acusar al
+   *    robot. Es exactamente el caso que el temporizador de `ProveedorSesion`
+   *    detecta: los dos arreglos son una sola cosa y por separado no sirven.
+   *
+   * 📌 El orden es: **lo que impide intentarlo** › **lo que dijo el robot al
+   *    cerrar** › **lo que no se sabe**. Nunca al reves: acusar primero y
+   *    matizar despues es como se llega a un robot desmontado por nada.
+   */
+  const precondicion = evaluarPrecondicion({
+    exigido: TESTIGO_EXIGIDO,
+    usuario,
+    cargando,
+    destino: robot,
+  })
 
   return (
     // `px-5 py-4`: este panel es hijo directo de una `Tarjeta`, cuyo cuerpo va a
@@ -89,11 +123,45 @@ export function PanelEnlace() {
         </span>
       </div>
 
-      {salud.estado === 'SIN_CONEXION' && (
+      {salud.estado === 'SIN_CONEXION' && hayQueAvisar(precondicion) && (
+        <div className="space-y-2">
+          <p className="text-sm max-w-prose">
+            <strong>No es el robot: {precondicion.titulo}.</strong>
+          </p>
+          <p className="text-sm text-muted-foreground max-w-prose">{precondicion.mensaje}</p>
+          {precondicion.estado === 'SIN_SESION' && (
+            <p className="text-sm">
+              <Link href={precondicion.enlace} className="focus-ring underline underline-offset-2">
+                Entrar
+              </Link>{' '}
+              y volver aquí.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/*
+        🔴 EL ROBOT DIJO POR QUE CERRO, Y ESO GANA A CUALQUIER SUPOSICION. Un
+           4401/4403/4404 llega como aviso desde `rechazo.ts` con su explicacion
+           escrita; taparlo con las tres causas genericas seria descartar el
+           unico dato de primera mano que hay en toda la pantalla.
+      */}
+      {salud.estado === 'SIN_CONEXION' && !hayQueAvisar(precondicion) && ultimoAviso !== null && (
+        <div className="space-y-2">
+          <p className="text-sm max-w-prose">
+            El robot <strong>cerró la conexión y dijo por qué</strong>:
+          </p>
+          <p className="text-sm text-muted-foreground max-w-prose">{ultimoAviso.mensaje}</p>
+        </div>
+      )}
+
+      {salud.estado === 'SIN_CONEXION' && !hayQueAvisar(precondicion) && ultimoAviso === null && (
         <p className="text-sm text-muted-foreground max-w-prose">
-          El navegador no consigue abrir el WebSocket con este robot. Puede estar apagado, fuera de
-          la red, o con el servicio parado. El cliente reintenta solo, con espera creciente de 1 s a
-          30 s.
+          El navegador no consigue abrir el WebSocket con este robot, y{' '}
+          <strong>no se sabe por qué</strong>: un socket que no abre no da error, así que aquí no
+          hay nada que leer. Puede estar apagado, fuera de la red, o con el servicio parado — y ese
+          orden no es una apuesta, son las tres, sin elegir. El cliente reintenta solo, con espera
+          creciente de 1 s a 30 s.
         </p>
       )}
 
