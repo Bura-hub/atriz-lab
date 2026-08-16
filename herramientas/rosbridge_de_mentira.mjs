@@ -23,6 +23,8 @@
  *   node herramientas/rosbridge_de_mentira.mjs --conduciendo-ir     # 🔴 se mueve SOLO
  *   node herramientas/rosbridge_de_mentira.mjs --objetivo falla    # 🔴 ABORTED con el robot llegado
  *   node herramientas/rosbridge_de_mentira.mjs --objetivo termina  # el otro desenlace
+ *   node herramientas/rosbridge_de_mentira.mjs --ir detras       # zonas de infrarrojos
+ *   node herramientas/rosbridge_de_mentira.mjs --ir siguiendo    # 🔴 se mueve SOLO por IR
  *
  * Después: abrir http://localhost:3000/robot/rvr-01/navegar con la dirección
  * apuntando a `ws://localhost:9090`.
@@ -108,6 +110,29 @@ const conduciendoIR = process.argv.includes('--conduciendo-ir')
  *    la pantalla se vea bien aqui **no dice nada** sobre el robot.
  */
 const objetivoAcaba = (arg('--objetivo') ?? 'termina').toLowerCase()
+/*
+ * ===========================================================================
+ * `--ir <zona>` — LAS ZONAS DE INFRARROJOS, QUE EXIGEN DOS ROBOTS DE VERDAD
+ * ===========================================================================
+ * Es el caso que este doble existe para cubrir: para ver la pantalla de IR en
+ * sus estados hace falta un SEGUNDO robot emitiendo, colocado a la izquierda,
+ * detras y delante. Aqui es una bandera.
+ *
+ *   izquierda        sensor 1              patron MEDIDO
+ *   detras           sensores 1,3          patron MEDIDO
+ *   delante          sensores 2,3          patron MEDIDO (y es el mismo que
+ *                                          DERECHA: por eso la pantalla dice
+ *                                          «delante o a la derecha»)
+ *   nadie            ninguno               una muestra vacia, que NO es soledad
+ *   rancia           dato de hace 3 s      el registro caduca al segundo
+ *   sin-sondeo       lecturas_validas=false
+ *   raro             sensores 1,2          combinacion NO medida
+ *   siguiendo        conduciendo_por_ir    🔴 el robot se mueve SOLO
+ *
+ * ⚠️ Los patrones salen de la evidencia 100, medida con los dos robots. Lo que
+ *    este doble NO puede reproducir es la intermitencia real ni el rebote.
+ */
+const zonaIR = (arg('--ir') ?? 'izquierda').toLowerCase()
 /*
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴🔴 FASE B (A7): EL TESTIGO — Y LO QUE ESTE DOBLE **NO** PUEDE PROBAR
@@ -353,14 +378,45 @@ const CUERPOS = {
    *    unica forma de estrenar el camino de pintado `POSIBLE`, que hasta hoy no
    *    lo producia ninguna causa.
    */
-  '/estado_ir': () => ({
-    header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
-    crudo: 0xFFFFFFFF, sensor_0: 255, sensor_1: 255, sensor_2: 255, sensor_3: 255,
-    lecturas_validas: true, antiguedad_lectura_s: 0.3,
-    ultimo_codigo: 0, hay_mensaje: false, antiguedad_mensaje_s: -1.0,
-    modo: conduciendoIR ? 'following' : 'off', far_code: 0, near_code: 0,
-    conduciendo_por_ir: conduciendoIR,
-  }),
+  /*
+   * 🔴 LOS SENSORES ESTABAN LOS CUATRO A 255 —«nadie»— Y ESO NO EJERCITA NADA.
+   *    La pantalla de infrarrojos distingue SIETE estados y con esto solo se
+   *    alcanzaba uno. Los patrones de `--ir` son los MEDIDOS con los dos robots
+   *    (evidencia 100): izquierda [1], detras [1,3] o [1,2,3], delante [2,3] —
+   *    **y ese ultimo es el mismo que DERECHA**, que es justo lo que la pantalla
+   *    tiene que decir sin poder separarlas.
+   */
+  '/estado_ir': () => {
+    const encendidos = ({
+      izquierda: [1], detras: [1, 3], delante: [2, 3], raro: [1, 2],
+      nadie: [], rancia: [1], 'sin-sondeo': [], siguiendo: [2, 3],
+    })[zonaIR] ?? [1]
+    const leer = (n) => (encendidos.includes(n) ? 12 + n : 255)
+    return {
+      header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
+      crudo: encendidos.reduce((a, n) => a | (1 << n), 0),
+      /*
+       * 🔴 `sensor_0` a 255 SIEMPRE, y no es pereza: no llevo datos NUNCA en los
+       *    dos robots y en ~10 experimentos. La pantalla tiene un aviso que salta
+       *    si algun dia los lleva; darle datos aqui lo haria saltar sobre una
+       *    mentira de este fichero.
+       */
+      sensor_0: 255,
+      sensor_1: leer(1),
+      sensor_2: leer(2),
+      sensor_3: leer(3),
+      lecturas_validas: zonaIR !== 'sin-sondeo',
+      // El registro del firmware caduca al segundo: 3,0 s es «rancia».
+      antiguedad_lectura_s: zonaIR === 'rancia' ? 3.0 : 0.3,
+      ultimo_codigo: 5,
+      hay_mensaje: zonaIR !== 'nadie',
+      antiguedad_mensaje_s: 1.4,
+      modo: conduciendoIR || zonaIR === 'siguiendo' ? 'following' : 'broadcasting',
+      far_code: 5,
+      near_code: 5,
+      conduciendo_por_ir: conduciendoIR || zonaIR === 'siguiendo',
+    }
+  },
   '/estado_robot': () => ({
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: '' },
     latido: 100 + t, parada_emergencia: false, rvr_responde: true,
@@ -558,6 +614,25 @@ servidor.on('upgrade', (req, socket) => {
             op: 'service_response', id: m.id, service: m.service, result: true,
             values: { ...v, success: true,
               message: luzEncendida ? '' : 'la luz del sensor esta apagada' },
+          })))
+        } else if (m.service === '/send_infrared_message') {
+          /*
+           * 🔴 SE VALIDA EL RANGO, como hace el driver (0-7 y 0-64). Un doble
+           *    que acepta cualquier cosa deja pasar el fallo que el original
+           *    rechazaria, y entonces la pantalla se prueba contra un robot mas
+           *    tolerante que el de verdad.
+           */
+          const c = m.args?.code
+          const f = m.args?.front_strength
+          const ok = Number.isInteger(c) && c >= 0 && c <= 7
+            && Number.isInteger(f) && f >= 0 && f <= 64
+          console.log(`  emitir IR codigo=${c} fuerza=${f} -> ${ok ? 'ok' : 'RECHAZADO'}`)
+          socket.write(marco(JSON.stringify({
+            op: 'service_response', id: m.id, service: m.service, result: true,
+            values: {
+              success: ok,
+              message: ok ? `codigo ${c} emitido por los cuatro emisores` : 'fuera de rango',
+            },
           })))
         } else if (m.service === '/pedir_slam' || m.service === '/pedir_nav') {
           // Mueve el guion, para que pulsar el botón tenga efecto visible.

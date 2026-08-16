@@ -150,7 +150,7 @@ describe('sensor_0, el byte que nunca llevo datos', () => {
 describe('avisoConduccionIR', () => {
   it('🔴 avisa cuando el robot se mueve solo, y dice que no se para desde aqui', () => {
     const aviso = avisoConduccionIR(base({ conduciendo_por_ir: true, modo: 'following' }))
-    expect(aviso).toContain('SE ESTA MOVIENDO SOLO')
+    expect(aviso).toContain('SE ESTÁ MOVIENDO SOLO')
     expect(aviso).toContain('following')
     // Ofrecer un boton que no existe es peor que no ofrecer nada.
     expect(aviso).toContain('se para en el robot')
@@ -182,7 +182,7 @@ describe('ultimoMensaje', () => {
 describe('AVISO_EMISION', () => {
   it('🔴 dice que el nombre del emisor no elige quien te ve', () => {
     // Medido: emitiendo SOLO por detras, el otro robot lo recibe igual. Rebota.
-    expect(AVISO_EMISION).toContain('NO garantiza la direccion')
+    expect(AVISO_EMISION).toContain('NO garantiza la dirección')
     expect(AVISO_EMISION).toContain('rebota')
   })
 })

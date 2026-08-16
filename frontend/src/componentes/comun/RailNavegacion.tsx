@@ -142,9 +142,15 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
      *    que dice la pantalla con lo que dice su cinta métrica. El rótulo tiene
      *    que nombrar eso.
      *
-     * ✅ Y desde hoy **solo se mira**: los LEDs y el origen de la odometría se
-     *    fueron a «Acciones». Antes esta pantalla mezclaba veinticinco lecturas
-     *    con dos botones que encienden luces de verdad.
+     * ✅ Los LEDs y el origen de la odometría se fueron a «Acciones». Antes esta
+     *    pantalla mezclaba veinticinco lecturas con dos botones que encienden
+     *    luces de verdad.
+     *
+     * 🔴 Aquí ponía «desde hoy solo se mira», y era falso — la misma frase
+     *    estaba copiada en `medidas/page.tsx`. El selector de modo del sensor de
+     *    color enciende un LED blanco físico. **Dos sitios con la misma
+     *    afirmación falsa es lo que pasa cuando se escribe una promesa en vez de
+     *    comprobarla**, y por eso se corrigen los dos a la vez.
      */
     { href: `${base}/medidas`, texto: 'Medidas', Icono: IconoTelemetria, color: '--seccion-telemetria' },
     /*

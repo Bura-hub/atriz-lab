@@ -46,7 +46,18 @@ describe('ordenDePalanca', () => {
    *    que abrir el techo o meter una curva podía sacar la orden de la franja
    *    medida sin que nada se pusiera rojo.
    */
+  /*
+   * ⚠️ SE ACUMULAN LOS FALLOS Y SE AFIRMA UNA VEZ, y no es estilo: con un
+   *    `expect()` por punto —cinco por punto, más de 75 000— la prueba tardaba
+   *    lo bastante como para **agotar el plazo de vitest en la tanda completa**
+   *    mientras pasaba al ejecutarla sola. Una prueba que depende de lo cargada
+   *    que esté la máquina no es una prueba: es un falso positivo esperando, que
+   *    es justo lo que este proyecto persigue en su verificador.
+   *    Un `expect` en un bucle además solo cuenta el PRIMER fallo; así se ve
+   *    cuántos hay y dónde empiezan.
+   */
   it('🔴 ninguna orden se sale de lo medido, en TODO el espacio de ajustes', () => {
+    const fallos: string[] = []
     let n = 0
     for (const curva of CURVAS) {
       for (const vMax of [V_MIN, 0.15, V_MAX_SEGURO, 0.3, V_MAX_DURO]) {
@@ -58,16 +69,17 @@ describe('ordenDePalanca', () => {
               const o = ordenDePalanca(Math.cos(rad) * f * R, Math.sin(rad) * f * R, R, aj)
               n++
               const donde = `${curva} v≤${vMax} w≤${wMax} a ${f.toFixed(2)}·${ang}°`
-              if (o.v !== 0) expect(Math.abs(o.v), donde).toBeGreaterThanOrEqual(V_MIN - 1e-9)
-              if (o.w !== 0) expect(Math.abs(o.w), donde).toBeGreaterThanOrEqual(W_MIN - 1e-9)
-              expect(Math.abs(o.v), donde).toBeLessThanOrEqual(vMax + 1e-9)
-              expect(Math.abs(o.w), donde).toBeLessThanOrEqual(wMax + 1e-9)
-              expect(dentroDeLoMedido(o, aj), `fuera de lo medido: ${donde}`).toBe(true)
+              if (o.v !== 0 && Math.abs(o.v) < V_MIN - 1e-9) fallos.push(`v bajo mínimo: ${donde}`)
+              if (o.w !== 0 && Math.abs(o.w) < W_MIN - 1e-9) fallos.push(`w bajo mínimo: ${donde}`)
+              if (Math.abs(o.v) > vMax + 1e-9) fallos.push(`v sobre techo: ${donde}`)
+              if (Math.abs(o.w) > wMax + 1e-9) fallos.push(`w sobre techo: ${donde}`)
+              if (!dentroDeLoMedido(o, aj)) fallos.push(`fuera de lo medido: ${donde}`)
             }
           }
         }
       }
     }
+    expect(fallos.slice(0, 5), `${fallos.length} puntos fuera de lo medido`).toEqual([])
     expect(n, 'el barrido no ha cubierto el espacio').toBeGreaterThan(15000)
   })
 

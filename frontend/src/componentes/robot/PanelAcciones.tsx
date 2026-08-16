@@ -7,10 +7,19 @@
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴 POR QUÉ ESTO ES UNA PANTALLA Y NO EL FINAL DE OTRA
  * ═══════════════════════════════════════════════════════════════════════════
- * Estas tres piezas vivían al final de Telemetría, bajo el rótulo «Salidas
+ * Estas piezas vivían al final de Telemetría, bajo el rótulo «Salidas
  * directas», con un comentario que ya tenía el diagnóstico escrito: *«la tercera
  * banda no es una medida: es lo único de esta pantalla que SALE hacia el robot;
  * separarla con su rótulo dice de un vistazo que ahí se pulsa, no se lee»*.
+ *
+ * 🔴 AQUÍ PONÍA «estas TRES piezas» Y SE MOVIERON DOS. La tercera —la luz del
+ *    sensor de color, `/enable_color`— sigue en Medidas, y **se queda ahí a
+ *    propósito**: allí el modo manda («¿qué hay debajo del robot?») y la luz es
+ *    la consecuencia de esa pregunta, no un interruptor aparte. Traerla crearía
+ *    dos controles sobre el mismo estado del robot, que es exactamente lo que se
+ *    quitó de `PanelColor` el 2026-08-08.
+ *    📌 Lo falso no era la decisión: era el número. Un comentario que cuenta mal
+ *       lo que hay delante es la deriva que este repositorio persigue.
  *
  * La separación era correcta y **el sitio no**: quedaban tras un scroll de
  * veinticinco datos, en la pantalla más larga de la aplicación. Una zona bien
@@ -39,6 +48,7 @@
 import { Grupo } from '@/componentes/ui/Grupo'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { PanelLeds } from './PanelLeds'
+import { PanelInfrarrojos } from './PanelInfrarrojos'
 import { PanelOrigenOdometria } from './PanelOrigenOdometria'
 
 export function PanelAcciones() {
@@ -60,9 +70,19 @@ export function PanelAcciones() {
           <strong>Apágala tú</strong>: no se apaga sola mientras esta pestaña siga abierta.
         </Aviso>
 
+        {/*
+          🔴 EL RÓTULO DECÍA `/set_leds` Y EL PANEL LLAMA A `/set_led_rgb`. Son
+             dos servicios DISTINTOS del robot, y la diferencia no es cosmética:
+             `SetLeds.srv` **no tiene campos de respuesta** —ni siquiera llega un
+             `success`— mientras `/set_led_rgb` sí lo devuelve. O sea que el
+             rótulo nombraba el servicio que menos información da, sobre una
+             pantalla cuyo argumento entero es lo que se puede y no se puede
+             saber. Es la deriva de siempre: la fuente escrita a mano, sin
+             abrirla.
+        */}
         <Grupo
           titulo="Luces"
-          fuente="/set_leds · acción física: se ven en el aula"
+          fuente="/set_led_rgb · acción física: se ven en el aula"
         >
           {/*
             📝 Los LEDs y el origen de la odometría van en tarjetas separadas
@@ -80,6 +100,26 @@ export function PanelAcciones() {
           fuente="/set_pos_and_yaw · y se puede comprobar: /odom lo publica"
         >
           <PanelOrigenOdometria />
+        </Grupo>
+
+        {/*
+          ═══════════════════════════════════════════════════════════════════
+          👤 INFRARROJOS (2026-08-16, pedido por el usuario)
+          ═══════════════════════════════════════════════════════════════════
+          Encaja aquí y no en Medidas por la misma razón que los LEDs: **emite**.
+          Y a la vez es la única de las tres que además LEE, porque lo que este
+          robot ve de los otros no tiene otro sitio donde vivir.
+
+          🔴 Y era el hueco más grande de la aplicación: `lib/robot/infrarrojos.ts`
+             son 263 líneas modeladas y probadas que **ninguna pantalla usaba**,
+             mientras el Taller ya tiene cinco prácticas de IR. El alumno podía
+             hacerlo todo y no podía verlo.
+        */}
+        <Grupo
+          titulo="Infrarrojos"
+          fuente="/estado_ir a 1 Hz · y /send_infrared_message, cuyo efecto es INVISIBLE"
+        >
+          <PanelInfrarrojos />
         </Grupo>
       </div>
     </div>

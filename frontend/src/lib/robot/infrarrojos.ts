@@ -1,6 +1,15 @@
 /*
  * 🔴 AQUI NO SE ESCRIBE MARKDOWN. Estas cadenas se pintan como TEXTO PLANO.
  *    Para enfatizar, MAYUSCULAS. Para citar un comando, «comillas».
+ *
+ * 🔴 Y LLEVAN TILDES, DESDE EL 2026-08-16. Este fichero se escribio entero sin
+ *    ellas cuando **ninguna pantalla lo usaba**, asi que nadie las echo de menos.
+ *    Al estrenar `PanelInfrarrojos` salieron a la pantalla: «detras», «patron»,
+ *    «Esta medido», «quien te ve». Toda la aplicacion es en español y hay una
+ *    guardia de lenguaje; esto era una excepcion que solo se sostenia mientras
+ *    fuera invisible.
+ *    📌 Se tocan **solo las cadenas que se pintan**. Los comentarios se quedan
+ *       como estaban: nadie los ve, y cambiarlos seria ruido en el diff.
  */
 
 /**
@@ -130,8 +139,8 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
     return {
       zona: 'SIN_SONDEO',
       evidencia:
-        'El robot dice que sus lecturas NO son validas: el sondeo de infrarrojos esta '
-        + 'apagado, o la consulta al firmware fallo. Los numeros que vienen no son datos.',
+        'El robot dice que sus lecturas NO son válidas: el sondeo de infrarrojos está '
+        + 'apagado, o la consulta al firmware falló. Los números que vienen no son datos.',
       sensor0ConDatos: false,
     }
   }
@@ -143,8 +152,8 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
       zona: 'RANCIA',
       evidencia:
         (Number.isFinite(edad) && edad >= 0
-          ? `La ultima consulta al firmware tiene ${edad.toFixed(1)} s, y el dato caduca al segundo. `
-          : 'No se sabe de cuando es la ultima consulta al firmware. ')
+          ? `La última consulta al firmware tiene ${edad.toFixed(1)} s, y el dato caduca al segundo. `
+          : 'No se sabe de cuándo es la última consulta al firmware. ')
         + 'Con la lectura caducada, un sensor «sin señal» significa QUE HACE MUCHO QUE NO SE MIRA, '
         + 'no que no haya nadie cerca.',
       sensor0ConDatos,
@@ -160,7 +169,7 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
       zona: 'NADIE_EN_ESTA_MUESTRA',
       evidencia:
         'Ninguno de los sensores ve nada EN ESTA MUESTRA. La lectura es intermitente: una sola '
-        + 'muestra puede decir que no hay nadie habiendolo, asi que esto no es «el robot esta solo».',
+        + 'muestra puede decir que no hay nadie habiéndolo, así que esto no es «el robot está solo».',
       sensor0ConDatos,
     }
   }
@@ -169,7 +178,7 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
   if (clave === '1') {
     return {
       zona: 'IZQUIERDA',
-      evidencia: 'Responde solo el sensor 1, que es el patron medido para un emisor a la IZQUIERDA '
+      evidencia: 'Responde solo el sensor 1, que es el patrón medido para un emisor a la IZQUIERDA '
         + '(igual en los dos robots).',
       sensor0ConDatos,
     }
@@ -177,7 +186,7 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
   if (clave === '1,3' || clave === '1,2,3') {
     return {
       zona: 'DETRAS',
-      evidencia: `Responden los sensores ${clave}, que es el patron medido para un emisor DETRAS `
+      evidencia: `Responden los sensores ${clave}, que es el patrón medido para un emisor DETRÁS `
         + '(rvr-01 dio [1,3] y rvr-02 [1,2,3]).',
       sensor0ConDatos,
     }
@@ -186,8 +195,8 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
     return {
       zona: 'DELANTE_O_DERECHA',
       evidencia:
-        'Responden los sensores 2 y 3. 🔴 DELANTE y a la DERECHA dieron EXACTAMENTE este patron en '
-        + 'los dos robots, asi que no se pueden separar: el sistema discrimina tres zonas, no cuatro.',
+        'Responden los sensores 2 y 3. 🔴 DELANTE y a la DERECHA dieron EXACTAMENTE este patrón en '
+        + 'los dos robots, así que no se pueden separar: el sistema discrimina tres zonas, no cuatro.',
       sensor0ConDatos,
     }
   }
@@ -208,8 +217,8 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
   return {
     zona: 'PATRON_NO_MEDIDO',
     evidencia:
-      `Responden los sensores ${clave}, y esa combinacion no esta entre las medidas. Hay alguien `
-      + 'cerca —eso si lo dice el dato—, pero DONDE no se sabe: decirlo seria inventarlo.',
+      `Responden los sensores ${clave}, y esa combinación no está entre las medidas. Hay alguien `
+      + 'cerca —eso sí lo dice el dato—, pero DÓNDE no se sabe: decirlo sería inventarlo.',
     sensor0ConDatos,
   }
 }
@@ -230,9 +239,9 @@ export function avisoConduccionIR(e: EstadoIR): string | null {
   if (!e.conduciendo_por_ir) return null
   const modo = e.modo === 'following' || e.modo === 'evading' ? ` en modo «${e.modo}»` : ''
   return (
-    `ESTE ROBOT SE ESTA MOVIENDO SOLO, por infrarrojos${modo}. Lo conduce su firmware, no las `
-    + 'ordenes de esta web: no pasa por cmd_vel, asi que ni el vigilante ni la capa de seguridad '
-    + 'lo ven. No se puede parar desde aqui — se para en el robot.'
+    `ESTE ROBOT SE ESTÁ MOVIENDO SOLO, por infrarrojos${modo}. Lo conduce su firmware, no las `
+    + 'órdenes de esta web: no pasa por cmd_vel, así que ni el vigilante ni la capa de seguridad '
+    + 'lo ven. No se puede parar desde aquí — se para en el robot.'
   )
 }
 
@@ -246,9 +255,9 @@ export function avisoConduccionIR(e: EstadoIR): string | null {
  * infrarrojo se refleja en paredes y suelo.
  */
 export const AVISO_EMISION =
-  'El nombre del emisor NO garantiza la direccion. Esta medido que emitiendo solo por detras el '
-  + 'otro robot lo recibe igual, porque el infrarrojo rebota en paredes y suelo. Estas eligiendo '
-  + 'CON CUANTA FUERZA emite cada uno, no quien te ve.'
+  'El nombre del emisor NO garantiza la dirección. Está medido que emitiendo solo por detrás el '
+  + 'otro robot lo recibe igual, porque el infrarrojo rebota en paredes y suelo. Estás eligiendo '
+  + 'CON CUÁNTA FUERZA emite cada uno, no quién te ve.'
 
 /**
  * El ultimo mensaje recibido, o `null` si no ha llegado ninguno.
@@ -260,4 +269,90 @@ export function ultimoMensaje(e: EstadoIR): { codigo: number; antiguedadS: numbe
   if (!e.hay_mensaje) return null
   const s = e.antiguedad_mensaje_s
   return { codigo: e.ultimo_codigo, antiguedadS: Number.isFinite(s) && s >= 0 ? s : Number.NaN }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * EMITIR — los limites, y por que la fuerza es UNA y no cuatro
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `SendInfraredMessage.srv` toma un codigo y CUATRO intensidades con nombre
+ * —frontal, izquierda, derecha, trasera—, y la lectura natural es «elijo hacia
+ * donde emito». Esa lectura es falsa por dos motivos independientes:
+ *
+ *   1. **Rebota.** Medido: emitiendo SOLO por el emisor TRASERO, el robot que
+ *      leia lo recibio igual. En interior el infrarrojo se refleja en paredes y
+ *      suelo. Ver `AVISO_EMISION`.
+ *   2. **El firmware no deja repartirlas.** Lo dice `atriz.py` del robot: se
+ *      puede encender y apagar cada emisor por separado, pero **el nivel tiene
+ *      que ser el mismo en todos los encendidos**. Cuatro deslizadores
+ *      ofrecerian una combinacion que el robot no puede cumplir.
+ *
+ * → Un codigo y UNA fuerza, igual que la biblioteca del alumno.
+ */
+export const CODIGO_MIN = 0
+export const CODIGO_MAX = 7
+export const FUERZA_MIN = 0
+export const FUERZA_MAX = 64
+/** Lo que usa `atriz.py` por defecto. Se copia para que las dos vias coincidan. */
+export const FUERZA_POR_DEFECTO = 64
+
+export interface PeticionIR {
+  code: number
+  front_strength: number
+  left_strength: number
+  right_strength: number
+  rear_strength: number
+}
+
+/**
+ * Los argumentos del servicio, o `null` si lo pedido no es valido.
+ *
+ * 🔴 `null` Y NO UN VALOR RECORTADO. Recortar en silencio haria que pedir el
+ *    codigo 9 emitiera el 7 y la pantalla dijera que emitio el 9 — la clase de
+ *    mentira que este proyecto persigue. Un rango se comprueba, no se dobla.
+ */
+export function peticionIR(codigo: number, fuerza: number): PeticionIR | null {
+  const enteroEn = (v: number, min: number, max: number) =>
+    Number.isInteger(v) && v >= min && v <= max
+  if (!enteroEn(codigo, CODIGO_MIN, CODIGO_MAX)) return null
+  if (!enteroEn(fuerza, FUERZA_MIN, FUERZA_MAX)) return null
+  return {
+    code: codigo,
+    front_strength: fuerza,
+    left_strength: fuerza,
+    right_strength: fuerza,
+    rear_strength: fuerza,
+  }
+}
+
+/**
+ * Como se llama cada zona en pantalla.
+ *
+ * 🔴 `DELANTE_O_DERECHA` CONSERVA EL «O», y no se acorta. Es el resultado de la
+ *    medida: los dos robots dieron el MISMO patron de sensores para las dos
+ *    posiciones. Un nombre corto —«delante»— seria elegir una de las dos sin
+ *    tener con que.
+ */
+export const NOMBRE_ZONA: Readonly<Record<ZonaIR, string>> = {
+  IZQUIERDA: 'a la izquierda',
+  DETRAS: 'detrás',
+  DELANTE_O_DERECHA: 'delante o a la derecha',
+  NADIE_EN_ESTA_MUESTRA: 'nadie en esta muestra',
+  RANCIA: 'lectura caducada',
+  SIN_SONDEO: 'sin sondeo',
+  PATRON_NO_MEDIDO: 'hay alguien, sitio desconocido',
+}
+
+/**
+ * El modo del firmware, en palabras. Los cuatro valores salen del `.msg`.
+ *
+ * ⚠️ `following` y `evading` **conducen el robot** sin pasar por `cmd_vel`. La
+ *    web no los puede pedir —no estan en la lista blanca, a proposito— pero si
+ *    los puede RECIBIR, porque el alumno los arranca desde el Taller.
+ */
+export const NOMBRE_MODO_IR: Readonly<Record<string, string>> = {
+  broadcasting: 'emitiendo como baliza',
+  following: 'siguiendo a otro robot',
+  evading: 'huyendo de otro robot',
+  off: 'apagado',
 }
