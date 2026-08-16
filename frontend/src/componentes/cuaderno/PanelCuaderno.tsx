@@ -26,10 +26,31 @@ import {
 } from '@/lib/cuaderno/medidas'
 import { numero } from '@/lib/interfaz/formato'
 import { ROBOTS } from '@/lib/interfaz/identidad'
+import { MAGNITUDES } from '@/lib/cuaderno/lecturas_robot'
+import { LecturaDelRobot } from './LecturaDelRobot'
 import { Grupo } from '@/componentes/ui/Grupo'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 
 const VACIA = { robot: 'rvr-01', que: '', robotValor: '', personaValor: '', unidad: 'cm', nota: '' }
+
+/**
+ * De `rvr-07` al numero 7, que es lo que `ProveedorRobot` necesita para resolver
+ * `rvr-07.local`.
+ *
+ * 🔴 PASARLE LA CADENA DIRECTAMENTE NO VALE, y falla de la peor manera: el
+ *    proveedor acepta `number | string`, y con una cadena la usa **tal cual**
+ *    como anfitrion. `rvr-01` sin `.local` no resuelve por mDNS, asi que el
+ *    socket se queda colgado ~21 s sin error — la firma exacta del fallo que
+ *    este proyecto ya pago cuando el nombre resolvia a cuatro direcciones.
+ *
+ * ⚠️ Y ademas, un destino que no es un numero **no puede recibir testigo**: el
+ *    testigo lleva dentro el numero del robot. Con la cadena, la lectura del
+ *    cuaderno no habria funcionado nunca en un despliegue con la Fase B puesta.
+ */
+function numeroDeRobot(id: string): number {
+  const n = Number(id.replace(/^rvr-/, ''))
+  return Number.isInteger(n) && n >= 1 && n <= 16 ? n : 1
+}
 
 /**
  * Lo que TECLEO el alumno, con coma decimal.
@@ -394,6 +415,42 @@ export function PanelCuaderno() {
                 <p className="mt-3 font-mono text-[11px] text-muted-foreground">
                   diferencia = mediste tú − dijo el robot
                 </p>
+
+                {/*
+                  ═══════════════════════════════════════════════════════════════
+                  🔴 EL DEFECTO Nº8, CERRADO (2026-08-16): «el cuaderno no lee ni
+                     un número del robot»
+                  ═══════════════════════════════════════════════════════════════
+                  Esta pantalla existe para comparar lo que dijo el robot con lo
+                  que mide una cinta, y el campo «dijo el robot» se tecleaba a
+                  mano: abrir otra pestaña, leer, memorizar, volver. Con una
+                  cinta métrica en la otra mano.
+
+                  Y la copia a mano no es solo incómoda: **es donde entran los
+                  errores que esta pantalla existe para cazar**. Un dígito mal
+                  copiado se convierte en una discrepancia que no ocurrió.
+
+                  ⚠️ Rellena el campo del ROBOT, nunca el tuyo. Si escribiera los
+                     dos, la comparación no compararía nada — y esa tentación
+                     existe porque técnicamente se podría.
+                */}
+                <div className="mt-4 border-t border-[rgb(var(--filo)/0.10)] pt-3.5">
+                  <LecturaDelRobot
+                    robot={numeroDeRobot(f.robot)}
+                    alLeer={(valor, m) => setF((v) => ({
+                      ...v,
+                      robotValor: valor,
+                      unidad: MAGNITUDES[m].unidad,
+                      // 🔴 Solo si estaba VACÍO: si alguien ya escribió qué mide,
+                      //    pisarlo sería decidir por él.
+                      que: v.que.trim() === '' ? MAGNITUDES[m].que : v.que,
+                    }))}
+                  />
+                  <p className="mt-2 max-w-prose text-[12px] leading-relaxed text-muted-foreground">
+                    Deja el ratón encima de cada botón: dice <strong>contra qué</strong> se compara
+                    esa magnitud, que es lo que hace útil la lectura.
+                  </p>
+                </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 border-t border-[rgb(var(--filo)/0.09)] px-5 py-3.5">
