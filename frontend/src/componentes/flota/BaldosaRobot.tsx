@@ -60,13 +60,35 @@ const TEXTO_ESTADO: Readonly<Record<EstadoRobot, string>> = {
  *
  * ⚠️ Y el color NUNCA va solo: cada bloque lleva su PALABRA. Una de cada doce
  *    personas no distingue el lima del coral, y este muro se proyecta.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 Y HASTA EL 2026-08-16 ERAN **DOS** CÓDIGOS, NO TRES
+ * ═══════════════════════════════════════════════════════════════════════════
+ * El párrafo de arriba lleva escrito desde siempre que el color no va solo, y
+ * es cierto: va con la palabra. Lo que faltaba es el TERCERO. `globals.css`
+ * declaraba `.trama-mirar` y `.trama-ir` con el argumento entero —«más denso =
+ * más urgente, se lee en un proyector que desatura y a tres metros»— y **no las
+ * usaba nadie**. Cero consumidores desde el día que se escribieron.
+ *
+ * O sea: el proyecto se estaba diciendo por escrito, en tres ficheros, que
+ * tenía triple codificación teniendo dos. Es la forma que este repositorio
+ * persigue en todas partes —configuración que existe y no hace nada— cometida
+ * sobre lo único que protege a una persona de cada doce.
+ *
+ * ⚠️ Y NINGUNA prueba podía cazarlo: no hay jsdom aquí y ninguna prueba
+ *    renderiza un componente. Lo caza ahora `piezasHuerfanas` en
+ *    `estilo.test.ts`, que mira la hoja contra los `className` de verdad.
+ *
+ * 🔴 `NINGUNA` NO LLEVA TRAMA, y no es un olvido: la trama codifica URGENCIA, y
+ *    un robot vivo sin nada que mirar no tiene ninguna. Tramarlo por simetría
+ *    haría que las tres se parecieran, que es lo contrario de lo que se busca.
  */
 const BLOQUE: Readonly<Record<Baldosa['atencion'], string>> = {
   // En línea y sin nada que mirar: cobalto. Es un bloque igual, porque «este
   // robot está vivo» ya es algo que decir cuando quince no lo están.
   NINGUNA: 'bg-bloque-vivo text-white shadow-bloque',
-  MIRAR: 'bg-bloque-mirar text-[rgb(16,18,6)] shadow-bloque',
-  IR: 'bg-bloque-ir text-white shadow-bloque',
+  MIRAR: 'bg-bloque-mirar text-[rgb(16,18,6)] shadow-bloque trama-mirar',
+  IR: 'bg-bloque-ir text-white shadow-bloque trama-ir',
 }
 const TEXTO_ATENCION: Readonly<Record<Baldosa['atencion'], string>> = {
   NINGUNA: '',
@@ -232,7 +254,7 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
           >
             {etiqueta}
           </span>
-          <span className="shrink-0 rounded-full border border-border px-2.5 py-1 text-[10.5px] uppercase tracking-wider text-muted-foreground">
+          <span className="shrink-0 border border-border px-2 py-1 text-[10.5px] uppercase tracking-wider text-muted-foreground">
             no llegó
           </span>
         </div>
@@ -313,7 +335,7 @@ export function BaldosaRobot({ baldosa, href, etiqueta }: PropsBaldosaRobot) {
         >
           {etiqueta}
         </span>
-        <span className="shrink-0 rounded-full border-[1.5px] border-current px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wider opacity-90">
+        <span className="shrink-0 border-[1.5px] border-current px-2 py-1 text-[10.5px] font-semibold uppercase tracking-wider opacity-90">
           {baldosa.atencion === 'NINGUNA'
             ? TEXTO_ESTADO[baldosa.estado]
             : TEXTO_ATENCION[baldosa.atencion]}

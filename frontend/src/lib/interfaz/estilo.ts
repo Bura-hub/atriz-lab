@@ -662,6 +662,113 @@ function esNombreDeFotograma(u: string, css: string): boolean {
   return !PALABRAS.has(u) && !css.includes(`--${u}`)
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   UNA CLASE SIN CONSUMIDOR ES UNA TRAMPA ARMADA
+   ═══════════════════════════════════════════════════════════════════════════
+   🔴 VAN CUATRO EN ESTA HOJA, y la lista importa porque las cuatro fallaron de
+      la misma forma:
+
+     `.filo-estado`   decia colorear el canto de las tarjetas segun el estado.
+                      Cero consumidores. Y `estilo.test.ts` llego a AFIRMAR que
+                      un componente le inyectaba su token — no lo hacia.
+     `.muestra-led`   pintaba la muestra del color pedido. La muestra acabo
+                      siendo un `<canvas>` y la regla se quedo sola.
+     `.pozo-interior` llevaba `rgb(0 0 0 / 0.2)` del tema OSCURO, o sea un
+                      bloque gris medio dentro de una ficha blanca. Nadie lo
+                      vio porque no hay ninguna pantalla donde mirarla.
+     `.trama-mirar`   el TERCER CODIGO de accesibilidad, que este proyecto
+     `.trama-ir`      declara irrenunciable — «una de cada doce personas no
+                      distingue el lima del coral, y esto se proyecta»— y que
+                      lleva desde siempre **declarado y sin construir**.
+
+   Lo peligroso no es la regla muerta: es que alguien la lea y **crea que el
+   sistema ya tiene esa pieza**. La ultima de la lista es el caso puro — el
+   proyecto se ha estado diciendo por escrito que tiene triple codificacion.
+
+   📌 Misma familia que todo lo que este repositorio persigue: el `chmod` sobre
+      vfat, el `usercfg.txt` de 24.04, el drop-in `99-`. **Configuracion que
+      existe y no hace nada.**
+
+   ⚠️ LO QUE ESTA GUARDIA NO PUEDE VER: una clase compuesta en tiempo de
+      ejecucion (`trama-${estado}`). Es texto que no existe en el fuente, asi
+      que dara un falso positivo — y la respuesta correcta es **no componer
+      nombres de clase**, no relajar la guardia. Tailwind exige lo mismo por su
+      cuenta: su escaneo tampoco ve una clase que solo existe al ejecutar.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Los nombres de clase que `globals.css` define, sin repetir.
+ *
+ * Coge el nombre de CADA clase de cada selector, no solo la primera: en
+ * `.proyeccion .vidrio` las dos estan definidas y las dos tienen que estar
+ * vivas. Y descarta lo que va detras de `>`, `:` o `::`, que no son clases.
+ */
+export function clasesDefinidas(css: string): string[] {
+  const limpio = sinComentarios(css)
+  const fuera = new Set<string>()
+  /*
+   * 🔴 SIN ANCLAR A PRINCIPIO DE LINEA, y la primera version lo hacia: se
+   *    escribio `/^\s*([^{}@;]+)\{/gm` y fallaba con TODO el CSS en una linea —
+   *    que es como llega un `@media (hover: hover) { .a:hover { … } }` y como
+   *    llega cualquier hoja minificada. Un extractor que solo ve el CSS bien
+   *    sangrado es un extractor que da la razon a quien lo escribio.
+   *
+   * Se recorren las llaves de apertura: el SELECTOR es lo que hay desde la
+   * frontera anterior (`{`, `}` o `;`) hasta esa llave. Una declaracion no
+   * puede confundirse porque acaba en `;`, y una at-rule se descarta sola: su
+   * prologo no lleva `.` seguido de letra (`0.2` de un `rgb()` tampoco).
+   */
+  let desde = 0
+  for (let i = 0; i < limpio.length; i++) {
+    const c = limpio[i]
+    if (c === '{') {
+      const prologo = limpio.slice(desde, i)
+      if (!prologo.trimStart().startsWith('@')) {
+        for (const m of prologo.matchAll(/\.([a-z][\w-]*)/gi)) fuera.add(m[1])
+      }
+      desde = i + 1
+    } else if (c === '}' || c === ';') {
+      desde = i + 1
+    }
+  }
+  return [...fuera].sort()
+}
+
+/**
+ * Las clases de `css` que no aparecen en ningun fuente de `fuentes`.
+ *
+ * 🔴 `exentas` existe y hay que justificar cada entrada AL AÑADIRLA. Una lista
+ *    de excepciones que crece sin motivo convierte la guardia en decoracion —
+ *    que es justo lo que la guardia persigue.
+ */
+export function piezasHuerfanas(
+  css: string, fuentes: string[], exentas: readonly string[] = [],
+): string[] {
+  const exenta = new Set(exentas)
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 SIN COMENTARIOS, Y ESTO NO ES HIGIENE: LA PRIMERA VERSION DIO VERDE
+   *      SOBRE LAS CUATRO HUERFANAS QUE EXISTE PARA CAZAR
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Medido el 2026-08-16, al estrenarla. `.rotulo` «tenia consumidor» porque la
+   * palabra *rotulo* sale en VEINTE comentarios («el rotulo de `Grupo` lleva el
+   * grafito de esta pantalla»). Ninguno es un `className`.
+   *
+   * 📝 QUINTA vez que este proyecto cuenta un comentario como si fuera un
+   *    ajuste, y la leccion ya estaba escrita tres veces en `CLAUDE.md` y una
+   *    aqui mismo, doce lineas mas arriba, en `globsMuertos`. La lei el mismo
+   *    dia. Por eso ahora se pasa por `lineasDeCodigo()`, que es la funcion que
+   *    ya existia para esto.
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  const todo = fuentes.map((f) => lineasDeCodigo(f).join('\n')).join('\n')
+  return clasesDefinidas(css)
+    .filter((c) => !exenta.has(c))
+    // Se busca el nombre con frontera por delante: `trama-ir` no debe casar
+    // dentro de `mi-trama-ir`, pero SI dentro de `class="vidrio pulsable"`.
+    .filter((c) => !new RegExp(`(^|[^\\w-])${c}(?![\\w-])`).test(todo))
+}
+
 /** Un triplete `R G B` como los que declara `globals.css`. No un color CSS. */
 const TRIPLETE = /^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/
 

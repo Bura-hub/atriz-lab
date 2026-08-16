@@ -505,26 +505,66 @@ export function MuroFlota() {
               <div className="self-start md:border-l md:border-border md:pl-8">
                 <p className="microetiqueta">El idioma del muro</p>
                 <dl className="mt-3 space-y-3 text-[12.5px] leading-snug text-muted-foreground">
-                  <div>
-                    <dt className="flex items-center gap-2 font-semibold text-foreground">
-                      <span aria-hidden="true" className="flex gap-1">
-                        <span className="block h-3 w-3 rounded-[3px] bg-bloque-ir" />
-                        <span className="block h-3 w-3 rounded-[3px] bg-bloque-mirar" />
-                        <span className="block h-3 w-3 rounded-[3px] bg-bloque-vivo" />
-                      </span>
-                      Bloque de color
-                    </dt>
-                    <dd className="mt-1">este robot pide algo, y su ficha dice qué</dd>
-                  </div>
-                  <div>
-                    <dt className="flex items-center gap-2 font-semibold text-foreground">
+                  {/*
+                    ═══════════════════════════════════════════════════════════
+                    🔴🔴 LA LEYENDA DE UN CÓDIGO NO PUEDE FALLAR ESE CÓDIGO
+                    ═══════════════════════════════════════════════════════════
+                    Aquí había TRES cuadrados de 12 px con los tres colores de
+                    bloque y una sola frase debajo, «bloque de color». Dos
+                    defectos, y el segundo es el grave:
+
+                      · A 12 px la trama de 14 px de paso **no cabe**: aunque
+                        las baldosas la lleven, el sitio donde se aprende el
+                        idioma no podía enseñarla.
+                      · Y en escala de grises los tres cuadrados son el MISMO
+                        gris. O sea que la leyenda que explica cómo se lee el
+                        muro era ilegible exactamente para la persona a la que
+                        el tercer código protege, y en la única pantalla donde
+                        podía aprenderlo.
+
+                    Ahora cada bloque va con su trama, su palabra y lo que hay
+                    que hacer. 34 × 22 px: dos ciclos completos de la trama de
+                    MIRAR, que es la de paso más ancho.
+
+                    📌 Y esto es además el CONTROL de la trama: para verla en una
+                       baldosa hay que esperar a que un robot pida algo. Aquí se
+                       ve siempre, así que se puede comprobar en gris sin robot.
+                  */}
+                  {[
+                    { c: 'bg-bloque-ir trama-ir', n: 'hay que ir', q: 'atasco confirmado o batería crítica' },
+                    { c: 'bg-bloque-mirar trama-mirar', n: 'mirar', q: 'algo que conviene comprobar' },
+                    { c: 'bg-bloque-vivo', n: 'en línea', q: 'vivo, y no pide nada' },
+                  ].map((b) => (
+                    <div key={b.n} className="flex items-start gap-2.5">
                       <span
                         aria-hidden="true"
-                        className="block h-3 w-3 rounded-[3px] border border-border bg-card"
+                        className={`mt-0.5 block h-[22px] w-[34px] shrink-0 border border-[rgb(var(--filo)/0.2)] ${b.c}`}
                       />
-                      Vidrio
-                    </dt>
-                    <dd className="mt-1">sin novedad, o no se llega a él</dd>
+                      <div>
+                        <dt className="font-semibold text-foreground">{b.n}</dt>
+                        <dd>{b.q}</dd>
+                      </div>
+                    </div>
+                  ))}
+                  {/*
+                    🔴 LA TRAMA VA POR DENSIDAD, y se dice: sin esta frase el
+                       dibujo se lee como decoración distinta en cada ficha en
+                       vez de como una escala. Es la mitad del código —la que se
+                       lee a tres metros y en un proyector que desatura—.
+                  */}
+                  <p className="pt-1 text-[12px] italic">
+                    El rayado dice lo mismo que el color, para quien no lo distinga y para el
+                    proyector: <strong>cuanto más denso, más urgente</strong>.
+                  </p>
+                  <div className="flex items-start gap-2.5">
+                    <span
+                      aria-hidden="true"
+                      className="mt-0.5 block h-[22px] w-[34px] shrink-0 border border-border bg-card"
+                    />
+                    <div>
+                      <dt className="font-semibold text-foreground">Vidrio</dt>
+                      <dd>sin novedad, o no se llega a él</dd>
+                    </div>
                   </div>
                 </dl>
               </div>

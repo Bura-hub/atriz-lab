@@ -817,29 +817,28 @@
   }
 
   /*
-   * ── EL ROTULO GRABADO ────────────────────────────────────────────────────
-   * El hermano mayor de la microetiqueta: nombra una PLACA entera, no un dato.
-   * Es lo que en un frontal de banco va serigrafiado sobre el marco de un
-   * grupo de conectores — `ALIMENTACION`, `ENTRADA`, `MEDIDA` —, y por eso
-   * lleva **filete debajo**: en un panel de verdad ese rotulo va dentro de un
-   * recuadro grabado o sobre una linea, nunca suelto.
+   * ── AQUI ESCRIBI `.rotulo`, Y LO BORRE EL MISMO DIA (2026-08-16) ──────────
    *
-   * ⚠️ Es el MISMO nivel semantico que `.microetiqueta`, un cuerpo mayor. No es
-   *    un titulo: un titulo va en prosa y en Geist. Si acaba usandose como
-   *    titulo, la culpa sera de este comentario por no decirlo bastante alto.
+   * Iba a ser el hermano mayor de la microetiqueta: el rotulo serigrafiado que
+   * en un frontal de banco nombra un GRUPO de conectores — `ALIMENTACION`,
+   * `ENTRADA`, `MEDIDA` — en versalitas estrechas sobre un filete.
+   *
+   * 🔴 **No tenia ni un consumidor**, y lo caz  la guardia que acababa de
+   *    escribir en el mismo commit (`piezasHuerfanas`). O sea que la quinta
+   *    huerfana de esta hoja la puse yo, veinte minutos despues de documentar
+   *    las cuatro anteriores. La guardia sirve porque muerde a quien la escribe.
+   *
+   * 📝 Y el sitio obvio —el `<h2>` de `Grupo`— NO lo quiere, y su comentario
+   *    explica por que con un argumento que sigue en pie: *«en versalitas
+   *    espaciadas esto se leia como un ROTULO DE DATO, y aqui hace falta que se
+   *    lea como un TITULO»*. Cambiarlo exigiria medir si con la cara del panel
+   *    ese argumento cae, y eso es F5 con una pantalla delante — no una
+   *    suposicion escrita hoy.
+   *
+   * 📌 Cuando haga falta, se escribe **con su consumidor en el mismo commit**.
+   *    Es literalmente la regla que dejo escrita el entierro de `.filo-estado`,
+   *    y la que esta hoja lleva cinco veces incumpliendo.
    */
-  .rotulo {
-    font-family: var(--font-panel), 'Roboto Condensed', 'Arial Narrow', sans-serif;
-    font-size: 13px;
-    font-stretch: 78%;
-    font-weight: 700;
-    line-height: 1.15;
-    letter-spacing: 0.15em;
-    text-transform: uppercase;
-    color: rgb(var(--foreground));
-    padding-bottom: 0.35em;
-    border-bottom: 1px solid rgb(var(--filo) / 0.20);
-  }
 
   /*
    * ── LA ESCALA DE LAS CIFRAS ──────────────────────────────────────────────
@@ -1048,14 +1047,30 @@
   }
 
   /*
-   * ── LAS TRAMAS ───────────────────────────────────────────────────────────
-   * 🔴 EL TERCER CÓDIGO, Y NO ES ESTÉTICA. Una de cada doce personas no
-   *    distingue el lima del coral, y esto se PROYECTA en una pared. El color
-   *    dice el estado, la palabra lo dice otra vez, y el paso de la trama lo
-   *    dice una tercera — **más denso = más urgente**, que se lee incluso en un
-   *    proyector que desatura y desde tres metros.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ── LAS TRAMAS · EL TERCER CÓDIGO ────────────────────────────────────────
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 NO ES ESTÉTICA. Una de cada doce personas no distingue el lima del coral,
+   *    y esto se PROYECTA en una pared. El color dice el estado, la palabra lo
+   *    dice otra vez, y el paso de la trama lo dice una tercera — **más denso =
+   *    más urgente**, que se lee en un proyector que desatura y a tres metros.
    *
-   * Los pasos están medidos contra la maqueta: 14 px para MIRAR y 6 px para IR.
+   * 🔴🔴 Y HASTA EL 2026-08-16 ESTAS DOS REGLAS EXISTÍAN CON **CERO
+   *      CONSUMIDORES**, o sea que el proyecto llevaba desde siempre diciéndose
+   *      por escrito —aquí, en `BaldosaRobot` y en `PRODUCT.md`— que tenía
+   *      triple codificación **teniendo dos**. Es el peor de los cuatro casos de
+   *      «configuración que existe y no hace nada» de esta hoja, porque los
+   *      otros tres solo desperdiciaban líneas y este desprotegía a una persona
+   *      de cada doce.
+   *      Ahora las consume `BaldosaRobot`, y `estilo.test.ts` impide que otra
+   *      clase vuelva a quedarse sola (`piezasHuerfanas`).
+   *
+   * Los pasos: 14 px para MIRAR y 6 px para IR. El de IR es **menos de la mitad**
+   * a propósito — a tres metros lo que se distingue es la DENSIDAD, no el ángulo.
+   *
+   * ⚠️ `background-image` y no `background`: la baldosa ya pinta su color de
+   *    bloque con `background-color`, y la trama va ENCIMA. Usar la abreviada
+   *    aquí borraría el color y dejaría la ficha transparente.
    */
   .trama-mirar {
     background-image: repeating-linear-gradient(
@@ -1074,6 +1089,81 @@
   }
 
   /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ── LA MARCA DE ESTADO · EL TERCER CÓDIGO, EN UNA INSIGNIA ───────────────
+   * ═══════════════════════════════════════════════════════════════════════════
+   * La trama sirve para una SUPERFICIE (la baldosa del muro). Una insignia no
+   * tiene superficie que tramar: tiene un renglón. Aquí el tercer código es la
+   * **forma de una línea**, robada del retador nº1 de la tirada — *«state is
+   * line form, not hue: full-height solid live, dashed pending, half-height
+   * stale, struck disabled; a doubled line outranks its neighbours»*.
+   *
+   * 🔴 SUSTITUYE AL PUNTO REDONDO, que era una marca de COLOR: `bg-current` en
+   *    1,5 px. Cambiaba de color con el tono y de forma nunca, así que en gris
+   *    —y en un proyector, y para una persona de cada doce— los cuatro estados
+   *    eran el mismo punto. Una marca que no distingue no es una redundancia.
+   *
+   *   BIEN      ▬▬▬▬▬▬   entera y sólida        · el dato está
+   *   ATENCION  ▬▬ ▬▬ ▬   guionada              · llega a ratos, o no llega
+   *   NEUTRO    ▄▄▄▄▄▄   a media altura, abajo  · no se sabe
+   *   GRAVE     ▬▬▬▬▬▬   DOBLADA                · manda sobre lo que tenga al lado
+   *             ▬▬▬▬▬▬
+   *
+   * 📐 14 × 8 px, no 6 × 6: el punto de antes medía 1,5 px y a tres metros no
+   *    existe. Con 14 de ancho la forma se lee antes que la palabra.
+   */
+  .marca-estado {
+    display: inline-block;
+    width: 14px;
+    height: 8px;
+    flex: none;
+  }
+
+  /* Entera. La única sin huecos: «esto está llegando». */
+  .marca-bien {
+    background: currentColor;
+  }
+
+  /*
+   * Guionada. 3 px de tinta y 3 de hueco — el hueco tiene que ser tan ancho
+   * como la tinta o a tres metros se lee como una línea entera y deja de
+   * distinguirse de BIEN, que es justo la pareja que más importa separar.
+   */
+  .marca-atencion {
+    background-image: repeating-linear-gradient(
+      to right,
+      currentColor 0 3px,
+      transparent 3px 6px
+    );
+  }
+
+  /*
+   * Media altura, apoyada abajo. «No se sabe» no puede ser una línea entera más
+   * fina: fina se lee como lejana, no como incompleta. Media y anclada al canto
+   * inferior se lee como un valor que no llegó arriba.
+   */
+  .marca-neutro {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-size: 100% 50%;
+    background-position: bottom;
+    background-repeat: no-repeat;
+  }
+
+  /*
+   * Doblada. Es la que tiene que ganar de un vistazo, y por eso es la única con
+   * DOS trazos: en un renglón de insignias, dos líneas donde las demás tienen
+   * una se ve antes de leer nada.
+   */
+  .marca-grave {
+    background-image:
+      linear-gradient(currentColor, currentColor),
+      linear-gradient(currentColor, currentColor);
+    background-size: 100% 3px, 100% 3px;
+    background-position: top, bottom;
+    background-repeat: no-repeat;
+  }
+
+  /*
    * ── EL POZO INTERIOR ─────────────────────────────────────────────────────
    * Una superficie hundida DENTRO de una tarjeta de vidrio. Es lo que separa
    * «la tarjeta» de «el dato que la tarjeta contiene» sin gastar otra línea
@@ -1085,11 +1175,17 @@
    *    (#CCC) en mitad de la ficha. Sobre el pozo casi negro de antes era un
    *    rebaje sutil; al pasar a papel se quedó al revés.
    *
-   * ⚠️ NO SE VIO PORQUE ESTA CLASE NO SE USA EN NINGÚN SITIO. Es la última de
-   *    las cuatro piezas de CSS que se subieron sin consumidor, y por eso el
-   *    cambio de tema no la tocó: no hay pantalla donde mirarla. Se corrige el
-   *    valor —sigue sin usarse— porque una regla muerta con el color del tema
-   *    anterior es una trampa para quien la estrene.
+   * ⚠️ NO SE VIO PORQUE ENTONCES ESTA CLASE NO SE USABA EN NINGÚN SITIO: era la
+   *    última de las cuatro piezas de CSS subidas sin consumidor, y por eso el
+   *    cambio de tema no la tocó — no había pantalla donde mirarla.
+   *
+   * ✅ CORREGIDO EL 2026-08-16: **ya tiene consumidor**, `PanelCuaderno:335`. Lo
+   *    destapó `piezasHuerfanas` al estrenarse — no porque la acusara, sino al
+   *    revés: yo la daba por muerta y la guardia dijo que no. Este párrafo
+   *    afirmaba «sigue sin usarse» y llevaba tiempo siendo falso.
+   *    📌 La lección es la de siempre con otra cara: **un comentario que dice
+   *       «esto no se usa» caduca en cuanto alguien lo usa, y nadie vuelve a
+   *       leerlo.** Por eso la afirmación la sostiene ahora un ejecutor.
    */
   .pozo-interior {
     background: rgb(var(--vidrio) / 0.04);

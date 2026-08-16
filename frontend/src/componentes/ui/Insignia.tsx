@@ -56,6 +56,14 @@ export interface PropsInsignia {
    *    vigila 16 robots que pueden estar mudos, **un punto que late siempre es
    *    indistinguible de un robot que vive siempre**. Hay una prueba que lo
    *    impide (`estilo.test.ts`) y el motivo esta en `CLAUDE.md`.
+   *
+   * 🔴🔴 Y HASTA EL 2026-08-16 ESTA MARCA NO SERVIA PARA LO QUE DICE ESTA LINEA.
+   *      Era `bg-current` en un cuadrado de 1,5 px: cambiaba de COLOR con el
+   *      tono y de forma nunca. O sea que «para que el estado no dependa solo
+   *      del color» era exactamente lo que no hacia — en gris, en un proyector,
+   *      y para una persona de cada doce, los cuatro tonos daban el mismo punto.
+   *      Ahora la marca tiene una FORMA por tono. Ver `.marca-estado` en
+   *      `globals.css`.
    */
   punto?: boolean
   /**
@@ -91,17 +99,42 @@ export interface PropsInsignia {
 const TRANSICION = 'transition-[color,background-color,border-color] '
   + 'duration-[var(--t-estado)] ease-[cubic-bezier(0.23,1,0.32,1)]'
 
+/**
+ * LA FORMA DE CADA TONO — el tercer código, en una insignia.
+ *
+ * 🔴 La tabla vive aquí y las reglas en `globals.css` porque son geometría, no
+ *    utilidades: un `repeating-linear-gradient` de 3 px no se escribe con
+ *    clases de Tailwind sin volverse ilegible. Y estar en la hoja las pone bajo
+ *    `piezasHuerfanas`, que es lo que impide que vuelvan a quedarse solas.
+ */
+const MARCA: Readonly<Record<TonoInsignia, string>> = {
+  NEUTRO: 'marca-neutro',
+  BIEN: 'marca-bien',
+  ATENCION: 'marca-atencion',
+  GRAVE: 'marca-grave',
+}
+
 // `sobreBarra` NO se desestructura: no se usa, y desestructurarla para ignorarla
 // es lo que hacía creer que existía una variante.
 export function Insignia({ tono, children, punto = true }: PropsInsignia) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${TRANSICION} ${
+      /*
+       * 🔴 `rounded-none` — SE ACABARON LAS PASTILLAS. La dirección es un frontal
+       *    de instrumento de banco, y en un panel de laboratorio nada es una
+       *    cápsula: los rótulos van en recuadros grabados de canto vivo. El radio
+       *    completo era además lo que más acercaba esta interfaz al «cualquier
+       *    dashboard» que el encargo nombra como la primera forma de fallar.
+       */
+      className={`inline-flex items-center gap-1.5 rounded-none border px-2 py-0.5 text-xs font-medium ${TRANSICION} ${
         CLASES[tono]
       }`}
     >
       {punto && (
-        <span className={`h-1.5 w-1.5 bg-current ${TRANSICION}`} aria-hidden="true" />
+        <span
+          className={`marca-estado ${MARCA[tono]} ${TRANSICION}`}
+          aria-hidden="true"
+        />
       )}
       {children}
     </span>

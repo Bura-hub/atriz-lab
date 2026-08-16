@@ -4,10 +4,10 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeColor, colisionesDeTransicion,
-  cuerpoDeBloque, esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases,
+  clasesDefinidas, cuerpoDeBloque, esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases,
   keyframesHuerfanos, lineasDeCodigo,
-  partirEnComas, resolverToken, tokensDeColor, tokensDeclarados, tokensQueNoPintan,
-  transicionesDeClases,
+  partirEnComas, piezasHuerfanas, resolverToken, tokensDeColor, tokensDeclarados,
+  tokensQueNoPintan, transicionesDeClases,
 } from './estilo'
 
 const RAIZ = dirname(fileURLToPath(import.meta.url))
@@ -686,3 +686,101 @@ describe('🔴 la exencion de degradado, y por que no puede ensancharse', () => 
     expect(buscarProhibiciones('animation: respirar-a 23s ease infinite;')).toEqual([])
   })
 })
+
+// ═══════════════════════════════════════════════════════════════════════════
+// NINGUNA CLASE DE `globals.css` SIN CONSUMIDOR
+// ═══════════════════════════════════════════════════════════════════════════
+describe('clasesDefinidas', () => {
+  it('coge TODAS las clases de un selector, no solo la primera', () => {
+    expect(clasesDefinidas('.proyeccion .vidrio { color: red; }'))
+      .toEqual(['proyeccion', 'vidrio'])
+  })
+
+  it('descarta pseudos, combinadores y at-rules', () => {
+    const css = `
+      @media (hover: hover) { .a:hover { color: red; } }
+      .b > * > *:nth-child(2) { color: red; }
+      @keyframes entrar { from { opacity: 0; } }
+    `
+    // `hover` y `nth-child` son pseudos, no clases. `from` es un fotograma.
+    expect(clasesDefinidas(css)).toEqual(['a', 'b'])
+  })
+
+  it('no confunde una declaracion con un selector', () => {
+    // `background: rgb(...)` lleva un punto en el numero; no debe salir nada.
+    expect(clasesDefinidas('.x { background: rgb(0 0 0 / 0.2); }')).toEqual(['x'])
+  })
+})
+
+describe('piezasHuerfanas', () => {
+  it('encuentra la que nadie usa y deja pasar la que si', () => {
+    const css = '.viva { color: red; } .muerta { color: blue; }'
+    expect(piezasHuerfanas(css, ['<div className="viva" />'])).toEqual(['muerta'])
+  })
+
+  it('🔴 exige frontera: `trama-ir` no cuenta como usada dentro de `mi-trama-ir`', () => {
+    const css = '.trama-ir { color: red; }'
+    expect(piezasHuerfanas(css, ['className="mi-trama-ir"'])).toEqual(['trama-ir'])
+    expect(piezasHuerfanas(css, ['className="trama-ir"'])).toEqual([])
+  })
+
+  it('respeta las exentas', () => {
+    const css = '.muerta { color: blue; }'
+    expect(piezasHuerfanas(css, [''], ['muerta'])).toEqual([])
+  })
+
+  /*
+   * 🔴🔴 LA PRUEBA QUE IMPORTA, Y LA UNICA QUE NO ES DE JUGUETE.
+   *
+   * Esta hoja lleva CUATRO clases huerfanas en su historia, y la ultima es la
+   * grave: `.trama-mirar` y `.trama-ir` son el TERCER CODIGO de accesibilidad
+   * que este proyecto declara irrenunciable —«una de cada doce personas no
+   * distingue el lima del coral, y esto se proyecta»— y llevaban desde siempre
+   * declaradas y sin un solo consumidor. O sea que el proyecto se estaba
+   * diciendo por escrito que tenia triple codificacion.
+   *
+   * ⚠️ Y si esta prueba falla al añadir una clase nueva, la respuesta NO es
+   *    meterla en `EXENTAS`: es escribir su consumidor en el MISMO commit, o
+   *    borrarla. Es literalmente la regla que dejo escrita el entierro de
+   *    `.filo-estado`.
+   */
+  it('🔴 ninguna clase de globals.css se queda sin consumidor', () => {
+    const RUTA_CSS = join(SRC, 'app', 'globals.css')
+    const css = readFileSync(RUTA_CSS, 'utf8')
+    /*
+     * 🔴🔴 FUERA LOS `.css`, Y ESTE ERA EL SEGUNDO FALLO DE LA MISMA PRUEBA.
+     *
+     * `ficherosDeEstilo` devuelve `.tsx`, `.ts` **y `.css`**, y `globals.css`
+     * vive en `src/app`. O sea que la primera version buscaba los consumidores
+     * de `globals.css` **dentro de `globals.css`**: toda clase se encontraba a
+     * si misma y la prueba daba verde por construccion.
+     *
+     * 📌 Es la forma exacta que este proyecto persigue —una comprobacion que no
+     *    puede fallar— y llego con la pintura fresca: la escribi para cazar
+     *    huerfanas y no cazo las cuatro que sabia que habia. Lo destapo mirar la
+     *    lista a mano, no la prueba.
+     */
+    const fuentes = [join(SRC, 'componentes'), join(SRC, 'app'), join(SRC, 'hooks')]
+      .flatMap((d) => ficherosDeEstilo(d))
+      .filter((f) => !f.endsWith('.css'))
+      .map((f) => readFileSync(f, 'utf8'))
+    expect(fuentes.length).toBeGreaterThan(20)   // control: se leyo algo
+    /*
+     * CONTROL NEGATIVO: si la prueba pasara por no mirar nada, este `expect`
+     * tambien pasaria. Una clase que SI se usa tiene que salir usada.
+     */
+    expect(piezasHuerfanas(css, fuentes, [])).not.toContain('vidrio')
+
+    const huerfanas = piezasHuerfanas(css, fuentes, EXENTAS_DE_CONSUMIDOR)
+    expect(huerfanas, `sin consumidor: ${huerfanas.join(', ')}`).toEqual([])
+  })
+})
+
+/**
+ * Las clases que NO necesitan un consumidor en un `className`, con su motivo.
+ * Cada entrada es una afirmacion que hay que poder defender.
+ */
+const EXENTAS_DE_CONSUMIDOR: readonly string[] = [
+  // Tailwind las genera; `globals.css` solo redefine su radio en `@layer base`.
+  'rounded', 'rounded-md', 'rounded-lg', 'rounded-xl', 'rounded-sm',
+]
