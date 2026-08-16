@@ -613,25 +613,74 @@
   }
 
   /*
-   * En proyección el vidrio deja de ser vidrio: sin desenfoque, con borde de
-   * verdad y sobre blanco. Mantener el `backdrop-filter` aquí costaría GPU por
-   * dieciséis y restaría el contraste que este modo existe para ganar.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 ESTE BLOQUE SE QUEDÓ MEDIO MUERTO EN EL COMMIT ANTERIOR, Y FUE MÍO
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Aquí ponía `box-shadow: none` en las dos reglas, con su motivo escrito —«un
+   * proyector no reproduce una sombra, y lo que queda de ella es un halo
+   * sucio»—. Correcto… hasta que F3.4 le quitó la sombra a `.vidrio` **para
+   * todo el mundo**. Desde ese momento las dos líneas apagaban algo que ya no
+   * existía: dos reglas que se ejecutan, no dan error, y no hacen nada.
+   *
+   * Y el comentario de encima hablaba además de mantener o no el
+   * `backdrop-filter`, que se había ido **hacía dos meses**.
+   *
+   * 📌 Es exactamente la forma que este proyecto persigue —el `chmod` sobre
+   *    vfat, el `usercfg.txt` de 24.04, el drop-in `99-`— cometida por mí, en el
+   *    commit inmediatamente anterior, sobre el fichero donde está escrita la
+   *    regla. **Al quitar una propiedad hay que ir a ver quién la anulaba.**
+   *
+   * 🔴 Y NO ERA INOCUO: el borde de proyección valía 0,22 contra un `.vidrio` de
+   *    0,08, o sea casi el triple. Con `.vidrio` ya en 0,14, ese 0,22 dejó de
+   *    ser un refuerzo y pasó a ser un matiz — y el hover, de 0,16→0,34 a
+   *    0,30→0,34, o sea nada. El modo perdía filo justo donde existe para
+   *    ganarlo. Recalculados contra los valores nuevos.
    */
-  /* Sin sombra: un proyector no la reproduce, y lo que queda de ella es un
-     halo sucio. El canto lo lleva el borde, que sí sobrevive a tres metros. */
   .proyeccion .vidrio {
-    border-color: rgb(var(--filo) / 0.22);
-    box-shadow: none;
+    border-color: rgb(var(--filo) / 0.34);
   }
 
   .proyeccion .vidrio:hover {
-    border-color: rgb(var(--filo) / 0.34);
-    box-shadow: none;
+    border-color: rgb(var(--filo) / 0.50);
   }
 
   /* Y la luz ambiente se apaga: sobre fondo claro solo ensucia. */
   .proyeccion .luz-ambiente {
     display: none;
+  }
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 EL TERCER CÓDIGO SE REFUERZA AQUÍ, QUE ES DONDE MÁS FALTA HACE
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Un proyector **desatura**: es la avería que convierte el lima y el coral en
+   * dos grises parecidos, o sea justo el caso para el que existe la trama. Pero
+   * los alfas de `.trama-mirar` (0,15) y `.trama-ir` (0,20) están elegidos
+   * mirando una pantalla a 50 cm — y un proyector también **lava** el rayado,
+   * porque aplana el rango entero, no solo el color.
+   *
+   * O sea: en el único sitio donde el tercer código es imprescindible, era donde
+   * peor se veía. Aquí sube a 0,26 y 0,34.
+   *
+   * ⚠️ NO VERIFICADO a tres metros. Es una corrección de dirección conocida —el
+   *    proyector lava, así que hay que subir— pero **el número sale de mi ojo en
+   *    una captura, no de una pared**. Queda en `VALIDAR_CON_EL_ROBOT.md`: si a
+   *    tres metros «mirar» y «hay que ir» se siguen pareciendo, se sube otra vez.
+   */
+  .proyeccion .trama-mirar {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0 7px,
+      rgb(0 0 0 / 0.26) 7px 14px
+    );
+  }
+
+  .proyeccion .trama-ir {
+    background-image: repeating-linear-gradient(
+      45deg,
+      transparent 0 3px,
+      rgb(255 255 255 / 0.34) 3px 6px
+    );
   }
 
   /*
@@ -1122,6 +1171,75 @@
       transparent 0 3px,
       rgb(255 255 255 / 0.2) 3px 6px
     );
+  }
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ── LA REGLA SERIGRAFIADA · la escala impresa bajo una medida ────────────
+   * ═══════════════════════════════════════════════════════════════════════════
+   * La firma de la dirección: un frontal de banco lleva el rango y sus umbrales
+   * grabados junto al control **para siempre**, haya lectura o no. Ver
+   * `componentes/ui/EscalaImpresa.tsx` para el porqué entero.
+   *
+   * 🔴 NO ES UNA BARRA DE PROGRESO: no hay relleno de izquierda a valor. Hay una
+   *    regla y un CURSOR. Un relleno diría «cuánto llevas», que sobre una
+   *    batería es la lectura equivocada.
+   */
+  .regla-escala {
+    position: relative;
+    height: 9px;
+    /* El cuerpo de la regla: hundido, como la ventana de lectura. Es la misma
+       gramática — lo que mide está por debajo del plano de la placa. */
+    background: rgb(var(--vidrio) / 0.05);
+    border-left: 1px solid rgb(var(--filo) / 0.45);
+    border-right: 1px solid rgb(var(--filo) / 0.45);
+  }
+
+  /* Un umbral. Línea entera, del alto de la regla: es una división, no un dato. */
+  .regla-marca {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: rgb(var(--filo) / 0.45);
+  }
+
+  /*
+   * EL CURSOR. Lo único de aquí que se mueve, y lo único a plena tinta: en una
+   * regla serigrafiada todo es gris grabado menos la aguja.
+   *
+   * 🔴 SOBRESALE por arriba y por abajo (`-2px`), y no es adorno: dentro de la
+   *    regla se confundiría con una marca de umbral, que es lo que más importa
+   *    NO confundir. Fuera de la caja se lee como aguja.
+   */
+  .regla-cursor {
+    position: absolute;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    margin-left: -1px;
+    background: rgb(var(--foreground));
+    /*
+     * ⚠️ SIN TRANSICIÓN, y es deliberado. El voltaje llega cada 30 s y la
+     *    odometría a 16,5 Hz: una aguja que se desliza al llegar un dato es
+     *    «animar la llegada de un dato», que esta interfaz tiene prohibido con
+     *    una prueba detrás. Salta, como la aguja de un instrumento digital.
+     */
+  }
+
+  /* El rótulo de la regla: serigrafía, o sea la cara del panel. */
+  .regla-rotulo {
+    position: absolute;
+    top: 0;
+    font-family: var(--font-panel), 'Roboto Condensed', 'Arial Narrow', sans-serif;
+    font-size: 10.5px;
+    font-stretch: 78%;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    line-height: 1;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: rgb(var(--muted-foreground));
   }
 
   /*

@@ -26,11 +26,35 @@ import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
 import { useLatido } from '@/hooks/useTransporte'
 import { NivelBateria, V_BAJA, V_CRITICA, nivelBateria } from '@/lib/rosbridge/contrato'
+import { EscalaImpresa } from '@/componentes/ui/EscalaImpresa'
+import type { Escala } from '@/lib/interfaz/escala'
 import { SIN_DATO, milisegundos, numero, partirUnidad, voltios } from '@/lib/interfaz/formato'
 import { porcentajeDe, voltajeDe } from '@/lib/interfaz/lecturas'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
 import { Contexto } from '@/componentes/ui/Contexto'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
+
+/**
+ * LA REGLA DE LA BATERIA.
+ *
+ * 🔴 El TOPE sale de una medida: el proyecto registro **8,29 V al "100 %"** del
+ *    firmware, y 8,4 es el nominal de dos celdas de Li-ion en serie a plena
+ *    carga. El SUELO es una eleccion —0,5 V por debajo de critica, lo justo para
+ *    que el umbral no quede pegado al canto— y se dice que lo es.
+ *
+ * ⚠️ Los dos umbrales NO se escriben aqui: salen de `V_BAJA` y `V_CRITICA`,
+ *    que es de donde los saca `nivelBateria()`. Copiarlos daria dos fuentes de
+ *    verdad para el mismo numero, que es como el proyecto acabo con
+ *    `--estado-ir` valiendo exactamente `--destructive`.
+ */
+const ESCALA_BATERIA: Escala = {
+  min: 6.0,
+  max: 8.4,
+  marcas: [
+    { en: V_CRITICA, nombre: 'crítica' },
+    { en: V_BAJA, nombre: 'baja' },
+  ],
+}
 
 const TONO: Readonly<Record<NivelBateria, TonoInsignia>> = {
   OK: 'BIEN',
@@ -228,6 +252,37 @@ export function Bateria() {
               {TEXTO[nivel]}
             </p>
           )}
+
+          {/*
+            ═══════════════════════════════════════════════════════════════════
+            🔴 LA ESCALA IMPRESA, y es lo que contesta la pregunta de verdad
+            ═══════════════════════════════════════════════════════════════════
+            «7,80 V» no dice si el robot está bien. Lo dice **dónde cae 7,80
+            entre 6,0 y 8,4, con *baja* en 7,0 y *crítica* en 6,5** — que es
+            justo lo que un frontal de banco lleva serigrafiado al lado del
+            conector desde que sale de fábrica.
+
+            Hasta hoy esos dos umbrales vivían en una celda aparte del raíl, con
+            su propio rótulo `UMBRALES`, a 300 px del valor al que se refieren.
+            Estaban en pantalla y había que **componerlos mentalmente** con el
+            voltaje: tres números sueltos y una resta.
+
+            🔴 EL TOPE ES 8,4 V Y NO ES INVENTADO: el proyecto midió **8,29 V al
+               «100 %»** del firmware, y 8,4 es el nominal de dos celdas de
+               Li-ion en serie a plena carga. El suelo es 6,0 y sí es una
+               elección: 0,5 V por debajo de «crítica», lo justo para que el
+               umbral no quede pegado al canto.
+               ⚠️ Anotado como elección, no como medida.
+
+            📝 Y se dibuja también con el robot apagado: la regla es serigrafía,
+               no dato. Con el RVR fuera esta tarjeta pasaba de tener cero cifras
+               a tener dos; ahora tiene la escala entera.
+          */}
+          <EscalaImpresa
+            valor={v}
+            escala={ESCALA_BATERIA}
+            formato={voltios}
+          />
         </div>
 
         {/*
@@ -269,33 +324,27 @@ export function Bateria() {
           </div>
 
           {/*
-            🔴 LOS UMBRALES SUBEN A LA PANTALLA, Y SALEN DEL DESPLEGABLE.
+            ═══════════════════════════════════════════════════════════════════
+            🔴 AQUÍ VIVÍA LA CELDA `UMBRALES`, Y BAJÓ A LA ESCALA (2026-08-16)
+            ═══════════════════════════════════════════════════════════════════
+            Pintaba `7,00 baja` y `6,50 crítica` en `.cifra-menor`, en el raíl
+            de lo subordinado. Su comentario decía —y tenía razón— que son *«el
+            patrón contra el que se lee el voltaje, NUNCA la escala del valor»*.
 
-            Estaban en el «Por qué», o sea plegados. Son CONSTANTES medidas del
-            firmware, así que —al contrario que el voltaje— se pintan igual con el
-            robot apagado: con el RVR fuera, esta tarjeta pasa de tener cero
-            cifras a tener dos. Es la misma regla por la que `Dato` pinta su
-            `referencia` aunque no haya dato.
+            Y esa frase era el diagnóstico del defecto: un patrón contra el que
+            se lee un valor, puesto **a 300 px de ese valor**, obliga a
+            componerlo mentalmente. Tres números sueltos y una resta, cada vez.
 
-            ⚠️ En `.cifra-menor` y en tinta secundaria: son el patrón contra el
-               que se lee el voltaje, no una medida. Nunca la escala del valor.
+            Ahora los dos umbrales están **dibujados sobre la misma regla que el
+            voltaje**, o sea que la comparación ya no hay que hacerla. Y la
+            histéresis, que era el matiz de esta celda, se queda donde estaba en
+            el «Por qué»: es un detalle del firmware, no algo que se mire.
+
+            📌 La celda no se sustituye por otra cosa: el raíl pasa a tener una
+               sola columna. Rellenar el hueco con algo «para que no quede vacío»
+               es cómo se llega a una pantalla con quince datos y ninguno que
+               mande.
           */}
-          <div>
-            <div className="microetiqueta">Umbrales</div>
-            <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-0.5">
-              <span className="flex items-baseline gap-1.5">
-                <span className="cifra-menor text-muted-foreground">{voltios(V_BAJA)}</span>
-                <span className="text-[11px] text-muted-foreground">baja</span>
-              </span>
-              <span className="flex items-baseline gap-1.5">
-                <span className="cifra-menor text-muted-foreground">{voltios(V_CRITICA)}</span>
-                <span className="text-[11px] text-muted-foreground">crítica</span>
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground/80">
-              Del firmware, con 0,2 V de histéresis.
-            </p>
-          </div>
         </div>
       </div>
 
