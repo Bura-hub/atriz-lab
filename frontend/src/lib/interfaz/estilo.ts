@@ -523,6 +523,74 @@ export function colisionesDeColor(
  *       verificador del robot, que llego a acumular ocho fallos propios.
  */
 
+/**
+ * El CSS con los comentarios en blanco, **conservando las longitudes**.
+ *
+ * Se sustituye cada caracter de comentario por un espacio en vez de borrarlo,
+ * para que cualquier indice calculado sobre el resultado siga valiendo sobre el
+ * original. Los saltos de linea se conservan tal cual: si no, un comentario de
+ * veinte lineas movería todo lo de abajo.
+ */
+export function sinComentarios(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, (bloque) =>
+    bloque.replace(/[^\n]/g, ' '))
+}
+
+/**
+ * El cuerpo de un bloque CSS, contando llaves.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 LO QUE HABIA ANTES FUNCIONABA **POR ACCIDENTE**, Y ES PEOR QUE FRAGIL
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `estilo.test.ts` troceaba asi:
+ *
+ *     const cuerpo = css.slice(i, css.indexOf('\n  }\n', i))
+ *
+ * O sea: «hasta la primera llave de cierre indentada con DOS espacios». Y en
+ * `globals.css` **`:root` cierra en la columna 0**, asi que ese `indexOf` no
+ * paraba en `:root`: seguia hasta el `  }` del `body` que hay dentro de
+ * `@layer base`, decenas de lineas mas abajo. El resultado salia correcto **solo
+ * porque entre medias no habia ningun otro `--sintaxis-*`**.
+ *
+ * 🔴 Y la forma de fallo era la mala: si el selector no aparece, `indexOf`
+ *    devuelve **-1**, `slice(i, -1)` se traga el fichero **entero**, y los dos
+ *    conjuntos salen iguales por basura. **Aprobado sobre nada**, que es el
+ *    patron que este proyecto persigue en once sitios.
+ *
+ * Esto cuenta llaves sobre el CSS ya sin comentarios, asi que no depende de la
+ * indentacion, ni del orden, ni de que el bloque este dentro de un `@layer`.
+ *
+ * 🔴 Y **lanza** en vez de devolver vacio cuando el selector no aparece o
+ *    aparece dos veces: un troceador que no encuentra su bloque no puede
+ *    contestar «no hay nada», porque eso es indistinguible de un bloque vacio.
+ */
+export function cuerpoDeBloque(css: string, selector: string): string {
+  const limpio = sinComentarios(css)
+  const apariciones = [...limpio.matchAll(
+    new RegExp(selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'),
+  )]
+  if (apariciones.length !== 1) {
+    throw new Error(
+      `el selector «${selector}» aparece ${apariciones.length} veces, y tiene que aparecer 1`,
+    )
+  }
+
+  const abre = limpio.indexOf('{', apariciones[0].index)
+  if (abre === -1) throw new Error(`el selector «${selector}» no abre ninguna llave`)
+
+  let profundidad = 0
+  for (let i = abre; i < limpio.length; i++) {
+    if (limpio[i] === '{') profundidad++
+    else if (limpio[i] === '}') {
+      profundidad--
+      // Se devuelve el trozo del CSS ORIGINAL, no del limpio: quien lo use
+      // quiere leer declaraciones, y las longitudes coinciden.
+      if (profundidad === 0) return css.slice(abre + 1, i)
+    }
+  }
+  throw new Error(`el bloque de «${selector}» no cierra`)
+}
+
 /** Un triplete `R G B` como los que declara `globals.css`. No un color CSS. */
 const TRIPLETE = /^\d{1,3}\s+\d{1,3}\s+\d{1,3}$/
 

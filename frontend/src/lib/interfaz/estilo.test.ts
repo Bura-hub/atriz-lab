@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeColor, colisionesDeTransicion,
-  esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases, lineasDeCodigo, partirEnComas,
-  resolverToken, tokensDeColor, tokensDeclarados, tokensQueNoPintan, transicionesDeClases,
+  cuerpoDeBloque, esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases, lineasDeCodigo,
+  partirEnComas, resolverToken, tokensDeColor, tokensDeclarados, tokensQueNoPintan,
+  transicionesDeClases,
 } from './estilo'
 
 const RAIZ = dirname(fileURLToPath(import.meta.url))
@@ -334,17 +335,73 @@ describe('la guardia visual sobre el codigo real', () => {
      * de darle uno. Añadir un cuarto token sin su variante pone esto en rojo.
      */
     const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
-    const enBloque = (selector: string): Set<string> => {
-      const i = css.indexOf(selector)
-      expect(i, `no encuentro el bloque ${selector}`).toBeGreaterThan(-1)
-      const cuerpo = css.slice(i, css.indexOf('\n  }\n', i))
-      return new Set([...cuerpo.matchAll(/^\s*(--sintaxis-[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
-    }
+    const enBloque = (selector: string): Set<string> =>
+      new Set([...cuerpoDeBloque(css, selector)
+        .matchAll(/^\s*(--sintaxis-[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
+
     const raiz = enBloque(':root {')
     // El control: si el troceado fallara, los dos conjuntos saldrian vacios y
     // «son iguales» seria trivialmente cierto.
     expect(raiz.size, 'no se leyo ningun --sintaxis-* de :root').toBeGreaterThanOrEqual(3)
     expect([...enBloque('.proyeccion {')].sort()).toEqual([...raiz].sort())
+  })
+
+  describe('🔴 el troceador de bloques, que antes funcionaba POR ACCIDENTE', () => {
+    /*
+     * El troceo anterior era `css.slice(i, css.indexOf('\n  }\n', i))`: «hasta la
+     * primera llave indentada con DOS espacios». En `globals.css` **`:root` cierra
+     * en la columna 0**, asi que no paraba ahi — seguia hasta el `  }` del `body`
+     * de `@layer base`, decenas de lineas mas abajo. Salia bien **solo porque
+     * entre medias no habia ningun otro `--sintaxis-*`**.
+     *
+     * Estas pruebas existen para que el accidente no pueda volver, y **la primera
+     * es la que importa**: los dos estilos de cierre tienen que dar lo mismo.
+     */
+    it('da lo MISMO cierre en columna 0 que cierre indentado', () => {
+      const enColumna0 = ':root {\n  --sintaxis-clave: 1 2 3;\n}\n.otra { --sintaxis-x: 9 9 9; }'
+      const indentado = ':root {\n    --sintaxis-clave: 1 2 3;\n  }\n.otra { --sintaxis-x: 9 9 9; }'
+      const leer = (css: string) => [...cuerpoDeBloque(css, ':root {')
+        .matchAll(/(--sintaxis-[a-z0-9-]+)\s*:/g)].map((m) => m[1])
+
+      expect(leer(enColumna0)).toEqual(['--sintaxis-clave'])
+      // 🔴 Con el troceo viejo, este segundo caso se comia `.otra` entera.
+      expect(leer(indentado)).toEqual(['--sintaxis-clave'])
+    })
+
+    it('no se sale de su bloque aunque haya bloques anidados', () => {
+      const css = ':root {\n  --a: 1;\n  @media (x) {\n    --b: 2;\n  }\n}\n.otra { --c: 3; }'
+      expect(cuerpoDeBloque(css, ':root {')).not.toContain('--c')
+      // El anidado SI es suyo: esta dentro.
+      expect(cuerpoDeBloque(css, ':root {')).toContain('--b')
+    })
+
+    it('🔴 LANZA si el selector no aparece, en vez de tragarse el fichero', () => {
+      // Era el fallo peor del troceo viejo: `indexOf` daba -1, `slice(i, -1)` se
+      // quedaba con todo, y los dos conjuntos salian iguales POR BASURA.
+      expect(() => cuerpoDeBloque(':root { --a: 1; }', '.no-existe {'))
+        .toThrow(/aparece 0 veces/)
+    })
+
+    it('🔴 y LANZA si aparece dos veces: no puede elegir por su cuenta', () => {
+      expect(() => cuerpoDeBloque(':root { --a: 1; }\n:root { --b: 2; }', ':root {'))
+        .toThrow(/aparece 2 veces/)
+    })
+
+    it('los comentarios no cuentan como llaves', () => {
+      // Una llave dentro de un comentario cerraria el bloque antes de tiempo.
+      const css = ':root {\n  /* una } suelta y un { */\n  --a: 1;\n}'
+      expect(cuerpoDeBloque(css, ':root {')).toContain('--a')
+    })
+
+    it('✅ EL CONTROL: sobre el globals.css REAL lee lo que tiene que leer', () => {
+      // Sin esto, las cinco de arriba pasarian sobre cadenas de juguete mientras
+      // la hoja de verdad se rompe.
+      const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+      const cuerpo = cuerpoDeBloque(css, ':root {')
+      expect(cuerpo).toContain('--sintaxis-clave')
+      // Y NO se sale a `@layer base`, que es lo que hacia el troceo viejo.
+      expect(cuerpo).not.toContain('-webkit-font-smoothing')
+    })
   })
 
   it('🔴 ningun glob de `content` apunta a un directorio que no existe', () => {
