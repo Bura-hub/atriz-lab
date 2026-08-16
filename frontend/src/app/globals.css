@@ -782,15 +782,63 @@
    *
    * 📝 Sigue siendo el nivel MAS PEQUEÑO de la aplicacion, y eso no cambia: un
    *    rotulo no puede competir con su valor. Lo que cambia es que ahora se lee.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 2026-08-16 · DEJA DE SER MONOESPACIADA, Y ESO ARREGLA UNA AFIRMACION
+   *      FALSA QUE ESTE MISMO BLOQUE HACIA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Aqui ponia que la microetiqueta «es lo que hace que el ojo distinga una
+   * LECTURA DEL ROBOT de algo que escribio una persona sin tener que leer
+   * ninguna de las dos». **No lo hacia**: iba en `--font-geist-mono`, o sea en
+   * la MISMA cara que la cifra que nombra. Rotulo y valor compartian voz, asi
+   * que lo unico que los separaba era el cuerpo — y el proyecto tiene escrito
+   * que la monoespaciada es **para medidas**, precisamente para que la voz
+   * signifique algo. El rotulo no es una medida.
+   *
+   * Ahora va en la cara del panel (Archivo), **estrecha** —`font-stretch: 78%`,
+   * que la fuente interpola de verdad— y con su filete debajo: es la serigrafia
+   * grabada de un frontal de instrumento. La cifra sigue en mono. Las dos voces
+   * se distinguen ya sin leerlas, que es lo que el parrafo prometia.
+   *
+   * ⚠️ `font-stretch` NO cae de pie con una fuente de un solo ancho: el
+   *    navegador sintetiza y sale deforme. Por eso el respaldo de `--font-panel`
+   *    es una lista de caras ESTRECHAS de verdad (ver `layout.tsx`), no
+   *    `sans-serif` a secas.
    */
   .microetiqueta {
-    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-family: var(--font-panel), 'Roboto Condensed', 'Arial Narrow', sans-serif;
     font-size: 11.5px;
-    font-weight: 500;
+    font-stretch: 78%;
+    font-weight: 600;
     line-height: 1.2;
     letter-spacing: 0.13em;
     text-transform: uppercase;
     color: rgb(var(--muted-foreground));
+  }
+
+  /*
+   * ── EL ROTULO GRABADO ────────────────────────────────────────────────────
+   * El hermano mayor de la microetiqueta: nombra una PLACA entera, no un dato.
+   * Es lo que en un frontal de banco va serigrafiado sobre el marco de un
+   * grupo de conectores — `ALIMENTACION`, `ENTRADA`, `MEDIDA` —, y por eso
+   * lleva **filete debajo**: en un panel de verdad ese rotulo va dentro de un
+   * recuadro grabado o sobre una linea, nunca suelto.
+   *
+   * ⚠️ Es el MISMO nivel semantico que `.microetiqueta`, un cuerpo mayor. No es
+   *    un titulo: un titulo va en prosa y en Geist. Si acaba usandose como
+   *    titulo, la culpa sera de este comentario por no decirlo bastante alto.
+   */
+  .rotulo {
+    font-family: var(--font-panel), 'Roboto Condensed', 'Arial Narrow', sans-serif;
+    font-size: 13px;
+    font-stretch: 78%;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: rgb(var(--foreground));
+    padding-bottom: 0.35em;
+    border-bottom: 1px solid rgb(var(--filo) / 0.20);
   }
 
   /*

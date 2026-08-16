@@ -72,6 +72,28 @@ const COOKIE = arg('--cookie', '')
 const SOLO = arg('--solo', '')
 const rutas = SOLO === '' ? RUTAS : SOLO.split(',').map((r) => r.trim())
 
+/*
+ * 🔴 UNA RUTA QUE NO EMPIEZA POR `/` NO ES UNA RUTA, Y HAY QUE DECIRLO AQUI.
+ *
+ * Medido el 2026-08-16: `--solo "/flota"` desde Git Bash llega como
+ * `C:/Program Files/Git/flota` — MSYS convierte los argumentos que parecen
+ * rutas POSIX, en silencio y antes de que node los vea. El guion navegaba a esa
+ * cadena, el navegador daba una pagina de error perfectamente valida, y la
+ * captura se intentaba escribir en `:-Program Files-Git-flota.png`. Lo unico
+ * que fallo fue `fs`, o sea que **el error apuntaba al disco y no al
+ * argumento**; sin este guardia, una ruta que SI fuera escribible habria dejado
+ * ocho capturas de una pagina de error con aspecto de haber salido bien.
+ *
+ * Se sale con codigo != 0 y con el remedio escrito: `MSYS_NO_PATHCONV=1`.
+ */
+const malas = rutas.filter((r) => !r.startsWith('/'))
+if (malas.length > 0) {
+  console.error(`🔴 esto no son rutas: ${malas.join(', ')}`)
+  console.error('   Si estas en Git Bash, MSYS te las ha convertido a rutas de Windows.')
+  console.error('   Repite con:  MSYS_NO_PATHCONV=1 node herramientas/capturas.mjs --solo "/flota"')
+  process.exit(1)
+}
+
 /**
  * Las cuatro pasadas.
  *

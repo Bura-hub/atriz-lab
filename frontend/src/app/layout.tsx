@@ -1,8 +1,50 @@
 import type { Metadata } from 'next'
+import localFont from 'next/font/local'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
 import { ProveedorSesion } from '@/hooks/ContextoSesion'
 import './globals.css'
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LA CARA DEL PANEL — Archivo, variable en anchura y peso
+ * ═══════════════════════════════════════════════════════════════════════════
+ * La tercera familia, y tiene un trabajo que ninguna de las otras dos hace: el
+ * **rótulo grabado** de un frontal de instrumento. `VOLTAJE`, `RANGO 0–8,4 V`,
+ * `CRIT` — versalitas estrechas, espaciadas, que caben junto al control sin
+ * empujarlo. Geist Sans es una neogrotesca moderna con calidez humanista: lee
+ * de maravilla un párrafo y no lee como letra serigrafiada sobre aluminio.
+ *
+ * 🔴 DOS EJES EN UN SOLO FICHERO, y eso es lo que la hace elegible: la anchura
+ *    se pide con `font-stretch` e **interpola**, así que un rótulo no salta de
+ *    una anchura a otra al cambiar de cuerpo. Con una fuente de un eje harían
+ *    falta dos ficheros y dos descargas.
+ *
+ * 🔴 EMPAQUETADA, no pedida a Google. `next/font/google` también serviría desde
+ *    el propio origen —descarga en el build—, pero entonces **compilar exige
+ *    salida a internet**, y este laboratorio tiene su propio punto de acceso.
+ *    176 kB en git cuestan menos que un despliegue que falla el día de la clase.
+ *    Procedencia y licencia OFL: `fuentes/LEEME.md`.
+ *
+ * ⚠️ Y NO toca las medidas: las cifras siguen en Geist Mono. La regla del
+ *    proyecto —*la monoespaciada es para MEDIDAS*— no cambia con la dirección.
+ */
+const CaraDePanel = localFont({
+  src: [
+    { path: './fuentes/archivo-latin.woff2', style: 'normal' },
+    { path: './fuentes/archivo-latin-ext.woff2', style: 'normal' },
+  ],
+  variable: '--font-panel',
+  display: 'swap',
+  /*
+   * 🔴 EL RESPALDO ES UNA LISTA DE CARAS ESTRECHAS, no `sans-serif` a secas. Si
+   *    la fuente no cargara, un rótulo calculado para anchura 78 saldría en una
+   *    cara de anchura normal y **desbordaría su casilla**. Con estas, degrada
+   *    a algo del mismo ancho en vez de romper la rejilla del panel.
+   */
+  fallback: ['Roboto Condensed', 'Arial Narrow', 'Helvetica Neue', 'sans-serif'],
+  adjustFontFallback: false,
+})
 
 /**
  * 🔴 LA PESTAÑA DEL NAVEGADOR TAMBIEN AFIRMA COSAS, Y ESTA MINTIO DESDE EL
@@ -48,39 +90,82 @@ export default function DisposicionRaiz({
     // `suppressHydrationWarning` se conserva: el tema puede fijarse antes de que
     // React hidrate, y sin esto React avisa de una discrepancia que es esperada.
     //
-    // 🔴 Las dos fuentes van EMPAQUETADAS por `next/font`: se sirven desde el
+    // 🔴 Las TRES fuentes van EMPAQUETADAS por `next/font`: se sirven desde el
     //    mismo origen, con `font-display: swap` y precarga. Cero peticiones a
     //    terceros — que era la razón real por la que esta aplicación no tenía
     //    tipografía propia, y que resulta que no obligaba a renunciar a ella.
+    //
+    //    Cada una tiene UN trabajo, y por eso son tres y no una con pesos:
+    //      · Archivo  → el rótulo GRABADO del panel (estrecho, versalitas)
+    //      · Geist    → la prosa, que aquí es mucha: esta aplicación explica
+    //                   por qué un robot no obedeció, y eso se lee entero
+    //      · Geist Mono → LAS MEDIDAS, y nada más
     <html
       lang="es"
       suppressHydrationWarning
-      className={`${GeistSans.variable} ${GeistMono.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${CaraDePanel.variable}`}
     >
       <body className="antialiased">
         {/*
-          EL CONTRATO DE DIRECCIÓN. Sobrevive a la compilación de producción a
-          propósito: una decisión de diseño que solo vive en la conversación no
-          se puede auditar seis meses después.
+          ═══════════════════════════════════════════════════════════════════
+          EL CONTRATO DE DIRECCIÓN · 2026-08-16
+          ═══════════════════════════════════════════════════════════════════
+          Sobrevive a la compilación de producción a propósito: una decisión de
+          diseño que solo vive en la conversación no se puede auditar seis meses
+          después.
 
-          THESIS: el tablero de operaciones de una sala de control, impreso y
-          con luz. Rechaza la consola oscura de telemetría con acento de neón,
-          que es el reflejo de esta categoría, y también el minimalismo gris
-          plano que esta misma aplicación tenía y que no era sobriedad sino el
-          otro surco.
-          OWN-WORLD: campo verde pino que ocupa cabecera y raíl; fichas de papel
-          casi blanco con sombra teñida del propio verde; pestaña de color en el
-          canto superior cuyo ANCHO codifica urgencia; Geist empaquetada, mono
-          solo para medidas.
-          STORY: quien entra ve el estado de dieciséis robots de un vistazo,
-          sabe cuál hay que ir a mirar, y entra en uno sin perder el sitio.
-          FIRST VIEWPORT: masthead verde a sangre con el nombre y el enlace al
-          muro; debajo, la losa 4×4 de fichas a tamaño de lectura larga.
-          FORM: tablero operativo (6.º de siete candidatos derivados; el 1.º y
-          el 4.º quedaron fuera por ser el surco propio y el de la categoría).
-          El sorteo externo devolvió vacío en este entorno y se dice así en el
-          CHANGELOG en vez de fingir una tirada.
-          FINISH: unreviewed and undocumented is unfinished; this build ends
+          🔴 EL DE ANTES DESCRIBÍA UN MUNDO QUE NO EXISTÍA. Decía «campo verde
+             pino», «sombra teñida del propio verde» y «pestaña de color en el
+             canto superior cuyo ANCHO codifica urgencia». Ninguna de las tres
+             estaba en la hoja: el verde se sustituyó por doce tonos de sección,
+             la sombra es tinta neutra, y la pestaña de ancho variable nunca se
+             construyó. Un contrato que miente es peor que ninguno, porque quien
+             lo lee cree que hay un sistema detrás.
+             📝 También decía que «el sorteo externo devolvió vacío en este
+                entorno». Era cierto y la causa está medida: en Windows el guion
+                compara `resolve(argv[1])` con `fileURLToPath(import.meta.url)`,
+                las dos cadenas difieren, y el bloque principal no corre — sale
+                con 0 y sin una línea. Importando la función directamente sí
+                tira, y el resultado está abajo.
+
+          THESIS · Es un FRONTAL DE INSTRUMENTO DE BANCO. Panel claro, rótulo
+          grabado, y —la pieza que decide todo lo demás— **el rango y la
+          tolerancia impresos junto al control, haya lectura o no**. Un
+          multímetro serigrafía «0–20 V ±0,5 %» al lado del conector para
+          siempre; ese hábito es la tesis de esta aplicación hecha objeto,
+          porque aquí Nav2 dice `SUCCEEDED` a 41 cm y `avanzar(0.20, 3)` da a
+          veces 26 cm de 60. La escala impresa contesta «¿esto es bueno?» sin
+          gastar una frase.
+          Rechaza el «mission control» oscuro con barrido de radar, que es el
+          reflejo de la categoría; y rechaza la retícula suiza blanca con un
+          acento, que es su opuesto previsible.
+
+          OWN-WORLD · Placas de panel, no tarjetas flotantes: separadas por
+          canales fresados de 1 px, no por sombras. Rótulos GRABADOS en Archivo
+          estrecha, versalitas y traqueo ancho, con su filete. Ventanas de
+          lectura HUNDIDAS —bisel de 1 px claro arriba y oscuro abajo— donde
+          vive una cifra viva. Escala impresa bajo cada medida con sus umbrales
+          nombrados. Y el estado se distingue **sin color**: línea entera,
+          guionada, a media altura, tachada, doblada.
+
+          STORY · Quien entra ve dieciséis instrumentos, sabe de un vistazo cuál
+          hay que ir a mirar, y al entrar en uno sigue leyendo el mismo panel.
+
+          FIRST VIEWPORT · La cabecera es una placa serigrafiada con el nombre
+          del robot y su estado en línea, no en color; debajo, la losa de
+          instrumentos con sus escalas impresas.
+
+          FORM · Frontal de instrumento de banco. Asignado por tirada externa —
+          `concept-seed --scope direction --mode operate --from atriz-2026-08-16`
+          → ASSIGNED INDEX 7 de mi lista de siete, ordenada por resonancia como
+          la dejé escrita en el plan («el 5 y el 6 son los que más me
+          interesan»). O sea: **la que yo había puesto la última**, que es
+          exactamente para lo que sirve el dado. Los seis retadores se pesaron y
+          ninguno gana en los dos ejes; del primero se ROBA una pieza, su
+          gramática de estado sin matiz, porque es el tercer código de
+          accesibilidad que este proyecto declara obligatorio y nunca construyó.
+
+          FINISH · unreviewed and undocumented is unfinished; this build ends
           with the finish review, the verdict, and DESIGN.md
         */}
         {/*

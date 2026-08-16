@@ -103,6 +103,22 @@ const config: Config = {
         // Para todo número MEDIDO. `craft-floor` prohíbe la monoespaciada como
         // disfraz de «técnico»; aquí es exactamente su uso legítimo: medida.
         mono: ['var(--font-geist-mono)', 'ui-monospace', 'Consolas', 'monospace'],
+        /*
+         * ── LA CARA DEL PANEL ──────────────────────────────────────────────
+         * Archivo, variable en anchura. Es la letra GRABADA de un frontal de
+         * instrumento: rótulos, escalas, umbrales nombrados.
+         *
+         * ⚠️ Casi nunca se pide por esta utilidad: `.microetiqueta`, `.rotulo` y
+         *    `.escala` ya la traen con su anchura y su traqueo, que es lo que la
+         *    hace parecer serigrafía. Un `font-panel` suelto da la cara sin la
+         *    voz — y entonces solo es «otra sans».
+         *
+         * 🔴 El respaldo son caras ESTRECHAS de verdad, no `sans-serif`: estas
+         *    clases piden `font-stretch: 78%`, y un navegador que lo sintetice
+         *    sobre una cara de ancho normal deforma las letras y desborda la
+         *    casilla del rótulo.
+         */
+        panel: ['var(--font-panel)', 'Roboto Condensed', 'Arial Narrow', 'sans-serif'],
       },
       borderRadius: {
         /*
