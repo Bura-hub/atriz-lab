@@ -166,7 +166,50 @@ try {
 const perfil = mkdtempSync(join(tmpdir(), 'capturas-'))
 const proc = spawn(navegador, [
   '--headless=new', '--remote-debugging-port=9337', `--user-data-dir=${perfil}`,
-  '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', 'about:blank',
+  /*
+   * 🔴🔴 SIN ESTO EL NAVEGADOR OSCURECE LA CAPTURA, Y LOS ESTILOS DICEN QUE NO.
+   *      Mismo hallazgo y misma bandera que en `recorte.mjs`, donde esta el
+   *      detalle: en una maquina que prefiere el tema oscuro, Chromium invierte
+   *      **al rasterizar**, `getComputedStyle` sigue diciendo `rgb(246,245,243)`
+   *      y el pixel del PNG sale `rgb(24,26,27)`. La captura parece correcta y
+   *      es de otra pantalla.
+   *      ⚠️ Afecta a las CUATRO pasadas, y en especial a la de escala de grises:
+   *         juzgar el tercer codigo sobre una inversion no prueba nada.
+   */
+  '--disable-features=WebContentsForceDark,AutoDarkMode',
+  '--force-color-profile=srgb',
+  /*
+   * ===========================================================================
+   * AQUI IBA `--hide-scrollbars`, Y OSCURECIA LA CAPTURA ENTERA
+   * ===========================================================================
+   * Aislado el 2026-08-16 con control, misma pagina y mismo instante, mirando el
+   * pixel del PNG que sale:
+   *
+   *                              viewport   beyondViewport   beyond+clip
+   *     sin --hide-scrollbars      255            255             24   MAL
+   *     con --hide-scrollbars      255             24             24   MAL
+   *
+   * Son DOS causas independientes y las dos hacen lo mismo: el navegador compone
+   * sobre su lienzo por defecto -en una maquina que prefiere el tema oscuro,
+   * #1a1a1b- en vez de sobre el fondo que la pagina esta pintando. A la vez, en
+   * esa misma pagina, `getComputedStyle(document.body).backgroundColor` seguia
+   * diciendo `rgb(246, 245, 243)`.
+   *
+   * EL MODO DE FALLO ES EL PEOR DE ESTE PROYECTO: la captura sale entera, nitida
+   * y legible; solo que es OTRA pantalla. Se juzgo jerarquia y peso visual sobre
+   * una composicion que nadie en el aula va a ver, y nada avisaba. Van OCHO veces
+   * que miente el instrumento y no lo medido, y esta es la primera en la que el
+   * instrumento es el que existe para MIRAR.
+   *
+   * Y TRES ATRIBUCIONES MIAS FUERON FALSAS antes de aislar: `prefers-color-scheme`
+   * (emulado a `light`: captura IDENTICA), el modo oscuro automatico de Chromium
+   * (`--disable-features=WebContentsForceDark`: IDENTICA) y el fondo del `body`
+   * (estaba bien pintado). Lo cerro una tabla de seis capturas, no una teoria.
+   *
+   * La barra de desplazamiento vuelve a verse. Es un precio pequeño, y en
+   * `recorte.mjs` ni se nota: el recorte se hace sobre el PNG.
+   */
+  '--no-first-run', '--no-default-browser-check', 'about:blank',
 ], { stdio: 'ignore' })
 
 await dormir(2500)

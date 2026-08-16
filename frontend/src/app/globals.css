@@ -37,6 +37,47 @@
 
 :root {
   /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 SIN ESTO, UN NAVEGADOR CON TEMA OSCURO **INVIERTE LA APLICACIÓN ENTERA**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Medido el 2026-08-16 en una máquina que prefiere el tema oscuro, sobre la
+   * misma página, con la hoja cargada y el token bien resuelto:
+   *
+   *     getComputedStyle(document.documentElement)['--background'] -> 246 245 243
+   *     getComputedStyle(document.body).backgroundColor            -> rgb(24, 26, 27)
+   *
+   * O sea: **el token estaba bien y el color pintado era otro.** Un navegador que
+   * oscurece por su cuenta reescribe los colores de las páginas que considera
+   * claras — y la paleta de este proyecto está **calculada para tinta sobre
+   * papel**, con los contrastes medidos con WCAG. Invertida, esas medidas no
+   * valen nada y los tres ejes de color dejan de estar donde se pusieron.
+   *
+   * 🔴 Y NO ES UN CASO DE LABORATORIO: el aula proyecta desde el portátil de
+   *    quien da la clase y los alumnos entran desde el suyo. Cualquiera con el
+   *    tema oscuro del sistema veía **otra aplicación**, no esta.
+   *
+   * 📝 Es la decisión que ya estaba escrita para el modo proyección —«se acciona
+   *    con un botón y no con `prefers-color-scheme`, porque la decisión la toma
+   *    quien proyecta, no su sistema operativo»— y faltaba declararla donde el
+   *    navegador la lee.
+   *
+   * ⚠️ **NO ESTÁ VERIFICADO QUE BASTE.** Con esta línea servida y comprobada en
+   *    el CSS que llega al navegador, aquella máquina seguía dando
+   *    `rgb(24, 26, 27)`. Se deja porque es lo correcto —una aplicación de tema
+   *    fijo tiene que declararlo— y porque no cuesta nada, no porque se haya
+   *    medido que cierra el caso. Lo que sí quedó cerrado es la forma de
+   *    detectarlo: `herramientas/recorte.mjs` compara la captura con este token
+   *    y avisa cuando no cuadran, en vez de entregar una imagen engañosa.
+   *
+   * ⚠️ Y durante un buen rato se persiguió como un fallo del INSTRUMENTO: se
+   *    culparon `clip`, `--hide-scrollbars`, el scroll y el tamaño del viewport
+   *    de la herramienta de capturas. Los cuatro empeoran el síntoma y ninguno
+   *    era la causa. **La captura era fiel: la página estaba oscura de verdad.**
+   *    Lo cerró preguntarle al navegador qué color creía estar pintando.
+   */
+  color-scheme: light;
+
+  /*
    * ── EL PAPEL ─────────────────────────────────────────────────────────────
    * 🔴 ESTO ERA UN POZO CASI NEGRO Y AHORA ES PAPEL. El nombre de la variable se
    *    conserva porque está usado en toda la aplicación; lo que cambia es lo que

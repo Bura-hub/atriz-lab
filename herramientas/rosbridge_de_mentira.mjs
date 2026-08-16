@@ -21,6 +21,8 @@
  *   node herramientas/rosbridge_de_mentira.mjs --aproximacion       # 🔴 robot CONGELADO
  *   node herramientas/rosbridge_de_mentira.mjs --aproximacion --moviendose  # el control
  *   node herramientas/rosbridge_de_mentira.mjs --conduciendo-ir     # 🔴 se mueve SOLO
+ *   node herramientas/rosbridge_de_mentira.mjs --objetivo falla    # 🔴 ABORTED con el robot llegado
+ *   node herramientas/rosbridge_de_mentira.mjs --objetivo termina  # el otro desenlace
  *
  * Después: abrir http://localhost:3000/robot/rvr-01/navegar con la dirección
  * apuntando a `ws://localhost:9090`.
@@ -88,6 +90,24 @@ const robotQuieto = aproximacion && !seMueveIgual
  * ese estado sin dos robots de verdad y un emisor infrarrojo.
  */
 const conduciendoIR = process.argv.includes('--conduciendo-ir')
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 `--objetivo termina|falla` — LA PANTALLA DE NAVEGAR NO SE PODIA MIRAR
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `/map` y `/amcl_pose` solo existen con Nav2 levantado, y Nav2 no arranca solo
+ * a proposito —cuesta ~58 % de un nucleo y sale de la bateria del RVR—. O sea
+ * que para ver el mapa dibujado, el modo «decirle al robot donde esta» o el
+ * desenlace de un objetivo habia que arrancar Nav2 en un robot y conducirlo.
+ * **Esta pantalla se rediseño sin poder mirarla**, que es justo lo que este
+ * doble existe para evitar.
+ *
+ * `--objetivo falla` da el caso que MAS importa y que el robot casi nunca
+ * produce a demanda: `ABORTED` sobre un robot que llego igual (evidencia 88).
+ *
+ * ⚠️ Y sigue valiendo la cabecera: esto es lo que YO creo que manda Nav2. Que
+ *    la pantalla se vea bien aqui **no dice nada** sobre el robot.
+ */
+const objetivoAcaba = (arg('--objetivo') ?? 'termina').toLowerCase()
 /*
  * ═══════════════════════════════════════════════════════════════════════════
  * 🔴🔴 FASE B (A7): EL TESTIGO — Y LO QUE ESTE DOBLE **NO** PUEDE PROBAR
@@ -193,12 +213,75 @@ let t = 0
  *    sea el resultado INVERTIDO, que es lo que la pantalla tiene que atrapar.
  */
 let luzEncendida = false
+/** Tics que lleva corriendo un objetivo de navegacion. 0 = ninguno. */
+let navegando = 0
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * UN CUARTO DE MENTIRA: 3,45 x 4,10 m a 5 cm/celda = 69 x 82 celdas
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Son las medidas del cuarto que se mapeo de verdad el 2026-08-07, y el tamaño
+ * importa: con 69x82 se reproduce el mapa APAISADO al reves —mas alto que
+ * ancho—, que es el que destapo los dos fallos de escalado del lienzo.
+ *
+ * 🔴 CON UNA FRONTERA ABIERTA A PROPOSITO: un hueco de 3 celdas en la pared de
+ *    arriba, con desconocido detras. Sin eso `fronteraAbierta()` daria 0 y el
+ *    dato mas interesante de la pantalla saldria siempre en su caso trivial.
+ *    Los valores son los de ROS: -1 desconocido, 0 libre, 100 ocupado.
+ */
+const MAPA_ANCHO = 69
+const MAPA_ALTO = 82
+const MAPA_DATA = (() => {
+  const d = new Array(MAPA_ANCHO * MAPA_ALTO).fill(-1)
+  const en = (x, y) => y * MAPA_ANCHO + x
+  for (let y = 6; y < MAPA_ALTO - 6; y++) {
+    for (let x = 6; x < MAPA_ANCHO - 6; x++) {
+      const borde = y === 6 || y === MAPA_ALTO - 7 || x === 6 || x === MAPA_ANCHO - 7
+      // El hueco de la puerta, en la pared de arriba.
+      const puerta = y === 6 && x >= 30 && x <= 32
+      d[en(x, y)] = borde && !puerta ? 100 : 0
+    }
+  }
+  // Una mesa dentro, para que el mapa no sea una caja vacia.
+  for (let y = 20; y < 30; y++) for (let x = 40; x < 52; x++) d[en(x, y)] = 100
+  return d
+})()
+
 const CUERPOS = {
+  /*
+   * `/map` es TRANSIENT_LOCAL en el robot, y el doble lo entrega al suscribirse
+   * como hace rosbridge — medido: 38-48 ms en cinco suscripciones nuevas.
+   */
+  '/map': () => ({
+    header: { stamp: { sec: 0, nanosec: 0 }, frame_id: 'map' },
+    info: {
+      resolution: 0.05,
+      width: MAPA_ANCHO,
+      height: MAPA_ALTO,
+      origin: { position: { x: -1.7, y: -2.0, z: 0 }, orientation: { x: 0, y: 0, z: 0, w: 1 } },
+    },
+    data: MAPA_DATA,
+  }),
+  /*
+   * 📝 AMCL **no publica con el robot quieto** (solo actualiza tras moverse
+   *    `update_min_d` = 0,15 m), pero aqui se manda en cada tic: sin el, la
+   *    pantalla no distingue «Nav2 arrancado» de «esto es SLAM» y no habria
+   *    forma de llegar al caso normal.
+   */
+  '/amcl_pose': () => ({
+    header: { stamp: { sec: 0, nanosec: 0 }, frame_id: 'map' },
+    pose: { pose: {
+      position: { x: 0.1 + navegando * 0.05, y: -0.35, z: 0 },
+      orientation: { x: 0, y: 0, z: 0.38, w: 0.925 },
+    }, covariance: new Array(36).fill(0) },
+  }),
   '/odom': () => ({
     header: { stamp: { sec: 0, nanosec: 0 }, frame_id: 'odom' },
     child_frame_id: 'base_footprint',
     pose: { pose: {
-      position: { x: 0.30 + t * 0.001, y: -0.02, z: 0 },
+      // 🔴 AVANZA MIENTRAS NAVEGA: el desenlace de un objetivo pinta el
+      //    desplazamiento medido por `/odom`, y con una posicion fija saldria
+      //    «0,00 m» — que es un valor valido y esconderia el caso normal.
+      position: { x: 0.30 + t * 0.001 + navegando * 0.06, y: -0.02, z: 0 },
       orientation: { x: 0, y: 0, z: 0.0011, w: 1 },
     } },
     // 🔴 Con el robot congelado por `approach`, `/odom` da CERO EXACTO. No es un
@@ -415,6 +498,8 @@ servidor.on('upgrade', (req, socket) => {
   }
 
   const suscritos = new Set()
+  /** El temporizador del objetivo en curso, si lo hay. */
+  let objetivo = null
   // ⚠️ NO se verifica la firma. Ver la cabecera de las banderas del testigo.
   console.log(`· cliente conectado${testigo === null ? '' : ' (con testigo, SIN verificar)'}`)
 
@@ -469,6 +554,65 @@ servidor.on('upgrade', (req, socket) => {
             op: 'service_response', id: m.id, service: m.service, result: true, values: {},
           })))
         }
+      } else if (m.op === 'send_action_goal') {
+        /*
+         * ═══════════════════════════════════════════════════════════════════
+         * UN OBJETIVO DE NAV2: unos partes de avance y UN desenlace
+         * ═══════════════════════════════════════════════════════════════════
+         * 🔴 La distincion que hay que respetar, y que el transporte ya mide
+         *    contra el robot: llegan VARIOS `action_feedback` y **un solo**
+         *    `action_result`. Confundirlos cerraria la navegacion en el primer
+         *    parte de progreso.
+         *
+         * 🔴 Y AL FALLAR, `values` LLEGA COMO CADENA, no como objeto — medido
+         *    contra el robot («No action server available»). Mandar un objeto
+         *    aqui dejaria sin ejercitar la rama que lo convierte en mensaje.
+         */
+        console.log(`  send_action_goal ${m.action} -> ${objetivoAcaba}`)
+        navegando = 1
+        let quedan = 1.4
+        clearInterval(objetivo)
+        objetivo = setInterval(() => {
+          navegando += 1
+          quedan = Math.max(0, quedan - 0.3)
+          if (navegando <= 5) {
+            socket.write(marco(JSON.stringify({
+              op: 'action_feedback', id: m.id, action: m.action,
+              values: { feedback: { distance_remaining: quedan } },
+            })))
+            return
+          }
+          clearInterval(objetivo)
+          objetivo = null
+          if (objetivoAcaba === 'falla') {
+            socket.write(marco(JSON.stringify({
+              op: 'action_result', id: m.id, action: m.action, result: false,
+              // El mensaje real de un aborto de `bt_navigator`, no uno inventado.
+              values: 'Goal was aborted',
+            })))
+          } else {
+            socket.write(marco(JSON.stringify({
+              op: 'action_result', id: m.id, action: m.action, result: true,
+              values: { result: {} },
+            })))
+          }
+        }, 700)
+      } else if (m.op === 'cancel_action_goal') {
+        /*
+         * 🔴 CANCELAR **NO** CIERRA LA ESPERA POR SU CUENTA: el robot manda
+         *    ademas un `action_result` con estado de cancelado, y es ese el que
+         *    la cierra. Si este doble no lo mandara, la pantalla se quedaria
+         *    con el objetivo colgado hasta el plazo — y pareceria un fallo del
+         *    boton de cancelar.
+         */
+        console.log(`  cancel_action_goal ${m.action}`)
+        clearInterval(objetivo)
+        objetivo = null
+        navegando = 0
+        socket.write(marco(JSON.stringify({
+          op: 'action_result', id: m.id, action: m.action, result: false,
+          values: 'Goal was canceled',
+        })))
       }
     }
   })
@@ -491,8 +635,11 @@ servidor.on('upgrade', (req, socket) => {
     if (fijoSlam === null && fijoNav === null) paso++
   }, 6000)
 
-  socket.on('close', () => { clearInterval(reloj); clearInterval(escena); console.log('· cliente fuera') })
-  socket.on('error', () => { clearInterval(reloj); clearInterval(escena) })
+  // 🔴 `objetivo` tambien: un temporizador que sobrevive al socket escribe en
+  //    un descriptor muerto en cada tic. Es la forma del `finally` que faltaba.
+  const parar = () => { clearInterval(reloj); clearInterval(escena); clearInterval(objetivo) }
+  socket.on('close', () => { parar(); console.log('· cliente fuera') })
+  socket.on('error', parar)
 })
 
 servidor.listen(PUERTO, () => {
