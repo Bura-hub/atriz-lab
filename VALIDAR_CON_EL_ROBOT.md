@@ -193,6 +193,33 @@ progreso justamente por eso.
 
 ---
 
+## 1bis · 🆕 El color libre de los LEDs y el resaltado del Taller
+
+**Añadido el 2026-08-16.** Lo mecánico ya está medido y no se repite aquí: la
+conversión de color tiene 20 pruebas, el tokenizador 32 —contra **las 16 prácticas
+reales** del robot—, el clasificador de trazas 25, y el espejo del editor se midió
+en un navegador headless (`alto 402 = 402 · ancho 394 = 394`, con un fichero cuyas
+líneas ajustan). **Nada de eso necesita un robot.**
+
+Lo que sigue es lo que **ninguna prueba puede juzgar**, porque la respuesta es
+óptica o física: si se distingue, si se lee, y si el color que sale del LED se
+parece al de la pantalla.
+
+| | qué hacer | qué debe pasar | 🔴 qué lo refuta |
+|---|---|---|---|
+| **1bis-a** | 🎯 **la que justifica el aviso**: mandar `#FF8000` y luego `#FFB000`, mirando **el robot**, no la pantalla | que se **distingan** en el robot, o que **no** se distingan | las dos respuestas valen y cambian el texto: si se distinguen bien, la frase «dos tonos que aquí se distinguen pueden verse iguales» está de más y hay que **suavizarla**; si se ven iguales, está ganada y se queda |
+| **1bis-b** | elegir un color en la rueda con el robot **desconectado** | todo el selector en gris y sin responder, como los cinco atajos | que la rueda siga moviéndose: daría a entender que la orden salió |
+| **1bis-c** | bajar el brillo a **cero** y volver a subirlo | el marcador **no se mueve** de su tono, y al subir vuelve el mismo color | que el marcador salte al rojo: sería `RGB → HSV` perdiendo el tono de un negro, que es lo que el estado en HSV existe para impedir |
+| **1bis-d** | mover intensidad y brillo **con el ratón**, arrastrando fuera del cuadrado y soltando | sigue el puntero hasta el borde y no se corta al salir | que no responda al ratón: es el fallo que ya ocurrió una vez y que solo delató `eslint` |
+| **1bis-e** | abrir una práctica larga en el Taller —`05_sensor_color.py` sirve— y **mirar** el editor | comentarios en gris cursiva, cadenas y números en su tinta, `def`/`with`/`if` en violeta, y **el color pegado a su texto** de arriba abajo | que el color se despegue según se baja: sería el espejo desalineado, y la medida de arriba se hizo en Edge headless — no en el portátil del aula |
+| **1bis-f** | en esa práctica, **arrastrar el borde inferior** del editor y escribir una línea muy larga | el color sigue cuadrando tras redimensionar y tras el ajuste de línea | que cuadre solo antes de tocar el tamaño |
+| **1bis-g** | 🎯 hacer que una práctica falle (`robot.avanzar(9.9, 3)`) y **mirar la traza** | se lee como un error **sin ningún rojo**: filete al lado, marcos `File "…"` apagados y el mensaje final en negrita | que no se lea como error a simple vista. **Si hiciera falta rojo, no se añade sin más**: sería el cuarto rojo de una pantalla donde el botón de parada está a la vista, y eso ya se midió como problema en `/no-obedece` |
+| **1bis-h** | con esa traza en pantalla, leer el pie de la caja | aparece la frase de que el color sale de la **forma** del texto | que salga también sin traza: un aviso permanente acaba sin leerse |
+| **1bis-i** | ⚠️ **el `\r` del PTY**: copiar una línea de la salida y pegarla en un editor | no aparece ningún carácter raro al final | **NO VERIFICADO**: que nadie quita el `\r` está deducido leyendo el código de los dos lados —el PTY traduce `\n` a `\r\n` y `salida.ts` parte solo por `\n`—, **no medido contra el robot**. Los patrones lo toleran, así que el color no depende de la respuesta |
+| **1bis-j** | con el terminal escupiendo a 10 Hz (seguidor de línea), pulsar **Parar** | responde igual que antes de que hubiera color | que se note pastoso: el agrupado existe para que un programa sin trazas deje el DOM como estaba, y eso solo se comprueba con salida de verdad |
+
+---
+
 ## 2 · El sensor de color y sus dos modos — `MedirColor`
 
 Construido contra el contrato de `SENSOR_COLOR.md`, medido en el robot pero

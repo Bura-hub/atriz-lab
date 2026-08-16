@@ -50,7 +50,10 @@ import {
 import {
   entradaViva, insigniaDelTerminal, puedeEjecutar, textoCambiadoDesdeElLanzamiento,
 } from '@/lib/taller/sesion_taller'
-import { estaVacia, faltaAlgo, texto as textoDeSalida } from '@/lib/taller/salida'
+import { estaVacia, faltaAlgo } from '@/lib/taller/salida'
+import { hayTraza } from '@/lib/taller/salida_resaltada'
+import { EditorPython } from './EditorPython'
+import { SalidaPrograma } from './SalidaPrograma'
 import { useAgente } from './useAgente'
 
 /** La huella de lo que hay en el editor. Doce hex, como la del agente. */
@@ -230,31 +233,18 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
                 <code className="font-mono text-[12px] text-muted-foreground">{nombre}</code>
               </div>
               {/*
-                🔴 UN `<textarea>`, NO UN EDITOR DE VERDAD. Las prácticas son de
-                   ~30 líneas y este repositorio tiene una regla de cero
-                   dependencias nuevas; Monaco son ~5 MB para poner colores.
+                🔴 SIGUE SIENDO UN `<textarea>`, no un editor de verdad: cero
+                   dependencias nuevas, y `pantallas_reales.test.ts:187` exige que
+                   exista y no esté `disabled`. Lo que hay debajo es un espejo de
+                   color; el detalle de por qué no se despega, en `EditorPython`.
                 ⚠️ Tab escribe cuatro espacios porque esto es Python, y se dice
                    cómo salir del campo: si no, el teclado queda atrapado para
                    quien navegue sin ratón.
               */}
-              <textarea
-                id="editor-taller"
-                aria-label="Tu código"
-                spellCheck={false}
-                value={codigo}
-                onChange={(e) => setCodigo(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Tab' && !e.shiftKey) {
-                    e.preventDefault()
-                    const t = e.currentTarget
-                    const i = t.selectionStart
-                    const nuevo = `${codigo.slice(0, i)}    ${codigo.slice(t.selectionEnd)}`
-                    setCodigo(nuevo)
-                    requestAnimationFrame(() => { t.selectionStart = t.selectionEnd = i + 4 })
-                  }
-                }}
-                placeholder={'from atriz import Robot\n\nwith Robot() as robot:\n    robot.avanzar(0.20, 3)'}
-                className="min-h-[260px] w-full resize-y bg-transparent px-4 py-3 font-mono text-[13px] leading-relaxed text-foreground outline-none placeholder:text-muted-foreground/40"
+              <EditorPython
+                codigo={codigo}
+                alCambiar={setCodigo}
+                ejemplo={'from atriz import Robot\n\nwith Robot() as robot:\n    robot.avanzar(0.20, 3)'}
               />
               <p className="border-t border-[rgb(var(--filo)/0.09)] px-4 py-2 text-[11px] text-muted-foreground">
                 Tab escribe cuatro espacios. Para salir de la caja con el teclado, Escape y luego Tab.
@@ -290,8 +280,20 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
                   ref={cajaSalida}
                   className="min-h-[260px] flex-1 overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-mono text-[12.5px] leading-relaxed text-foreground"
                 >
-                  {textoDeSalida(salida)}
+                  <SalidaPrograma lineas={salida.lineas} cola={salida.cola} />
                 </pre>
+              )}
+              {/*
+                🔴 EL AVISO SOLO SALE SI SE HA MARCADO ALGO. Uno permanente acaba
+                   sin leerse, y aquí importa que se lea: el color de esta caja no
+                   viene del robot —el agente fija `TERM=dumb`, no llega ni un
+                   código de escape—, lo deduce la web de la FORMA del texto.
+              */}
+              {hayTraza(salida.lineas) && (
+                <p className="border-t border-[rgb(var(--filo)/0.09)] px-4 py-2 text-[11px] text-muted-foreground">
+                  Lo señalado como error sale de la <strong>forma</strong> del texto, no de un aviso
+                  del robot. Si tu programa imprime algo con pinta de traza, se pintará igual.
+                </p>
               )}
               {falta !== '' && (
                 <p className="border-t border-[rgb(var(--filo)/0.09)] px-4 py-2 text-[11px] text-muted-foreground">

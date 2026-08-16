@@ -1115,8 +1115,26 @@
     pointer-events: none;
   }
 
-  /* La muestra del color pedido. Sin transicion: es un valor, no una animacion. */
-  .muestra-led { background: rgb(var(--led-rgb, 0 0 0)); }
+  /*
+   * 🔴 AQUI VIVIA `.muestra-led`, Y SE BORRO POR ESTAR MUERTA (2026-08-16).
+   *
+   * Pintaba `rgb(var(--led-rgb))` para la muestra del color pedido. La muestra
+   * acabo siendo un `<canvas>` (`MuestraDeColor.tsx`) —que no tiene ningun
+   * atributo de color que el modo oscuro forzado pueda reescribir—, y la regla se
+   * quedo sin un solo consumidor: buscar `muestra-led` y `led-rgb` por todos los
+   * `.ts` y `.tsx` de `src` no devuelve nada.
+   *
+   * ⚠️ Y OJO AL ESCRIBIR AQUI: la primera version de esta nota citaba el patron
+   *    de la busqueda con un asterisco y una barra seguidos, que **cierra el
+   *    comentario de CSS**. Rompio PostCSS y las dos rutas dieron HTTP 500. En un
+   *    `.css` no se puede escribir un glob dentro de un comentario.
+   *
+   * Se anota en vez de borrarse en silencio porque es EL patron que este fichero
+   * persigue —el `chmod` sobre vfat, el `usercfg.txt` de 24.04, el drop-in `99-`—:
+   * **configuracion que existe y no hace nada**. Una clase huerfana no rompe la
+   * pagina; lo que rompe es que alguien la lea y crea que la muestra depende de
+   * ella.
+   */
 }
 
 /*
