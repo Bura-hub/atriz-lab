@@ -29,7 +29,7 @@
  * para no depender de el, pero esta ahi.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { ACCION_MONITOR, useTopic } from '@/hooks/useTopic'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
@@ -40,8 +40,10 @@ import { numeroValido } from '@/lib/interfaz/lecturas'
 import { interpretarSeguridad, seMueve } from '@/lib/interfaz/seguridad'
 import { Monitor, Pedido, Veredicto, resumirBarrido } from '@/lib/robot/barrido'
 import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
-import { OrdenMando, V_MIN } from '@/lib/interfaz/palanca'
-import { DeslizadorVelocidad, LoQuePido, Palanca } from './MandoPalanca'
+import {
+  AJUSTES_POR_DEFECTO, Ajustes, OrdenMando, V_MAX_SEGURO, vMaxPermitida,
+} from '@/lib/interfaz/palanca'
+import { AjustesDelMando, LoQuePido, Palanca } from './MandoPalanca'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { PanelEnlace } from './EstadoEnlace'
@@ -467,16 +469,45 @@ export function PanelConducir() {
   const { conectado, teleoperacion } = useRobot()
   /*
    * 🔴 EL TECHO ARRANCA EN EL MINIMO MEDIDO. Era una de dos pildoras (0,10 y
-   *    0,20); ahora es continuo entre las dos, y el valor de partida sigue
-   *    siendo el mas lento — teleoperar empieza despacio, no a medio gas.
+   *    0,20); ahora es continuo, y el valor de partida sigue siendo el mas lento
+   *    — teleoperar empieza despacio, no a medio gas. El giro arranca en 1,2, que
+   *    era el techo fijo de ayer: nadie se encuentra el robot mas rapido sin
+   *    haberlo pedido.
    */
-  const [velocidad, setVelocidad] = useState<number>(V_MIN)
+  const [ajustes, setAjustes] = useState<Ajustes>(AJUSTES_POR_DEFECTO)
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 EL PESTILLO NO SE GUARDA, Y SE ECHA SOLO AL PERDER EL ENLACE
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Son dieciseis portatiles compartidos en un aula: si esto se persistiera,
+   * alguien heredaria el tramo rapido del alumno anterior sin haberlo pedido.
+   * Y al reconectar se vuelve a 0,20 — el estado peligroso no sobrevive a nada.
+   */
+  const [pestilloSuelto, setPestilloSuelto] = useState(false)
   /*
    * Lo que se esta pidiendo AHORA, venga de la palanca o del teclado. Vive aqui
    * y no dentro de la palanca porque lo pinta `LoQuePido`, que es su hermano:
    * dos estados serian dos verdades sobre la misma orden.
    */
   const [orden, setOrden] = useState<OrdenMando>({ v: 0, w: 0 })
+
+  /*
+   * 🔴 AL PERDER EL ENLACE, EL PESTILLO SE ECHA. Y con el, el techo pedido se
+   *    recorta: sin `vMaxPermitida` alguien podria quedarse conduciendo a 0,40
+   *    con la pantalla diciendo que el tope son 0,20 — el control puesto y sin
+   *    efecto que este proyecto persigue en todas partes.
+   */
+  useEffect(() => {
+    if (conectado) return
+    setPestilloSuelto(false)
+    setAjustes((a) => (a.vMax <= V_MAX_SEGURO ? a : { ...a, vMax: V_MAX_SEGURO }))
+  }, [conectado])
+
+  /* Y al echarlo a mano, lo mismo: el recorte vive en un sitio, no en dos. */
+  const soltarPestillo = useCallback((suelto: boolean) => {
+    setPestilloSuelto(suelto)
+    setAjustes((a) => ({ ...a, vMax: vMaxPermitida(a.vMax, suelto) }))
+  }, [])
   const [falloLocal, setFalloLocal] = useState<string | null>(null)
 
   /**
@@ -621,15 +652,17 @@ export function PanelConducir() {
         <div className="grid items-start gap-x-10 gap-y-6 px-5 py-5 lg:grid-cols-[auto_1fr]">
           <Palanca
             teleoperacion={teleoperacion}
-            vMax={velocidad}
+            ajustes={ajustes}
             alFallar={setFalloLocal}
             alCambiar={setOrden}
           />
 
           <div className="space-y-5">
-            <DeslizadorVelocidad
-              valor={velocidad}
-              alCambiar={setVelocidad}
+            <AjustesDelMando
+              ajustes={ajustes}
+              alCambiar={setAjustes}
+              pestilloSuelto={pestilloSuelto}
+              alSoltarPestillo={soltarPestillo}
               desactivado={!conectado}
             />
             <LoQuePido orden={orden} />

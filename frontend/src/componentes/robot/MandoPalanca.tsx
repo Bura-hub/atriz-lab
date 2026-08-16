@@ -29,10 +29,15 @@
  *    usan el mismo techo del deslizador.
  */
 
-import { CSSProperties, PointerEvent as EventoPuntero, useEffect, useRef, useState } from 'react'
+import {
+  CSSProperties, PointerEvent as EventoPuntero, ReactNode, useEffect, useRef, useState,
+} from 'react'
 import { ControlTeleoperacion } from '@/hooks/useTeleoperacion'
 import { useRobot } from '@/hooks/ContextoRobot'
-import { OrdenMando, W_MAX, W_MIN, ZONA_MUERTA, ordenDePalanca } from '@/lib/interfaz/palanca'
+import {
+  Ajustes, Curva, OrdenMando, V_MAX_DURO, V_MAX_SEGURO, V_MIN, W_MAX, W_MIN,
+  ZONA_MUERTA, dentroDeLoMedido, ordenDePalanca, ordenDeTeclado,
+} from '@/lib/interfaz/palanca'
 import { metrosPorSegundo, numero } from '@/lib/interfaz/formato'
 import { conTecla, direccionDeTecla, escribiendo, mandoVigente, sinTecla } from '@/lib/interfaz/teclado'
 
@@ -41,19 +46,43 @@ const RADIO = 84
 
 export interface PropsPalanca {
   teleoperacion: ControlTeleoperacion
-  /** El techo lineal que haya puesto el deslizador, en m/s. */
-  vMax: number
+  /** Los dos techos y la curva. Los ponen los deslizadores. */
+  ajustes: Ajustes
   alFallar: (mensaje: string) => void
   /** Para que la tarjeta pueda pintar lo que se está pidiendo AHORA. */
   alCambiar: (o: OrdenMando) => void
 }
 
-export function Palanca({ teleoperacion, vMax, alFallar, alCambiar }: PropsPalanca) {
+export function Palanca({ teleoperacion, ajustes, alFallar, alCambiar }: PropsPalanca) {
   const { conectado } = useRobot()
   const caja = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null)
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 AQUÍ SE CABLEA `dentroDeLoMedido`, QUE HASTA HOY NO CORRÍA EN NINGÚN SITIO
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Su docstring decía que existía «para poder decirlo en pantalla», y ninguna
+   * pantalla lo decía: solo lo llamaba su propia prueba. **Un control que
+   * únicamente corre en su test no es un control** — es la familia de las doce
+   * comprobaciones muertas del verificador del robot, y de `comprobar_contrato`
+   * mirando que el `.msg` exista.
+   *
+   * Hoy siempre da `true` por construcción, y ese es justo el motivo de
+   * cablearlo: es la comprobación que se pondrá en rojo el día que alguien toque
+   * el remapeo, la curva o los techos y empiece a pedir valores que nadie ha
+   * medido. Si no corre, ese día no dirá nada.
+   *
+   * ⚠️ NO bloquea la orden. Bloquearla convertiría un fallo de programación en un
+   *    robot que no obedece, que es peor y además se diagnostica al revés.
+   */
   const mandar = (o: OrdenMando) => {
+    if (!dentroDeLoMedido(o, ajustes)) {
+      alFallar(
+        `La orden pedida (${numero(o.v, 3)} m/s · ${numero(o.w, 2)} rad/s) cae fuera de lo `
+        + 'medido de este robot. Se ha enviado igual, pero el resultado no está caracterizado.',
+      )
+    }
     try {
       if (o.v === 0 && o.w === 0) teleoperacion.parar()
       else teleoperacion.mover(o.v, o.w)
@@ -80,7 +109,7 @@ export function Palanca({ teleoperacion, vMax, alFallar, alCambiar }: PropsPalan
     const m = Math.hypot(dx, dy)
     const k = m > RADIO ? RADIO / m : 1
     setPos({ x: dx * k, y: dy * k })
-    mandar(ordenDePalanca(dx, dy, RADIO, vMax))
+    mandar(ordenDePalanca(dx, dy, RADIO, ajustes))
   }
 
   const soltar = () => {
@@ -121,9 +150,16 @@ export function Palanca({ teleoperacion, vMax, alFallar, alCambiar }: PropsPalan
 
     const aplicar = () => {
       const d = mandoVigente(pulsadas.current)
-      const o: OrdenMando = d === null
-        ? { v: 0, w: 0 }
-        : { v: d.v * vMax, w: d.w * W_MAX }
+      /*
+       * 🔴 `ordenDeTeclado`, NO la cuenta a mano que había aquí.
+       *
+       * Esto era `{ v: d.v * vMax, w: d.w * W_MAX }`: un SEGUNDO mapeo del mismo
+       * invariante, escrito en el componente y sin ninguna prueba. Daba los
+       * mismos números por casualidad —las teclas solo valen −1, 0 o 1— y al
+       * abrir el techo del giro se habría quedado con el viejo, dejando teclado y
+       * palanca girando a velocidades distintas sin que lo viera nada.
+       */
+      const o: OrdenMando = d === null ? { v: 0, w: 0 } : ordenDeTeclado(d, ajustes)
       try {
         if (o.v === 0 && o.w === 0) teleoperacion.parar()
         else teleoperacion.mover(o.v, o.w)
@@ -132,6 +168,7 @@ export function Palanca({ teleoperacion, vMax, alFallar, alCambiar }: PropsPalan
       }
       alCambiar(o)
     }
+
 
     const abajo = (e: KeyboardEvent) => {
       const objetivo = e.target as HTMLElement | null
@@ -182,7 +219,7 @@ export function Palanca({ teleoperacion, vMax, alFallar, alCambiar }: PropsPalan
       window.removeEventListener('blur', soltarTodo)
       soltarTodo()
     }
-  }, [conectado, teleoperacion, vMax, alFallar, alCambiar])
+  }, [conectado, teleoperacion, ajustes, alFallar, alCambiar])
 
   return (
     <div
@@ -228,54 +265,188 @@ export function Palanca({ teleoperacion, vMax, alFallar, alCambiar }: PropsPalan
   )
 }
 
-export interface PropsDeslizador {
-  valor: number
-  alCambiar: (v: number) => void
+export interface PropsAjustes {
+  ajustes: Ajustes
+  alCambiar: (a: Ajustes) => void
+  /** El pestillo del tramo rápido. Lo guarda quien monta la pantalla. */
+  pestilloSuelto: boolean
+  alSoltarPestillo: (suelto: boolean) => void
   desactivado: boolean
 }
 
 /**
- * EL DESLIZADOR DE VELOCIDAD MÁXIMA.
- *
- * 👤 Pedido por el usuario. Antes eran **dos píldoras** —0,10 y 0,20— y el
- *    comentario que las defendía decía que las dos están medidas. Sigue siendo
- *    cierto y por eso las dos siguen **marcadas en la regla**: lo que cambia es
- *    que ahora se puede pedir cualquier valor entre ellas.
- *
- * 🔴 EL TECHO ES 0,20 Y NO 0,40, y esa decisión NO se toca aquí: está escrita
- *    —*«el tope del robot son 0,40 m/s y esta pantalla no lo ofrece; teleoperar
- *    a ciegas desde un navegador no es el sitio para la velocidad máxima»*— y
- *    revertirla sería una decisión de seguridad, no de interfaz.
- *
- * ⚠️ Y el suelo es 0,10, que es el mínimo MEDIDO. Por debajo no hay dato.
+ * Una regla con marcas y su valor al lado. Los dos deslizadores comparten
+ * anatomía a propósito: son el mismo tipo de decisión sobre dos ejes.
  */
-export function DeslizadorVelocidad({ valor, alCambiar, desactivado }: PropsDeslizador) {
+function Regla({ id, etiqueta, valor, min, max, paso, texto, desactivado, alCambiar, aviso }: {
+  id: string
+  etiqueta: string
+  valor: number
+  min: number
+  max: number
+  paso: number
+  /** El valor ya formateado, con su unidad. */
+  texto: string
+  desactivado: boolean
+  alCambiar: (v: number) => void
+  aviso?: ReactNode
+}) {
   return (
     <div>
-      <label htmlFor="vmax" className="microetiqueta mb-1.5 block">
-        velocidad máxima
-      </label>
+      <label htmlFor={id} className="microetiqueta mb-1.5 block">{etiqueta}</label>
       <div className="flex items-center gap-4">
         <input
-          id="vmax"
+          id={id}
           type="range"
-          min={0.1}
-          max={0.2}
-          step={0.01}
+          min={min}
+          max={max}
+          step={paso}
           value={valor}
           disabled={desactivado}
           onChange={(e) => alCambiar(Number(e.target.value))}
           className="deslizador focus-ring w-full max-w-[18rem]"
         />
-        <output htmlFor="vmax" className="cifra-menor shrink-0 tabular-nums">
-          {metrosPorSegundo(valor)}
-        </output>
+        <output htmlFor={id} className="cifra-menor shrink-0 tabular-nums">{texto}</output>
       </div>
-      <p className="mt-2 max-w-prose text-[12.5px] leading-relaxed text-muted-foreground">
-        Es el <strong>techo</strong>: la palanca pide una fracción de esto. Los dos extremos son
-        los valores <strong>medidos</strong> —pidiendo 0,20 la meseta real es 0,199 m/s, el
-        100 %—. El tope del robot son 0,40 y esta pantalla no lo ofrece.
-      </p>
+      {aviso !== undefined && (
+        <p className="mt-2 max-w-prose text-[12.5px] leading-relaxed text-muted-foreground">
+          {aviso}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * LOS AJUSTES DEL MANDO — dos techos, un pestillo y una curva
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 👤 Del encargo de «un control bastante más personalizado». Lo que entra y lo
+ *    que no está razonado en `palanca.ts`; aquí solo se pinta.
+ *
+ * 🔴 ANTES SOLO HABÍA UN DESLIZADOR, Y TOPABA EL EJE PELIGROSO. El giro iba fijo
+ *    entre 0,5 y 1,2 rad/s sin aparecer en pantalla, así que el alumno
+ *    controlaba lo lineal —lo único que convierte velocidad en distancia— y no
+ *    controlaba lo angular, que gira sobre el sitio y no puede alcanzar a nadie.
+ *    Era al revés de lo razonable, y lo notó el usuario conduciendo.
+ */
+export function AjustesDelMando({
+  ajustes, alCambiar, pestilloSuelto, alSoltarPestillo, desactivado,
+}: PropsAjustes) {
+  const techo = pestilloSuelto ? V_MAX_DURO : V_MAX_SEGURO
+  return (
+    <div className="space-y-5">
+      <Regla
+        id="vmax"
+        etiqueta="velocidad máxima"
+        valor={ajustes.vMax}
+        min={V_MIN}
+        max={techo}
+        paso={0.01}
+        texto={metrosPorSegundo(ajustes.vMax)}
+        desactivado={desactivado}
+        alCambiar={(v) => alCambiar({ ...ajustes, vMax: v })}
+        aviso={<>
+          Es el <strong>techo</strong>: la palanca pide una fracción de esto. Los extremos son
+          valores <strong>medidos</strong> —pidiendo 0,20 la meseta real es 0,199 m/s, el 100 %—.
+        </>}
+      />
+
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        🔴 EL PESTILLO DEL TRAMO RÁPIDO
+        ═══════════════════════════════════════════════════════════════════════
+        👤 Decisión del usuario: el robot da 0,40 y esta pantalla llega, pero no
+           de un roce del pulgar. Lo que sobrevive del argumento viejo no es
+           «teleoperar a ciegas» —el alumno está en la sala mirando el robot— sino
+           esto: **un mando continuo se recorre sin querer; una línea de Python se
+           escribe a propósito.** El pestillo devuelve ese «a propósito».
+
+        ⚠️ Y NO ES UN ROL DE PROFESOR. El Taller ya le da 0,40 al mismo alumno por
+           el mismo topic con tres líneas de Python, así que un rol aquí sería
+           teatro sobre una puerta abierta al lado.
+
+        🔴 Las dos consecuencias van escritas y son MEDIDAS, no advertencias
+           genéricas: una tranquiliza y la otra no, y las dos hacen falta para
+           decidir.
+      */}
+      <div className="border-t border-[rgb(var(--filo)/0.09)] pt-4">
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={pestilloSuelto}
+            disabled={desactivado}
+            onChange={(e) => alSoltarPestillo(e.target.checked)}
+            className="focus-ring mt-0.5 h-4 w-4 shrink-0 accent-[rgb(var(--estado-mirar))]"
+          />
+          <span className="text-[13px] leading-relaxed">
+            <strong>Dejar llegar hasta 0,40 m/s</strong>, que es el tope del robot.
+            <span className="mt-1 block text-muted-foreground">
+              La capa de seguridad casi no se resiente: el hueco al parar sube de <strong>6,3
+              a 7,4 cm</strong>, un centímetro. Lo que sí cambia es lo que el LIDAR no ve —
+              barre a <strong>15,5 cm del suelo</strong>, y por debajo no hay ninguna
+              protección—: ahí la velocidad es la única variable y la energía va con el
+              cuadrado. Se vuelve a echar solo al perder el enlace.
+            </span>
+          </span>
+        </label>
+      </div>
+
+      {/*
+        🔴 EL GIRO LLEGA A 2,0 ENTERO, y no es una imprudencia simétrica: girar
+           sobre el eje tiene desplazamiento CERO. Un robot a 2,0 rad/s no alcanza
+           un pie ni cruza el pasillo — se queda dentro del círculo de 14,4 cm que
+           ya ocupaba. Avanzar es la única componente que convierte velocidad en
+           distancia. Por eso este eje se abre y el otro lleva pestillo.
+      */}
+      <Regla
+        id="wmax"
+        etiqueta="giro máximo"
+        valor={ajustes.wMax}
+        min={W_MIN}
+        max={W_MAX}
+        paso={0.1}
+        texto={`${numero(ajustes.wMax, 1)} rad/s`}
+        desactivado={desactivado}
+        alCambiar={(v) => alCambiar({ ...ajustes, wMax: v })}
+        aviso={<>
+          Toda la franja está <strong>medida</strong>: entre 0,5 y 2,0 el robot cumple el
+          99-102 % de lo que se le pide. A 2,0 da una vuelta en <strong>3,1 s</strong>, y a 1,2
+          —donde arranca la pantalla— en 5,2.
+        </>}
+      />
+
+      {/*
+        La curva. Es una elección NOMBRADA y no un número: dos opciones que se
+        entienden sin explicar, en vez de un exponente que nadie sabe dónde poner.
+      */}
+      <div>
+        <span className="microetiqueta mb-1.5 block" id="curva-etiqueta">respuesta de la palanca</span>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-labelledby="curva-etiqueta">
+          {(['directa', 'suave'] as Curva[]).map((c) => (
+            <button
+              key={c}
+              type="button"
+              role="radio"
+              aria-checked={ajustes.curva === c}
+              disabled={desactivado}
+              onClick={() => alCambiar({ ...ajustes, curva: c })}
+              className={`pulsable focus-ring rounded-md border px-3 py-1.5 text-[13px] disabled:cursor-not-allowed disabled:opacity-45 ${
+                ajustes.curva === c
+                  ? 'border-foreground bg-foreground text-background'
+                  : 'border-[rgb(var(--filo)/0.2)]'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 max-w-prose text-[12.5px] leading-relaxed text-muted-foreground">
+          Con <strong>suave</strong>, media palanca pide la cuarta parte del rango: hay más
+          finura cerca del centro para trazar un arco. Las dos llegan al mismo tope en el
+          borde, y <strong>ninguna afecta al teclado</strong> — una tecla no tiene recorrido.
+        </p>
+      </div>
     </div>
   )
 }
