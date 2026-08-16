@@ -115,7 +115,13 @@ export function evaluarPrecondicion(o: Observaciones): Precondicion {
       mensaje: 'Los robots de este laboratorio exigen una credencial, y la credencial la firma '
         + 'este servidor solo para quien ha entrado. Sin sesión no se llega a abrir la conexión, '
         + 'así que esto NO dice nada sobre los robots: pueden estar perfectamente.',
-      enlace: '/entrar',
+      /*
+       * 🔴 `/` y no `/entrar` desde el 2026-08-16: la portada y la entrada son
+       *    la misma pantalla. `/entrar` redirige aqui, asi que el enlace viejo
+       *    funcionaria — pero un enlace que pasa por una redireccion es un salto
+       *    que se ve, y este aviso sale en el muro y en cada robot.
+       */
+      enlace: '/',
     }
   }
 

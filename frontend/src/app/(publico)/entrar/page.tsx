@@ -1,73 +1,49 @@
-import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
-import { destinoSeguro } from '@/lib/sesion/regreso'
-import { haySesion } from '@/lib/sesion/servidor'
-import { PanelEntrar } from '@/componentes/sesion/PanelEntrar'
 
 export const metadata = { title: 'Entrar · Plataforma Atriz' }
 
 /**
- * LA PANTALLA DE ENTRAR.
+ * `/entrar` YA NO ES UNA PANTALLA: LLEVA A LA PORTADA, QUE AHORA LAS ES LAS DOS.
  *
- * 🔴 AQUÍ PONÍA que **conserva el raíl** porque *«la sesión no cierra nada: las
- *    diez pantallas siguen abiertas sin entrar, así que quien llega no está
- *    atrapado»*. **Ya no es cierto, y era el argumento entero.** Desde hoy todo
- *    menos la portada vive detrás de la puerta, así que quien llega aquí SÍ
- *    tiene que pasar por aquí — y un raíl con diez destinos que redirigen a esta
- *    misma pantalla sería una promesa falsa repetida diez veces.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 👤 FUSIONADA CON `/` EL 2026-08-16, por decisión del usuario
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Eran **dos páginas para una sola cosa**: la portada explicaba el laboratorio y
+ * ofrecía un botón que llevaba aquí a escribir dos campos. Ahora la portada trae
+ * la presentación y el formulario, uno al lado del otro.
  *
- *    Por eso esta pantalla vive en `(publico)`, que no monta `Armazon`.
+ * 🔴 LA RUTA SE CONSERVA, Y NO ES POR NOSTALGIA. Hay tres clases de enlace
+ *    apuntando aquí que no se pueden cambiar de golpe:
+ *      · marcadores y URLs que alguien haya guardado o escrito en un guion;
+ *      · el `enlace: '/entrar'` que `evaluarPrecondicion` mete en el aviso de
+ *        «no has iniciado sesión», que se pinta en el muro y en cada robot;
+ *      · el `?volver=` que fabrican el middleware y el layout privado.
+ *    Romperlos daría un 404 a quien intenta entrar, que es el peor momento.
  *
- * ⚠️ SUSPENSE ALREDEDOR, y no es ceremonia: `PanelEntrar` lee `?volver=` con
- *    `useSearchParams`, y en Next 15 eso obliga a renderizar en cliente. Sin el
- *    límite, **toda la rama se sale del prerenderizado** y `next build` lo dice
- *    con un error que no menciona este fichero.
+ * ⚠️ Y CONSERVA EL `?volver=` TAL CUAL, sin validarlo aquí: quien lo valida es
+ *    `destinoSeguro()` en el formulario, **en el instante de navegar**. Validar
+ *    dos veces en dos sitios distintos es cómo acaban discrepando; y validar
+ *    aquí y no allí dejaría el agujero abierto para quien llegue por `/`.
+ *
+ * 📝 Redirección de servidor, no un `<meta refresh>` ni un `useEffect`: no se
+ *    manda ni un byte de página intermedia, así que no hay parpadeo.
  */
 export default async function Entrar({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
-  /*
-   * ═══════════════════════════════════════════════════════════════════════════
-   * 🔴🔴 CON SESIÓN, AQUÍ NO SE ENTRA: SE VUELVE A DONDE IBAS
-   * ═══════════════════════════════════════════════════════════════════════════
-   * 👤 Reportado por el usuario el 2026-08-16: *«si le doy entrar me deja en una
-   *    pestaña /entrar y no sigue al resto»*. Exacto. `PanelEntrar` pintaba un
-   *    aviso —«Ya has entrado como X»— y **ahí se acababa**: ni un enlace, ni
-   *    una redirección. Un final de camino con aspecto de página.
-   *
-   * Y no era un olvido de copy: la pantalla no puede resolverlo sola. Cuando ese
-   * aviso se escribió, `useSesion` solo traía el nombre y no había a dónde
-   * mandar a nadie; el `?volver=` lo lee el cliente **después** de hidratar.
-   * Aquí, en el servidor, se sabe antes de pintar un byte.
-   *
-   * → El destino pasa por `destinoSeguro`, igual que tras iniciar sesión. Un
-   *   `?volver=` sin validar es una redirección abierta, y este es el sitio
-   *   exacto donde se explota: la persona ve el dominio de su laboratorio y
-   *   acaba en otro ya autenticada.
-   *
-   * ⚠️ Y esto hace que `/entrar` sea INALCANZABLE con sesión abierta, que es
-   *    justo lo que se pidió —*«si ya se tiene cuenta y no se cierra nunca, que
-   *    te devuelva al resumen»*—. Para cambiar de cuenta hay que **salir**
-   *    primero, y por eso el raíl tiene ese botón bien visible.
-   */
-  if (await haySesion()) redirect(destinoSeguro(unaCadena((await searchParams).volver)))
-
-  return (
-    <Suspense fallback={null}>
-      <PanelEntrar />
-    </Suspense>
-  )
+  const volver = unaCadena((await searchParams).volver)
+  redirect(volver === null ? '/' : `/?volver=${encodeURIComponent(volver)}`)
 }
 
 /**
  * Un parámetro de consulta puede llegar repetido (`?volver=a&volver=b`), y
  * entonces Next entrega un array. Se queda con el primero.
  *
- * 🔴 NO se junta el array: `destinoSeguro` valida UNA ruta, y darle «/a,/b»
- *    sería inventar un destino que nadie pidió. Y devolver `undefined` ante lo
- *    inesperado deja que el destino por defecto haga su trabajo.
+ * 🔴 NO se junta el array: el destino es UNA ruta, y pasar «/a,/b» sería
+ *    inventar un sitio que nadie pidió. Ante lo inesperado, `null` — y entonces
+ *    manda el destino por defecto.
  */
 function unaCadena(v: string | string[] | undefined): string | null {
   if (typeof v === 'string') return v

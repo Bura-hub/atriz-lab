@@ -39,7 +39,7 @@ export default async function LayoutPrivado({ children }: { children: ReactNode 
     // El middleware dejo aqui a donde iba esta peticion, para poder devolver a
     // la persona a su sitio despues de entrar.
     const ruta = (await headers()).get('x-atriz-ruta') ?? '/flota'
-    redirect(`/entrar?volver=${encodeURIComponent(ruta)}`)
+    redirect(`/?volver=${encodeURIComponent(ruta)}`)
   }
 
   return <Armazon>{children}</Armazon>

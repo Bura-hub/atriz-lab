@@ -35,7 +35,7 @@
  */
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { ReactNode } from 'react'
 import {
   IconoAcciones, IconoConducir, IconoCuaderno, IconoEntrar, IconoFlota, IconoLidar,
@@ -322,6 +322,7 @@ export interface PropsRail {
 
 export function RailNavegacion({ pestanas = [] }: PropsRail) {
   const ruta = usePathname()
+  const router = useRouter()
   const { usuario, cargando, caduco, refrescar } = useSesion()
 
   const salir = async () => {
@@ -338,6 +339,32 @@ export function RailNavegacion({ pestanas = [] }: PropsRail) {
      *    pagando exactamente eso.
      */
     await refrescar('salida')
+
+    /*
+     * ═══════════════════════════════════════════════════════════════════════
+     * 👤 Y SE VUELVE A LA PORTADA (2026-08-16, pedido por el usuario)
+     * ═══════════════════════════════════════════════════════════════════════
+     * Sin esto, cerrar sesión te dejaba **donde estabas**: en una pantalla
+     * privada, ya renderizada, con la sesión muerta. El raíl decía «Entrar», el
+     * transporte no volvía a abrir un socket, y la pantalla seguía enseñando la
+     * última telemetría que llegó — o sea, un robot con aspecto de estar vivo
+     * para alguien que ya no puede hablarle. No se enteraba nadie hasta la
+     * siguiente navegación.
+     *
+     * 🔴 `refresh()` ANTES de `replace()`, y las dos hacen falta. Las pantallas
+     *    privadas las pinta un componente de SERVIDOR, y Next guarda su
+     *    resultado en la caché de cliente: sin invalidarla, volver atrás podría
+     *    servir el HTML privado ya generado. `replace` y no `push` para que la
+     *    flecha de «atrás» no devuelva al paso de salir.
+     *
+     * 📌 Y el destino es `/` —la portada— no `/entrar`: desde hoy la portada es
+     *    exactamente lo que ve quien NO tiene sesión, y `/entrar` está a un
+     *    botón de ahí. Mandar directo al formulario daría por hecho que quien
+     *    sale quiere volver a entrar, y el caso típico del aula es el contrario:
+     *    se sale **para que entre otro**.
+     */
+    router.refresh()
+    router.replace('/')
   }
 
   return (

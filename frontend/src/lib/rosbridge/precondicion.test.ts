@@ -24,7 +24,18 @@ describe('lo que tiene que pasar antes de que un socket pueda abrir', () => {
     it('y da a dónde ir, no solo el diagnóstico', () => {
       const p = evaluarPrecondicion({ exigido: true, usuario: null, cargando: false })
       if (p.estado !== 'SIN_SESION') throw new Error('debería faltar la sesión')
-      expect(p.enlace).toBe('/entrar')
+      /*
+       * 📝 Era `/entrar` hasta el 2026-08-16, cuando la portada y la entrada se
+       *    fundieron en una sola pantalla (decisión del usuario: eran dos
+       *    páginas para una sola cosa). `/entrar` sigue existiendo y redirige
+       *    aquí, así que el valor viejo también funcionaría — pero este aviso se
+       *    pinta en el muro y en cada robot, y un enlace que pasa por una
+       *    redirección es un salto que se ve.
+       *
+       * 🔴 Lo que la prueba comprueba NO cambia: que haya **a dónde ir**. Un
+       *    diagnóstico sin remedio es la mitad de un aviso.
+       */
+      expect(p.enlace).toBe('/')
     })
   })
 

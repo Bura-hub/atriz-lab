@@ -67,7 +67,14 @@ export function middleware(pet: NextRequest) {
     return r
   }
 
-  const destino = new URL('/entrar', pet.url)
+  /*
+   * 🔴 A `/` Y NO A `/entrar` DESDE EL 2026-08-16. La portada y la entrada se
+   *    fundieron en una sola pantalla (decision del usuario): eran dos paginas
+   *    para una sola cosa. `/entrar` sigue existiendo y redirige aqui, pero
+   *    mandar al alias añadiria un salto a cada peticion sin sesion — o sea a
+   *    TODAS las de un alumno que abre la aplicacion por la mañana.
+   */
+  const destino = new URL('/', pet.url)
   destino.searchParams.set('volver', pathname + search)
   /*
    * 307 y no 302: conserva el metodo. Con un 302 un `POST` a una ruta protegida
