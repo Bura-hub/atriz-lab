@@ -32,6 +32,9 @@ import { numero } from '@/lib/interfaz/formato'
 import { Grupo } from '@/componentes/ui/Grupo'
 import { AlResumir, BaldosaConectada } from './BaldosaConectada'
 import { DondeBuscar, useDirecciones } from './DondeBuscar'
+import { useSesion } from '@/hooks/ContextoSesion'
+import { evaluarPrecondicion, hayQueAvisar } from '@/lib/rosbridge/precondicion'
+import { TESTIGO_EXIGIDO } from '@/lib/rosbridge/proveedor_testigo'
 
 export function MuroFlota() {
   /*
@@ -88,7 +91,25 @@ export function MuroFlota() {
    * ⚠️ Solo cuando fallan los DIECISEIS. Si cae uno, la ficha apagada entre
    *    quince vivas ya salta a la vista y esta frase mentiria.
    */
-  const nadieResponde = ROBOTS.every((id) => estados[id] === 'SIN_CONEXION')
+  /*
+   * 🔴🔴 LA CAUSA SE COMPRUEBA ANTES DE ACUSAR AL LABORATORIO.
+   *
+   * El 2026-08-16 este muro pinto dieciseis «sin señal de vida» y remato con
+   * «Ningún robot responde — comprueba que estén encendidos y en la red», con
+   * los robots **perfectos**: lo que faltaba era la SESION de este navegador.
+   * Sin ella no se firma testigo, y sin testigo el transporte ni siquiera abre
+   * un socket — asi que en el robot no habia ni un cliente en el journal, que es
+   * indistinguible de «nadie ha abierto la pagina».
+   *
+   * Esto se sabe **sin tocar la red y sin esperar los 10 s del plazo**, asi que
+   * se pregunta primero. Y cuando falta, la frase que culpa a los robots **se
+   * calla**: dejarla al lado seria seguir acusando, solo que con una nota.
+   */
+  const { usuario, cargando } = useSesion()
+  const precondicion = evaluarPrecondicion({ exigido: TESTIGO_EXIGIDO, usuario, cargando })
+  const faltaAlgoAqui = hayQueAvisar(precondicion)
+
+  const nadieResponde = !faltaAlgoAqui && ROBOTS.every((id) => estados[id] === 'SIN_CONEXION')
 
   /*
    * 🔴 EL ORDEN SE APLICA CON `order` DE CSS, NO REORDENANDO EL ARRAY.
@@ -292,6 +313,27 @@ export function MuroFlota() {
              alarma. Dos barras iguales seguidas no tienen jerarquia, asi que la
              alarma no ganaba nada por ser una alarma.
         */}
+        {/*
+          🔴 VA ANTES QUE «ningún robot responde», Y LO SUSTITUYE. No son dos
+             avisos que se acumulan: cuando falta la sesión, la otra frase es
+             FALSA —los robots pueden estar perfectos— y dejarla sería seguir
+             mandando a cruzar el laboratorio.
+        */}
+        {faltaAlgoAqui && precondicion.estado !== 'LISTO' && precondicion.estado !== 'NO_SE_SABE' && (
+          <div className="rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">
+            <p className="font-semibold">{precondicion.titulo}</p>
+            <p className="mt-1.5 max-w-prose">{precondicion.mensaje}</p>
+            {precondicion.estado === 'SIN_SESION' && (
+              <a
+                href={precondicion.enlace}
+                className="mt-2.5 inline-block border border-border bg-secondary px-3 py-1.5 text-secondary-foreground focus-ring hover:bg-muted transition-transform duration-150 active:scale-[0.97]"
+              >
+                Entrar
+              </a>
+            )}
+          </div>
+        )}
+
         {nadieResponde && (
           <p className="rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">
             Ningún robot responde — comprueba que estén encendidos y en la red.

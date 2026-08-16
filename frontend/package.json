@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "contrato": "node ../herramientas/comprobar_contrato.mjs",
-    "comprobar": "npm run typecheck && npm run lint && npm run test && npm run contrato"
+    "comprobar": "npm run typecheck && npm run lint && npm run test && npm run contrato",
+    "enlace": "node ../herramientas/diagnosticar_enlace.mjs"
   },
   "dependencies": {
     "geist": "^1.7.2",

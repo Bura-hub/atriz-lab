@@ -37,6 +37,9 @@ import { entradaDeRuta } from '@/componentes/comun/RailNavegacion'
 import { ProveedorRobot, useRobot } from '@/hooks/ContextoRobot'
 import { urlDeRobot } from '@/lib/rosbridge/transporte'
 import { DestinoRobot, destinoParaTransporte, etiquetaRobot } from '@/lib/interfaz/identidad'
+import { useSesion } from '@/hooks/ContextoSesion'
+import { evaluarPrecondicion, hayQueAvisar, type Destino } from '@/lib/rosbridge/precondicion'
+import { TESTIGO_EXIGIDO } from '@/lib/rosbridge/proveedor_testigo'
 import { VoltajeDelMarco } from './Bateria'
 import { BotonParada } from './BotonParada'
 import { InsigniaEnlace } from './EstadoEnlace'
@@ -256,9 +259,60 @@ export function MarcoRobot({ destino, children }: PropsMarcoRobot) {
           className="escalonado relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-7 sm:px-6"
           style={{ '--tono-seccion': `var(${tono})` } as CSSProperties}
         >
+          {/*
+            🔴 EN EL MARCO Y NO EN CADA PESTAÑA, y por lo que costo el 2026-08-16:
+               el aviso del transporte —«no ha dado una credencial… puede que se
+               haya cerrado tu sesion»— existia y era correcto, pero **solo lo
+               leia la pestaña Diagnostico**. Quien abria Telemetria o el Taller
+               veia una pantalla muda sin una sola explicacion.
+               Aqui lo ven las SEIS, porque el marco las envuelve a todas.
+          */}
+          <AvisoDePrecondicion destino={destinoParaTransporte(destino)} />
           {children}
         </main>
       </div>
     </ProveedorRobot>
+  )
+}
+
+/**
+ * Lo que impide conectar y **NO es culpa del robot**.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 EXISTE POR EL 2026-08-16, Y LA LECCION ES DE ATRIBUCION
+ * ═══════════════════════════════════════════════════════════════════════════
+ * La web no veia a rvr-01 y el robot estaba **perfecto**: servicios arriba, RVR
+ * hablando, la puerta del testigo verificada en las dos direcciones desde la Pi.
+ * Faltaba la SESION de este navegador. Sin ella no se firma testigo, sin testigo
+ * el transporte **ni abre el socket**, y en el robot no aparece ni un cliente —
+ * que es indistinguible de «nadie ha abierto la pagina».
+ *
+ * La pantalla, mientras tanto, decia «sin señal de vida». O sea que **acusaba al
+ * robot de un fallo del PC**: la forma que este proyecto lleva contada desde
+ * `ros2 topic hz` — *el fallo estaba en el medidor y se atribuyo a lo medido*.
+ *
+ * ⚠️ NO sustituye al aviso del transporte (`ultimoAviso`), lo PRECEDE. Una sesion
+ *    que caduca a mitad de clase no la ve esto: eso sigue saliendo por ahi.
+ */
+function AvisoDePrecondicion({ destino }: { destino: Destino }) {
+  const { usuario, cargando } = useSesion()
+  const p = evaluarPrecondicion({ exigido: TESTIGO_EXIGIDO, usuario, cargando, destino })
+  // `NO_SE_SABE` no se pinta: seria un aviso que aparece y desaparece en cada
+  // carga mientras la sesion responde.
+  if (!hayQueAvisar(p) || p.estado === 'LISTO' || p.estado === 'NO_SE_SABE') return null
+
+  return (
+    <div className="mb-5 rounded-ficha border border-warning/40 bg-[rgb(var(--aviso-atencion))] px-5 py-3.5 text-sm leading-relaxed text-foreground">
+      <p className="font-semibold">{p.titulo}</p>
+      <p className="mt-1.5 max-w-prose">{p.mensaje}</p>
+      {p.estado === 'SIN_SESION' && (
+        <a
+          href={p.enlace}
+          className="mt-2.5 inline-block border border-border bg-secondary px-3 py-1.5 text-secondary-foreground focus-ring hover:bg-muted transition-transform duration-150 active:scale-[0.97]"
+        >
+          Entrar
+        </a>
+      )}
+    </div>
   )
 }
