@@ -350,7 +350,15 @@ muestra sale después del primer tramo. Restarlos y llamarlo error sería la cla
 este proyecto ha tenido que retirar tres veces.
 
 📌 **`/global_costmap/costmap` no está en la lista blanca**, así que la web **no puede** comprobar
-si el costmap está poblado — que es la señal documentada de un Nav2 mal arrancado. Sin decidir.
+si el costmap está poblado — que es la señal documentada de un Nav2 mal arrancado (evidencia 97:
+con el costmap VACÍO, `compute_path_to_pose` devuelve la **recta perfecta** y se estuvo a punto de
+escribirla como resultado). Sin decidir.
+
+⚠️ **Y desde la Fase B (2026-08-15) el argumento cambia de lado.** Abrir un topic de LECTURA a la
+web ya no es «que cualquiera en el aula lo lea»: hay que traer un testigo firmado para ESE robot.
+Lo que queda por decidir es el **coste**: `/global_costmap/costmap` es una rejilla entera, y este
+proyecto tiene medido que `/scan` era el 83 % de los 80,7 kB/s. Habría que medirlo antes, no
+suponerlo — y mirar si `costmap_updates` basta.
 
 ---
 
@@ -378,15 +386,16 @@ sin la clave REAL publicada, un navegador no abre nada.
 | | | estado |
 |---|---|---|
 | 🔴 **Quitar `~/.git-credentials` de los 16** | El código del alumno corre como `sphero` y puede leerlo: es el PAT de GitHub del proyecto. Los repositorios ya son públicos, así que clonar no lo necesita | ⏳ **abierto, y es 👤 decisión del usuario**: quitarlo deja a esa Pi sin poder hacer `push`. Anotado, no olvidado |
-| 🔴 **Repartir la clave pública REAL** | `node herramientas/publicar_clave.mjs` en el PC → `/etc/atriz/testigo.pub` en cada robot. La privada vive **solo** en el `.env.local` del portátil que sirve la web | ⏳ **abierto, y bloquea al navegador**: hoy rvr-01 tiene una clave **DE PRUEBA**, con la que la web no abre. El agente la lee al arrancar, así que pisarla exige un `restart` |
+| ✅ **Repartir la clave pública REAL** | `node herramientas/publicar_clave.mjs` en el PC → `/etc/atriz/testigo.pub` en cada robot. La privada vive **solo** en el `.env.local` del portátil que sirve la web | ✅ **HECHO en rvr-01 el 2026-08-15, y MEDIDO sin querer**: el navegador abrió rosbridge con un testigo firmado por ese `.env.local` (`7,95 V` en pantalla), y eso **solo puede pasar si la clave del robot es la pareja de la privada del PC**. 🔴 **Y desde la Fase B esa clave ya no es solo del Taller**: sin ella rosbridge falla cerrado y el robot queda invisible para la web. Va **dentro de la imagen dorada**; `fase_6` aborta si falta. ⏳ Quedan los 15 robots |
 | ✅ **Instalar la unidad** | ~~`sudo cp` a mano~~ | ✅ **`fase_7` instala y habilita `atriz-agente`** desde el 2026-08-15, avisa si falta `testigo.pub`, y el MANIFIESTO lo vigila |
 
 ### 4b · ✅ CERRADO: lo que se hace en cualquier Linux, sin RVR
 
 Los requisitos 1 y 2 del taller —PTY y `stdin`— no necesitan robot, solo un
-Linux. **En este PC (Windows) las 13 pruebas del PTY salían `skipped`, y eso no
-es que pasen.** Corridas en la Pi el 2026-08-15: **13/13 en verde**, más 31/31
-del núcleo y 5/5 del cruzado. La suite creció a **50** con los cinco fallos que
+Linux. **En este PC (Windows) las pruebas del PTY salen `skipped`, y eso no
+es que pasen.** Corridas en la Pi el 2026-08-15: **17/17 en verde** —la Pi
+corrigió el recuento con `pytest --collect-only`; aquí ponía 13, que era el
+número de antes de la barrida— más 36/36 del núcleo y 5/5 del cruzado. La suite creció a **50** con los cinco fallos que
 la auditoría encontró, cada uno con su prueba escrita ANTES del arreglo.
 
 ```bash
