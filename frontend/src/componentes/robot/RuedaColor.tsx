@@ -1,81 +1,56 @@
 'use client'
 
 /**
- * LA RUEDA DE TONO Y EL PLANO DE INTENSIDAD.
- *
- * Los dos controles de apuntar y arrastrar. Los numeros —hexadecimal y los tres
- * canales— los pone `PanelLeds`, que es quien envia: aqui solo se elige.
+ * EL SELECTOR DE COLOR: una tira de tono y un plano de intensidad y brillo.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * 🔴 EL TONO SE RECUERDA, PORQUE `RGB -> HSV` PIERDE INFORMACION
+ * 🔴🔴 AQUÍ HABÍA UNA RUEDA, Y MENTÍA EN LAS DOS DIRECCIONES
  * ═══════════════════════════════════════════════════════════════════════════
- * `aHSV` de un gris devuelve tono 0, y no por descuido: **un gris no tiene
- * tono**, no hay ningun angulo que lo describa. Si el marcador se calculara
- * siempre desde el color entrante, bajar el brillo hasta el negro lo mandaria de
- * golpe al rojo delante del usuario, sin que nadie tocara la rueda.
+ * 👤 Lo vio el usuario: *«la rueda de color no permite desplazarse hacia
+ *    adentro»*. Al mirarlo era peor que eso:
  *
- * Por eso el tono vive en una `ref` y solo se actualiza cuando el color TIENE
- * tono. Es memoria de la interfaz, no estado del color: no cambia lo que se
- * envia al robot, solo donde se dibuja el punto.
+ *   · la CSS dibujaba un disco HSV —blanco en el centro, tono puro al 72 %—, que
+ *     es la forma universal de decir «el radio es la saturación», y el manejador
+ *     **descartaba el radio**: `Math.hypot` no aparecía en el fichero. El
+ *     **51,8 %** del área era rampa no seleccionable;
+ *   · y el marcador iba clavado en el 84 % del radio, así que bajar la saturación
+ *     con el plano dejaba el punto de la rueda **en el borde saturado**.
  *
- * 📝 Se usa `ref` y no `useState` a proposito: cambiarlo no tiene que repintar
- *    nada —lo que repinta es el `color` que llega de fuera— y un `setState`
- *    durante el render seria un bucle.
+ * O sea: no aceptaba el gesto que dibujaba **y** no dibujaba el estado que tenía.
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * ⚠️ ACCESIBILIDAD, Y SU LIMITE DICHO
+ * 🔴 POR QUÉ UNA TIRA Y NO «ARREGLAR EL RADIO»
  * ═══════════════════════════════════════════════════════════════════════════
- * La rueda es un `slider` de un eje y se maneja bien con el teclado. El plano
- * son DOS ejes y no existe un rol ARIA para eso; lleva `aria-valuetext` con los
- * dos numeros, que es lo mejor disponible, y **el camino garantizado son los
- * campos numericos de `PanelLeds`**: son `<input>` nativos y llegan al mismo
- * sitio. Un selector de color sin teclado seria un control solo para quien ve.
+ * Arreglar la rueda era posible y peor, por geometría: a radio `r` píxeles, un
+ * píxel tangencial son `57,3/r` grados. En el borde son **1,1°/px** y a cinco
+ * píxeles del centro **11,5°/px** — la zona que se acababa de abrir es justo
+ * donde el tono se vuelve inmanejable. La tira da **2,9°/px en todo el
+ * recorrido**.
+ *
+ * ✅ Y lo que de verdad decide: **una tira es un control de UN eje**, así que es
+ *    un `<input type="range">` nativo. Teclado, Inicio/Fin, RePág/AvPág, lector
+ *    de pantalla y `forced-colors` **sin escribir una línea de ARIA**. La rueda
+ *    era un `div` con un `role="slider"` hecho a mano.
+ *
+ * ⚠️ El plano sigue siendo un control de DOS ejes y no existe un rol ARIA para
+ *    eso. Lleva `aria-valuetext` con los dos números, que es lo mejor disponible,
+ *    y **el camino garantizado son los campos numéricos de `PanelLeds`**: son
+ *    `<input>` nativos y llegan al mismo sitio.
+ *
+ * 📌 Y la geometría que queda —la del plano— **ya no vive aquí**: está en
+ *    `lib/interfaz/selector_color.ts`, con pruebas. Es la lección de los dos
+ *    fallos anteriores de este mismo fichero: `src/componentes/` no se prueba
+ *    nunca, así que lo que se quede dentro es invisible por construcción.
  */
 
 import { useRef, type CSSProperties, type PointerEvent as PE } from 'react'
 import { aHSV, aRGB, type RGB } from '@/lib/robot/color_led'
+import {
+  PALETA_IDENTIFICACION, PASO, PASO_GRANDE, conMemoria, svDesdePlano,
+} from '@/lib/interfaz/selector_color'
 import { MuestraDeColor } from '@/componentes/robot/MuestraDeColor'
 
-/**
- * La paleta del laboratorio: los tres bloques del muro y cinco tonos de sección.
- *
- * 🔴 NO son «colores bonitos»: son los que esta aplicacion ya usa para
- *    significar algo, asi que identificar un robot con el coral del muro se
- *    apoya en una asociacion que el profesor ya tiene hecha. Los valores estan
- *    COPIADOS de `globals.css` —un `.css` no exporta— y si alli cambian, aqui
- *    hay que cambiarlos a mano.
- *
- * ⚠️ Y lo que NO son: elegir uno aqui no cambia lo que ese color significa en el
- *    muro. Es un color para un LED, no un estado.
- */
-const PALETA: readonly { nombre: string; rgb: RGB }[] = [
-  { nombre: 'Cobalto', rgb: { rojo: 30, verde: 58, azul: 210 } },
-  { nombre: 'Lima', rgb: { rojo: 132, verde: 163, azul: 12 } },
-  { nombre: 'Coral', rgb: { rojo: 214, verde: 62, azul: 30 } },
-  { nombre: 'Violeta', rgb: { rojo: 91, verde: 46, azul: 168 } },
-  { nombre: 'Teal', rgb: { rojo: 6, verde: 118, azul: 140 } },
-  { nombre: 'Ámbar', rgb: { rojo: 166, verde: 78, azul: 8 } },
-  { nombre: 'Ciruela', rgb: { rojo: 130, verde: 44, azul: 96 } },
-  { nombre: 'Blanco', rgb: { rojo: 255, verde: 255, azul: 255 } },
-]
-
-/** Donde cae el marcador de la rueda, en fraccion del radio. */
-const RADIO_MARCA = 0.84
-
-const PASO = 1
-const PASO_GRANDE = 10
-
 const pinza = (n: number, min: number, max: number) => Math.min(max, Math.max(min, n))
-
-/**
- * El angulo de PANTALLA de un tono: grados desde las 12, en sentido horario.
- *
- * 🔴 El `+ 90` es literalmente el `from 90deg` de `.rueda-tono` en `globals.css`,
- *    que pone el rojo a las 3. Si uno cambia, el otro tambien — o el marcador se
- *    separa del color que dice señalar, que es el peor fallo posible aqui porque
- *    parece que el selector miente.
- */
-const anguloDeTono = (tono: number) => tono + 90
 
 export interface RuedaColorProps {
   color: RGB
@@ -84,169 +59,138 @@ export interface RuedaColorProps {
 }
 
 export function RuedaColor({ color, alCambiar, desactivada = false }: RuedaColorProps) {
-  const rueda = useRef<HTMLDivElement>(null)
   const plano = useRef<HTMLDivElement>(null)
-  const tonoRecordado = useRef(0)
-
-  const leido = aHSV(color)
-  // Solo se cree el tono entrante si el color de verdad tiene uno.
-  if (leido.saturacion > 0 && leido.valor > 0) tonoRecordado.current = leido.tono
-  const hsv = { ...leido, tono: tonoRecordado.current }
+  /*
+   * 🔴 LA MEMORIA DEL SELECTOR, en una `ref` y no en estado: cambiarla no tiene
+   *    que repintar nada —lo que repinta es el `color` que llega de fuera— y un
+   *    `setState` durante el render sería un bucle. La regla de qué se recuerda
+   *    y por qué está en `conMemoria`, con su prueba.
+   */
+  const recordado = useRef({ tono: 0, saturacion: 1, valor: 1 })
+  const hsv = conMemoria(recordado.current, aHSV(color))
+  recordado.current = hsv
 
   const mover = (parcial: Partial<typeof hsv>) => {
     if (desactivada) return
-    alCambiar(aRGB({ ...hsv, ...parcial }))
-  }
-
-  const tonoDesdePuntero = (e: PE<HTMLDivElement>) => {
-    const caja = rueda.current?.getBoundingClientRect()
-    if (caja === undefined) return
-    const dx = e.clientX - (caja.left + caja.width / 2)
-    const dy = e.clientY - (caja.top + caja.height / 2)
-    // `atan2(dx, -dy)` mide desde las 12 en sentido horario, el mismo sistema
-    // que usa `conic-gradient`. Con `atan2(dy, dx)` el marcador giraria al reves.
-    const grados = (Math.atan2(dx, -dy) * 180) / Math.PI
-    const tono = ((grados - 90) % 360 + 360) % 360
-    tonoRecordado.current = tono
-    // 🔴 Si el color es negro o gris, mover la rueda no cambiaria NADA —el RGB
-    //    sale igual— y el marcador se quedaria pegado. Se le da intensidad y
-    //    brillo minimos para que el gesto tenga efecto visible.
-    mover({
-      tono,
-      saturacion: hsv.saturacion === 0 ? 1 : hsv.saturacion,
-      valor: hsv.valor === 0 ? 1 : hsv.valor,
-    })
+    const nuevo = { ...hsv, ...parcial }
+    recordado.current = nuevo
+    alCambiar(aRGB(nuevo))
   }
 
   const svDesdePuntero = (e: PE<HTMLDivElement>) => {
     const caja = plano.current?.getBoundingClientRect()
     if (caja === undefined) return
-    mover({
-      saturacion: pinza((e.clientX - caja.left) / caja.width, 0, 1),
-      valor: pinza(1 - (e.clientY - caja.top) / caja.height, 0, 1),
-    })
+    mover(svDesdePlano(e.clientX, e.clientY, caja))
   }
 
   /**
    * Arrastrar con captura del puntero.
    *
-   * 🔴 `setPointerCapture` no es adorno: sin el, sacar el dedo del circulo corta
-   *    el arrastre justo cuando se busca un tono en el borde, que es lo normal.
+   * 🔴 `setPointerCapture` no es adorno: sin él, sacar el dedo del cuadro corta
+   *    el arrastre justo cuando se busca un valor en el borde, que es lo normal.
    *    Emil, literal: «once dragging starts, set the element to capture all
-   *    pointer events».
+   *    pointer events». Por eso `svDesdePlano` recorta: llegan coordenadas de
+   *    fuera de la caja constantemente, y es lo que se quiere.
    */
-  const arrastrar = (aplicar: (e: PE<HTMLDivElement>) => void) => ({
+  const arrastrar = {
     onPointerDown: (e: PE<HTMLDivElement>) => {
       if (desactivada) return
       e.currentTarget.setPointerCapture(e.pointerId)
-      aplicar(e)
+      svDesdePuntero(e)
     },
     onPointerMove: (e: PE<HTMLDivElement>) => {
-      if (e.currentTarget.hasPointerCapture(e.pointerId)) aplicar(e)
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) svDesdePuntero(e)
     },
-  })
-
-  const anguloMarca = (anguloDeTono(hsv.tono) * Math.PI) / 180
+  }
 
   return (
     <div className="flex flex-wrap items-start gap-4">
-      {/* ── El tono ──────────────────────────────────────────────────────── */}
-      <div
-        ref={rueda}
-        role="slider"
-        tabIndex={desactivada ? -1 : 0}
-        aria-label="Tono del color"
-        aria-valuemin={0}
-        aria-valuemax={359}
-        aria-valuenow={Math.round(hsv.tono)}
-        aria-valuetext={`tono ${Math.round(hsv.tono)} grados`}
-        aria-disabled={desactivada}
-        onKeyDown={(e) => {
-          const paso = e.shiftKey ? PASO_GRANDE : PASO
-          if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
-            e.preventDefault()
-            tonoRecordado.current = (hsv.tono + paso) % 360
-            mover({ tono: tonoRecordado.current })
-          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
-            e.preventDefault()
-            tonoRecordado.current = (hsv.tono - paso + 360) % 360
-            mover({ tono: tonoRecordado.current })
-          }
-        }}
-        {...arrastrar(tonoDesdePuntero)}
-        className={`rueda-tono relative h-[124px] w-[124px] shrink-0 touch-none focus-ring ${
-          desactivada ? 'opacity-40' : 'cursor-crosshair'
-        }`}
-      >
-        <span
-          className="marca-color"
-          style={{
-            left: `${50 + 50 * RADIO_MARCA * Math.sin(anguloMarca)}%`,
-            top: `${50 - 50 * RADIO_MARCA * Math.cos(anguloMarca)}%`,
+      <div className="min-w-[15rem] flex-1">
+        {/* ── El tono ────────────────────────────────────────────────────── */}
+        <label htmlFor="tono-led" className="microetiqueta mb-1.5 block">tono</label>
+        <input
+          id="tono-led"
+          type="range"
+          min={0}
+          max={359}
+          step={PASO}
+          value={Math.round(hsv.tono)}
+          disabled={desactivada}
+          onChange={(e) => {
+            const tono = Number(e.target.value)
+            /*
+             * 🔴 Si el color es negro o gris, mover el tono no cambiaría NADA —el
+             *    RGB sale igual— y el control parecería roto. Se le da intensidad
+             *    y brillo mínimos para que el gesto tenga efecto visible.
+             */
+            mover({
+              tono,
+              saturacion: hsv.saturacion === 0 ? 1 : hsv.saturacion,
+              valor: hsv.valor === 0 ? 1 : hsv.valor,
+            })
           }}
+          aria-valuetext={`tono ${Math.round(hsv.tono)} grados`}
+          className="deslizador tira-tono focus-ring h-6 w-full rounded-md disabled:opacity-40"
         />
+
+        {/* ── La intensidad y el brillo ──────────────────────────────────── */}
+        <div className="mt-3 flex items-start gap-3">
+          <div
+            ref={plano}
+            role="slider"
+            tabIndex={desactivada ? -1 : 0}
+            aria-label="Intensidad y brillo del color"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(hsv.saturacion * 100)}
+            aria-valuetext={
+              `intensidad ${Math.round(hsv.saturacion * 100)} %, `
+              + `brillo ${Math.round(hsv.valor * 100)} %`
+            }
+            aria-disabled={desactivada}
+            onKeyDown={(e) => {
+              const paso = (e.shiftKey ? PASO_GRANDE : PASO) / 100
+              const mapa: Record<string, Partial<typeof hsv>> = {
+                ArrowRight: { saturacion: pinza(hsv.saturacion + paso, 0, 1) },
+                ArrowLeft: { saturacion: pinza(hsv.saturacion - paso, 0, 1) },
+                ArrowUp: { valor: pinza(hsv.valor + paso, 0, 1) },
+                ArrowDown: { valor: pinza(hsv.valor - paso, 0, 1) },
+              }
+              const cambio = mapa[e.key]
+              if (cambio !== undefined) { e.preventDefault(); mover(cambio) }
+            }}
+            /*
+              🔴 UNA PROPIEDAD PERSONALIZADA, NO UN COLOR. El modo oscuro forzado
+                 reescribe `background-color`, `color`, `border-color` y
+                 `background-image` del atributo `style` antes de hidratar —es lo
+                 que `PanelLeds` midió en Edge—, y `--tono-grados` no es ninguna
+                 de las cuatro.
+            */
+            {...arrastrar}
+            style={{ '--tono-grados': `${hsv.tono}deg` } as CSSProperties}
+            className={`plano-sv relative h-[124px] w-[124px] shrink-0 touch-none rounded-md border border-border focus-ring ${
+              desactivada ? 'opacity-40' : 'cursor-crosshair'
+            }`}
+          >
+            <span
+              className="marca-color"
+              style={{ left: `${hsv.saturacion * 100}%`, top: `${(1 - hsv.valor) * 100}%` }}
+            />
+          </div>
+
+          <p className="max-w-[13rem] text-[11px] leading-snug text-muted-foreground">
+            El cuadro va de gris (izquierda) a color puro (derecha), y de negro (abajo) a brillo
+            máximo (arriba). Con el teclado, las flechas mueven de uno en uno y con Mayúsculas de
+            diez en diez.
+          </p>
+        </div>
       </div>
 
-      {/* ── La intensidad y el brillo ────────────────────────────────────── */}
-      <div
-        ref={plano}
-        role="slider"
-        tabIndex={desactivada ? -1 : 0}
-        aria-label="Intensidad y brillo del color"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(hsv.saturacion * 100)}
-        aria-valuetext={
-          `intensidad ${Math.round(hsv.saturacion * 100)} %, `
-          + `brillo ${Math.round(hsv.valor * 100)} %`
-        }
-        aria-disabled={desactivada}
-        onKeyDown={(e) => {
-          const paso = (e.shiftKey ? PASO_GRANDE : PASO) / 100
-          const mapa: Record<string, Partial<typeof hsv>> = {
-            ArrowRight: { saturacion: pinza(hsv.saturacion + paso, 0, 1) },
-            ArrowLeft: { saturacion: pinza(hsv.saturacion - paso, 0, 1) },
-            ArrowUp: { valor: pinza(hsv.valor + paso, 0, 1) },
-            ArrowDown: { valor: pinza(hsv.valor - paso, 0, 1) },
-          }
-          const cambio = mapa[e.key]
-          if (cambio !== undefined) { e.preventDefault(); mover(cambio) }
-        }}
-        /*
-          🔴 UNA PROPIEDAD PERSONALIZADA, NO UN COLOR. El modo oscuro forzado
-             reescribe `background-color`, `color`, `border-color` y
-             `background-image` del atributo `style` antes de hidratar —es lo que
-             `PanelLeds` midio en Edge—, y `--tono-grados` no es ninguna de las
-             cuatro. Precedente vivo: `MarcoRobot.tsx:257` inyecta
-             `--tono-seccion` en SSR y nunca ha dado ese aviso.
-             📌 Y aunque lo diera: el primer pintado es constante, asi que no hay
-                nada que discrepar. Esto es la segunda capa, no la unica.
-        */
-        /*
-          🔴 ESTO FALTABA, y no era un aviso de lint: sin el, el plano solo
-             respondia al TECLADO. Con el raton no se podia elegir ni intensidad
-             ni brillo — o sea que la mitad del selector estaba muerta, con la
-             rueda al lado funcionando y sin ningun error por ninguna parte.
-             Lo delato `eslint` («'svDesdePuntero' is assigned a value but never
-             used»), no `tsc` ni el navegador: una funcion sin usar compila.
-        */
-        {...arrastrar(svDesdePuntero)}
-        style={{ '--tono-grados': `${hsv.tono}deg` } as CSSProperties}
-        className={`plano-sv relative h-[124px] w-[124px] shrink-0 touch-none rounded-md border border-border focus-ring ${
-          desactivada ? 'opacity-40' : 'cursor-crosshair'
-        }`}
-      >
-        <span
-          className="marca-color"
-          style={{ left: `${hsv.saturacion * 100}%`, top: `${(1 - hsv.valor) * 100}%` }}
-        />
-      </div>
-
-      {/* ── La paleta del laboratorio ────────────────────────────────────── */}
+      {/* ── La paleta de identificación ──────────────────────────────────── */}
       <div className="min-w-[8.5rem]">
-        <p className="microetiqueta mb-1.5">Paleta del laboratorio</p>
-        <div className="grid w-fit grid-cols-4 gap-1.5">
-          {PALETA.map((p) => (
+        <p className="microetiqueta mb-1.5">Para distinguir un robot</p>
+        <div className="grid w-fit grid-cols-3 gap-1.5">
+          {PALETA_IDENTIFICACION.map((p) => (
             <button
               key={p.nombre}
               type="button"
@@ -263,8 +207,17 @@ export function RuedaColor({ color, alCambiar, desactivada = false }: RuedaColor
             </button>
           ))}
         </div>
+        {/*
+          🔴 ERA LA PALETA DEL MURO, Y ESA ES UNA PALETA DE PANTALLA. Sus ocho
+             tonos están validados como TINTA SOBRE PAPEL: cinco por debajo del
+             67 % de brillo, dos a 16° de tono —el mismo naranja como luz— y un
+             agujero de 118° sin verde. Como fuente de luz fallaban. Es la misma
+             familia que el sensor de color de este proyecto: **reflejar y emitir
+             no son lo mismo.**
+        */}
         <p className="mt-1.5 max-w-[10rem] text-[11px] leading-snug text-muted-foreground">
-          Son los colores del muro. Elegir uno aquí no cambia lo que significan allí.
+          Ocho tonos repartidos y a tope de brillo, más el blanco. Elegidos para verse desde el
+          otro lado del aula, no para leerse en papel.
         </p>
       </div>
     </div>

@@ -41,20 +41,20 @@ import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { MuestraDeColor } from '@/componentes/robot/MuestraDeColor'
 import { RuedaColor } from '@/componentes/robot/RuedaColor'
+import {
+  GRUPOS, LED_BAJOS, PRESETS, describirSeleccion, peticionApagarTodo, peticionPara,
+} from '@/lib/robot/grupos_led'
+import { conMemoria } from '@/lib/interfaz/selector_color'
 
-const SERVICIO = '/set_led_rgb'
-
-/**
- * `led_id` 11 es `all_lights`, verificado en la tabla `LEDS` del driver:
- * headlight_left(0) · headlight_right(1) · brakelight_left(2) · brakelight_right(3) ·
- * status_indication_left(4) · status_indication_right(5) · battery_door_front(6) ·
- * battery_door_rear(7) · power_button_front(8) · power_button_rear(9) ·
- * undercarriage_white(10) · all_lights(11).
+/*
+ * 🔴 AQUÍ VIVÍAN `SERVICIO = '/set_led_rgb'` Y `TODAS_LAS_LUCES = 11`, Y SE VAN.
  *
- * 📝 `all_lights` va el ULTIMO a proposito en el driver, para que el led_id 0 sea
- * una luz concreta y no «todas» -una sorpresa desagradable para quien pruebe.
+ * Este componente ya no elige el servicio ni el `led_id`: los decide
+ * `peticionPara()` a partir de lo que haya marcado, y eso es lógica pura CON
+ * PRUEBAS. Dejar aquí las constantes sería una segunda fuente de verdad sobre lo
+ * que sale por el cable — que es la forma exacta del defecto que este mismo
+ * repositorio acaba de cerrar en el teclado de conducir.
  */
-const TODAS_LAS_LUCES = 11
 
 interface Orden {
   nombre: string
@@ -74,7 +74,7 @@ interface Orden {
 }
 
 const ORDENES: readonly Orden[] = [
-  { nombre: 'Apagar', rojo: 0, verde: 0, azul: 0, muestra: 'bg-muted' },
+  { nombre: 'Apagar todo', rojo: 0, verde: 0, azul: 0, muestra: 'bg-muted' },
   { nombre: 'Rojo', rojo: 255, verde: 0, azul: 0, muestra: 'bg-[#ff0000]' },
   { nombre: 'Verde', rojo: 0, verde: 255, azul: 0, muestra: 'bg-[#00ff00]' },
   { nombre: 'Azul', rojo: 0, verde: 0, azul: 255, muestra: 'bg-[#0000ff]' },
@@ -157,6 +157,29 @@ export function PanelLeds() {
    */
   const [hexEscrito, setHexEscrito] = useState<string | null>(null)
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 👤 QUÉ GRUPOS SE PINTAN (2026-08-16, pedido por el usuario)
+   * ═══════════════════════════════════════════════════════════════════════════
+   * *«dale un selector para elegir LEDs puntuales, o dos o tres… o todos»*.
+   *
+   * 🔴 Hasta hoy esta pantalla mandaba **siempre** a `all_lights`: ofrecía uno de
+   *    doce grupos, y los diez normales —faros, luces de freno, indicadores,
+   *    puerta de la batería, botón de encendido— existían en el robot, estaban en
+   *    la lista blanca y no había forma de llegar a ellos.
+   *
+   * 📌 Arranca con los diez marcados: quien no toque el selector se encuentra
+   *    exactamente el comportamiento de antes.
+   *
+   * 🔴 Y los presets NO son un estado aparte: fijan esta lista, que sigue siendo
+   *    la única fuente de verdad. Así «Faros» y luego destildar uno es un gesto
+   *    natural y no un modo del que haya que salir.
+   */
+  const [seleccion, setSeleccion] = useState<number[]>(() => GRUPOS.map((g) => g.id))
+  const alternar = (id: number) => setSeleccion(
+    (s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]),
+  )
+
   /**
    * Pone un color conservando el tono cuando el nuevo no tiene ninguno.
    *
@@ -164,18 +187,38 @@ export function PanelLeds() {
    * gris no tiene angulo— y aceptarlo moveria el marcador al rojo sin que nadie
    * tocara la rueda. `RGB -> HSV` no es inyectiva, y aqui es donde se nota.
    */
-  const ponerColor = (c: RGB) => {
-    const nuevo = aHSV(c)
-    setHsv({ ...nuevo, tono: nuevo.saturacion === 0 ? hsv.tono : nuevo.tono })
-  }
+  /*
+   * 🔴🔴 CONSERVABA EL TONO Y **NO LA SATURACIÓN**, y eso era un defecto
+   *      reproducido: pulsar «Apagar» hacía saltar el marcador del plano de
+   *      derecha a izquierda solo, y después el teclado únicamente producía
+   *      grises hasta que alguien tocara el eje X. El mismo fallo que este
+   *      componente dice existir para evitar, cometido en el otro eje.
+   *      La regla vive ahora en `conMemoria`, con su prueba.
+   */
+  const ponerColor = (c: RGB) => setHsv((antes) => conMemoria(antes, aHSV(c)))
 
-  const enviarColor = async (c: RGB, nombre: string) => {
+  const enviarColor = async (c: RGB, nombre: string, todos = false) => {
     setEnviando(true)
     const hora = horaCorta(Date.now())
     try {
-      const bruta = await transporte.llamar(SERVICIO, {
-        led_id: TODAS_LAS_LUCES, red: c.rojo, green: c.verde, blue: c.azul,
-      })
+      /*
+       * 🔴 EL SERVICIO LO DECIDE `peticionPara`, no este componente: un grupo va
+       *    por `/set_led_rgb`, los diez COLAPSAN a `all_lights` —una llamada en
+       *    vez de diez idas y vueltas al puerto serie— y lo de en medio va por
+       *    `/set_multiple_leds`. Esa decisión es lógica pura y está probada;
+       *    aquí solo se ejecuta.
+       */
+      const peticion = todos ? peticionApagarTodo() : peticionPara(seleccion, c)
+      if (peticion === null) {
+        setResultado({
+          hora,
+          cabecera: 'no hay ningún grupo elegido',
+          detalle: 'Marca al menos un grupo de luces, o usa «Apagar todo».',
+          malo: true,
+        })
+        return
+      }
+      const bruta = await transporte.llamar(peticion.servicio, peticion.cuerpo)
       const { success, message } = leerRespuestaServicio(bruta)
       setResultado(
         success === false
@@ -183,7 +226,7 @@ export function PanelLeds() {
           : {
               hora,
               cabecera: `${ORDEN_ENVIADA}: ${nombre}`,
-              detalle: `${textoDeConfirmacion(SERVICIO)}${message === null ? '' : ` El robot añadió: «${message}».`}`,
+              detalle: `${textoDeConfirmacion(peticion.servicio)} ${describirSeleccion(todos ? GRUPOS.map((g) => g.id) : seleccion)}.${message === null ? '' : ` El robot añadió: «${message}».`}`,
               malo: false,
             },
       )
@@ -209,12 +252,17 @@ export function PanelLeds() {
            control. `Tarjeta.pie` le da su propia linea y el relleno de la
            columna del titulo — que es para lo que existe ese slot.
       */
+      /*
+        🔴 ESTE PIE DECÍA «estas órdenes van a `all_lights`», y desde que hay
+           selector es falso: van a un grupo, a una lista o a `all_lights` según
+           lo que esté marcado. Y lo del LED de los bajos se mudó a la fila
+           desactivada del selector, que es donde se nota su ausencia.
+      */
       pie={
         <p>
-          Estas órdenes van a <code>all_lights</code>. Aquí no aparece el LED blanco de los bajos
-          (<code>led_id 10</code>) aunque el robot lo acepte: se midió que responde igual que los
-          demás y no se enciende —lo controla <code>enable_color_detection</code>, que es otro
-          comando—. Es el motivo de que esta pantalla nunca diga más que «{ORDEN_ENVIADA}».
+          Esta pantalla nunca dice más que «{ORDEN_ENVIADA}», y ese es el techo de lo que puede
+          saber: el servicio confirma que no lanzó, no que la luz se encendiera. El único testigo
+          es tu ojo, mirando el robot.
         </p>
       }
     >
@@ -240,7 +288,16 @@ export function PanelLeds() {
               // seria un salto sin causa.
               setHexEscrito(null)
               ponerColor(c)
-              void enviarColor(c, o.nombre.toLowerCase())
+              /*
+               * 🔴 «APAGAR TODO» IGNORA LA SELECCIÓN, y es deliberado. Su caso de
+               *    uso número uno es apagar de golpe un robot que estorba —está
+               *    medido que una luz olvidada aguanta 14 min 38 s encendida—, y
+               *    con selección apagaría solo lo marcado: quien acabe de elegir
+               *    dos faros se quedaría con ocho encendidos creyendo que apagó.
+               *    Apagar es una salida de emergencia, no una operación sobre la
+               *    selección actual.
+               */
+              void enviarColor(c, o.nombre.toLowerCase(), o.nombre === 'Apagar todo')
             }}
             className="inline-flex items-center gap-2 border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
           >
@@ -251,6 +308,92 @@ export function PanelLeds() {
             {o.nombre}
           </button>
         ))}
+      </div>
+
+      {/* ── QUÉ LUCES ─────────────────────────────────────────────────────── */}
+      <div className="mt-5 border-t border-[rgb(var(--filo)/0.09)] px-5 pt-4">
+        <p className="microetiqueta">Qué luces</p>
+
+        {/*
+          Los presets fijan la selección; no son un modo. Por eso no llevan
+          `aria-pressed`: no hay un estado «preset activo» que mantener, solo un
+          atajo para marcar casillas.
+        */}
+        <div className="mt-2 flex flex-wrap gap-2">
+          {PRESETS.map((pr) => (
+            <button
+              key={pr.nombre}
+              type="button"
+              disabled={!conectado || enviando}
+              onClick={() => setSeleccion([...pr.ids])}
+              className="pulsable focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] px-3 py-1.5 text-[13px] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              {pr.nombre}
+            </button>
+          ))}
+        </div>
+
+        {/*
+          🔴 DOS COLUMNAS Y NO TRES, y no es gusto: son DIEZ grupos en cinco
+             parejas físicas. Con tres columnas sobran dos celdas y `.rejilla`
+             —que dibuja separadores entre celdas— las pintaba como **dos bloques
+             grises vacíos** al final de la lista. Se vio en la captura.
+             Con dos, cada fila es una pareja: izquierdo/derecho o delante/detrás.
+        */}
+        <div className="rejilla mt-3 sm:grid-cols-2">
+          {GRUPOS.map((g) => (
+            <label
+              key={g.id}
+              className="flex cursor-pointer items-center gap-2.5 px-4 py-2.5 text-[13px]"
+            >
+              <input
+                type="checkbox"
+                checked={seleccion.includes(g.id)}
+                disabled={!conectado || enviando}
+                onChange={() => alternar(g.id)}
+                className="focus-ring h-4 w-4 shrink-0 accent-foreground"
+              />
+              <span>
+                {g.nombre}
+                {g.lado !== null && <span className="text-muted-foreground"> · {g.lado}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+
+        {/*
+          ═══════════════════════════════════════════════════════════════════
+          🔴 EL LED DE LOS BAJOS SE ENSEÑA DESACTIVADO, Y NO ES UN CONTROL
+          ═══════════════════════════════════════════════════════════════════
+          Es el ÚNICO camino de esta interfaz que produce un `success = true`
+          MEDIDO sin efecto: el testigo de luz dio 0,0 contra 2,497 con los
+          demás. Ofrecerlo activo sería regalar el fallo.
+
+          Y esconderlo tampoco vale ya: con un selector delante, quien haya
+          leído la tabla del SDK contará once y buscará el que falta. El pie de
+          la tarjeta lo explicaba, pero **explicaba una ausencia lejos de donde
+          se nota**. Aquí la explicación vive donde está la trampa.
+
+          ⚠️ La objeción es buena y conviene decirla: un control permanentemente
+             desactivado se parece a «configuración que existe y no hace nada»,
+             que es un patrón que este proyecto persigue. La diferencia es que
+             esto **no es un control, es una ausencia rotulada** — no se puede
+             pulsar, así que no se puede provocar el `success` vacío.
+        */}
+        <div className="mt-2 flex items-start gap-2.5 px-4 text-[13px] text-muted-foreground">
+          <span aria-hidden="true" className="mt-[3px]">⊘</span>
+          <p className="max-w-prose">
+            <strong>Luz blanca de los bajos</strong> (<code>led_id {LED_BAJOS}</code>) — desde aquí
+            no se enciende. Está medido que responde <code>success</code> y deja el LED apagado:
+            no lo controla este grupo sino <code>enable_color_detection</code>, que es el
+            interruptor de modo del <strong>sensor de color</strong>, en la pestaña Medidas.
+          </p>
+        </div>
+
+        <p className="mt-3 max-w-prose text-[12px] leading-relaxed text-muted-foreground">
+          Se enviará a <strong>{describirSeleccion(seleccion)}</strong>. Marcar los diez y marcar
+          «Todas» es lo mismo para el robot: se manda en una sola llamada en vez de diez.
+        </p>
       </div>
 
       {/* ── CUALQUIER OTRO COLOR ──────────────────────────────────────────── */}
@@ -334,13 +477,24 @@ export function PanelLeds() {
         </p>
       )}
 
-      {resultado !== null && (
-        <div className="mt-3 px-5 pb-4">
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        🔴 `aria-live` Y EL CONTENEDOR SIEMPRE MONTADO
+        ═══════════════════════════════════════════════════════════════════════
+        El resultado es **el único retorno** de esta acción: el efecto es físico y
+        está al otro lado de la sala. `Aviso` solo pone `role="alert"` cuando el
+        nivel es `ERROR`, y el éxito va como `ATENCION` — o sea sin rol. Peor: el
+        contenedor se montaba con el resultado, y **una región viva tiene que
+        existir ANTES de que llegue el contenido** o el lector no la anuncia.
+        Así que ahora está siempre, vacía mientras no haya nada que decir.
+      */}
+      <div className="mt-3 px-5 pb-4 empty:hidden" role="status" aria-live="polite">
+        {resultado !== null && (
           <Aviso nivel={resultado.malo ? 'ERROR' : 'ATENCION'} titulo={`${resultado.cabecera} · ${resultado.hora}`}>
             {resultado.detalle}
           </Aviso>
-        </div>
-      )}
+        )}
+      </div>
     </Tarjeta>
   )
 }

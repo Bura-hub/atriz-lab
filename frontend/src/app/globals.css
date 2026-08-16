@@ -1625,13 +1625,40 @@
    *    espectro siempre es el mismo. Lo unico que se mueve es el marcador, que
    *    es geometria. Eso deja la superficie de hidratacion en casi nada.
    */
-  .rueda-tono {
-    background:
-      radial-gradient(circle closest-side,
-        rgb(255 255 255) 0%, rgb(255 255 255 / 0) 72%),
-      conic-gradient(from 90deg,
-        #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
-    border-radius: 50%;
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 LA RUEDA SE VA, Y NO POR GUSTO: MENTÍA EN LAS DOS DIRECCIONES
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Esto era un `conic-gradient` con un `radial-gradient` blanco encima hasta el
+   * 72 %, o sea **un disco HSV: la forma universal de decir «el radio es la
+   * saturación»**. Y el manejador del componente **descartaba el radio**:
+   * `Math.hypot` no aparecía en el fichero.
+   *
+   *   · el 51,8 % del área del disco (0,72²) era rampa de saturación **no
+   *     seleccionable**;
+   *   · y el marcador iba clavado en el 84 % del radio, así que al bajar la
+   *     saturación con el plano **la rueda seguía poniendo su punto en el borde
+   *     saturado**: tampoco dibujaba el estado que tenía.
+   *
+   * O sea: no aceptaba el gesto que dibujaba, y no dibujaba el estado que tenía.
+   *
+   * → LA SUSTITUYE UNA TIRA. Y el argumento decisivo no es estético: una tira es
+   *   un control de UN eje, así que puede ser un `<input type="range">` NATIVO —
+   *   teclado, Inicio/Fin, RePág/AvPág, lector de pantalla y `forced-colors`
+   *   **sin escribir una línea de ARIA**. La rueda era un `div` con un
+   *   `role="slider"` hecho a mano.
+   *   Y la resolución es uniforme: 360°/124 px = **2,9°/px** en todo el
+   *   recorrido, contra los **11,5°/px** que quedaban cerca del centro de la
+   *   rueda — justo la zona que «arreglar el radio» habría abierto.
+   *
+   * 📌 Sigue siendo CSS y sigue yendo al compositor: el argumento contra el
+   *    `<canvas>` de más abajo se respeta entero.
+   */
+  .tira-tono {
+    background: linear-gradient(
+      to right,
+      #f00 0%, #ff0 16.666%, #0f0 33.333%, #0ff 50%, #00f 66.666%, #f0f 83.333%, #f00 100%
+    );
   }
 
   /*
