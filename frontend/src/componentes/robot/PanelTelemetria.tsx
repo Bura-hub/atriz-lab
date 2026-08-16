@@ -19,8 +19,6 @@ import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { Bateria } from './Bateria'
 import { EstadoMotores } from './EstadoMotores'
 import { PanelColor } from './PanelColor'
-import { PanelLeds } from './PanelLeds'
-import { PanelOrigenOdometria } from './PanelOrigenOdometria'
 import { useMuestreo } from './useMuestreo'
 
 /** 7792 ticks por metro, contrastados contra cinta metrica. */
@@ -421,23 +419,22 @@ export function PanelTelemetria() {
       </Grupo>
 
       {/*
-        La tercera banda no es una medida: es lo unico de esta pantalla que SALE
-        hacia el robot. Separarla con su rotulo dice de un vistazo que ahi se
-        pulsa, no se lee.
+        ═══════════════════════════════════════════════════════════════════════
+        🔴 AQUI VIVIA «SALIDAS DIRECTAS», Y SE FUE A SU PROPIA PESTAÑA
+        ═══════════════════════════════════════════════════════════════════════
+        Eran los LEDs y el origen de la odometria, bajo un rotulo que decia
+        «aqui no se lee: sale cuando pulsas». La separacion era correcta y **el
+        sitio no**: quedaban tras un scroll de veinticinco datos, al final de la
+        pantalla mas larga de la aplicacion. Una zona bien rotulada a la que no
+        se llega es una zona que no existe.
+
+        👤 Decision del usuario, 2026-08-16: pestaña propia («Acciones sobre el
+           robot»), que ademas encaja con la direccion — en un frontal de banco
+           las SALIDAS van en su propia zona, nunca entre los indicadores.
+
+        📌 Y esta pantalla gana lo que de verdad es: **solo se mira**. Ni un
+           boton que mande nada al robot.
       */}
-      <Grupo
-        titulo="Salidas directas"
-        fuente="aquí no se lee: sale cuando pulsas, y enciende luces de verdad"
-      >
-        {/* Dos salidas, dos naturalezas: los LEDs no se pueden comprobar desde
-            aquí —`success` y el efecto están medidos separándose—, y el origen
-            de la odometría SÍ, porque `/odom` lo publica. Van juntas porque las
-            dos salen, y separadas en tarjetas porque prometen cosas distintas. */}
-        <div className="grid items-start gap-4 lg:grid-cols-2">
-          <PanelLeds />
-          <PanelOrigenOdometria />
-        </div>
-      </Grupo>
     </div>
   )
 }

@@ -97,7 +97,7 @@ function Contenido({ id, alResumir }: { id: number; alResumir?: AlResumir }) {
   return (
     <BaldosaRobot
       baldosa={baldosa}
-      href={`/robot/${id}/telemetria`}
+      href={`/robot/${id}/medidas`}
       etiqueta={`rvr-${String(id).padStart(2, '0')}`}
     />
   )

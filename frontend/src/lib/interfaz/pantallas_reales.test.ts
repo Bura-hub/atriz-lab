@@ -87,16 +87,16 @@ const RUTAS: readonly [string, string][] = [
   ['portada', '/'],
   ['flota', '/flota'],
   ['cuaderno', '/cuaderno'],
-  ['taller', `/robot/${HOST}`],
-  ['telemetría', `/robot/${HOST}/telemetria`],
+  ['programar', `/robot/${HOST}`],
+  ['medidas', `/robot/${HOST}/medidas`],
   ['conducir', `/robot/${HOST}/conducir`],
-  ['LIDAR', `/robot/${HOST}/lidar`],
-  ['no obedece', `/robot/${HOST}/no-obedece`],
+  ['lo que ve', `/robot/${HOST}/lo-que-ve`],
+  ['si no obedece', `/robot/${HOST}/no-obedece`],
   // Añadida el 2026-08-06 con la pantalla. Una pantalla nueva que esta prueba no
   // recorre es un hueco: sus comprobaciones son de AUSENCIA, asi que lo que no
   // se visita no se vigila.
   ['navegar', `/robot/${HOST}/navegar`],
-  ['diagnóstico', `/robot/${HOST}/diagnostico`],
+  ['acciones', `/robot/${HOST}/acciones`],
 ]
 
 
@@ -195,7 +195,7 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
      * creer que esto ya funciona?»; ahora es «¿alguien podria creer que esto
      * hace algo que no hace?».
      */
-    const t = informes.get('taller')!
+    const t = informes.get('programar')!
 
     // 1 · El editor existe y SE PUEDE ESCRIBIR. Antes se exigia lo contrario.
     expect(t.html).toMatch(/<textarea/)
@@ -261,7 +261,7 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
      * muda daria verde entero — que es exactamente la familia de fallo que
      * este proyecto persigue: la comprobacion muerta que cuenta como aprobada.
      */
-    const tele = informes.get('telemetría')!
+    const tele = informes.get('medidas')!
     const marcas = marcasDe(tele.html)
     expect(marcas.length, 'la telemetria no trajo ni un <data value>').toBeGreaterThan(0)
 

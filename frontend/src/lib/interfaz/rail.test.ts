@@ -88,7 +88,7 @@ describe('el raíl', () => {
 
   describe('entradaDeRuta', () => {
     it('encuentra la pestaña de un robot y la general', () => {
-      expect(entradaDeRuta('/robot/1/lidar')?.texto).toBe('LIDAR')
+      expect(entradaDeRuta('/robot/1/lo-que-ve')?.texto).toBe('Lo que ve')
       expect(entradaDeRuta('/flota')?.texto).toBe('Flota')
     })
 
@@ -104,7 +104,7 @@ describe('el raíl', () => {
       // Quien decide si un segmento nombra un robot es `interpretarIdRobot`, y
       // la ruta responde 404 antes de llegar a pintarse. Duplicar esa regla aqui
       // seria tener dos sitios donde cambiarla.
-      expect(entradaDeRuta('/robot/999/lidar')?.texto).toBe('LIDAR')
+      expect(entradaDeRuta('/robot/999/lo-que-ve')?.texto).toBe('Lo que ve')
     })
   })
 })

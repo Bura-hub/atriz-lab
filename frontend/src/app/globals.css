@@ -93,7 +93,20 @@
   --seccion-porque: 166 78 8;     /* ámbar quemado */
   --seccion-telemetria: 13 108 84;/* verde profundo */
   --seccion-lidar: 39 78 176;     /* azul */
-  --seccion-diagnostico: 130 44 96; /* ciruela */
+  /*
+   * 🔴 ERA `--seccion-diagnostico`, Y SE RENOMBRA EN VEZ DE AÑADIR UN DOCE.
+   *
+   * La pestaña «Diagnóstico» se fusionó con «Si no obedece» el 2026-08-16 —las
+   * dos contestaban la misma pregunta desde dos sitios— y a la vez nació
+   * «Acciones». Reutilizar el hue que quedaba libre es lo correcto y no es
+   * pereza: este fichero avisa, tres tokens más arriba, de que **la rueda está
+   * llena** y de que el margen más estrecho son 30°. Inventar un doceavo
+   * obligaría a resolver por VALOR, y aquí no hacía falta.
+   *
+   * ⚠️ El valor no se toca: 130 44 96 ya está validado contra los otros diez por
+   *    la prueba de colisiones, y blanco encima contrasta.
+   */
+  --seccion-acciones: 130 44 96; /* ciruela */
   /*
    * Navegar. Magenta profundo (~294°), el hueco que quedaba entre el violeta del
    * taller (262°) y la ciruela del diagnóstico (324°): 30° de separación con

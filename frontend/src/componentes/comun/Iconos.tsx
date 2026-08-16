@@ -109,11 +109,25 @@ export function IconoNavegar({ className }: PropsIcono) {
   )
 }
 
-/** Diagnostico: un pulso con una lupa implicita. Ritmos y antiguedades. */
-export function IconoDiagnostico({ className }: PropsIcono) {
+/*
+ * 🔴 AQUI VIVIA `IconoDiagnostico` —un pulso—, Y SE FUE CON SU PESTAÑA
+ *    (2026-08-16). «Diagnostico» se fusiono con «Si no obedece»: las dos
+ *    contestaban la misma pregunta —«algo va mal, ¿que?»— desde dos sitios, una
+ *    mirando el robot y otra el enlace, y quien tiene el problema no sabe cual
+ *    de los dos es ANTES de mirar. El pulso se borra en vez de dejarse «por si
+ *    acaso»: un icono sin consumidor es la misma familia que una clase CSS sin
+ *    consumidor, y este repositorio lleva cinco.
+ */
+
+/**
+ * Acciones: una salida. Un mando con su vastago, como el de un panel de banco —
+ * es lo unico de la aplicacion que SALE hacia el robot sin ser conducir.
+ */
+export function IconoAcciones({ className }: PropsIcono) {
   return (
     <svg {...base} className={className}>
-      <path d="M3 12h3.5l2-5 3 10 2.5-5H21" />
+      <circle cx="12" cy="12" r="7" />
+      <path d="M12 5v4" />
     </svg>
   )
 }

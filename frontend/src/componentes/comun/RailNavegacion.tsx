@@ -38,7 +38,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
 import {
-  IconoConducir, IconoCuaderno, IconoDiagnostico, IconoEntrar, IconoFlota, IconoLidar,
+  IconoAcciones, IconoConducir, IconoCuaderno, IconoEntrar, IconoFlota, IconoLidar,
   IconoNavegar, IconoNoObedece, IconoTaller, IconoTelemetria, IconoUsuarios,
   PropsIcono,
 } from './Iconos'
@@ -79,20 +79,55 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
      * dos entradas más abajo para Navegar. Dejar la coletilla diría que no hay
      * nada, y lo hay.
      */
-    { href: base, texto: 'Taller', Icono: IconoTaller, color: '--seccion-taller' },
-    { href: `${base}/conducir`, texto: 'Conducir', Icono: IconoConducir, color: '--seccion-conducir' },
-    { href: `${base}/no-obedece`, texto: 'Por qué no obedece', Icono: IconoNoObedece, color: '--seccion-porque' },
-    { href: `${base}/telemetria`, texto: 'Telemetría', Icono: IconoTelemetria, color: '--seccion-telemetria' },
-    // 🔴 El LIDAR va en su PROPIA pestaña, y eso no es organizacion: es coste.
-    //    `/scan` es el 83 % del trafico de un robot, asi que su suscripcion
-    //    tiene que morir al salir.
-    { href: `${base}/lidar`, texto: 'LIDAR', Icono: IconoLidar, color: '--seccion-lidar' },
     /*
-     * 🔴 «Navegar» va DESPUES del LIDAR y ANTES del diagnostico, no al final.
-     *    El orden de estas pestañas es el del documento: primero lo que se hace
-     *    con el robot (conducir, navegar), luego lo que se mira (telemetria,
-     *    LIDAR) y al final por que falla. Navegar es una ACCION, y ponerla tras
-     *    «Diagnostico» la habria dejado leyendose como un apendice.
+     * 🔴 «Programar» y no «Taller». Un taller es un sitio; esta pestaña es una
+     *    ACCIÓN, como las otras seis. Y era el único rótulo que no decía qué se
+     *    hace dentro: quien busca dónde escribir su programa no busca «Taller».
+     */
+    { href: base, texto: 'Programar', Icono: IconoTaller, color: '--seccion-taller' },
+    /*
+     * 🔴 EL BARRIDO SE EXPLICA Y SE GOBIERNA AQUÍ, y es donde importa: sin
+     *    `/scan` el `collision_monitor` bloquea el movimiento — medido, 0,0 cm
+     *    contra 9,9 del control. Un alumno que pulsa una flecha y no ve nada
+     *    tiene la respuesta en esta misma pantalla.
+     *
+     * ⚠️ ESCRIBÍ AQUÍ que se encendería «SOLO aquí», contando el botón de la
+     *    pestaña del LIDAR como una duplicación. **Al ir a quitarlo resultó que
+     *    no lo es**: aquel es un remedio de ESTADO VACÍO —sales del trazado en
+     *    blanco con un clic— y además espera a que llegue un `/scan` de verdad
+     *    antes de darse por bueno, o sea que es el más honesto de los dos.
+     *    Quitar algo útil para que una frase mía fuera cierta es exactamente al
+     *    revés de como se hacen las cosas en este proyecto: se corrige la frase.
+     *
+     * 📌 Lo que sí queda dicho: **encender el barrido no es una «acción sobre el
+     *    robot»** de las de esa pestaña. Es una PRECONDICIÓN de dos pantallas, y
+     *    por eso vive en las dos que la necesitan y no en un cajón aparte.
+     */
+    { href: `${base}/conducir`, texto: 'Conducir', Icono: IconoConducir, color: '--seccion-conducir' },
+    /*
+     * 🔴 «Lo que ve» y no «LIDAR». El nombre viejo era el del INSTRUMENTO, no el
+     *    de la pregunta: un alumno no entra aquí a mirar un LIDAR, entra a ver
+     *    qué tiene el robot delante. Y el proyecto ya sabe que el nombre del
+     *    aparato no ayuda — `/ambient_light` existe, responde, y no significa
+     *    lo que su nombre dice.
+     *
+     * 🔴 SIGUE SIENDO UNA PESTAÑA APARTE, y eso NO es organización: es COSTE.
+     *    `/scan` es el **83 % del tráfico** de un robot, así que su suscripción
+     *    tiene que morir al salir. Fundirla con Navegar —que era la alternativa
+     *    barata en navegación— la habría dejado viva mientras alguien mira el
+     *    mapa. Con 16 robots eso se paga en el punto de acceso del aula.
+     */
+    { href: `${base}/lo-que-ve`, texto: 'Lo que ve', Icono: IconoLidar, color: '--seccion-lidar' },
+    /*
+     * 🔴 EL ORDEN ES POR TAREA, y desde el 2026-08-16 es el mismo que el rótulo
+     *    promete: **lo que se HACE** (programar, conducir, navegar) · **lo que
+     *    se MIRA** (lo que ve, medidas) · **lo que SALE** (acciones) · y al
+     *    final **cuando algo falla**.
+     *
+     *    📝 Aquí ponía que «Navegar va después del LIDAR y ANTES del
+     *       diagnóstico». Cierto entonces y falso ahora: «Diagnóstico» dejó de
+     *       existir como pestaña. Una nota que sitúa algo caduca en cuanto ese
+     *       algo se mueve, y hoy ya ha pasado dos veces en este commit.
      *
      * ⚠️ Y NO lleva `bloqueada: true` aunque hoy Nav2 no arranque solo. La
      *    diferencia con el Taller es real: el Taller **no esta construido**, y
@@ -101,7 +136,33 @@ export function pestanasDeRobot(segmento: string): EntradaRail[] {
      *    hay nada detras, y lo hay.
      */
     { href: `${base}/navegar`, texto: 'Navegar', Icono: IconoNavegar, color: '--seccion-navegar' },
-    { href: `${base}/diagnostico`, texto: 'Diagnóstico', Icono: IconoDiagnostico, color: '--seccion-diagnostico' },
+    /*
+     * 🔴 «Medidas» y no «Telemetría». Telemetría es de dónde VIENE el dato, no
+     *    para qué sirve — y esta aplicación existe para que un alumno compare lo
+     *    que dice la pantalla con lo que dice su cinta métrica. El rótulo tiene
+     *    que nombrar eso.
+     *
+     * ✅ Y desde hoy **solo se mira**: los LEDs y el origen de la odometría se
+     *    fueron a «Acciones». Antes esta pantalla mezclaba veinticinco lecturas
+     *    con dos botones que encienden luces de verdad.
+     */
+    { href: `${base}/medidas`, texto: 'Medidas', Icono: IconoTelemetria, color: '--seccion-telemetria' },
+    /*
+     * 🔴 LA PESTAÑA NUEVA (2026-08-16, decisión del usuario). Todo lo que SALE
+     *    hacia el robot sin ser conducir, junto: luces y origen de la odometría.
+     *    Vivían al final de la pantalla más larga de la aplicación, bien
+     *    rotuladas y a un scroll de veinticinco datos — una zona a la que no se
+     *    llega es una zona que no existe.
+     */
+    { href: `${base}/acciones`, texto: 'Acciones', Icono: IconoAcciones, color: '--seccion-acciones' },
+    /*
+     * 🔴 «Si no obedece» ABSORBE a «Diagnóstico», y va la ÚLTIMA. Las dos
+     *    contestaban la misma pregunta —«algo va mal, ¿qué?»— desde dos sitios:
+     *    una miraba el robot y otra el enlace, y quien tiene el problema no sabe
+     *    cuál de los dos es **antes** de mirar. Ese reparto le pedía a la persona
+     *    el diagnóstico que venía a buscar.
+     */
+    { href: `${base}/no-obedece`, texto: 'Si no obedece', Icono: IconoNoObedece, color: '--seccion-porque' },
   ]
 }
 
