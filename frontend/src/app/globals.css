@@ -229,7 +229,12 @@
   --card: 255 255 255;
   --card-foreground: 15 16 32;
   --muted: 228 226 222;
-  --muted-foreground: 74 76 94;   /* 6,4:1 sobre el papel: pasa AA holgado */
+  /* 📝 CORREGIDA LA ETIQUETA, no el color (2026-08-15). Aqui ponia «6,4:1 sobre
+     el papel», y 6,4 es el PEOR caso —sobre `--muted`, 228 226 222—, no el del
+     papel. Medido con WCAG 2.1: 8,45:1 sobre `--card`, 7,75:1 sobre
+     `--background`, 6,53:1 sobre `--muted`. El color esta bien y pasa AA en las
+     tres; lo que estaba mal era la superficie que nombraba el comentario. */
+  --muted-foreground: 74 76 94;   /* peor caso 6,53:1 sobre --muted; 7,75:1 sobre el papel */
   --border: 202 199 194;
   --input: 255 255 255;
   --secondary: 228 226 222;
@@ -279,6 +284,68 @@
   --warning-foreground: 255 255 255;
   --success: 21 122 61;
   --success-foreground: 255 255 255;
+
+  /*
+   * ── LA TINTA DEL CODIGO ──────────────────────────────────────────────────
+   * Solo para el editor y la salida del Taller. **No son colores de estado**: no
+   * dicen nada del robot, dicen que esto es una palabra reservada y aquello un
+   * numero. Por eso viven aparte del vocabulario de arriba y NINGUN control,
+   * ficha o insignia puede usarlos.
+   *
+   * 🔴 SON TRES, Y ES UN TECHO. Un editor de verdad tiñe quince cosas; aqui hay
+   *    que leer practicas de 30 lineas en una pantalla que ya gasta color para
+   *    decir si un robot esta vivo. Lo demas se separa con TIPOGRAFIA, que no
+   *    gasta vocabulario:
+   *      · comentarios  -> `--muted-foreground` + CURSIVA
+   *      · verbos (`avanzar(`, `def girar`) -> `--foreground` + seminegrita
+   *      · todo lo demas -> `--foreground`
+   *
+   * Los contrastes estan MEDIDOS con la formula de WCAG 2.1 sobre el fondo real
+   * del editor —`--card` blanco con `rgb(var(--vidrio)/0.03)` encima, o sea
+   * 248 248 248—, no estimados. Los tres pasan AA holgado (>= 4,5:1).
+   *
+   * ✅ Y EL FONDO ESTA TRAZADO HASTA SU ANTECESOR, no supuesto: el editor vive
+   *    dentro de `<Tarjeta>`, que es `<section class="vidrio">`, y `.vidrio` pinta
+   *    `rgb(var(--card))`. Importa porque el candidato natural era el papel
+   *    (`--background`, 246 245 243), que da un fondo mas oscuro —239 238 237— y
+   *    cifras ~0,6 puntos mas bajas. Siguen pasando AA (10,04 · 6,48 · 6,70), asi
+   *    que la eleccion no cambia ninguna decision; se anota para no remedirlo.
+   *
+   * 🔴 NO HACEN FALTA VARIANTES EN `.proyeccion`, Y NO ES UN OLVIDO. Ese modo
+   *    redefine `--background`, `--muted-foreground` y `--border`, pero **NO
+   *    `--card`**, que es justo el fondo de aqui: los tres contrastes valen lo
+   *    mismo a tres metros que en la mesa. Añadir un bloque `.proyeccion` para
+   *    estos tokens seria configuracion que existe y no hace nada.
+   *
+   * ✅ Y `colisionesDeColor()` SI LOS VE: su patron se amplio a `--sintaxis-*` el
+   *    mismo dia. Se estuvo a punto de dejarlos fuera «documentando el hueco», y
+   *    eso habria sido una comprobacion que se cree que cubre algo y no lo cubre
+   *    — el fallo que este proyecto lleva contado once veces en su verificador.
+   *    ⚠️ Esa prueba solo caza el valor IDENTICO. Que dos tonos se PAREZCAN no lo
+   *       ve nadie, asi que la distancia RGB mas corta de cada uno va anotada
+   *       arriba, medida a mano contra los diez colores con significado. Si
+   *       añades un cuarto, mide tambien: el precedente es `--estado-ir`
+   *       valiendo exactamente `--destructive` sin que nadie lo viera.
+   */
+  --sintaxis-clave: 48 50 110;    /* 10,93:1 · indigo. Lo mas cerca: --muted-foreground a 40 */
+  --sintaxis-texto: 12 92 116;    /*  7,06:1 · verde azulado. Lo mas cerca: --estado-vivo a 63 */
+  --sintaxis-numero: 150 30 110;  /*  7,29:1 · ciruela. Lo mas cerca: --estado-ir a 79 */
+
+  /*
+   * 🔴🔴 NINGUNO ES ROJO, Y ES DELIBERADO — incluida la traza de error.
+   *
+   * `MarcoRobot` lleva escrito que la parada de emergencia es «el unico elemento
+   * en rojo de la pantalla», y este proyecto ya descubrio que era FALSO en
+   * `/no-obedece`, donde `--estado-ir` valia `--destructive` y habia cuatro cosas
+   * en el rojo del boton. El Taller enseña ese boton en la misma pantalla que la
+   * salida del programa: una traza en rojo seria el cuarto rojo, otra vez.
+   *
+   * Una traza se lee como error sin gastar rojo: filete de 2 px en
+   * `--estado-mirar` a la izquierda, los `File "..."` en `--muted-foreground`, y
+   * el mensaje final en tinta plena y seminegrita.
+   * ⚠️ Que eso se lea como error a simple vista NO se puede comprobar con una
+   *    prueba: hace falta una persona mirandolo. Casilla en `VALIDAR_CON_EL_ROBOT.md`.
+   */
 
   /* 20px estaba por encima del suelo de calidad, que fija los radios de tarjeta
      en 12-16 px; por encima la ficha empieza a leerse como pastilla. */
@@ -489,6 +556,24 @@
     --background: 255 255 255;
     --muted-foreground: 52 54 70;
     --border: 186 183 178;
+
+    /*
+     * La tinta del codigo, oscurecida por la misma razon que la secundaria: un
+     * proyector aplana el rango y se come los medios tonos. Medido sobre el
+     * fondo del editor: 13,11 · 9,15 · 9,16:1.
+     *
+     * ⚠️ Y UN LIMITE QUE CONVIENE DECIR: al oscurecer, los tonos se ACERCAN
+     *    entre si —de 56 a 46 de distancia RGB entre `clave` y `texto`—, asi que
+     *    a tres metros lo que separa el codigo de la prosa es la tipografia
+     *    monoespaciada, no el color.
+     *    📌 No se persigue: **el Taller no es una superficie de proyeccion**. Ese
+     *       modo existe para el muro de flota a tres metros, y nadie proyecta un
+     *       editor de codigo. Estos tres valores estan para que nada se rompa si
+     *       alguien pulsa el boton, no porque ese sea el caso de uso.
+     */
+    --sintaxis-clave: 36 38 92;
+    --sintaxis-texto: 8 74 96;
+    --sintaxis-numero: 126 22 92;
   }
 
   /*
@@ -961,6 +1046,77 @@
     border: 1px solid rgb(var(--filo) / 0.05);
     border-radius: 12px;
   }
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * EL SELECTOR DE COLOR DE LOS LEDS
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 EN CSS Y NO EN UN `<canvas>`, y no es por comodidad:
+   *
+   *   · `conic-gradient` va al compositor, no al hilo principal. Un lienzo hay
+   *     que redibujarlo por `devicePixelRatio` y se queda borroso al ampliar.
+   *   · Un lienzo es INVISIBLE para `prefers-contrast`, para la impresion y para
+   *     cualquier ajuste del sistema.
+   *   · Y un lienzo mete una superficie imperativa donde hoy no hay ninguna.
+   *
+   * 🔴 Y SIN `bg-gradient-*` DE TAILWIND, que es lo que `estilo.ts` prohibe.
+   *    Lo que prohibe son las UTILIDADES —`bg-gradient-`, `--gradient-`— porque
+   *    esa era la firma del aspecto generico que se quitó. Un degradado escrito
+   *    a mano en esta hoja no es esa firma, y el fichero ya lleva cuatro:
+   *    `.filo-estado`, `.luz-ambiente`, `.trama-mirar` y `.trama-ir`.
+   *
+   * 🔴 LA RUEDA ES UNA IMAGEN CONSTANTE. No depende del color elegido: el
+   *    espectro siempre es el mismo. Lo unico que se mueve es el marcador, que
+   *    es geometria. Eso deja la superficie de hidratacion en casi nada.
+   */
+  .rueda-tono {
+    background:
+      radial-gradient(circle closest-side,
+        rgb(255 255 255) 0%, rgb(255 255 255 / 0) 72%),
+      conic-gradient(from 90deg,
+        #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+    border-radius: 50%;
+  }
+
+  /*
+   * El plano de saturacion y brillo. Depende SOLO del tono, que entra por
+   * `--tono-grados` — una propiedad personalizada, no una declaracion de color.
+   *
+   * 🔴 ESA DISTINCION ES LA QUE EVITA EL AVISO DE HIDRATACION. El modo oscuro
+   *    forzado del navegador reescribe `background-color`, `color`,
+   *    `border-color` y `background-image` del atributo `style` ANTES de que
+   *    React hidrate; `PanelLeds` lo documenta desde que se vio en Edge. Una
+   *    propiedad personalizada no es ninguna de esas cuatro, asi que el HTML del
+   *    servidor y el del cliente siguen coincidiendo.
+   *    📌 Precedente vivo: `MarcoRobot.tsx:257` inyecta `--tono-seccion` por
+   *       `style` en SSR y nunca ha dado ese aviso.
+   */
+  .plano-sv {
+    background:
+      linear-gradient(to top, rgb(0 0 0), rgb(0 0 0 / 0)),
+      linear-gradient(to right, rgb(255 255 255), hsl(var(--tono-grados, 0deg) 100% 50%));
+  }
+
+  /*
+   * El marcador. Aro blanco con filo oscuro: se ve sobre cualquiera de los dos
+   * extremos de la rueda sin tener que calcular el color de debajo.
+   *
+   * ⚠️ `translate(-50%, -50%)` va aqui y no en el `style` en linea para que lo
+   *    dinamico se quede en DOS numeros (`left` y `top`), que es lo minimo.
+   */
+  .marca-color {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgb(255 255 255);
+    box-shadow: 0 0 0 1px rgb(var(--filo) / 0.55);
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  /* La muestra del color pedido. Sin transicion: es un valor, no una animacion. */
+  .muestra-led { background: rgb(var(--led-rgb, 0 0 0)); }
 }
 
 /*

@@ -29,11 +29,18 @@
 
 import { useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
-import { ORDEN_ENVIADA, SERVICIO_FALLO, textoDeConfirmacion } from '@/lib/interfaz/lenguaje'
+import {
+  ORDEN_ENVIADA, SERVICIO_FALLO, SOBRE_EL_COLOR_DEL_LED, textoDeConfirmacion,
+} from '@/lib/interfaz/lenguaje'
 import { horaCorta } from '@/lib/interfaz/formato'
 import { leerRespuestaServicio } from '@/lib/interfaz/lecturas'
+import {
+  aHSV, aHex, aRGB, desdeHex, limitar, nombreAproximado, type HSV, type RGB,
+} from '@/lib/robot/color_led'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
+import { MuestraDeColor } from '@/componentes/robot/MuestraDeColor'
+import { RuedaColor } from '@/componentes/robot/RuedaColor'
 
 const SERVICIO = '/set_led_rgb'
 
@@ -81,17 +88,93 @@ interface Resultado {
   malo: boolean
 }
 
+/**
+ * Un canal suelto, 0..255. Se separa porque son tres iguales.
+ *
+ * 🔴 UN CAMPO VACIO DA `NaN`, Y NO SE ENVIA. `limitar(NaN)` devuelve 0 —es un
+ *    suelo, no una respuesta—, asi que aplicarlo mientras alguien borra «255»
+ *    para escribir «120» pondria el canal a cero en mitad del gesto y el color
+ *    saltaria. Se ignora hasta que hay numero.
+ */
+function CampoCanal(
+  { etiqueta, canal, valor, alCambiar, desactivado }: {
+    etiqueta: string
+    canal: string
+    valor: number
+    alCambiar: (n: number) => void
+    desactivado: boolean
+  },
+) {
+  const id = `canal-led-${etiqueta.toLowerCase()}`
+  return (
+    <div className="flex items-center gap-1.5">
+      <label className="text-[12px] text-muted-foreground" htmlFor={id}>{etiqueta}</label>
+      <input
+        id={id}
+        type="number"
+        min={0}
+        max={255}
+        step={1}
+        inputMode="numeric"
+        disabled={desactivado}
+        aria-label={`Canal ${canal}, de 0 a 255`}
+        value={valor}
+        onChange={(e) => {
+          const n = Number(e.target.value)
+          if (e.target.value === '' || Number.isNaN(n)) return
+          alCambiar(limitar(n))
+        }}
+        className="w-16 rounded-md border border-border bg-input px-2 py-1 font-mono text-[13px] focus-ring disabled:opacity-40"
+      />
+    </div>
+  )
+}
+
 export function PanelLeds() {
   const { transporte, conectado } = useRobot()
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState<Resultado | null>(null)
 
-  const enviar = async (o: Orden) => {
+  /**
+   * 🔴 EL COLOR SE GUARDA EN HSV, NO EN RGB — y el motivo esta en `RuedaColor`:
+   *    `RGB -> HSV` no es inyectiva, asi que con RGB de por medio bajar el brillo
+   *    a cero perderia el tono y el marcador saltaria al rojo delante del usuario.
+   *
+   * 🔴 Y EL VALOR INICIAL ES UN LITERAL, que es lo que cierra la hidratacion por
+   *    si solo: servidor y cliente pintan exactamente el mismo HTML. El color solo
+   *    se vuelve dinamico tras un gesto, o sea mucho despues de hidratar, y una
+   *    discrepancia de hidratacion solo puede ocurrir en el primer pintado.
+   */
+  const [hsv, setHsv] = useState<HSV>({ tono: 0, saturacion: 1, valor: 1 })
+  const color = aRGB(hsv)
+  /**
+   * Lo ESCRITO en el campo hexadecimal, que no es lo mismo que el color.
+   *
+   * 🔴 Mientras alguien teclea `#`, `#f`, `#ff`… el texto no es un color. Si el
+   *    campo se pintara desde el color, cada tecla lo reescribiria y seria
+   *    imposible escribir nada. `null` = «no lo esta editando nadie, enseña el
+   *    color». Es la razon de que `desdeHex` devuelva `null` en vez de lanzar.
+   */
+  const [hexEscrito, setHexEscrito] = useState<string | null>(null)
+
+  /**
+   * Pone un color conservando el tono cuando el nuevo no tiene ninguno.
+   *
+   * `aHSV` de un gris o un negro devuelve tono 0 —no hay otro que devolver, un
+   * gris no tiene angulo— y aceptarlo moveria el marcador al rojo sin que nadie
+   * tocara la rueda. `RGB -> HSV` no es inyectiva, y aqui es donde se nota.
+   */
+  const ponerColor = (c: RGB) => {
+    const nuevo = aHSV(c)
+    setHsv({ ...nuevo, tono: nuevo.saturacion === 0 ? hsv.tono : nuevo.tono })
+  }
+
+  const enviarColor = async (c: RGB, nombre: string) => {
     setEnviando(true)
     const hora = horaCorta(Date.now())
     try {
       const bruta = await transporte.llamar(SERVICIO, {
-        led_id: TODAS_LAS_LUCES, red: o.rojo, green: o.verde, blue: o.azul,
+        led_id: TODAS_LAS_LUCES, red: c.rojo, green: c.verde, blue: c.azul,
       })
       const { success, message } = leerRespuestaServicio(bruta)
       setResultado(
@@ -99,7 +182,7 @@ export function PanelLeds() {
           ? { hora, cabecera: SERVICIO_FALLO, detalle: message ?? 'sin mensaje', malo: true }
           : {
               hora,
-              cabecera: `${ORDEN_ENVIADA}: ${o.nombre.toLowerCase()}`,
+              cabecera: `${ORDEN_ENVIADA}: ${nombre}`,
               detalle: `${textoDeConfirmacion(SERVICIO)}${message === null ? '' : ` El robot añadió: «${message}».`}`,
               malo: false,
             },
@@ -143,7 +226,22 @@ export function PanelLeds() {
             key={o.nombre}
             type="button"
             disabled={!conectado || enviando}
-            onClick={() => void enviar(o)}
+            /*
+              🔴 EL ATAJO SIGUE ENVIANDO DE UN CLIC, y ademas carga el color en la
+                 rueda. Convertirlo en «carga y luego pulsa enviar» habria costado
+                 un clic mas en el caso que mas se usa —apagar las luces de un
+                 robot que estorba— para ganar nada: la rueda ya tiene su propio
+                 boton. Un selector nuevo no puede empeorar lo que ya funcionaba.
+            */
+            onClick={() => {
+              const c = { rojo: o.rojo, verde: o.verde, azul: o.azul }
+              // `ponerColor` conserva el tono si el atajo no tiene ninguno
+              // (apagar, blanco): moverlo al rojo sin que nadie toque la rueda
+              // seria un salto sin causa.
+              setHexEscrito(null)
+              ponerColor(c)
+              void enviarColor(c, o.nombre.toLowerCase())
+            }}
             className="inline-flex items-center gap-2 border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
           >
             <span
@@ -153,6 +251,81 @@ export function PanelLeds() {
             {o.nombre}
           </button>
         ))}
+      </div>
+
+      {/* ── CUALQUIER OTRO COLOR ──────────────────────────────────────────── */}
+      <div className="mt-5 border-t border-[rgb(var(--filo)/0.09)] px-5 pt-4">
+        <p className="microetiqueta">Cualquier otro color</p>
+
+        <div className="mt-3 flex flex-wrap items-start gap-4">
+          <div className="flex flex-col items-center gap-1.5">
+            <MuestraDeColor
+              color={color}
+              className="h-20 w-20 shrink-0 rounded-md border border-border"
+            />
+            {/*
+              Nombrado y no solo en cifras: «#FF6B35» no se lee en voz alta. Y
+              dice «aproximadamente»: nombrar un color es convencion, no medida.
+            */}
+            <span className="text-[12px] text-muted-foreground">
+              aprox. {nombreAproximado(color)}
+            </span>
+          </div>
+
+          <RuedaColor
+            color={color}
+            alCambiar={ponerColor}
+            desactivada={!conectado || enviando}
+          />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-3">
+          <div className="flex items-center gap-1.5">
+            <label className="text-[12px] text-muted-foreground" htmlFor="hex-led">Hex</label>
+            <input
+              id="hex-led"
+              type="text"
+              spellCheck={false}
+              maxLength={7}
+              disabled={!conectado || enviando}
+              value={hexEscrito ?? aHex(color)}
+              onChange={(e) => {
+                setHexEscrito(e.target.value)
+                const leido = desdeHex(e.target.value)
+                // Solo se aplica cuando de verdad es un color.
+                if (leido !== null) ponerColor(leido)
+              }}
+              // Al salir del campo se vuelve a enseñar el color: si lo escrito
+              // era basura, el campo no puede quedarse mintiendo sobre lo que hay.
+              onBlur={() => setHexEscrito(null)}
+              className="w-24 rounded-md border border-border bg-input px-2 py-1 font-mono text-[13px] focus-ring disabled:opacity-40"
+            />
+          </div>
+          <CampoCanal
+            etiqueta="R" canal="rojo" valor={color.rojo} desactivado={!conectado || enviando}
+            alCambiar={(n) => { setHexEscrito(null); ponerColor({ ...color, rojo: n }) }}
+          />
+          <CampoCanal
+            etiqueta="G" canal="verde" valor={color.verde} desactivado={!conectado || enviando}
+            alCambiar={(n) => { setHexEscrito(null); ponerColor({ ...color, verde: n }) }}
+          />
+          <CampoCanal
+            etiqueta="B" canal="azul" valor={color.azul} desactivado={!conectado || enviando}
+            alCambiar={(n) => { setHexEscrito(null); ponerColor({ ...color, azul: n }) }}
+          />
+          <button
+            type="button"
+            disabled={!conectado || enviando}
+            onClick={() => void enviarColor(color, aHex(color))}
+            className="rounded-md border border-border bg-secondary px-3 py-2 text-sm text-secondary-foreground focus-ring hover:bg-muted disabled:opacity-40 disabled:cursor-not-allowed transition-transform duration-150 active:scale-[0.97]"
+          >
+            Enviar este color
+          </button>
+        </div>
+
+        <p className="mt-3 max-w-prose text-[12px] leading-relaxed text-muted-foreground">
+          {SOBRE_EL_COLOR_DEL_LED}
+        </p>
       </div>
 
       {!conectado && (

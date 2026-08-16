@@ -322,6 +322,31 @@ describe('la guardia visual sobre el codigo real', () => {
     expect(choques, `colisiones de color: ${choques.join(' · ')}`).toEqual([])
   })
 
+  it('🔴 la tinta del codigo esta declarada TAMBIEN en proyeccion', () => {
+    /*
+     * Un `--sintaxis-*` que exista solo en `:root` no se rompe: se HEREDA, y en
+     * proyeccion sale con el valor de pantalla — mas claro justo en la unica
+     * superficie que no puede permitirselo. Es la forma de fallo que este
+     * proyecto persigue: **configuracion que existe y no hace nada**, como el
+     * `chmod` sobre vfat o el `usercfg.txt` de 24.04.
+     *
+     * Esta prueba no comprueba el valor: comprueba que alguien TOMO LA DECISION
+     * de darle uno. Añadir un cuarto token sin su variante pone esto en rojo.
+     */
+    const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+    const enBloque = (selector: string): Set<string> => {
+      const i = css.indexOf(selector)
+      expect(i, `no encuentro el bloque ${selector}`).toBeGreaterThan(-1)
+      const cuerpo = css.slice(i, css.indexOf('\n  }\n', i))
+      return new Set([...cuerpo.matchAll(/^\s*(--sintaxis-[a-z0-9-]+)\s*:/gm)].map((m) => m[1]))
+    }
+    const raiz = enBloque(':root {')
+    // El control: si el troceado fallara, los dos conjuntos saldrian vacios y
+    // «son iguales» seria trivialmente cierto.
+    expect(raiz.size, 'no se leyo ningun --sintaxis-* de :root').toBeGreaterThanOrEqual(3)
+    expect([...enBloque('.proyeccion {')].sort()).toEqual([...raiz].sort())
+  })
+
   it('🔴 ningun glob de `content` apunta a un directorio que no existe', () => {
     // El comentario del propio tailwind.config.ts lo documenta: un glob roto
     // hace que los componentes se monten SIN NINGUN ESTILO y sin dar error.

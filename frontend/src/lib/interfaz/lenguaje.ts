@@ -87,6 +87,28 @@ export function textoDeConfirmacion(servicio: string): string {
 /** El robot dijo que la llamada fallo. Aqui si hay un dato, y es negativo. */
 export const SERVICIO_FALLO = 'el robot respondió que la llamada falló'
 
+/**
+ * Lo que el selector de color NO promete.
+ *
+ * 🔴 UN SELECTOR DE COLOR ES UNA PROMESA IMPLICITA: enseña un cuadro y da a
+ *    entender que el robot se pondra de ese color. No es cierto, y no por un
+ *    fallo — es un diodo bajo plastico, sobre un chasis blanco, en un aula con
+ *    la luz que haya. La conversion a RGB si es exacta; el parecido no lo es.
+ *
+ * Va aqui y no dentro del componente para que no derive, y porque la regla de
+ * este proyecto es que las frases que acotan lo que se puede afirmar se
+ * escriben una vez y se comprueban.
+ *
+ * ⚠️ NO dice «no funciona» ni «no te fies»: dice QUE es cada cosa. Y no hace
+ *    falta añadirla a `LO_QUE_NO_SE_PUEDE_DECIR`, que ya lleva «si un LED se
+ *    encendio de verdad» — eso es otra cosa (si la orden tuvo efecto) y esto es
+ *    esta (si el color se parece).
+ */
+export const SOBRE_EL_COLOR_DEL_LED =
+  'El cuadro de la izquierda es el color que se le PIDE al robot, no el que vas a ver en el ' +
+  'aula: son LEDs bajo plástico de colores, sobre un chasis blanco y con la luz que haya en ' +
+  'la sala. Dos tonos que aquí se distinguen pueden verse iguales en el robot.'
+
 // ═══════════════════════════════════════════════════════════════════════════
 // Lo que se dice de los estados
 // ═══════════════════════════════════════════════════════════════════════════

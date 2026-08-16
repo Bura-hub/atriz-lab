@@ -440,7 +440,13 @@ export interface TokenDeColor {
   valor: string
 }
 
-const TOKEN_COLOR = /^\s*(--(?:bloque|estado|seccion)-[a-z0-9-]+)\s*:\s*(\d{1,3}\s+\d{1,3}\s+\d{1,3})\s*;/
+/**
+ * 📌 `sintaxis` se añadió el 2026-08-15, al meter la tinta del código del
+ *    Taller. Se iba a dejar fuera «documentando el hueco», y eso habría sido
+ *    justo lo que este proyecto persigue: una comprobación que se cree que
+ *    cubre algo y no lo cubre. Ampliar el patrón es una palabra.
+ */
+const TOKEN_COLOR = /^\s*(--(?:bloque|estado|seccion|sintaxis)-[a-z0-9-]+)\s*:\s*(\d{1,3}\s+\d{1,3}\s+\d{1,3})\s*;/
 
 /**
  * Los tokens de los tres ejes tal y como están escritos en `globals.css`.
