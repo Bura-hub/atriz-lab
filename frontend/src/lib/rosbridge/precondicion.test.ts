@@ -42,6 +42,29 @@ describe('lo que tiene que pasar antes de que un socket pueda abrir', () => {
     })
   })
 
+  describe('🔴 EL HUECO DE MEDIO SEGUNDO, que se vio en pantalla', () => {
+    /*
+     * `hayQueAvisar(NO_SE_SABE)` es `false` —correcto: no se pinta un aviso
+     * mientras la sesion carga—, pero el muro lo estaba usando para decidir si
+     * podia acusar a los robots. Y los dieciseis sockets fallan mucho ANTES que
+     * la sesion: los nombres `rvr-02..16` no resuelven y cierran al instante.
+     *
+     * Medido el 2026-08-16 con el guion de capturas: a los 3,5 s el muro pintaba
+     * «Ningún robot responde» y a los ~6 s se corregia solo. Quien abre la
+     * pagina lee primero la causa equivocada.
+     */
+    it('«no hay que avisar» NO significa «se puede acusar al robot»', () => {
+      const cargando = evaluarPrecondicion({ exigido: true, usuario: null, cargando: true })
+      // Las dos cosas a la vez, y esa es la trampa entera:
+      expect(hayQueAvisar(cargando)).toBe(false)
+      expect(cargando.estado).not.toBe('LISTO')
+    })
+
+    it('✅ y con sesion SI se puede: LISTO es lo unico que lo autoriza', () => {
+      expect(evaluarPrecondicion(BIEN).estado).toBe('LISTO')
+    })
+  })
+
   describe('🔴 NO SABER NO ES UN NO', () => {
     it('mientras la sesión carga, NO_SE_SABE', () => {
       // Acusar antes de saber pinta un aviso rojo que aparece y desaparece en

@@ -109,7 +109,26 @@ export function MuroFlota() {
   const precondicion = evaluarPrecondicion({ exigido: TESTIGO_EXIGIDO, usuario, cargando })
   const faltaAlgoAqui = hayQueAvisar(precondicion)
 
-  const nadieResponde = !faltaAlgoAqui && ROBOTS.every((id) => estados[id] === 'SIN_CONEXION')
+  /*
+   * 🔴 EXIGE `LISTO`, NO «no falta nada» — Y LA DIFERENCIA SE VIO EN PANTALLA.
+   *
+   * Estaba escrito como `!hayQueAvisar(precondicion) && …`, que deja pasar
+   * `NO_SE_SABE`: el estado de medio segundo mientras la sesion carga. Y en ese
+   * hueco la acusacion SI se pintaba, porque los dieciseis sockets fallan mucho
+   * antes que la sesion — los nombres `rvr-02..16` no resuelven y cierran al
+   * instante, mientras `/api/sesion/quien` todavia esta en vuelo.
+   *
+   * Resultado medido el 2026-08-16 con el guion de capturas (3,5 s de espera):
+   * el muro pintaba «Ningún robot responde — comprueba que estén encendidos y en
+   * la red» y a los ~6 s se corregia solo. O sea que **quien abre la pagina lee
+   * primero la causa equivocada**, que es exactamente el fallo que este bloque
+   * existe para impedir, reducido a una ventana de tiempo.
+   *
+   * La regla buena es la que se lee sola: **no se acusa a los robots hasta saber
+   * que de este lado no falta nada.** No saber no es saber que esta bien.
+   */
+  const nadieResponde = precondicion.estado === 'LISTO'
+    && ROBOTS.every((id) => estados[id] === 'SIN_CONEXION')
 
   /*
    * 🔴 EL ORDEN SE APLICA CON `order` DE CSS, NO REORDENANDO EL ARRAY.

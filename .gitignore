@@ -154,3 +154,7 @@ playwright-report/
 playwright/.cache/
 # Espacio de trabajo de subagent-driven-development (no se versiona)
 .superpowers/
+
+# Las capturas de `herramientas/capturas.mjs`: son para MIRARLAS, no para
+# versionarlas. Cada tanda son 48 PNG y cambian en cada fase.
+capturas/
