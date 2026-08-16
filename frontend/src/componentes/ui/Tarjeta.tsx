@@ -2,9 +2,16 @@
  * La caja de siempre. Usa los tokens de `globals.css`: aqui NO se inventa un
  * sistema de diseño nuevo.
  *
- * 📝 Sin `rounded-lg`: `--radio` vale 0 y un instrumento no redondea. La clase
- *    se quita del todo en vez de dejarla apuntando a un token de cero, para que
- *    el marcado diga lo que hace.
+ * 🔴 AQUI PONIA: *«sin `rounded-lg`: `--radio` vale 0 y un instrumento no
+ *    redondea»*. **Las dos mitades son falsas hoy** (corregido el 2026-08-16):
+ *    `--radio` vale **16 px** (`globals.css`), y el propio `CLAUDE.md` del
+ *    repositorio declara que el radio 0 era *«una pose disfrazada de
+ *    principio»* — una de las cinco decisiones que se revocaron al separar la
+ *    honestidad de la artesania.
+ *
+ * 📝 La caja usa `rounded-ficha`. Se conserva la nota porque la forma del error
+ *    vuelve: un comentario que explica una decision **sobrevive a que la
+ *    decision cambie**, y entonces enseña lo contrario de lo que pasa.
  */
 
 import { ReactNode } from 'react'

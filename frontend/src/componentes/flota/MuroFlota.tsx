@@ -398,7 +398,7 @@ export function MuroFlota() {
               // `h-full` en el envoltorio Y en la ficha: si no, el envoltorio de
               // la animacion no estira y las fichas de una misma fila quedan de
               // alturas distintas, con hueco muerto debajo de las cortas.
-              className="animate-entrar h-full"
+              className="entrar h-full"
               style={{ animationDelay: `${i * 60}ms`, order: posicion[id] ?? id }}
             >
               <BaldosaConectada

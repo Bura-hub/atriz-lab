@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   FUENTES_REMOTAS, PROHIBICIONES, buscarProhibiciones, colisionesDeColor, colisionesDeTransicion,
-  cuerpoDeBloque, esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases, lineasDeCodigo,
+  cuerpoDeBloque, esComentario, ficherosDeEstilo, globsMuertos, gruposDeClases,
+  keyframesHuerfanos, lineasDeCodigo,
   partirEnComas, resolverToken, tokensDeColor, tokensDeclarados, tokensQueNoPintan,
   transicionesDeClases,
 } from './estilo'
@@ -118,6 +119,34 @@ describe('globsMuertos', () => {
 
   it('señala el glob cuyo directorio no existe', () => {
     expect(globsMuertos(config, (r) => r === './src/app')).toEqual(['./src/pages/**/*.tsx'])
+  })
+
+  it('🔴 NO cuenta una cadena de un COMENTARIO como si fuera un glob', () => {
+    /*
+     * Encontrado el 2026-08-16 documentando dos globs nuevos: el comentario
+     * mencionaba un mapa `{ vivo: 'bg-…' }` y la guardia cogio `bg-…` como ruta
+     * y la declaro muerta. Acusaba a quien explicaba por que la guardia existe.
+     *
+     * 📝 Cuarta vez que este proyecto tropieza con «contar un comentario como si
+     *    fuera un ajuste». Las tres anteriores estan en `CLAUDE.md`.
+     */
+    const config = `content: [
+      // un mapa como '{ vivo: bg-x }' no es un glob
+      /* ni './src/inventado' dentro de un bloque */
+      './src/app/**/*.tsx',
+    ],`
+    expect(globsMuertos(config, (r) => r === './src/app')).toEqual([])
+  })
+
+  it('✅ EL CONTROL: y sigue viendo los globs de VERDAD que estan muertos', () => {
+    // Sin este par, «no acusa a los comentarios» lo cumpliria una funcion que
+    // dejo de mirar nada.
+    const config = `content: [
+      // './src/comentado' no cuenta
+      './src/app/**/*.tsx',
+      './src/fantasma/**/*.tsx',
+    ],`
+    expect(globsMuertos(config, (r) => r === './src/app')).toEqual(['./src/fantasma/**/*.tsx'])
   })
 
   it('🔴 un bloque que parsea a CERO globs LANZA, no devuelve vacio', () => {
@@ -346,6 +375,41 @@ describe('la guardia visual sobre el codigo real', () => {
     expect([...enBloque('.proyeccion {')].sort()).toEqual([...raiz].sort())
   })
 
+  describe('🔴 ningun `animation:` apunta a un fotograma que no existe', () => {
+    /*
+     * `@keyframes entrar` lo generaba Tailwind, y solo si la utilidad
+     * `animate-entrar` aparecia en un fichero escaneado — en UNO. Pero lo
+     * consumian dos: esa ficha y `.escalonado`, que lo escribe a mano. Quitarlo
+     * de ese unico sitio dejaba las seis pestañas del robot sin animar, en
+     * silencio: un `animation` que nombra un fotograma inexistente NO es un
+     * error de CSS, simplemente no anima.
+     */
+    it('sobre la hoja real', () => {
+      const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+      const huerfanos = keyframesHuerfanos(css)
+      expect(huerfanos, `sin @keyframes: ${huerfanos.join(' · ')}`).toEqual([])
+    })
+
+    it('🔴 EL CONTROL: sabe detectarlo cuando de verdad falta', () => {
+      // Sin esto, «no hay huerfanos» pasaria con una funcion que no mira nada.
+      expect(keyframesHuerfanos('.x { animation: fantasma 1s ease both; }'))
+        .toEqual(['fantasma'])
+    })
+
+    it('no confunde las palabras clave de `animation` con nombres', () => {
+      const css = '@keyframes vale {} .x { animation: vale 1s ease-in-out both infinite; }'
+      expect(keyframesHuerfanos(css)).toEqual([])
+    })
+
+    it('✅ y el control del control: la hoja real SI declara fotogramas', () => {
+      // Si la regex de `@keyframes` se rompiera, «cero huerfanos» seria falso y
+      // trivial a la vez. Este proyecto ya tuvo un verificador que aprobaba sobre
+      // una comprobacion que no miraba nada.
+      const css = readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')
+      expect([...css.matchAll(/@keyframes\s+([\w-]+)/g)].length).toBeGreaterThanOrEqual(3)
+    })
+  })
+
   describe('🔴 el troceador de bloques, que antes funcionaba POR ACCIDENTE', () => {
     /*
      * El troceo anterior era `css.slice(i, css.indexOf('\n  }\n', i))`: «hasta la
@@ -477,9 +541,13 @@ describe('🔴 tokensQueNoPintan — la guardia que nacio con OCHO falsos positi
          *    un error:
          *
          *      · `--tono-seccion: var(--estado-neutro);` es una ASIGNACION
-         *      · `--filo-estado` lo INYECTA un componente por `style`, asi que
-         *        no esta declarado en `:root` y no tiene por que estarlo
          *      · `--font-geist-mono` lo inyecta el paquete `geist` al arrancar
+         *
+         *    🔴 AQUI HABIA UNA TERCERA, Y ERA FALSA: decia que «`--filo-estado`
+         *       lo INYECTA un componente por `style`». **No lo inyectaba nadie.**
+         *       La clase `.filo-estado` tenia cero consumidores y se borro el
+         *       2026-08-16. El comentario habia sobrevivido a su propio hecho —
+         *       exactamente la forma que este fichero persigue.
          *
          *    Un token que no existe EN TIEMPO DE COMPILACION es normal en CSS y
          *    es un fallo en un `className`. La guardia mira donde el fallo vive.

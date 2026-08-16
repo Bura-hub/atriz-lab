@@ -851,35 +851,28 @@
   }
 
   /*
-   * ── EL FILO DE ESTADO ────────────────────────────────────────────────────
-   * Una línea de 1 px en el canto superior de la tarjeta, en degradado desde
-   * el color del estado hasta transparente.
+   * ── AQUÍ VIVÍA `.filo-estado`, Y SE BORRÓ POR MUERTA (2026-08-16) ─────────
    *
-   * 🔴 Es **lo único** que colorea una tarjeta de vidrio, y sustituye a lo que
-   *    había antes: un `border-left` de 8 px que `craft-floor` prohíbe y que,
-   *    además, **desplazaba el contenido** al cambiar de grosor — los
-   *    identificadores de dos baldosas vecinas dejaban de alinearse.
+   * Pintaba una línea de 1 px en el canto superior de la tarjeta, en degradado
+   * desde `--filo-estado` hasta transparente. Sustituía a un `border-left` de
+   * 8 px que desplazaba el contenido al cambiar de grosor.
    *
-   * El color se inyecta por `--filo-estado`; sin él no se pinta nada.
+   * 🔴 **Nunca la usó nadie.** Cero consumidores en `componentes/` y en `app/`,
+   *    y `--filo-estado` no lo inyectaba ningún componente — al contrario de lo
+   *    que afirmaba el comentario de `estilo.test.ts`, que también se ha
+   *    corregido. O sea: una regla que existe, dice colorear las tarjetas, y no
+   *    colorea ninguna.
+   *
+   * Se anota en vez de borrarse en silencio porque es EL patrón que este fichero
+   * persigue —el `chmod` sobre vfat, el `usercfg.txt` de 24.04, el drop-in `99-`,
+   * y `.muestra-led` aquí mismo—: **configuración que existe y no hace nada**.
+   * Lo peligroso no es la regla huérfana: es que alguien la lea y crea que las
+   * tarjetas ya tienen un canal de color de estado.
+   *
+   * 📌 Si el rediseño quiere ese canal, se construye **con su consumidor en el
+   *    mismo commit**. Es la regla que `estilo.ts` va a exigir con
+   *    `piezasHuerfanas`.
    */
-  .filo-estado {
-    position: relative;
-  }
-
-  .filo-estado::before {
-    content: '';
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 1px;
-    border-radius: inherit;
-    background: linear-gradient(
-      to right,
-      rgb(var(--filo-estado)) 0%,
-      rgb(var(--filo-estado) / 0.35) 45%,
-      transparent 100%
-    );
-    transition: background var(--t-estado) ease;
-  }
 
   /*
    * ── EL CAMPO DE SECCIÓN ──────────────────────────────────────────────────
@@ -972,6 +965,15 @@
    *    parpadea visible → oculta → visible en el primer fotograma.
    */
   .escalonado > * > * {
+    animation: entrar var(--t-entrada) var(--curva-salida) both;
+  }
+
+  /*
+   * La misma entrada, para un elemento suelto: la usa cada ficha del muro.
+   * Antes era la utilidad `animate-entrar` de Tailwind; ver la nota junto a
+   * `@keyframes entrar` sobre por qué dejó de serlo.
+   */
+  .entrar {
     animation: entrar var(--t-entrada) var(--curva-salida) both;
   }
 
@@ -1144,6 +1146,33 @@
  */
 @keyframes aparecer {
   from { opacity: 0; transform: translateY(3px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 ESTE FOTOGRAMA LO GENERABA TAILWIND, Y ESO ERA UNA TRAMPA ARMADA
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `entrar` vivía en `tailwind.config.ts`, y Tailwind **solo lo emite si la
+ * utilidad `animate-entrar` aparece en algún fichero escaneado**. Aparecía en
+ * UNO: `MuroFlota.tsx`.
+ *
+ * Pero quien lo consume de verdad son DOS: el muro, y `.escalonado` —la entrada
+ * de las seis pestañas del robot—, que lo escribe a mano en su `animation:`.
+ * O sea que **borrar `animate-entrar` del muro dejaba a las seis pestañas sin
+ * animación, en silencio y sin que nada se pusiera en rojo**: el CSS quedaba
+ * sintácticamente perfecto apuntando a un fotograma que ya no existe.
+ *
+ * Es la forma que este fichero persigue —configuración que existe y no hace
+ * nada— con el agravante de que la dependencia era **invisible**: nada en
+ * `.escalonado` decía que su fotograma dependía de una clase de otro componente.
+ *
+ * Ahora se declara aquí, junto al que ya estaba, y `estilo.ts` tiene una guardia
+ * (`keyframesHuerfanos`) que exige que toda animación de esta hoja tenga su
+ * `@keyframes` en esta hoja.
+ */
+@keyframes entrar {
+  from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: none; }
 }
 

@@ -260,9 +260,25 @@ export function ficherosDeEstilo(dir: string): string[] {
  *
  * Es la misma familia que todo lo demas de este proyecto: algo que devuelve
  * exito y no hace nada.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 Y CONTABA LAS CADENAS DE LOS COMENTARIOS COMO SI FUERAN GLOBS
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Encontrado el 2026-08-16 al documentar dos globs nuevos: el comentario decia
+ * que `lib/` podria tener un mapa `{ vivo: 'bg-…' }`, y esta funcion cogio
+ * **`bg-…` como una ruta** y la declaro muerta. La guardia acusaba a quien estaba
+ * explicando por que la guardia existe.
+ *
+ * 📝 Es la CUARTA vez que este proyecto tropieza con la misma forma —«contar un
+ *    comentario como si fuera un ajuste»—, y las tres anteriores estan escritas
+ *    en `CLAUDE.md`. La leccion que ya estaba: **ancla a la sintaxis exacta, y
+ *    salta los comentarios**. `buscarProhibiciones` lo hacia desde hace tiempo
+ *    con `lineasDeCodigo()`; esta no.
  */
 export function globsMuertos(configTailwind: string, existe: (ruta: string) => boolean): string[] {
-  const bloque = configTailwind.match(/content:\s*\[([\s\S]*?)\]/)
+  // 🔴 Sobre las lineas de CODIGO, no sobre el fichero: ver la nota de arriba.
+  const soloCodigo = lineasDeCodigo(configTailwind).join('\n')
+  const bloque = soloCodigo.match(/content:\s*\[([\s\S]*?)\]/)
   if (bloque === null) throw new Error('no encuentro el bloque `content` en tailwind.config.ts')
   const globs = [...bloque[1].matchAll(/'([^']+)'|"([^"]+)"/g)].map((m) => m[1] ?? m[2])
   if (globs.length === 0) {
@@ -589,6 +605,61 @@ export function cuerpoDeBloque(css: string, selector: string): string {
     }
   }
   throw new Error(`el bloque de «${selector}» no cierra`)
+}
+
+/**
+ * Animaciones que apuntan a un `@keyframes` que NO esta en la misma hoja.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 EXISTE POR UNA DEPENDENCIA QUE NO SE VEIA DESDE NINGUN LADO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `@keyframes entrar` lo generaba **Tailwind**, y Tailwind solo emite un
+ * fotograma si su utilidad (`animate-entrar`) aparece en un fichero escaneado.
+ * Aparecia en **uno**: la ficha del muro.
+ *
+ * Pero lo consumian **dos**: esa ficha, y `.escalonado` —la entrada de las seis
+ * pestañas del robot—, que lo escribia a mano en su `animation:`. Quitar la
+ * utilidad de ese unico sitio dejaba a las seis pestañas **sin animacion, en
+ * silencio**: CSS sintacticamente perfecto apuntando a un fotograma inexistente.
+ *
+ * Ni `tsc`, ni `eslint`, ni el navegador dicen nada de eso. Un `animation` que
+ * nombra un fotograma que no existe **no es un error de CSS**: simplemente no
+ * anima.
+ *
+ * ⚠️ Solo mira DENTRO de una hoja. Un `@keyframes` declarado en otro fichero CSS
+ *    importado daria un falso positivo — hoy no ocurre (hay una sola hoja) y si
+ *    algun dia ocurre, esta linea es donde mirar.
+ */
+export function keyframesHuerfanos(css: string): string[] {
+  const limpio = sinComentarios(css)
+  const declarados = new Set(
+    [...limpio.matchAll(/@keyframes\s+([\w-]+)/g)].map((m) => m[1]),
+  )
+  const usados = new Set(
+    // El nombre es el primer identificador de la abreviada `animation:`, y puede
+    // venir precedido de la duracion. Se cogen todos los identificadores y se
+    // cruzan contra los declarados: lo que no case es una palabra clave (`both`,
+    // `infinite`, `ease`…) o una funcion, y esas no estan declaradas.
+    [...limpio.matchAll(/animation:\s*([^;]+);/g)]
+      .flatMap((m) => m[1].split(/\s+/))
+      .filter((t) => /^[a-z][\w-]*$/i.test(t)),
+  )
+  return [...usados].filter((u) => !declarados.has(u) && esNombreDeFotograma(u, limpio))
+}
+
+/** ¿Es `u` el nombre de un fotograma, o una palabra clave de `animation`? */
+function esNombreDeFotograma(u: string, css: string): boolean {
+  // Cualquier identificador que aparezca tras `@keyframes` en ALGUNA hoja del
+  // mundo es candidato; aqui solo se puede distinguir por descarte, asi que se
+  // lista lo que la abreviada `animation` admite como palabra clave.
+  const PALABRAS = new Set([
+    'normal', 'reverse', 'alternate', 'alternate-reverse',
+    'none', 'forwards', 'backwards', 'both',
+    'running', 'paused', 'infinite',
+    'linear', 'ease', 'ease-in', 'ease-out', 'ease-in-out',
+    'step-start', 'step-end', 'initial', 'inherit', 'unset', 'revert',
+  ])
+  return !PALABRAS.has(u) && !css.includes(`--${u}`)
 }
 
 /** Un triplete `R G B` como los que declara `globals.css`. No un color CSS. */

@@ -25,18 +25,24 @@ const CLASES: Readonly<Record<TonoInsignia, string>> = {
   GRAVE: 'bg-destructive/12 text-destructive border-destructive/40',
 }
 
-/**
- * ⚠️ `sobreBarra` YA NO CAMBIA NADA, y se conserva por una razón concreta.
+/*
+ * 🔴 AQUÍ HABÍA `const CLASES_BARRA = CLASES`, UN ALIAS VACÍO. Borrado el
+ *    2026-08-16, y su comentario merecía irse con él.
  *
- * Existía cuando la cabecera era un campo de color claro y estos tonos, hechos
- * para papel, desaparecían encima. Con el pozo oscuro la cabecera y el cuerpo
- * son la misma familia, así que una sola tabla vale para los dos sitios.
+ * Decía que `sobreBarra` se conservaba porque *«el muro del profesor va a
+ * necesitar un modo claro de alto contraste para proyectar, y ahí volverá a
+ * hacer falta»*. **Esa razón ya está cumplida por otra vía**: el modo proyección
+ * existe desde hace tiempo y se resuelve **redefiniendo tokens** en
+ * `.proyeccion`, no con una segunda tabla de clases. Y el comentario seguía
+ * hablando del «pozo oscuro», que dejó de existir cuando la base pasó a papel.
  *
- * Se deja el parámetro porque el MURO DEL PROFESOR va a necesitar un modo claro
- * de alto contraste para proyectar, y ahí volverá a hacer falta. Borrarlo hoy y
- * reescribirlo en dos semanas no ahorra nada.
+ * ⚠️ La prop `sobreBarra` SE QUEDA de momento, y hay que saber que **hoy no
+ *    cambia nada** aunque `MarcoRobot:205` la pase. Eso es peor que una prop sin
+ *    usar: quien lee `<InsigniaEnlace sobreBarra />` cree que hay una variante.
+ *    Se decide al rehacer `Insignia` en la fase 3 —donde además tiene que ganar
+ *    una FORMA por tono, que es la parte del triple código que falta—, no aquí:
+ *    esta fase promete cero cambio visual.
  */
-const CLASES_BARRA: Readonly<Record<TonoInsignia, string>> = CLASES
 
 export interface PropsInsignia {
   tono: TonoInsignia
@@ -52,7 +58,11 @@ export interface PropsInsignia {
    *    impide (`estilo.test.ts`) y el motivo esta en `CLAUDE.md`.
    */
   punto?: boolean
-  /** Para la cabecera, que es campo de color y no papel. Ver `CLASES_BARRA`. */
+  /**
+   * ⚠️ **HOY NO CAMBIA NADA.** Se acepta para no romper a quien ya la pasa
+   *    (`MarcoRobot:205`), pero la tabla de clases es una sola. Ver la nota de
+   *    arriba: se decide al rehacer este componente en la fase 3.
+   */
   sobreBarra?: boolean
 }
 
@@ -81,13 +91,13 @@ export interface PropsInsignia {
 const TRANSICION = 'transition-[color,background-color,border-color] '
   + 'duration-[var(--t-estado)] ease-[cubic-bezier(0.23,1,0.32,1)]'
 
-export function Insignia({
-  tono, children, punto = true, sobreBarra = false,
-}: PropsInsignia) {
+// `sobreBarra` NO se desestructura: no se usa, y desestructurarla para ignorarla
+// es lo que hacía creer que existía una variante.
+export function Insignia({ tono, children, punto = true }: PropsInsignia) {
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${TRANSICION} ${
-        sobreBarra ? CLASES_BARRA[tono] : CLASES[tono]
+        CLASES[tono]
       }`}
     >
       {punto && (

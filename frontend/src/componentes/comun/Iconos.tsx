@@ -171,7 +171,18 @@ export function IconoEntrar({ className }: PropsIcono) {
   )
 }
 
-/** Proyeccion: una pantalla que emite. */
+/**
+ * Proyeccion: una pantalla que emite.
+ *
+ * ⚠️ HUERFANO A DIA DE HOY, y NO se borra: `ControlesMuro.tsx:121` dibuja el
+ *    mismo icono **en linea**, con otro `viewBox` (16 en vez de 24) y otros
+ *    grosores. O sea que esto no es codigo muerto — es una copia, y la copia
+ *    equivocada es la otra.
+ *
+ * 📌 Se consolida al rehacer el muro (fase 5), no aqui: cambiar el icono de
+ *    escala en la fase que promete «cero cambio visual» seria justo lo que esa
+ *    promesa impide. Se anota para que no se pierda.
+ */
 export function IconoProyeccion({ className }: PropsIcono) {
   return (
     <svg {...base} className={className}>

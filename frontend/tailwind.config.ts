@@ -10,6 +10,20 @@ const config: Config = {
     //    apunta a un directorio que EXISTE (`lib/interfaz/estilo.test.ts`).
     './src/componentes/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
+    // 🔴 `lib/` y `hooks/` AÑADIDOS EL 2026-08-16, y no es celo.
+    //
+    //    Sin ellos, una clase escrita desde ahí —un mapa `{ vivo: 'bg-…' }` que
+    //    un componente consume— **no se compila**, y el elemento sale sin estilo
+    //    sin que nada dé error. Es el MISMO fallo silencioso que la nota de
+    //    arriba describe, por la puerta de al lado.
+    //
+    //    📌 Hoy el patrón vigente es que `lib/` devuelva **variables CSS** y no
+    //       clases (por eso `tokensQueNoPintan` existe), así que estos dos globs
+    //       probablemente no aporten ni una clase. No es configuración muerta:
+    //       es la red que hace que el día que alguien escriba una, funcione en
+    //       vez de fallar en silencio.
+    './src/lib/**/*.{js,ts,jsx,tsx}',
+    './src/hooks/**/*.{js,ts,jsx,tsx}',
   ],
   theme: {
     extend: {
@@ -127,8 +141,13 @@ const config: Config = {
          * de 1 px debajo —el canto de la chapa— y sobre ella una sombra difusa.
          * Las dos van teñidas de grafito, nunca en negro puro.
          */
-        ficha: '0 18px 40px -22px rgb(var(--sombra) / 0.70)',
-        'ficha-alta': '0 26px 54px -22px rgb(var(--sombra) / 0.80)',
+        /*
+         * 🔴 `ficha` y `ficha-alta` VIVIAN AQUI Y SE BORRARON (2026-08-16): cero
+         *    usos en toda la aplicacion. La elevacion de las tarjetas la pinta
+         *    `.vidrio` directamente en `globals.css`, no una utilidad.
+         *    Configuracion que existe y no hace nada — el patron que este
+         *    proyecto persigue.
+         */
         bloque: '0 20px 44px -20px rgb(var(--sombra) / 0.75)',
         barra: '0 10px 28px -18px rgb(var(--sombra) / 0.60)',
       },
@@ -144,15 +163,19 @@ const config: Config = {
        * orquestado, transiciones de estado y respuesta al pulsar. Nada se
        * repite solo, y nada se mueve porque llegue un dato.
        */
-      keyframes: {
-        entrar: {
-          from: { opacity: '0', transform: 'translateY(20px)' },
-          to: { opacity: '1', transform: 'none' },
-        },
-      },
-      animation: {
-        entrar: 'entrar var(--t-entrada) var(--curva-salida) both',
-      },
+      /*
+       * 🔴 `entrar` VIVIA AQUI Y SE MUDO A `globals.css` (2026-08-16).
+       *
+       * Tailwind solo emite un `@keyframes` si su utilidad aparece en un fichero
+       * escaneado, y `animate-entrar` aparecia en UNO. Pero el fotograma lo
+       * consumen DOS: ese, y `.escalonado` —la entrada de las seis pestañas del
+       * robot—, que lo escribe a mano en su `animation:`.
+       *
+       * O sea que quitar `animate-entrar` de ese unico sitio dejaba a las seis
+       * pestañas **sin animacion, en silencio**: CSS perfectamente valido
+       * apuntando a un fotograma inexistente. Declararlo en la hoja lo desarma, y
+       * `keyframesHuerfanos()` de `estilo.ts` impide que vuelva a pasar.
+       */
     },
   },
   plugins: [],
