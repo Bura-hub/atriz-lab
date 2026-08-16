@@ -242,12 +242,20 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
      *    en vez de relajarlo aqui: cuando exista, esta comprobacion vuelve a ser
      *    incondicional.
      */
-    const nombraElAgente = /agente/i.test(t.texto) && /9443|otro enlace/i.test(t.texto)
-    const terminalListo = /ningún programa corriendo/i.test(t.texto)
-    expect(
-      nombraElAgente || terminalListo,
-      'el Taller no nombra el agente NI ofrece el terminal: no está en ningún estado conocido',
-    ).toBe(true)
+    /*
+     * ✅ VUELVE A SER INCONDICIONAL (2026-08-16, F5). La franja de «los dos
+     *    enlaces» se pinta SIEMPRE, con el agente vivo o muerto, así que la
+     *    palabra y el puerto están en la página en los dos casos — que era el
+     *    requisito original y lo que el arreglo temporal no podía exigir.
+     *
+     * 🔴 Y ahora comprueba lo que de verdad importaba: que se nombren **LOS
+     *    DOS**. La franja de signos vitales dice «en línea» mirando rosbridge en
+     *    el 9090; el terminal habla con el agente en el 9443. Quien vea la
+     *    franja verde y el terminal mudo tiene que poder saber que son dos cosas.
+     */
+    expect(t.texto).toMatch(/agente/i)
+    expect(t.texto).toMatch(/9443/)
+    expect(t.texto).toMatch(/9090/)
 
     // 5 · Y el aviso de lo que este terminal ABRE, que es real: el programa del
     //     alumno alcanza caminos que la lista blanca cierra al navegador.

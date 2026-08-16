@@ -40,7 +40,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Tarjeta } from '@/componentes/ui/Tarjeta'
 import { Aviso } from '@/componentes/ui/Aviso'
-import { Insignia } from '@/componentes/ui/Insignia'
+import { Insignia, TonoInsignia } from '@/componentes/ui/Insignia'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { AVISOS_ESPACIO, ESPACIO } from '@/lib/taller/espacio'
 import {
@@ -48,6 +48,7 @@ import {
   opSenal,
 } from '@/lib/taller/protocolo'
 import {
+  type FaseEnlace,
   entradaViva, insigniaDelTerminal, puedeEjecutar, textoCambiadoDesdeElLanzamiento,
 } from '@/lib/taller/sesion_taller'
 import { estaVacia, faltaAlgo } from '@/lib/taller/salida'
@@ -66,8 +67,30 @@ async function huellaDe(codigo: string): Promise<string> {
 
 const GUION_INICIAL = ''
 
+/**
+ * EL ESTADO DEL AGENTE, EN UNA PALABRA Y UN TONO.
+ *
+ * 🔴 `CERRADO` es NEUTRO, no GRAVE. El agente cerrado es el estado de partida
+ *    —todavia no se ha pedido nada— y pintarlo de rojo diria que hay una averia
+ *    donde solo hay una conexion sin abrir. El rojo se reserva para `RECHAZADO`,
+ *    que SI es un hecho: el robot dijo que no.
+ */
+const TONO_AGENTE: Readonly<Record<FaseEnlace, TonoInsignia>> = {
+  ABIERTO: 'BIEN',
+  ABRIENDO: 'NEUTRO',
+  CERRADO: 'NEUTRO',
+  RECHAZADO: 'GRAVE',
+}
+
+const TEXTO_AGENTE: Readonly<Record<FaseEnlace, string>> = {
+  ABIERTO: '9443',
+  ABRIENDO: 'abriendo',
+  CERRADO: 'sin abrir',
+  RECHAZADO: 'rechazado',
+}
+
 export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
-  const { robot } = useRobot()
+  const { robot, conectado } = useRobot()
   const numero = typeof robot === 'number' ? robot : null
   const anfitrion = typeof robot === 'number'
     ? `rvr-${String(robot).padStart(2, '0')}.local`
@@ -147,6 +170,45 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
 
   return (
     <div className="space-y-4">
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        🔴🔴 LOS DOS ENLACES, JUNTOS Y SIEMPRE (2026-08-16) — F5
+        ═══════════════════════════════════════════════════════════════════════
+        Este panel decía «son dos enlaces y se puede tener uno vivo y el otro
+        muerto»… **en un aviso que solo aparece cuando el agente falla**. Con el
+        agente conectado la pantalla no mencionaba en ningún sitio que hubiera un
+        segundo enlace: el requisito se cumplía solo cuando algo se rompía.
+
+        Lo destapó una prueba de navegador que exigía la palabra «agente» sin
+        condición y que **falló por la razón buena** — `atriz-agente` estaba
+        arriba en rvr-01, así que el aviso no salía y la palabra no aparecía en
+        toda la página.
+
+        🔴 Y por qué importa de verdad: la franja de signos vitales de arriba
+           dice «en línea» mirando **rosbridge en el 9090**. El terminal habla con
+           **el agente en el 9443**, que es otro proceso y otro puerto. Quien vea
+           la franja verde y el terminal mudo no tiene forma de saber que son dos
+           cosas — y buscará la avería en el sitio equivocado.
+
+        📌 Se pinta como una sola línea con las dos insignias: el estado de los
+           dos, en el mismo renglón, es lo que hace evidente que son dos.
+      */}
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 rounded-ficha border border-[rgb(var(--filo)/0.12)] px-4 py-2.5">
+        <span className="microetiqueta shrink-0">los dos enlaces</span>
+        <span className="flex items-center gap-2">
+          <Insignia tono={conectado ? 'BIEN' : 'NEUTRO'}>
+            {conectado ? 'rosbridge · 9090' : 'rosbridge · sin conexión'}
+          </Insignia>
+          <span className="text-[12px] text-muted-foreground">telemetría y conducir</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <Insignia tono={TONO_AGENTE[estado.enlace]}>
+            {estado.enlace === 'ABIERTO' ? 'agente · 9443' : `agente · ${TEXTO_AGENTE[estado.enlace]}`}
+          </Insignia>
+          <span className="text-[12px] text-muted-foreground">este terminal</span>
+        </span>
+      </div>
+
       {estado.enlace !== 'ABIERTO' && (
         <Aviso nivel={estado.enlace === 'ABRIENDO' ? 'NOTA' : 'ERROR'} titulo="El agente del robot">
           <p>
