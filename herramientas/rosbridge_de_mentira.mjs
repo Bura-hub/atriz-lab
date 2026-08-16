@@ -29,7 +29,16 @@
 import { createHash } from 'node:crypto'
 import { createServer } from 'node:http'
 
-const PUERTO = 9090
+/*
+ * 📝 `--puerto 0` deja que el sistema elija uno libre y el doble imprime el que
+ *    le tocó, para que las pruebas no choquen entre sí ni con un doble que
+ *    alguien dejara corriendo a mano. Mismo patrón que `agente_de_mentira.mjs`.
+ */
+const PUERTO = Number(
+  (process.argv.indexOf('--puerto') === -1
+    ? null
+    : process.argv[process.argv.indexOf('--puerto') + 1]) ?? 9090,
+)
 
 const ESTADOS = {
   apagado: 0, arrancando: 1, funcionando: 2, ciego: 3, mudo: 4, fallo: 5, desconocido: 6,
@@ -79,6 +88,33 @@ const robotQuieto = aproximacion && !seMueveIgual
  * ese estado sin dos robots de verdad y un emisor infrarrojo.
  */
 const conduciendoIR = process.argv.includes('--conduciendo-ir')
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 FASE B (A7): EL TESTIGO — Y LO QUE ESTE DOBLE **NO** PUEDE PROBAR
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `--exige-testigo`      rechaza con 4401 si no llega un `atriz.token.<jwt>`
+ * `--rechazar <codigo>`  cierra siempre con ese codigo, justo tras el apreton
+ *
+ * Sirven para ejercitar el lado del CLIENTE sin robot: que no reintente un
+ * 4403, que enseñe el motivo, que el 1013 si reintente.
+ *
+ * 🔴 ESTE DOBLE NO VERIFICA NINGUNA FIRMA, Y NO DEBE PARECER QUE LO HACE.
+ *    Mira si el subprotocolo EMPIEZA por `atriz.token.` y nada mas. Que este
+ *    doble acepte un testigo **no dice absolutamente nada** sobre si el robot
+ *    lo aceptaria: la firma la comprueba `atriz_testigo.py` con Ed25519.
+ *
+ * 🔴 Y HAY ALGO QUE NO PUEDE PROBAR NI QUERIENDO: el manejo de errores de
+ *    tornado. Este apreton se escribe A MANO —`createHash` mas arriba— y no
+ *    ejecuta el `assert self.selected_subprotocol in subprotocols` del
+ *    original. El 2026-08-15 esa diferencia exacta dejo EN VERDE una prueba del
+ *    Taller sobre un camino que en el robot devolvia **HTTP 500** (evidencia
+ *    120), y el mismo dia un doble mio afirmo que un campo se llamaba `valido`
+ *    cuando se llama `ok`, con 24 pruebas confirmandolo (evidencia 124).
+ *    → Lo que este doble diga sobre el APRETON hay que confirmarlo contra el
+ *      robot: `src/lib/rosbridge/testigo_real.test.ts`.
+ */
+const exigeTestigo = process.argv.includes('--exige-testigo')
+const rechazarCon = Number(arg('--rechazar') ?? 0)
 // 🔴 «Latcheado» no es un estado del enum: es una bandera aparte, y la interfaz
 //    tiene que pintarla ENCIMA de lo que diga el estado. Se pide por su nombre.
 const latSlam = fijoSlam === 'bloqueado'
@@ -272,6 +308,23 @@ const CUERPOS = {
 }
 
 /* ── WebSocket a mano ──────────────────────────────────────────────────── */
+/**
+ * Un marco de CIERRE, con codigo y motivo. Hace falta desde la Fase B (A7):
+ * el robot rechaza asi, y el cliente tiene que saber distinguirlo.
+ *
+ * 🔴 El codigo va en los DOS PRIMEROS BYTES, big-endian, y el motivo detras en
+ *    UTF-8. Mandar solo el motivo deja al navegador con un 1005 «sin codigo», y
+ *    entonces el cliente no puede distinguir «credencial mala» de «se cayo el
+ *    WiFi» — que es justo la distincion que `rechazo.ts` existe para hacer.
+ */
+function marcoCierre(codigo, motivo = '') {
+  const texto = Buffer.from(motivo, 'utf8')
+  const carga = Buffer.alloc(2 + texto.length)
+  carga.writeUInt16BE(codigo, 0)
+  texto.copy(carga, 2)
+  return Buffer.concat([Buffer.from([0x88, carga.length]), carga])
+}
+
 function marco(texto) {
   const carga = Buffer.from(texto, 'utf8')
   const n = carga.length
@@ -296,7 +349,22 @@ function desmarcar(b) {
     if (fin) { mask = b.subarray(j, j + 4); j += 4 }
     const carga = Buffer.from(b.subarray(j, j + n))
     if (mask) for (let k = 0; k < carga.length; k++) carga[k] ^= mask[k % 4]
-    if ((b[i] & 0x0f) === 0x01) salida.push(carga.toString('utf8'))
+    const opcode = b[i] & 0x0f
+    if (opcode === 0x01) salida.push(carga.toString('utf8'))
+    /*
+     * 🔴 EL MARCO DE CIERRE (0x8) SE DESCARTABA EN SILENCIO, y eso dejaba
+     *    colgado a cualquier cliente que cerrara educadamente: manda su cierre,
+     *    espera el del servidor, y no llega nunca.
+     *
+     *    No se habia notado porque el navegador acaba cerrando por su cuenta y
+     *    el doble se usa a ojo. Aparecio al escribir la PRIMERA prueba
+     *    automatica que espera al `onclose`: cinco de siete agotaban el plazo,
+     *    y las dos que pasaban eran justo las que cierra el SERVIDOR.
+     *
+     * 📝 Un doble solo revela lo que alguien le pide. Este llevaba meses
+     *    sirviendo pantallas con esto roto.
+     */
+    if (opcode === 0x08) salida.cerrar = true
     i = j + n
   }
   return salida
@@ -308,16 +376,53 @@ servidor.on('upgrade', (req, socket) => {
   const clave = req.headers['sec-websocket-key']
   const acepta = createHash('sha1')
     .update(clave + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64')
+  /*
+   * 🔴 Se responde SOLO con algo que el cliente haya ofrecido, nunca un valor
+   *    fijo. El servidor real (tornado) ejecuta
+   *        assert self.selected_subprotocol in subprotocols
+   *    y saltarselo da un HTTP 500 en vez de un cierre con motivo. Aqui no hay
+   *    assert que lo cace —por eso este doble NO basta—, pero imitar la regla
+   *    evita acostumbrar al cliente a algo que el robot no hara.
+   */
+  const ofrecidos = (req.headers['sec-websocket-protocol'] ?? '')
+    .split(',').map((x) => x.trim()).filter((x) => x !== '')
+  const testigo = ofrecidos.find((x) => x.startsWith('atriz.token.')) ?? null
+  const elegido = ofrecidos.includes('atriz.v1') ? 'atriz.v1' : (ofrecidos[0] ?? null)
+
   socket.write(
     'HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\n'
-    + `Connection: Upgrade\r\nSec-WebSocket-Accept: ${acepta}\r\n\r\n`,
+    + `Connection: Upgrade\r\nSec-WebSocket-Accept: ${acepta}\r\n`
+    + (elegido === null ? '' : `Sec-WebSocket-Protocol: ${elegido}\r\n`)
+    + '\r\n',
   )
 
+  /*
+   * Los rechazos van DESPUES del apreton, como en el robot: un cierre con
+   * motivo no cabe antes. Por eso el cliente ve `onopen` y LUEGO `onclose`, y
+   * por eso no puede tomar `onopen` como «conectado» (evidencia 124).
+   */
+  if (rechazarCon !== 0) {
+    console.log(`· RECHAZO forzado con ${rechazarCon}`)
+    socket.write(marcoCierre(rechazarCon, 'rechazo de mentira, pedido con --rechazar'))
+    socket.end()
+    return
+  }
+  if (exigeTestigo && testigo === null) {
+    console.log('· RECHAZADO: no llego ningun testigo')
+    socket.write(marcoCierre(4401, 'no llego ningun testigo (doble con --exige-testigo)'))
+    socket.end()
+    return
+  }
+
   const suscritos = new Set()
-  console.log('· cliente conectado')
+  // ⚠️ NO se verifica la firma. Ver la cabecera de las banderas del testigo.
+  console.log(`· cliente conectado${testigo === null ? '' : ' (con testigo, SIN verificar)'}`)
 
   socket.on('data', (b) => {
-    for (const txt of desmarcar(b)) {
+    const marcos = desmarcar(b)
+    // El apreton de cierre se contesta: eco del cierre y adios.
+    if (marcos.cerrar === true) { socket.write(marcoCierre(1000, '')); socket.end(); return }
+    for (const txt of marcos) {
       let m
       try { m = JSON.parse(txt) } catch { continue }
 
@@ -391,7 +496,8 @@ servidor.on('upgrade', (req, socket) => {
 })
 
 servidor.listen(PUERTO, () => {
-  console.log(`rosbridge DE MENTIRA en ws://localhost:${PUERTO}`)
+  const real = servidor.address().port
+  console.log(`rosbridge DE MENTIRA en ws://localhost:${real}`)
   console.log(fijoSlam || fijoNav
     ? `  fijo: slam=${fijoSlam ?? 'auto'} nav=${fijoNav ?? 'auto'}${sinMapa ? ' · sin mapa' : ''}`
     : '  ciclando el guion cada 6 s')
