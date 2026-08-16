@@ -20,15 +20,17 @@
  *     `herramientas/crear-cuenta.mjs`, desde la máquina que sirve la aplicación.
  */
 
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { CSSProperties, FormEvent, useState } from 'react'
 import { useSesion } from '@/hooks/ContextoSesion'
 import { SIN_SERVIDOR, mensajeDeFallo } from '@/lib/sesion/entrada'
+import { destinoSeguro } from '@/lib/sesion/regreso'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { CampoContrasena } from './CampoContrasena'
 
 export function PanelEntrar() {
   const router = useRouter()
+  const parametros = useSearchParams()
   const { usuario: yaDentro, refrescar } = useSesion()
   const [usuario, setUsuario] = useState('')
   const [contrasena, setContrasena] = useState('')
@@ -62,6 +64,22 @@ export function PanelEntrar() {
        *    favorito de este proyecto.
        */
       router.refresh()
+
+      /*
+       * ── Y SE VUELVE A DONDE IBA ───────────────────────────────────────────
+       *
+       * 🔴 `replace` y no `push`: con `push`, la flecha de «atrás» del navegador
+       *    devuelve a `/entrar` **ya con sesión**, y ahí la pantalla no sabe qué
+       *    hacer — parece que te ha echado. `/entrar` no tiene por qué quedarse
+       *    en el historial detrás del sitio al que te lleva.
+       *
+       * 🔴 Y el destino pasa por `destinoSeguro`, SIEMPRE. Un `?volver=` sin
+       *    validar es una redirección abierta: la persona ve el dominio de su
+       *    laboratorio, escribe su contraseña de verdad, y acaba en otro sitio ya
+       *    autenticada. Es de los pocos agujeros que se explotan sin tocar el
+       *    servidor.
+       */
+      router.replace(destinoSeguro(parametros.get('volver')))
     } catch {
       setFallo(SIN_SERVIDOR)
     } finally {
@@ -89,8 +107,15 @@ export function PanelEntrar() {
         <div className="mx-auto max-w-[27rem]">
           {yaDentro !== null ? (
             <Aviso nivel="NOTA" titulo={`Ya has entrado como ${yaDentro}`}>
-              Puedes liberar una parada de emergencia y dar de alta a otras personas. Para cambiar
-              de cuenta, sal primero desde el pie del raíl.
+              {/*
+                🔴 AQUÍ PONÍA «puedes… dar de alta a otras personas». Depende del
+                   rol desde hoy, y esta pantalla no lo sabe —`useSesion` solo
+                   trae el nombre—. Se dice lo que es cierto para cualquiera y se
+                   deja el resto a `/usuarios`, que sí lo sabe, en vez de afirmar
+                   un permiso que puede no existir.
+              */}
+              Ya puedes usar los robots. Para cambiar de cuenta, sal primero desde el pie
+              del raíl.
             </Aviso>
           ) : (
             <form onSubmit={(e) => { void enviar(e) }} className="vidrio aparece rounded-ficha p-6 sm:p-7">
@@ -158,10 +183,15 @@ export function PanelEntrar() {
           </div>
 
           <p className="mt-4 text-[13px] leading-relaxed text-muted-foreground">
-            Las cuentas las crea quien ya tiene una, desde <strong>Usuarios</strong>. La primera se
-            crea en la máquina que sirve la aplicación con{' '}
-            <code>node herramientas/crear-cuenta.mjs</code>. No hay registro abierto: en la red de
-            un aula, la primera cuenta se la quedaría quien llegara antes.
+            {/*
+              🔴 «Las cuentas las crea quien ya tiene una» era cierto hasta hoy:
+                 ahora hay dos roles y solo un profesor las crea. Y el alta de una
+                 clase entera es de una vez, no de una en una.
+            */}
+            Las cuentas las crea un <strong>profesor</strong>, desde <strong>Usuarios</strong>, y
+            una clase entera se da de alta de una vez. La primera cuenta se crea en la máquina que
+            sirve la aplicación con <code>node herramientas/crear-cuenta.mjs</code>. No hay registro
+            abierto: en la red de un aula, la primera cuenta se la quedaría quien llegara antes.
           </p>
         </div>
       </main>

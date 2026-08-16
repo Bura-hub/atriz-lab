@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
-import { Armazon } from '@/componentes/comun/Armazon'
 import { ProveedorSesion } from '@/hooks/ContextoSesion'
 import './globals.css'
 
@@ -95,14 +94,21 @@ export default function DisposicionRaiz({
              dentro del marco del robot. Con un `fetch` en cada una habría dos
              verdades que podrían discrepar durante un instante.
 
-          ⚠️ La sesión NO cierra ninguna pantalla. Las nueve siguen abiertas sin
-             entrar, igual que antes: los dieciséis alumnos usan la aplicación
-             sin cuenta. Lo único que la sesión abre es liberar una parada y dar
-             de alta a alguien.
+          🔴 AQUÍ PONÍA: *«la sesión NO cierra ninguna pantalla; las nueve siguen
+             abiertas sin entrar, los dieciséis alumnos usan la aplicación sin
+             cuenta»*. **Falso desde el 2026-08-15**, cuando la Fase B hizo
+             obligatorio el testigo: sin sesión no se abre un socket con ningún
+             robot, así que las nueve se pintaban enteras **y no funcionaba
+             ninguna**. Ese texto sobrevivió al hecho que describía durante un
+             día entero.
+
+          🔴 Y EL `Armazon` YA NO VIVE AQUÍ. Bajó a `(privado)/layout.tsx`, que es
+             de SERVIDOR y decide antes de renderizar: sin sesión no sale ni un
+             byte de una pantalla privada. Aquí solo queda lo que las dos mitades
+             comparten —el documento, la fuente y quién eres—, porque la portada
+             pública y `/entrar` no llevan raíl.
         */}
-        <ProveedorSesion>
-          <Armazon>{children}</Armazon>
-        </ProveedorSesion>
+        <ProveedorSesion>{children}</ProveedorSesion>
       </body>
     </html>
   )
