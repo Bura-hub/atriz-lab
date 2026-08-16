@@ -32,8 +32,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
 import {
-  Punto, contarValidos, distanciaMinima, escala, puntosDelBarrido,
+  MARGEN_LIENZO_PX, Punto, contarValidos, distanciaMinima, escala, puntosDelBarrido,
 } from '@/lib/interfaz/barrido'
+import {
+  APROXIMACION_RADIO_M, PRECAUCION, RANGE_MIN_M, contarInvasiones, efectoDe, fraseDe,
+} from '@/lib/robot/poligonos_seguridad'
+import { LASER_X } from '@/lib/interfaz/barrido'
 import { interpretarSeguridad } from '@/lib/interfaz/seguridad'
 import { numero } from '@/lib/interfaz/formato'
 import { Aviso } from '@/componentes/ui/Aviso'
@@ -90,6 +94,19 @@ export interface ColoresLienzo {
    * su propia linea y las dos se estorban.
    */
   fondo: string
+  /**
+   * Los dos poligonos de la capa de seguridad.
+   *
+   * 🔴 SON LOS TONOS DE ESTADO DE LA APLICACION Y NO UNOS NUEVOS, y encajan sin
+   *    forzarlos: `Precaucion` significa «hay que mirar» —frena, no para— y
+   *    `Aproximacion` significa «hay que ir», porque con algo dentro el robot no
+   *    se mueve ni para alejarse y solo sale a mano.
+   *
+   * ⚠️ Ninguno es `--destructive`: ese rojo es EXCLUSIVO de la parada de
+   *    emergencia, y esta pantalla la tiene a la vista en el mismo raíl.
+   */
+  precaucion: string
+  aproximacion: string
 }
 
 /**
@@ -113,6 +130,8 @@ export function coloresDelTema(): ColoresLienzo {
     punto: t('--foreground'),
     robot: t('--muted-foreground'),
     fondo: t('--card'),
+    precaucion: t('--estado-mirar'),
+    aproximacion: t('--estado-ir'),
   }
 }
 
@@ -130,6 +149,11 @@ function pintar(
   const k = escala(lado, RADIO_M)
   const c = lado / 2
   const rMax = RADIO_M * k
+  // De metros del robot a pixeles del lienzo. Adelante es hacia ARRIBA en
+  // pantalla e izquierda hacia la IZQUIERDA: REP-103 girado para que lo mire una
+  // persona que tiene el robot delante.
+  const enX = (m: number) => c - m * k
+  const enY = (m: number) => c - m * k
 
   ctx.clearRect(0, 0, lado, lado)
 
@@ -226,6 +250,70 @@ function pintar(
     ctx.fillRect(c - p.y * k - 1.5, c - p.x * k - 1.5, 3, 3)
   }
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 LOS POLIGONOS DE LA CAPA DE SEGURIDAD — LA CAUSA Nº1 DE «NO OBEDECE»
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Hasta hoy estas dos zonas solo existian **como texto en otras dos
+   * pantallas**, y en la unica que dibuja lo que el robot ve no estaban. Lo que
+   * hacen esta MEDIDO y no se ve venir:
+   *
+   *   · `avanzar(0.20, 3)` pidio 60 cm y el robot hizo **26,4** una vez y 59,5 la
+   *     siguiente, sin tocar nada. El journal lo explicaba y el alumno no ve el
+   *     journal: pide 60, obtiene 26, y no recibe ningun mensaje.
+   *   · con algo dentro del circulo, el robot queda **inmovil por completo**:
+   *     avanzar alejandose 0,0 cm, girar 0,0°, retroceder 0,0 cm.
+   *
+   * 🔴 Y SE DIBUJAN ANTES QUE LOS PUNTOS. Un punto es un dato y una zona es
+   *    configuracion: en un solape gana el dato, igual que con los rotulos.
+   */
+  // `Precaucion`: rectangulo estatico, 60 cm de largo x 40 de ancho. Guionado,
+  // porque es la zona que RECORTA el mando sin pararlo.
+  ctx.save()
+  ctx.strokeStyle = col.precaucion
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([6, 4])
+  ctx.strokeRect(
+    enY(PRECAUCION.yMax),
+    enX(PRECAUCION.xMax),
+    (PRECAUCION.yMax - PRECAUCION.yMin) * k,
+    (PRECAUCION.xMax - PRECAUCION.xMin) * k,
+  )
+  ctx.restore()
+
+  // `Aproximacion`: circulo. Entero y con un velo, porque es la zona que
+  // INMOVILIZA — no admite matices y tiene que leerse antes que nada.
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(c, c, APROXIMACION_RADIO_M * k, 0, Math.PI * 2)
+  ctx.strokeStyle = col.aproximacion
+  ctx.lineWidth = 1.5
+  ctx.stroke()
+  ctx.globalAlpha = 0.10
+  ctx.fillStyle = col.aproximacion
+  ctx.fill()
+  ctx.restore()
+
+  /*
+   * 🔴 EL PUNTO CIEGO DEL LIDAR, PUNTEADO. `range_min` vale 0,100 y la media
+   *    longitud del robot 0,090: **sobresale del chasis ~1 cm por delante y por
+   *    detras**, y ahi no ve NADA ningun poligono. El manual afirmaba lo
+   *    contrario —«cae dentro del chasis, no hay zona muerta»— con los numeros
+   *    correctos y la conclusion mala.
+   *
+   * ⚠️ Va centrado en el LIDAR y no en el robot, que esta `LASER_X` mas adelante.
+   *    Son 5 mm —por debajo de un pixel a esta escala— y se hace igual: un
+   *    fichero que lo omitiera acabaria copiado a otra escala donde si se note.
+   */
+  ctx.save()
+  ctx.beginPath()
+  ctx.arc(c, enX(LASER_X), RANGE_MIN_M * k, 0, Math.PI * 2)
+  ctx.strokeStyle = col.linea
+  ctx.lineWidth = 1
+  ctx.setLineDash([1, 3])
+  ctx.stroke()
+  ctx.restore()
+
   // El robot: 21,7 cm de ancho x 19,0 de largo, MEDIDO con cinta (con orugas).
   // La ficha de Sphero decia 0.218 x 0.185 y las dos estaban mal, ademas de
   // cruzadas. Se dibuja a escala para que el barrido tenga referencia real.
@@ -237,6 +325,41 @@ function pintar(
   ctx.moveTo(c, c - (0.190 / 2) * k)
   ctx.lineTo(c, c - (0.190 / 2) * k - 10)
   ctx.stroke()
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * LA LEYENDA DE LAS ZONAS, EN LA ESQUINA — y no rotulos sobre los poligonos
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 Se probo primero con un rotulo pegado a cada zona y **se pisaban**: a esta
+   *    escala el circulo mide 21 px de radio y el rectangulo 56x84, asi que sus
+   *    bordes caen encima del robot y del anillo de 0,5 m. Se vio en la captura,
+   *    no leyendo el codigo: «no se mueve» salia tachado por la silueta.
+   *
+   * En una esquina no colisionan con nada y siguen diciendo lo mismo. Abajo a la
+   * izquierda porque el cuadrante inferior es el mas vacio de un barrido normal
+   * -el robot mira hacia arriba- y porque ahi no hay etiquetas de anillo.
+   */
+  const filas: readonly [string, string, number[]][] = [
+    ['no se mueve', col.aproximacion, []],
+    ['frena al 40 %', col.precaucion, [6, 4]],
+  ]
+  const x0 = MARGEN_LIENZO_PX
+  filas.forEach(([texto, color, guion], i) => {
+    const y = lado - MARGEN_LIENZO_PX - (filas.length - 1 - i) * (cuerpo + 6)
+    ctx.save()
+    ctx.strokeStyle = color
+    ctx.lineWidth = 1.5
+    ctx.setLineDash(guion)
+    ctx.beginPath()
+    ctx.moveTo(x0, y)
+    ctx.lineTo(x0 + 18, y)
+    ctx.stroke()
+    ctx.restore()
+    ctx.textAlign = 'left'
+    ctx.fillStyle = col.texto
+    ctx.fillText(texto, x0 + 24, y)
+  })
+  ctx.textAlign = 'center'
 }
 
 /**
@@ -437,6 +560,21 @@ export function PanelLidar() {
   const cuenta = scan === null ? null : contarValidos(scan)
   const minima = scan === null ? null : distanciaMinima(scan)
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 QUÉ LE ESTÁ HACIENDO LA CAPA DE SEGURIDAD AL MANDO, SEGÚN EL BARRIDO
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Es la causa nº1 de «el robot no obedece» y hasta hoy solo existía como texto
+   * en otras dos pantallas. Aquí se puede **contar**, porque los puntos ya están.
+   *
+   * ⚠️ ES UNA DEDUCCIÓN, NO UNA MEDIDA, y la pantalla lo dice: lo que de verdad
+   *    hace el monitor lo publica `/collision_monitor_state`. Esto reconstruye la
+   *    misma cuenta desde `/scan` para poder DIBUJARLA, y en los bordes —el
+   *    instante exacto del barrido, `min_points`— manda el topic.
+   */
+  const invasion = scan === null ? null : contarInvasiones(puntosDelBarrido(scan))
+  const efecto = invasion === null ? null : efectoDe(invasion)
+
   const encender = async () => {
     setEncendiendo(true)
     setFallo(null)
@@ -598,6 +736,23 @@ export function PanelLidar() {
                   valor={minima === null ? null : numero(minima, 2)}
                   unidad="m"
                   nota="del centro del robot, en línea recta"
+                />
+                {/*
+                  🔴 LA LECTURA QUE EXPLICA «NO OBEDECE». Va con las otras dos y no
+                     en un aviso aparte: es una lectura del barrido, igual que
+                     ellas, y con el robot despejado tiene que poder decir que no
+                     pasa nada sin gritar.
+                */}
+                <Lectura
+                  etiqueta="Capa de seguridad"
+                  valor={efecto === null ? null : ({
+                    INMOVIL: 'no se mueve',
+                    FRENA: 'frena al 40 %',
+                    NADA: 'sin recorte',
+                  })[efecto]}
+                  nota={efecto === null
+                    ? 'sin barrido no se puede saber, y sin barrido tampoco conduce'
+                    : `${fraseDe(efecto)} Deducido del barrido: lo que de verdad hace lo publica /collision_monitor_state.`}
                 />
 
                 {/*
