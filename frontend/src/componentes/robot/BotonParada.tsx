@@ -116,6 +116,22 @@ export function BotonParada({ teleoperacion }: PropsBotonParada) {
       <button
         type="button"
         onClick={pulsar}
+        /*
+         * 🔴 UN ASIDERO ESTABLE, y en este botón sí se justifica.
+         *
+         * Desde el 2026-08-16 esto se pinta en el raíl con un PORTAL, y un
+         * portal falla en silencio: si el nodo destino no existe, no se pinta
+         * nada y nadie se entera. La comprobación que lo impide
+         * (`pantallas_reales.test.ts`) tiene que encontrar este botón **dentro
+         * del `<nav>`** en las seis pestañas.
+         *
+         * ⚠️ Y no se busca por su texto a propósito. Este proyecto tiene pruebas
+         *    que exigen frases literales y está bien —el texto ES el contrato en
+         *    una pantalla que explica—, pero aquí lo que se comprueba no es qué
+         *    dice: es DÓNDE está. Atar eso a una cadena hace que renombrar el
+         *    rótulo apague la vigilancia de un mecanismo de seguridad.
+         */
+        data-parada="1"
         // 🔴 Un borde de 4 px en vez de `shadow-lg`. La sombra sugería relieve
         //    —profundidad que no es información— y este botón no necesita
         //    parecer que sobresale: necesita ser el elemento más inequívoco de

@@ -118,6 +118,25 @@ export interface Informe {
    * mando: `(privado)` redirige a `/entrar` sin sesion. Ver `mirar()`.
    */
   url: string
+  /**
+   * 🔴🔴 ¿ESTA LA PARADA DE EMERGENCIA DENTRO DEL RAIL?
+   *
+   * Desde el 2026-08-16 la parada se pinta en el rail con un PORTAL desde dentro
+   * de `ProveedorRobot`. Un portal falla de la peor manera posible: si el nodo
+   * destino no existe, `createPortal` no se llama, **no se pinta nada y no se
+   * avisa**. Aplicado a la unica pieza que frena un robot en marcha.
+   *
+   * Por eso no basta con «existe un boton de parada»: hay que comprobar que esta
+   * **dentro del `<nav>`**, que es lo que garantiza que no se va con el scroll —
+   * el defecto que este cambio existe para cerrar.
+   *
+   * ⚠️ Y esto NO comprueba que pulsarlo pare el robot. Eso es efecto fisico y
+   *    sigue exigiendo el robot delante; el camino de publicacion no lo toca
+   *    este cambio.
+   */
+  paradaEnRail: boolean
+  /** Cuantos botones de parada hay en la pagina. Tiene que ser exactamente 1. */
+  paradas: number
 }
 
 /**
@@ -259,12 +278,17 @@ export class Navegador {
         .map(e => e.innerText || '')
         .map(s => s.trim())
         .filter(s => s !== '')
+      const paradas = [...document.querySelectorAll('[data-parada]')]
       return {
         html: document.documentElement.outerHTML,
         hojas,
         texto: document.body.innerText,
         estados,
         url: location.pathname + location.search,
+        paradas: paradas.length,
+        // \`closest\` sube por el DOM, que es justo lo que hay que comprobar de un
+        // portal: el arbol de React no cambia, el DOM si.
+        paradaEnRail: paradas.length > 0 && paradas[0].closest('nav') !== null,
       }
     })()`
     const r = await this.cmd('Runtime.evaluate',

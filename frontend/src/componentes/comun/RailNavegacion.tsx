@@ -43,6 +43,7 @@ import {
   PropsIcono,
 } from './Iconos'
 import { useSesion } from '@/hooks/ContextoSesion'
+import { RanuraParada } from './RanuraParada'
 
 export interface EntradaRail {
   href: string
@@ -210,18 +211,21 @@ function Entrada({ e, activa }: { e: EntradaRail; activa: boolean }) {
 export interface PropsRail {
   /** Las seis del robot. Vacío fuera de `/robot/[id]`. */
   pestanas?: readonly EntradaRail[]
-  /**
-   * La parada de emergencia, abajo del todo.
+  /*
+   * 📝 AQUÍ VIVÍA `parada?: ReactNode`, Y SE FUE CON EL PORTAL (2026-08-16).
    *
-   * 🔴 Llega como `ReactNode` y no se construye aquí a propósito: necesita el
-   *    `Transporte` del robot, que solo existe dentro de `ProveedorRobot`. El
-   *    raíl vive por encima de ese proveedor, así que la pieza la inyecta quien
-   *    sí está dentro (`MarcoRobot`).
+   * Era la ranura por la que el marco del robot iba a inyectar la parada, y su
+   * comentario tenía el diagnóstico entero: *«necesita el `Transporte`, que solo
+   * existe dentro de `ProveedorRobot`; el raíl vive por encima»*. Correcto — y
+   * por eso **nadie podía pasarla nunca**. Una prop que solo puede rellenar
+   * alguien que está por debajo de ti es una promesa que no se puede cumplir.
+   *
+   * La llena ahora un portal (`RanuraParada` / `EnLaRanuraDeParada`), que
+   * atraviesa el DOM sin mover nada en el árbol de React.
    */
-  parada?: ReactNode
 }
 
-export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
+export function RailNavegacion({ pestanas = [] }: PropsRail) {
   const ruta = usePathname()
   const { usuario, cargando, caduco, refrescar } = useSesion()
 
@@ -361,7 +365,31 @@ export function RailNavegacion({ pestanas = [], parada }: PropsRail) {
         </div>
       )}
 
-      {parada !== undefined && <div className="shrink-0">{parada}</div>}
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        🔴🔴 LA PARADA DE EMERGENCIA, AL FIN EN SU RANURA (2026-08-16)
+        ═══════════════════════════════════════════════════════════════════════
+        Esta ranura existía desde que existe el raíl, con su párrafo explicando
+        por qué hace falta, y **nunca se rellenó**: `BotonParada` necesita el
+        `Transporte`, que vive por debajo del armazón. Era el defecto nº1 de la
+        auditoría, y su consecuencia estaba medida — la parada vivía en la franja
+        del marco, la franja hace scroll, y en seis de las siete pestañas el
+        botón que para el robot **desaparecía de la pantalla** justo cuando
+        alguien mira los datos de abajo con el robot en marcha.
+
+        Lo llena `EnLaRanuraDeParada` con un portal desde dentro de
+        `ProveedorRobot`. Un portal no mueve nada en el árbol de React: el
+        contexto sigue llegando igual.
+
+        🔴 `RanuraParada` va SIEMPRE, aunque no haya robot. Si se pintara solo en
+           rutas de robot, el nodo no existiría cuando `MarcoRobot` monta —el
+           raíl está por encima— y el portal caería en el vacío **sin decir
+           nada**. `empty:hidden` se encarga de que no ocupe cuando está vacía.
+
+        📝 Y la prop `parada` se ha ido con esto: era una ranura por props que
+           nadie podía llenar, o sea la promesa de una pieza que no existía.
+      */}
+      <RanuraParada />
     </nav>
   )
 }

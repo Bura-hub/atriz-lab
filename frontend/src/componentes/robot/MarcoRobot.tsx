@@ -42,6 +42,7 @@ import { evaluarPrecondicion, hayQueAvisar, type Destino } from '@/lib/rosbridge
 import { TESTIGO_EXIGIDO } from '@/lib/rosbridge/proveedor_testigo'
 import { VoltajeDelMarco } from './Bateria'
 import { BotonParada } from './BotonParada'
+import { EnLaRanuraDeParada } from '@/componentes/comun/RanuraParada'
 import { InsigniaEnlace } from './EstadoEnlace'
 
 /*
@@ -214,16 +215,33 @@ function CabeceraRobot({ destino }: { destino: DestinoRobot }) {
             </span>
           </div>
 
-          {/* `ml-auto`: la parada se ancla a la derecha sin `justify-between`,
-              que es lo que abria el hueco cuando solo habia dos bloques. */}
-          {/* 27rem: lo que necesita «PARADA DE EMERGENCIA» para caer en UNA
-              linea a `text-2xl`. Partido en dos lineas el bloque medía 124 px de
-              alto y era, con diferencia, el objeto mas pesado de la pantalla —
-              por encima de cualquier dato. Ahora es igual de inequivoco y ocupa
-              lo que le toca. */}
-          <div className="w-full shrink-0 sm:ml-auto sm:w-[27rem]">
+          {/*
+            ═══════════════════════════════════════════════════════════════════
+            🔴🔴 LA PARADA SE VA AL RAÍL, Y ESTO ERA EL DEFECTO Nº1 (2026-08-16)
+            ═══════════════════════════════════════════════════════════════════
+            Vivía aquí, en la franja del marco, ocupando 27 rem a la derecha. Y
+            **esta franja hace scroll**: en seis de las siete pestañas, con la
+            página bajada un poco, el botón que para el robot no estaba en
+            pantalla — justo cuando alguien mira los datos de abajo con el robot
+            en marcha, que es el único momento en que hace falta.
+
+            Ahora se pinta en la ranura del raíl, que es fija en escritorio y
+            está siempre a la vista. El portal no la saca del árbol de React:
+            sigue recibiendo `teleoperacion` como prop y el contexto del robot
+            igual que antes.
+
+            📝 Y la franja gana lo que ocupaba: batería y enlace dejan de
+               competir con un botón rojo de 27 rem por el mismo renglón.
+
+            ⚠️ Por debajo de `lg` el raíl es una tira horizontal ARRIBA, así que
+               ahí la parada sube al principio de la página en vez de estar a la
+               derecha de la franja. Sigue sin hacer scroll en el primer
+               viewport, que es lo que se buscaba; que sea el sitio ideal en una
+               tableta **no está verificado** — móvil no es prioridad y se anota.
+          */}
+          <EnLaRanuraDeParada>
             <BotonParada teleoperacion={teleoperacion} />
-          </div>
+          </EnLaRanuraDeParada>
         </div>
       </div>
     </>

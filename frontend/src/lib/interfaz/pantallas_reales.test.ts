@@ -215,12 +215,39 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
     expect(t.texto).toMatch(/ningún programa corriendo/i)
     expect(t.texto).not.toMatch(/no hay nada al otro lado/i)
 
-    // 4 · 🔴 LA COMPROBACION DE PRESENCIA QUE FALTABA. Sin agente detras, la
-    //     pantalla tiene que DECIRLO — y distinguirlo del enlace de rosbridge,
-    //     que es otro puerto y otro proceso. Son dos enlaces y se puede tener
-    //     uno vivo y el otro muerto.
-    expect(t.texto).toMatch(/agente/i)
-    expect(t.texto).toMatch(/9443|otro enlace/i)
+    /*
+     * 4 · 🔴🔴 ESTA COMPROBACION ESTABA ESCRITA PARA UN SOLO ESTADO, Y HOY FALLA
+     *        POR LA RAZON BUENA: EL AGENTE FUNCIONA.
+     *
+     * Exigia `/agente/i` y `/9443|otro enlace/i` sin condicion, con el
+     * comentario *«sin agente detras, la pantalla tiene que DECIRLO»*. Cierto —
+     * y solo cuando NO hay agente: `PanelTerminal` pinta ese aviso unicamente
+     * con el enlace en `ABRIENDO` o en error. El 2026-08-16, con `atriz-agente`
+     * arriba en rvr-01, el aviso desaparece y la palabra «agente» no sale en
+     * toda la pagina — medido: `agente: false`, `9443: false`.
+     *
+     * O sea: la prueba codificaba como universal el estado en que se escribio.
+     * Es la forma que este proyecto persigue —una afirmacion cierta en su
+     * contexto, falsa al mudarla— y aqui la mudanza fue el tiempo.
+     *
+     * Lo que SI vale siempre: la pantalla esta en **uno de los dos estados
+     * conocidos**, nunca en ninguno. O nombra el agente que falta, o el terminal
+     * esta listo para escribir.
+     *
+     * 🔴 Y LO QUE ESTO DESTAPA NO SE ARREGLA AQUI: con el agente conectado, la
+     *    pagina **no dice en ningun sitio que haya un segundo enlace**. El
+     *    requisito del comentario original —«son dos enlaces y se puede tener
+     *    uno vivo y el otro muerto»— se cumple solo cuando uno falla. Eso es el
+     *    Taller de la F5 («el estado de los DOS enlaces se ve junto») y se anota
+     *    en vez de relajarlo aqui: cuando exista, esta comprobacion vuelve a ser
+     *    incondicional.
+     */
+    const nombraElAgente = /agente/i.test(t.texto) && /9443|otro enlace/i.test(t.texto)
+    const terminalListo = /ningún programa corriendo/i.test(t.texto)
+    expect(
+      nombraElAgente || terminalListo,
+      'el Taller no nombra el agente NI ofrece el terminal: no está en ningún estado conocido',
+    ).toBe(true)
 
     // 5 · Y el aviso de lo que este terminal ABRE, que es real: el programa del
     //     alumno alcanza caminos que la lista blanca cierra al navegador.
@@ -241,5 +268,54 @@ describe.skipIf(!CON_ROBOT)('las pantallas, renderizadas y con datos reales', ()
     // Y que sean numeros de verdad, no cadenas puestas para rellenar.
     const numericas = marcas.filter((m) => Number.isFinite(Number(m.value)))
     expect(numericas.length).toBe(marcas.length)
+  })
+
+
+  /*
+   * ═════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 LA PARADA DE EMERGENCIA, EN EL RAÍL, EN LAS SEIS PESTAÑAS
+   * ═════════════════════════════════════════════════════════════════════════
+   * Desde el 2026-08-16 la parada se pinta en el raíl con un PORTAL desde dentro
+   * de `ProveedorRobot`. Un portal falla de la peor manera que existe: si el
+   * nodo destino no está, `createPortal` no llega a llamarse, **no se pinta nada
+   * y no se avisa**. Aplicado a la única pieza que frena un robot en marcha.
+   *
+   * Y no basta con «hay un botón de parada»: lo que este cambio cierra es que la
+   * parada **se iba con el scroll** en seis de las siete pestañas. Lo que hay
+   * que comprobar es que está DENTRO del `<nav>`, que es lo que la hace fija.
+   *
+   * ⚠️ Esto NO comprueba que pulsarla pare el robot: eso es efecto físico y
+   *    sigue exigiendo el robot delante. Lo que este cambio toca es dónde vive
+   *    el botón, no el camino de publicación — y esa distinción se dice en vez
+   *    de dejar que la prueba parezca cubrir más de lo que cubre.
+   */
+  /*
+   * 🔴 SOLO LAS DEL ROBOT, y el filtro se calcula de `RUTAS` en vez de listarse:
+   *    una pestaña nueva entra sola. Escribir la lista a mano aquí sería el
+   *    hueco de siempre —«una pantalla nueva que esta prueba no recorre no se
+   *    vigila»—, que este fichero ya se anota para las comprobaciones de
+   *    ausencia.
+   *
+   * ⚠️ Y lleva CONTROL de tamaño: si el filtro dejara de casar —al cambiar el
+   *    prefijo de la ruta, por ejemplo— `it.each([])` no ejecutaría ninguna
+   *    comprobación y vitest lo daría por bueno. Cero pruebas se leen igual que
+   *    cero fallos.
+   */
+  const DEL_ROBOT = RUTAS.filter(([, r]) => r.startsWith('/robot/')).map(([n]) => n)
+  it('control: el filtro de pestañas del robot casa con las siete', () => {
+    expect(DEL_ROBOT.length).toBe(7)
+  })
+
+  it.each(DEL_ROBOT)('%s: la parada está en el raíl, no en el scroll', (nombre) => {
+    const inf = informes.get(nombre)
+    expect(inf, `no hay informe de ${nombre}`).toBeDefined()
+    /*
+     * EXACTAMENTE UNA. Dos serían dos instancias del mecanismo de seguridad en
+     * la misma pantalla —el portal pintando además del sitio viejo—, y este
+     * proyecto ya pagó una duplicación así con `Teleoperacion`: dos bucles de
+     * 10 Hz publicando en `/cmd_vel_raw`.
+     */
+    expect(inf!.paradas, `botones de parada en ${nombre}`).toBe(1)
+    expect(inf!.paradaEnRail, `la parada de ${nombre} NO está dentro del <nav>`).toBe(true)
   })
 })

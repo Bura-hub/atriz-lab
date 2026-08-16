@@ -155,14 +155,28 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
               : estado.motivoEnlace}
           </p>
           {/*
-            🔴 SE DICE QUE SON DOS ENLACES. La franja de arriba —parada, voltaje,
+            🔴 SE DICE QUE SON DOS ENLACES. La franja de signos vitales —voltaje,
                «en línea»— habla con rosbridge en el 9090; esto es el agente en el
                9443. Se puede tener uno vivo y el otro muerto, y quien mire la
                franja creería que está todo bien.
+
+            📝 «la franja de ARRIBA» hasta el 2026-08-16, y era exacto hasta ese
+               día: la parada vivía ahí. Se fue al raíl —el defecto nº1 era que
+               hacía scroll— y con ella dejó de ser cierto que la parada esté
+               arriba. Un texto que sitúa una pieza deja de valer en cuanto la
+               pieza se mueve, y **nada avisa**: se encontró leyendo la salida de
+               una prueba que fallaba por otra cosa.
+
+            🔴 Y LO QUE SIGUE SIN ESTAR: este aviso solo se pinta con el agente
+               en `ABRIENDO` o en error. Con el agente CONECTADO la pantalla no
+               dice en ningún sitio que haya un segundo enlace — o sea que el
+               párrafo de arriba describe un requisito que se cumple solo cuando
+               algo falla. Es el Taller de la F5 («el estado de los DOS enlaces
+               se ve junto») y está anotado en la prueba.
           */}
           {estado.enlace !== 'ABRIENDO' && (
             <p className="mt-2">
-              Esto es <strong>otro enlace</strong> que el de la franja de arriba: aquella habla con
+              Esto es <strong>otro enlace</strong> que el de la franja de signos vitales: aquella habla con
               el robot por el puerto 9090 y esto con el agente por el 9443. Que una diga «en línea»
               no dice nada de la otra.
             </p>
@@ -217,7 +231,7 @@ export function PanelTerminal({ etiqueta }: { etiqueta: string }) {
         extremo={<Insignia tono={insignia.tono}>{insignia.texto}</Insignia>}
         pie={(
           <p>
-            La parada de arriba para el robot{' '}
+            La parada del raíl para el robot{' '}
             <strong className="text-foreground/85">venga la orden de donde venga</strong>.{' '}
             ⚠️ Y esta pantalla <strong className="text-foreground/85">solo ve los programas que
             salen de aquí</strong>: uno lanzado por SSH se mueve igual y no aparece.
