@@ -2,6 +2,7 @@ import {
   RegistroPendientes, opAdvertise, opCallService, opCancelActionGoal, opPublish,
   opSendActionGoal, opSubscribe, opUnsubscribe,
 } from './protocolo'
+import { leerCierre } from './rechazo'
 
 /**
  * Un WebSocket por robot. NO hay namespace: al robot lo identifica la CONEXION,
@@ -54,7 +55,13 @@ export const MARGEN_PLAZO_LOCAL_MS = 2000
 export const PLAZO_ACCION_MS = 5 * 60 * 1000
 
 type Manejador = (msg: unknown) => void
-type FabricaWS = (url: string) => WebSocket
+/**
+ * 🆕 Los subprotocolos son OPCIONALES a proposito: por ahi viaja el testigo de
+ *    la Fase B (`atriz.token.<jwt>`), y los dobles de las pruebas siguen
+ *    llamando con un solo argumento. Hacerlo obligatorio habria obligado a
+ *    tocar todos los dobles para nada.
+ */
+type FabricaWS = (url: string, protocolos?: string[]) => WebSocket
 
 /** Un aviso local del cliente. Ver el docstring de `alAviso()`. */
 export interface Aviso {
@@ -117,7 +124,7 @@ export class Transporte {
 
   constructor(
     private url: string,
-    private fabrica: FabricaWS = (u) => new WebSocket(u),
+    private fabrica: FabricaWS = (u, p) => (p === undefined ? new WebSocket(u) : new WebSocket(u, p)),
     private opciones: OpcionesTransporte = {},
   ) {}
 
@@ -305,7 +312,17 @@ export class Transporte {
       this.entrante(m as Parameters<typeof this.entrante>[0])
     }
 
-    ws.onclose = () => {
+    /*
+     * 🆕 FASE B (A7): `evento` es OPCIONAL porque los dobles de las pruebas
+     *    llaman `this.onclose?.()` sin argumentos, mientras el WebSocket real
+     *    siempre pasa un `CloseEvent`. Sin evento se cae en el caso «reintentar
+     *    y en silencio», que es exactamente lo que hacia esta clase antes.
+     *
+     * ⚠️ Y por eso hay una prueba que dispara un cierre CON un 4403 de verdad:
+     *    si el camino nuevo solo se ejercitara con dobles sin evento, estaria
+     *    sin cubrir y nadie lo notaria.
+     */
+    ws.onclose = (evento?: { code?: number; reason?: string }) => {
       // 🔴🔴 C3, EL CRITICO: el `close()` de un WebSocket real es ASINCRONO.
       //    `cerrar()` anula `this.ws` de inmediato (sincrono, deliberado) y un
       //    `conectar()` justo despues (el boton "Reconectar" tipico:
@@ -341,7 +358,24 @@ export class Transporte {
       //    `onclose` corria sin ella y un `cerrar()` levantaba un socket
       //    nuevo que seguia recibiendo /scan —el 83 % del trafico— sin que
       //    nadie supiera que existia.
-      if (this.opciones.reconectar) {
+      /*
+       * 🔴🔴 HAY CIERRES QUE NO TIENE SENTIDO REINTENTAR, Y REINTENTARLOS HACE
+       *    DAÑO. Si el robot cerro porque no acepta la credencial (4401/4403/
+       *    4404), la espera creciente dejaria «reconectando…» en bucle —hasta
+       *    el minuto entre intentos— mientras el robot ya dijo con todas las
+       *    letras *«esa credencial es para otro robot»*. Un motivo que existe y
+       *    no llega a quien tiene que leerlo es la firma de fallo que este
+       *    proyecto persigue.
+       *
+       * 🔴 El 1013 (la Pi sin hora, sin RTC) SI se reintenta aunque venga del
+       *    mismo mecanismo: se arregla solo en ~18 s. La distincion vive en
+       *    `rechazo.ts` con sus 17 pruebas, no aqui.
+       */
+      const lectura = leerCierre(evento?.code ?? 0, evento?.reason ?? '')
+      if (lectura.explicacion !== null) {
+        this.avisar({ nivel: 'aviso', mensaje: lectura.explicacion })
+      }
+      if (this.opciones.reconectar && lectura.reintentar) {
         const espera = esperaReconexion(this.intentos++, this.opciones.aleatorio)
         const programar = this.opciones.programar ?? setTimeout
         this.reconexionProgramada = programar(() => {
