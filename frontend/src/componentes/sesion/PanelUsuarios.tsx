@@ -1,13 +1,22 @@
 'use client'
 
 /**
- * DAR DE ALTA Y VER QUIÉN HAY.
+ * ADMINISTRAR LAS CUENTAS: alta, alta por lote, rol, reseteo y baja.
  *
- * 🔴 SIN BORRAR NI EDITAR, y el hueco se dice en pantalla en vez de dejar un
- *    botón que no hace nada. Dar de baja se hace a mano en `usuarios.json`, que
- *    con una plantilla que cambia una vez por semestre es más barato de mantener
- *    que un formulario — y sobre todo es **honesto**: un hueco declarado se
- *    puede planificar, uno callado se lee como «esto ya está resuelto».
+ * 🔴 AQUÍ PONÍA «SIN BORRAR NI EDITAR», y el motivo era bueno: *«con una
+ *    plantilla que cambia una vez por semestre, un formulario de borrado es
+ *    superficie que mantener sin nadie a quien servir»*. **Era cierto con tres
+ *    cuentas de personal.**
+ *
+ *    Desde la Fase B (2026-08-15) los dieciséis alumnos **necesitan cuenta**: sin
+ *    sesión no se abre un socket con ningún robot. La plantilla pasó de tres a
+ *    diecinueve y cambia **cada semestre entero**. El hueco declarado dejó de ser
+ *    barato en el momento en que dar de baja pasó de «una vez al año» a «dieciséis
+ *    veces cada seis meses».
+ *
+ * 📝 La lección, que es la de siempre aquí: **una decisión correcta se apoya en un
+ *    hecho, y el hecho puede caducar.** Lo que había que revisar no era el
+ *    razonamiento — era su premisa.
  */
 
 import { CSSProperties, FormEvent, useCallback, useEffect, useState } from 'react'
@@ -17,14 +26,17 @@ import { useSesion } from '@/hooks/ContextoSesion'
  *    primera línea y este es un componente de cliente: bastaba con nombrarlo
  *    para romper el build del navegador. Las reglas viven aparte justo por esto.
  */
-import { MINIMO_CONTRASENA, revisarAlta } from '@/lib/sesion/reglas'
+import { MINIMO_CONTRASENA, revisarAlta, type Rol } from '@/lib/sesion/reglas'
 import { SIN_SERVIDOR } from '@/lib/sesion/entrada'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { CampoContrasena } from './CampoContrasena'
+import { AltaPorLote } from './AltaPorLote'
+import { AccionesDeCuenta } from './AccionesDeCuenta'
 
 interface CuentaVisible {
   usuario: string
   creada: number
+  rol: Rol
 }
 
 /** Fecha corta y local. La hora no aporta nada para «cuándo se dio de alta». */
@@ -176,10 +188,30 @@ export function PanelUsuarios() {
                 </div>
               </form>
 
+              {/*
+                🔴 AQUÍ PONÍA «No hay dos niveles: hay sesión o no la hay». Falso
+                   desde hoy. Y la otra mitad —«quien tenga cuenta puede liberar
+                   una parada»— sigue siendo cierta, pero por una razón que ahora
+                   hay que decir, porque ya NO es «no hay roles».
+              */}
               <p className="mt-4 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
-                Quien tenga cuenta puede <strong>liberar una parada de emergencia</strong> y crear
-                más cuentas. No hay dos niveles: hay sesión o no la hay.
+                Hay <strong>dos clases de cuenta</strong>. Un <strong>alumno</strong> conduce, mide,
+                programa y usa el cuaderno de su robot. Un <strong>profesor</strong> hace además todo
+                lo de esta pantalla y arranca la navegación.
               </p>
+              <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+                <strong>Liberar una parada de emergencia lo puede cualquiera con sesión</strong>, no
+                solo un profesor: liberar no pone el robot en marcha —está medido en el robot— y
+                reservarlo dejaría un robot parado hasta que apareciera alguien.
+              </p>
+
+              {/* ─── Una clase entera ──────────────────────────────────── */}
+              <div className="mt-8">
+                <h2 className="microetiqueta mb-3">dar de alta a una clase</h2>
+                <div className="vidrio rounded-ficha p-5">
+                  <AltaPorLote alCrear={cargar} />
+                </div>
+              </div>
             </section>
 
             {/* ─── Quién hay ────────────────────────────────────────────── */}
@@ -193,8 +225,12 @@ export function PanelUsuarios() {
                     <thead>
                       <tr className="border-b border-[rgb(var(--filo)/0.12)]">
                         <th scope="col" className="microetiqueta px-4 py-3 font-normal">usuario</th>
+                        <th scope="col" className="microetiqueta px-4 py-3 font-normal">rol</th>
                         <th scope="col" className="microetiqueta px-4 py-3 font-normal">
                           dada de alta
+                        </th>
+                        <th scope="col" className="microetiqueta px-4 py-3 font-normal">
+                          <span className="sr-only">acciones</span>
                         </th>
                       </tr>
                     </thead>
@@ -210,8 +246,31 @@ export function PanelUsuarios() {
                               <span className="ml-2 text-[12px] text-muted-foreground">(tú)</span>
                             )}
                           </td>
+                          <td className="px-4 py-3">
+                            {/*
+                              🔴 El rol va como PALABRA, no como color ni icono.
+                                 Es la regla del muro aplicada aquí: una de cada
+                                 doce personas no distingue dos tonos, y esta
+                                 tabla decide quién puede borrar cuentas.
+                            */}
+                            <span className="text-[13px]">
+                              {c.rol === 'profesor' ? 'profesor' : 'alumno'}
+                            </span>
+                          </td>
                           <td className="px-4 py-3 tabular-nums text-muted-foreground">
                             {fecha(c.creada)}
+                          </td>
+                          <td className="px-4 py-3">
+                            <AccionesDeCuenta
+                              cuenta={c}
+                              soyYo={c.usuario === yo}
+                              esUltimoProfesor={
+                                c.rol === 'profesor'
+                                && cuentas.filter((x) => x.rol === 'profesor').length === 1
+                              }
+                              alCambiar={cargar}
+                              alFallar={setFallo}
+                            />
                           </td>
                         </tr>
                       ))}
@@ -221,18 +280,16 @@ export function PanelUsuarios() {
               )}
 
               {/*
-                🔴 EL HUECO, DICHO. No hay botón de borrar y no va a aparecer uno
-                   gris y desactivado: un control apagado se lee como «esto se
-                   hará algún día», y esto no. La baja es un `usuarios.json` menos
-                   una entrada, que es exactamente el trabajo que cuesta.
+                🔴 AQUÍ VIVÍA EL AVISO «no se puede dar de baja desde aquí», y era
+                   correcto hasta hoy. Se sustituye por el límite que SÍ queda, que
+                   es distinto y sigue siendo real.
               */}
               <div className="mt-5 max-w-prose">
-                <Aviso nivel="NOTA" titulo="No se puede dar de baja desde aquí">
-                  Ni cambiar una contraseña. Se hace quitando o rehaciendo la entrada de{' '}
-                  <code>usuarios.json</code> en la máquina que sirve la aplicación, con{' '}
-                  <code>node herramientas/crear-cuenta.mjs</code>. Está así a propósito: con una
-                  plantilla que cambia una vez por semestre, un formulario de borrado es superficie
-                  que mantener sin nadie a quien servir.
+                <Aviso nivel="NOTA" titulo="Siempre tiene que quedar un profesor">
+                  No se puede borrar ni degradar al <strong>último profesor</strong>: la instalación
+                  se quedaría sin nadie capaz de crear cuentas, y la única salida sería editar{' '}
+                  <code>usuarios.json</code> a mano en la máquina que sirve la aplicación. Para
+                  quitarte a ti mismo, asciende antes a otra persona.
                 </Aviso>
               </div>
             </section>
