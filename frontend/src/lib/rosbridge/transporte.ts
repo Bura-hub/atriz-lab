@@ -3,6 +3,7 @@ import {
   opSendActionGoal, opSubscribe, opUnsubscribe,
 } from './protocolo'
 import { leerCierre } from './rechazo'
+import { PREFIJO_TESTIGO, SUBPROTOCOLO_AGENTE } from '@/lib/sesion/enlace_agente'
 
 /**
  * Un WebSocket por robot. NO hay namespace: al robot lo identifica la CONEXION,
@@ -105,6 +106,18 @@ interface OpcionesTransporte {
   programar?: (fn: () => void, ms: number) => ReturnType<typeof setTimeout>
   /** 0 lo desactiva. Ver `PLAZO_CONEXION_MS`. */
   plazoConexion?: number
+  /**
+   * 🆕 FASE B (A7): de donde sale el testigo que rosbridge exige al abrir.
+   *
+   * Es una FUNCION y no una cadena a proposito: el testigo **caduca a los 10
+   * min** y esta clase reconecta sola con espera creciente. Un robot apagado
+   * media hora volveria con una credencial rancia, y el sintoma —«no me deja
+   * entrar y antes sí»— se buscaria en el robot. Cada intento pide uno fresco.
+   *
+   * Sin esta opcion, el transporte abre como siempre, sin subprotocolo: es lo
+   * que hacen las pruebas y lo que hara la web hasta que el robot lo exija.
+   */
+  testigo?: () => Promise<string | null>
 }
 
 export class Transporte {
@@ -121,6 +134,15 @@ export class Transporte {
   private intentos = 0
   private reconexionProgramada: ReturnType<typeof setTimeout> | null = null
   private plazoProgramado: ReturnType<typeof setTimeout> | null = null
+  /**
+   * 🔴 Marca de agua para descartar un testigo que llega TARDE.
+   *
+   * Pedir el testigo es asincrono, asi que entre «lo pido» y «abro el socket»
+   * cabe un `cerrar()` del usuario, o un `conectar()` nuevo. Sin esto, un
+   * testigo en vuelo abriria un socket **despues** de que alguien cerrara — que
+   * es la misma familia de carrera que C3 y R1, ya pagadas en esta clase.
+   */
+  private generacion = 0
 
   constructor(
     private url: string,
@@ -173,6 +195,51 @@ export class Transporte {
   }
 
   conectar(): void {
+    if (this.ws !== null) return
+
+    const pedir = this.opciones.testigo
+    // Sin proveedor, el camino de siempre: abrir y ya.
+    if (pedir === undefined) { this.abrir(); return }
+
+    const mia = ++this.generacion
+    pedir().then(
+      (testigo) => {
+        // Llego tarde: alguien cerro, o ya hay otro socket. Se tira.
+        if (mia !== this.generacion || this.ws !== null) return
+        if (testigo === null) {
+          this.sinTestigo('El servidor no ha dado una credencial para este robot. '
+            + 'Puede que se haya cerrado tu sesión.')
+          return
+        }
+        this.abrir([`${PREFIJO_TESTIGO}${testigo}`, SUBPROTOCOLO_AGENTE])
+      },
+      (e: unknown) => {
+        if (mia !== this.generacion) return
+        this.sinTestigo('No he podido pedir la credencial al servidor: '
+          + (e instanceof Error ? e.message : String(e)))
+      },
+    )
+  }
+
+  /**
+   * No hay testigo, asi que no se abre nada — pero SI se reintenta.
+   *
+   * 🔴 Al contrario que un 4403, esto no dice «tu credencial no vale»: dice que
+   *    no se ha podido PEDIR. Un servidor que reinicia o un WiFi con hipo son
+   *    transitorios, y rendirse aqui dejaria la pagina muerta hasta recargarla.
+   */
+  private sinTestigo(mensaje: string): void {
+    this.avisar({ nivel: 'error', mensaje })
+    if (this.opciones.reconectar !== true) return
+    const espera = esperaReconexion(this.intentos++, this.opciones.aleatorio)
+    const programar = this.opciones.programar ?? setTimeout
+    this.reconexionProgramada = programar(() => {
+      this.reconexionProgramada = null
+      this.conectar()
+    }, espera)
+  }
+
+  private abrir(protocolos?: string[]): void {
     // 🔴 Cancela una reconexion ya programada ANTES de nada: si no, un
     //    `conectar()` manual mientras hay un temporizador pendiente lo deja
     //    huerfano —solo se sobrescribia la referencia— y ese temporizador
@@ -187,7 +254,7 @@ export class Transporte {
     //    las llamadas pendientes del nuevo, que estaba sano.
     if (this.ws !== null) return
 
-    const ws = this.fabrica(this.url)
+    const ws = this.fabrica(this.url, protocolos)
     this.ws = ws
 
     /*
@@ -387,6 +454,11 @@ export class Transporte {
   }
 
   cerrar(): void {
+    // 🔴 Lo PRIMERO: invalida un testigo en vuelo. Sin esto, un `cerrar()`
+    //    mientras se pedia la credencial dejaba llegar la respuesta despues y
+    //    abrir un socket que nadie habia pedido — telemetria viva a espaldas
+    //    del usuario, que es exactamente el sintoma de C3 por otra puerta.
+    this.generacion++
     if (this.reconexionProgramada !== null) {
       clearTimeout(this.reconexionProgramada)
       this.reconexionProgramada = null
