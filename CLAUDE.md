@@ -295,6 +295,32 @@ cara.** Comparten `.next/`. Si necesitas uno con otra configuración —por ejem
 segundo en otro puerto deja el original devolviendo 500. Pasó el 2026-08-16 y costó un rato de
 diagnóstico.
 
+**🔴🔴 UNA COMPROBACIÓN QUE SE SALTA CUANDO NO ENCUENTRA SU FUENTE NO DISTINGUE «TODO BIEN» DE
+«NO HE MIRADO».** El 2026-08-17, una prueba escrita para atar `TOPE_SEGUNDOS` al `.srv` del robot
+—leyéndolo, como `cascada.test.ts` lee `globals.css`— **pasó en verde dos veces sin leer nada**: la
+ruta estaba mal (dos niveles, luego seis; son **cinco**) y al no encontrar el fichero se iba por un
+`return` con un `console.warn`.
+
+```
+if (!existsSync(SRV)) { console.warn('no lo encuentro…'); return }   🔴 verde siempre
+expect(existsSync(SRV), 'no lo encuentro: …').toBe(true)             ✅ falla y dice por qué
+```
+
+→ **La aritmética de la ruta no era el defecto: el `return` sí.** Y un aviso por consola no lo
+  arregla — **nadie lee la consola de una tanda en verde**.
+→ **Si una prueba necesita un fichero de otro repositorio, que FALLE cuando no está**, con el
+  motivo en el mensaje. Quien clone solo este repositorio verá por qué, y eso es información: que
+  ese número no se ha contrastado con nada.
+→ 📌 Es la comprobación **nº14 del verificador del robot** —la que se saltaba sola y en silencio—
+  cometida aquí. Antes de dar por buena una prueba que compara con algo externo, **rómpela a
+  propósito** y comprueba que se pone roja.
+
+**📝 Y dos papercuts del mismo rato:** en una plantilla de JS, `` `…${x}` `` mete un **retroceso**
+(U+0008), no un límite de palabra —`\s` y `\w` se quedan en `s` y `w`—, así que un patrón de
+validación construido así no casa nada. Y reescribir un fichero entero desde un script que puede
+reventar a mitad **lo deja vacío**: pasó con un `json.dumps` y un emoji. Para tocar código, mejor
+ediciones precisas que reescrituras.
+
 **🔴🔴 `next dev` NO ES EL PRODUCTO, Y JUZGAR LA VELOCIDAD CON ÉL LLEVA A «OPTIMIZAR» LO QUE YA
 ESTÁ BIEN.** Medido el 2026-08-17 contra rvr-01 encendido, con el mismo guion y las mismas siete
 pestañas, cronometrando desde el CLIC hasta que cambia el contenido:
