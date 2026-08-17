@@ -112,6 +112,9 @@ describe('lista blanca', () => {
      * en el que mirar. `success` dice que el driver acepto la peticion.
      */
     expect(confirmaEfecto('/set_ir_baliza')).toBe('SOLO_QUE_NO_LANZO')
+    // Añadido el 2026-08-17. `success` dice que el driver aceptó y armó el
+    // plazo, no que el robot se mueva. Eso se mira en `/estado_ir`.
+    expect(confirmaEfecto('/set_ir_conduccion')).toBe('SOLO_QUE_NO_LANZO')
   })
 
   /*
@@ -129,7 +132,7 @@ describe('lista blanca', () => {
    *    CINCO causas»: si el numero no aporta, se quita; si aporta, se deriva.
    */
   it('🔴 si esto falla, actualiza tambien las DOS enumeraciones de arriba', () => {
-    expect(SERVICIOS).toHaveLength(14)
+    expect(SERVICIOS).toHaveLength(15)
   })
 
   // Los DIEZ de SERVICIOS estan cubiertos entre las dos pruebas de arriba:

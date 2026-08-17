@@ -50,6 +50,10 @@ import {
   NOMBRE_MODO_IR, NOMBRE_ZONA, ZonaIR, avisoConduccionIR, peticionBaliza, peticionIR, ultimoMensaje,
   zonaDelEmisor,
 } from '@/lib/robot/infrarrojos'
+import {
+  NOMBRE_MODO_CONDUCCION, SEGUNDOS_POR_DEFECTO, TOPE_SEGUNDOS,
+  type ModoConduccionIR, peticionConduccionIR,
+} from '@/lib/robot/conduccion_ir'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Dato } from '@/componentes/ui/Dato'
 
@@ -65,6 +69,17 @@ const SERVICIO_EMITIR = '/send_infrared_message'
  *    escribir**. Encargado a la Pi el 2026-08-16 y desplegado el 2026-08-17.
  */
 const SERVICIO_BALIZA = '/set_ir_baliza'
+/*
+ * 🔴🔴 EL ÚNICO MANDO DE ESTA PANTALLA QUE PONE EL ROBOT A CONDUCIR.
+ *    `seguir` y `huir` son modos del FIRMWARE: el RVR conduce solo, sin pasar
+ *    por `cmd_vel`, así que **ni el watchdog ni el `collision_monitor` lo ven**.
+ *    Es la única forma de mover un robot de este laboratorio con la capa de
+ *    seguridad fuera del circuito.
+ *
+ *    Por eso el plazo es obligatorio y con tope: no existe la petición «para
+ *    siempre». El driver arma un temporizador de un disparo y lo apaga solo.
+ */
+const SERVICIO_CONDUCCION = '/set_ir_conduccion'
 
 /*
  * ═══════════════════════════════════════════════════════════════════════════
@@ -152,6 +167,46 @@ export function PanelInfrarrojos() {
       setBalizaEnviando(false)
     }
   }, [transporte, farCode, nearCode])
+
+  const [modoCond, setModoCond] = useState<ModoConduccionIR>('seguir')
+  const [segundos, setSegundos] = useState(SEGUNDOS_POR_DEFECTO)
+  const [condEnviando, setCondEnviando] = useState(false)
+  const [condResultado, setCondResultado] =
+    useState<{ hora: string; texto: string; malo: boolean } | null>(null)
+
+  const mandarConduccion = useCallback(async (modo: ModoConduccionIR) => {
+    const cuerpo = peticionConduccionIR(modo, farCode, nearCode, segundos)
+    const hora = horaCorta(Date.now())
+    if (cuerpo === null) {
+      setCondResultado({
+        hora, malo: true,
+        texto: `Los códigos van de 0 a 7 y el plazo de 1 a ${TOPE_SEGUNDOS} s. No se ha enviado nada.`,
+      })
+      return
+    }
+    setCondEnviando(true)
+    try {
+      const r = await transporte.llamar(SERVICIO_CONDUCCION, cuerpo) as Record<string, unknown>
+      const ok = r.success === true
+      const m = typeof r.message === 'string' && r.message !== '' ? ` El robot dice: «${r.message}»` : ''
+      setCondResultado({
+        hora,
+        malo: !ok,
+        texto: ok
+          ? (modo === 'off'
+            ? `Conducción por infrarrojos apagada.${m}`
+            : `El robot va a ${NOMBRE_MODO_CONDUCCION[modo]} durante ${segundos} s.${m}`)
+          : `El robot rechazó la orden.${m}`,
+      })
+    } catch (e) {
+      setCondResultado({
+        hora, malo: true,
+        texto: `La orden NO se ha enviado: ${e instanceof Error ? e.message : String(e)}`,
+      })
+    } finally {
+      setCondEnviando(false)
+    }
+  }, [transporte, farCode, nearCode, segundos])
 
   const emitir = useCallback(async () => {
     const cuerpo = peticionIR(codigo, fuerza)
@@ -478,6 +533,107 @@ export function PanelInfrarrojos() {
                 <strong>«modo»</strong>. Que la luz infrarroja salga de verdad{' '}
                 <strong>no se puede comprobar desde aquí</strong>: es invisible y este robot no se
                 escucha a sí mismo — hace falta el «último código» del otro.</>
+              )}
+            </Aviso>
+          </div>
+        )}
+      </div>
+
+      {/*
+        ═════════════════════════════════════════════════════════════════════
+        SEGUIR Y HUIR — el único mando de esta pantalla que MUEVE el robot
+        ═════════════════════════════════════════════════════════════════════
+        🔴 Va el ÚLTIMO de la pestaña a propósito: es lo más peligroso que hay
+           aquí, y quien llega buscando «leer el sensor» no tiene que tropezarse
+           con ello antes que con lo que venía a hacer.
+      */}
+      <div className="vidrio p-5">
+        <h3 className="filete-titulo text-[17px] font-semibold tracking-tight">
+          Seguir o huir de otro robot
+        </h3>
+
+        <div className="mt-3">
+          <Aviso nivel="ATENCION" titulo="Esto MUEVE el robot, y la capa de seguridad no lo ve">
+            Los conduce su <strong>firmware</strong>, no esta web: no pasa por{' '}
+            <code>cmd_vel</code>, así que <strong>ni el vigilante ni el{' '}
+            <code>collision_monitor</code> intervienen</strong>. Es la única forma de mover un
+            robot de este laboratorio con la capa de seguridad fuera del circuito. Por eso{' '}
+            <strong>el plazo es obligatorio</strong>: el robot se apaga solo al vencer, como
+            máximo a los {TOPE_SEGUNDOS} s. La parada de emergencia también lo corta.
+          </Aviso>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-end gap-4">
+          <label className="flex flex-col gap-1 text-[13px]">
+            <span className="microetiqueta">Qué hace</span>
+            <select
+              value={modoCond}
+              onChange={(e) => setModoCond(e.target.value as ModoConduccionIR)}
+              className="focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] bg-transparent px-2 py-1.5"
+            >
+              <option value="seguir">{NOMBRE_MODO_CONDUCCION.seguir}</option>
+              <option value="huir">{NOMBRE_MODO_CONDUCCION.huir}</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-[13px]">
+            <span className="microetiqueta">Durante (s)</span>
+            <input
+              type="number" min={1} max={TOPE_SEGUNDOS} step={1} value={segundos}
+              onChange={(e) => setSegundos(Number(e.target.value))}
+              className="focus-ring w-24 rounded-md border border-[rgb(var(--filo)/0.2)] bg-transparent px-2 py-1.5 font-mono"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => { void mandarConduccion(modoCond) }}
+            disabled={!conectado || condEnviando}
+            aria-busy={condEnviando}
+            className="pulsable focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:text-muted-foreground"
+          >
+            {condEnviando ? 'Enviando…' : 'Empezar'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { void mandarConduccion('off') }}
+            disabled={!conectado || condEnviando}
+            aria-busy={condEnviando}
+            className="pulsable focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:text-muted-foreground"
+          >
+            Parar ahora
+          </button>
+        </div>
+
+        {/*
+          🔴🔴 EVIDENCIA 129, Y NO ES LETRA PEQUEÑA. Se dice porque quien esté
+             delante del robot es el único que puede resolverlo, y el síntoma no
+             se parece a la causa: la web seguirá viva y con latido.
+             ⚠️ n=1 y la hipótesis de disparo NO está confirmada — se cuenta como
+             lo que es, no como una certeza, porque este proyecto no afirma lo
+             que no ha medido.
+        */}
+        <div className="mt-3">
+          <Aviso nivel="NOTA" titulo="Pasó una vez: el robot se quedó a medias al apagar un seguimiento">
+            El 17 de agosto de 2026, al apagar un <em>seguir</em> activo, el RVR{' '}
+            <strong>dejó de mandar telemetría pero siguió contestando</strong> a las órdenes de
+            infrarrojos. En esta pantalla se vería así:{' '}
+            <strong>las medidas se quedan viejas mientras el robot parece conectado</strong>.
+            Ocurrió <strong>una vez</strong> y no se sabe qué lo dispara.{' '}
+            <strong>Se arregla apagando y encendiendo el RVR con su botón</strong> — la Raspberry
+            Pi se recupera sola.
+          </Aviso>
+        </div>
+
+        {condResultado !== null && (
+          <div className="mt-3" role="status">
+            <Aviso
+              nivel={condResultado.malo ? 'ERROR' : 'NOTA'}
+              titulo={`${condResultado.malo ? 'No salió' : 'Orden aceptada'} · ${condResultado.hora}`}
+            >
+              {condResultado.texto}
+              {!condResultado.malo && (
+                <> Lo que hace el robot se ve arriba, en <strong>«modo»</strong>: ahí sale si de
+                verdad está conduciendo por infrarrojos.</>
               )}
             </Aviso>
           </div>

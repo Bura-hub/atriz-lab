@@ -95,6 +95,23 @@ export const SERVICIOS = [
    *    booleano, y no hay cadena con la que pedir `following`.
    */
   '/set_ir_baliza',
+  /*
+   * 🆕 2026-08-17. Los modos que CONDUCEN el robot: seguir y huir. Estuvieron
+   * fuera desde el 2026-08-11 y se abren con dos condiciones, no una:
+   *
+   *   · **identidad por usuario** — la trajo la Fase B el 2026-08-15, y era la
+   *     condición que el propio `robot.launch.py` había escrito. **No basta**:
+   *     cambia quién responde, no que el firmware conduzca saltándose el
+   *     `collision_monitor`.
+   *   · **un plazo obligatorio** — `segundos` con tope, y un temporizador de un
+   *     disparo en el driver que lo apaga solo. Es lo que de verdad reduce el
+   *     peligro: no existe la petición «para siempre».
+   *
+   * 🔴 Y `modo` es un **uint8**, no una cadena: la enumeración está cerrada en
+   *    el `.srv`, así que abrir este servicio no abre lo que una cadena admita
+   *    el día que alguien añada un modo nuevo.
+   */
+  '/set_ir_conduccion',
 ] as const
 
 /**
@@ -270,6 +287,12 @@ export const SERVICIOS_SOLO_NO_LANZO = [
    *    confundirlas.
    */
   '/set_ir_baliza',
+  /*
+   * Y el que conduce. `success` dice que el driver aceptó y armó el plazo — no
+   * que el robot se esté moviendo, ni que vaya a encontrar a nadie. Lo que sí
+   * se puede mirar es `/estado_ir`: `modo` y `conduciendo_por_ir`.
+   */
+  '/set_ir_conduccion',
 ] as const
 
 export function confirmaEfecto(servicio: string): ConfirmacionServicio {

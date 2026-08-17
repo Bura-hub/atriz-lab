@@ -770,3 +770,41 @@ puede cerrar con rvr-01 solo.
 
 ⚠️ **Apagar apaga TRES cosas** —baliza, seguimiento y evasión—, que es la semántica del driver. La
 pantalla lo dice; comprueba que se entiende antes de dárselo a un alumno.
+
+---
+
+### 6l · 🆕🔴 SEGUIR Y HUIR — el único mando que mueve el robot SIN capa de seguridad (2026-08-17)
+
+`/robot/NN/acciones` gana «Seguir o huir de otro robot». Servicio `/set_ir_conduccion`, verificado
+por el robot (evidencia 128). **Exige DOS robots** y espacio despejado.
+
+⚠️ **Antes de empezar, dos cosas que no son formalidad:** deja **medio metro libre alrededor** —el
+`collision_monitor` NO interviene aquí, así que el robot puede llegar a la pared— y ten la mano
+cerca del botón del RVR.
+
+```
+1 · robot B · baliza encendida (códigos 3 y 5)
+2 · robot A · «seguir», 5 s → «Empezar»
+    · el robot A tiene que MOVERSE hacia B
+    · «modo» pasa a «siguiendo a otro robot» y `conduciendo_por_ir` a sí
+    · a los ~5 s se para SOLO, sin que nadie mande nada        ← lo que importa
+3 · repite con 5 s y pulsa «Empezar» otra vez a los 3 s
+    · tiene que apagarse a los ~5 s de la SEGUNDA, no a los 10 (rearma, no suma)
+4 · «huir» 5 s → el robot A tiene que ALEJARSE de B
+5 · con un seguimiento en marcha, pulsa la PARADA DE EMERGENCIA
+    · tiene que pararse, y «modo» volver a «apagado»
+6 · pon el plazo en 40 y pulsa «Empezar» → tiene que NEGARSE sin enviar nada
+```
+
+🔴 **El 2 es la razón de ser del diseño.** Si no se apaga solo, el plazo no está funcionando y
+entonces esto es exactamente lo que no queríamos: un robot conduciendo indefinidamente con la capa
+de seguridad fuera. Si eso pasa, **pulsa la parada** y dilo antes de seguir probando.
+
+🔴 **El 5 comprueba lo que la web afirma.** Hasta el 2026-08-17 la pantalla decía lo contrario —«no
+se puede parar desde aquí»— y era falso desde el 2026-08-01. Ahora lo dice bien; falta verlo.
+
+⚠️ **Y hay un modo de fallo observado UNA VEZ (evidencia 129):** al apagar un `seguir` activo, el
+RVR dejó de mandar telemetría pero **siguió contestando** a las órdenes de infrarrojos. En pantalla
+se ve como **medidas viejas con el robot aparentemente conectado**. Ocurrió una vez, no se sabe qué
+lo dispara, y **se arregla apagando y encendiendo el RVR con su botón** — la Pi se recupera sola
+(medido: volvió sin tocar nada). La pantalla lo avisa; comprueba que se entiende.

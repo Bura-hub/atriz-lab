@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   CODIGO_MODO, NOMBRE_MODO_CONDUCCION, SEGUNDOS_POR_DEFECTO, TOPE_SEGUNDOS,
@@ -98,12 +101,61 @@ describe('los plazos', () => {
   })
 
   /*
-   * ⚠️ Este numero es una COPIA del `.srv` del robot, que todavia no existe.
-   *    Cuando exista, esta prueba tiene que pasar a LEERLO — igual que
-   *    `cascada.test.ts` lee `globals.css`— o envejecera sola. Queda escrito
-   *    aqui para que quien cablee el servicio se lo encuentre.
+   * 📝 Aquí había un `expect(TOPE_SEGUNDOS).toBe(30)` con la nota «atarlo al
+   *    .srv cuando la Pi lo publique». La Pi lo publicó el 2026-08-17, así que
+   *    se ha ido: era el MISMO número escrito a mano dos veces, y lo sustituye
+   *    el bloque de abajo, que lo LEE del `.srv`. Dejar las dos habría sido
+   *    exactamente el duplicado que este proyecto persigue.
    */
-  it('⏳ el tope es 30 s — atarlo al .srv cuando la Pi lo publique', () => {
-    expect(TOPE_SEGUNDOS).toBe(30)
+})
+
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * EL TOPE, CONTRA EL `.srv` DEL ROBOT — y la ruta que se escribió mal dos veces
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Este fichero vive en `Atriz_Web/atriz-lab/frontend/src/lib/robot/` y el
+ * hermano es `Atriz_Web/Atriz_rvr/`: son **CINCO** niveles (lib → src →
+ * frontend → atriz-lab → Atriz_Web). Se intentó con dos y con seis, y **las dos
+ * veces la prueba pasó en verde** — porque cuando no encontraba el fichero se
+ * iba por un `return` con un `console.warn`.
+ *
+ * 🔴 Ese `return` era el defecto de verdad, no la aritmética de la ruta. Una
+ *    comprobación que se salta cuando no encuentra su fuente **no puede
+ *    distinguir «todo bien» de «no he mirado»**, y avisar por consola no lo
+ *    arregla: nadie lee la consola de una tanda en verde. Es la comprobación
+ *    nº14 del verificador del robot —la que se saltó sola y en silencio—
+ *    cometida aquí otra vez, en la sesión que la citaba.
+ *
+ * → Por eso ahora **FALLA** si no está, con el motivo en el mensaje.
+ */
+describe('el tope, contra el .srv del robot', () => {
+  const ATRIZ_WEB = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..')
+  const SRV = join(ATRIZ_WEB, 'Atriz_rvr', 'atriz_rvr_msgs', 'srv', 'SetIRConduccion.srv')
+
+  it('el .srv del robot está donde esta prueba lo busca', () => {
+    expect(
+      existsSync(SRV),
+      `no encuentro ${SRV}. Sin él, el tope de ${TOPE_SEGUNDOS} s de esta web no está `
+      + 'contrastado con nada. Clona Atriz_rvr al lado de atriz-lab.',
+    ).toBe(true)
+  })
+
+  it('TOPE_SEGUNDOS coincide con la constante del .srv', () => {
+    const m = /^\s*uint8\s+TOPE_SEGUNDOS\s*=\s*(\d+)\s*$/m.exec(readFileSync(SRV, 'utf8'))
+    expect(m, 'el .srv ya no declara TOPE_SEGUNDOS: mira si le cambiaron el nombre').not.toBeNull()
+    expect(Number(m?.[1])).toBe(TOPE_SEGUNDOS)
+  })
+
+  it('y el .srv sigue teniendo los cuatro campos que esta web manda', () => {
+    const txt = readFileSync(SRV, 'utf8')
+    for (const campo of ['modo', 'far_code', 'near_code', 'segundos']) {
+      /*
+       * 🔴 SIN PLANTILLA, y no es estilo: en una plantilla `\b` es un
+       *    **retroceso** (U+0008), no un límite de palabra, y `\s`/`\w` se
+       *    quedan en `s`/`w`. El patrón no casaría nada.
+       */
+      const patron = new RegExp('^\\s*\\w+\\s+' + campo + '\\b', 'm')
+      expect(patron.test(txt), `falta ${campo}`).toBe(true)
+    }
   })
 })
