@@ -327,6 +327,31 @@ npm run contrato          # compara la lista blanca con robot.launch.py DEL ROBO
 npx next dev -p 3118      # y ENTRA en las rutas: compilar no es pintar
 ```
 
+### La puerta de sesión se comprueba en trece rutas, sin navegador y sin robot
+
+Compilar no es pintar, y **servir un 200 en `/` no prueba que la puerta esté puesta**: la portada
+es pública, así que responde igual con el `middleware.ts` roto. Lo que lo prueba es que las
+**otras doce** redirijan:
+
+```bash
+for r in / /entrar /flota /cuaderno /usuarios /robot/1 /robot/1/conducir /robot/1/medidas \
+         /robot/1/lo-que-ve /robot/1/navegar /robot/1/acciones /robot/1/no-obedece /robot/99; do
+  read -r c d < <(curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' --max-time 25 "http://localhost:3000$r")
+  printf '%-24s %s %s\n' "$r" "$c" "${d#http://localhost:3000}"
+done
+```
+
+Lo bueno, medido el 2026-08-17 sobre el servidor de desarrollo: `/` → **200**, `/entrar` → **307
+a `/`**, y las once restantes → **307 a `/?volver=<la ruta>`**. Si alguna diera 200, está fuera del
+`middleware.ts`.
+
+**🔴 Y `/robot/99` REDIRIGE A LA PUERTA EN VEZ DE DAR 404 — ESO ESTÁ BIEN, NO LO "ARREGLES".**
+Solo hay dieciséis robots, así que un 404 parece lo correcto y es la trampa: el `notFound()` por
+identificador inválido vive **detrás** de la puerta, o sea que contestar 404 a quien no tiene sesión
+le diría **qué identificadores existen** probando URLs. La autenticación va antes que la existencia.
+📌 Es la misma forma que las diez comprobaciones falsas del verificador del robot, del revés: aquí
+lo que parece un fallo es la conducta correcta, y "corregirlo" abriría una fuga de enumeración.
+
 **`npm run contrato` lee el árbol de trabajo de `../Atriz_rvr`**, así que su veredicto depende
 de en qué rama esté **ese** repositorio. Lo dice en su primera línea: si no pone `rama ros2`,
 míralo **antes** de tocar `contrato.ts` — la web no puede prometer lo que `ros2` no publica.
@@ -342,3 +367,34 @@ ATRIZ_ROBOT=1 npx vitest run src/lib/interfaz/barrido_real.test.ts        # solo
 
 Aparecen como `skipped`, no como aprobadas: un guion que mueve un robot no se ejecuta por
 accidente al pasar la batería.
+
+---
+
+## 🔑 `crear-cuenta.mjs` NO ESCRIBE `rol`, así que lo que crea es un PROFESOR
+
+Los dos caminos de la API fallan **cerrado**, y eso es lo correcto:
+
+```
+POST /api/sesion/usuarios        rol = cuerpo.rol === 'profesor' ? 'profesor' : 'alumno'
+POST /api/sesion/usuarios/lote   rol: 'alumno'      <- clavado, los dieciséis de una clase
+```
+
+El guion de arranque **no**: escribe `{usuario, clave, creada}` y nada más, y `rolDe()` lee la
+ausencia como `profesor`. Es correcto **para lo que existe** —romper el círculo de «con cero
+cuentas nadie entra y crear una exige sesión»— y su propia cabecera dice que las siguientes van por
+la pantalla. Pero nada lo impide, y usarlo para un alumno **concede el rol alto sin decirlo**.
+
+→ ⚠️ **No es un agujero**: quien puede ejecutarlo tiene shell en la máquina que sirve la
+  aplicación, y eso ya supera a cualquier rol. Es higiene, y la diferencia importa para no
+  exagerar el aviso.
+→ **La asimetría de los dos valores por defecto es deliberada y conviene no "unificarla":** al
+  LEER, la ausencia vale `profesor`, porque las cuentas que ya estaban en disco son las de
+  administración y leerlas como alumno dejaría la instalación **sin nadie que pueda crear cuentas**
+  — y la única salida sería editar el JSON a mano, que es el estado del que la pantalla existe para
+  sacar. Al ESCRIBIR, la ausencia vale `alumno`. Cada lado falla hacia donde debe.
+→ 💡 Sin aplicar, y es una línea: que el guion escriba `rol: 'profesor'` explícito. No cambia el
+  comportamiento de nada; convierte un privilegio **implícito** en uno **registrado en el fichero**,
+  que es lo que se puede auditar después.
+
+✅ **`usuarios.json` está en `.gitignore`** (`frontend/.gitignore:45`, verificado con
+`git check-ignore -v`): ni un hash ha salido al repositorio. Importa porque `atriz-lab` es público.
