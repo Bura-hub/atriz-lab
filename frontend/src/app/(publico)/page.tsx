@@ -47,10 +47,17 @@ import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { CSSProperties } from 'react'
 import { TOTAL_ROBOTS } from '@/lib/interfaz/identidad'
+import { ROBOTS_QUE_EXIGEN_CREDENCIAL, concordancia } from '@/lib/sesion/despliegue'
 import { DESTINO_POR_DEFECTO } from '@/lib/sesion/regreso'
 import { haySesion } from '@/lib/sesion/servidor'
 import { FormularioEntrar } from '@/componentes/sesion/FormularioEntrar'
 import { Aviso } from '@/componentes/ui/Aviso'
+
+/**
+ * Las formas verbales que dependen del número de robots que ya exigen credencial.
+ * Se calcula una vez: no depende de nada de la petición.
+ */
+const DE_LA_FLOTA = concordancia(ROBOTS_QUE_EXIGEN_CREDENCIAL)
 
 export default async function Portada() {
   if (await haySesion()) redirect(DESTINO_POR_DEFECTO)
@@ -107,14 +114,47 @@ function PortadaPublica() {
               acceso. Aquí lo hay sobre la INTERFAZ y no sobre el robot, y la
               diferencia es enorme: el navegador habla directamente con el
               rosbridge de cada robot, y ese camino no pasa por este servidor.
+
+              🔴🔴 Y AUN ASI, AQUI SE LLEGO A AFIRMAR DE LOS DIECISEIS LO QUE
+                 HACE UNO. Ponia: «al entrar, este servidor te firma una
+                 credencial para ese robot en concreto, **y el robot la
+                 comprueba**. Sin ella te cierra la puerta». La Fase B esta
+                 cerrada en **rvr-01**, y el repositorio de migracion lo anota
+                 al lado: «lo que la Fase B no cierra: TLS y los otros 15
+                 robots». O sea que quince de dieciseis aceptaban una conexion
+                 sin credencial mientras la unica pantalla publica decia lo
+                 contrario.
+
+                 Que pasara JUSTO AQUI es lo que hay que recordar: el parrafo
+                 escrito para no sobre-afirmar seguridad acabo sobre-afirmando
+                 seguridad, porque describia el DISEÑO y no el DESPLIEGUE. Una
+                 frase envejece cuando lo que describe se despliega por partes.
+
+              👤 Decision del usuario (2026-08-17): corregir la frase, no
+                 desplegar la Fase B a los quince ahora — la recibiran con la
+                 imagen dorada.
+
+              ⚠️ El numero sale de `ROBOTS_QUE_EXIGEN_CREDENCIAL` y se mantiene
+                 A MANO: esta pantalla NO abre socket con ningun robot, a
+                 proposito, asi que no hay a quien preguntarle. Si envejece,
+                 envejece hacia el lado seguro — infra-afirmar no hace daño.
+                 Y la concordancia de numero se DERIVA (`concordancia()`), para
+                 que el dia que valga 16 la frase siga bien escrita sin que
+                 nadie se acuerde de revisarla.
             */}
             <Aviso nivel="ATENCION" titulo="Qué protege esta sesión">
               Identifica a quien usa <strong>esta interfaz</strong>, y es lo que evita que se
-              libere una parada por curiosidad o por error. Desde el 15 de agosto de 2026 también{' '}
-              <strong>abre el robot</strong>: al entrar, este servidor te firma una credencial para
-              ese robot en concreto, y el robot la comprueba. Sin ella te cierra la puerta, y una
-              credencial del robot 2 no abre el 1.{' '}
-              <strong>Lo que todavía no protege</strong>: lo que viaja va{' '}
+              libere una parada por curiosidad o por error. Al entrar, este servidor te firma
+              además una <strong>credencial para ese robot en concreto</strong>, y una credencial
+              del robot 2 no abre el 1.{' '}
+              <strong>
+                Hoy {DE_LA_FLOTA.exige} {ROBOTS_QUE_EXIGEN_CREDENCIAL} de los {TOTAL_ROBOTS} robots
+              </strong>{' '}
+              —desde el 15 de agosto de 2026—: {DE_LA_FLOTA.ese} {DE_LA_FLOTA.cierra} la puerta sin
+              ella. A los demás{' '}
+              <strong>todavía no se les ha instalado</strong>, así que aceptan una conexión sin
+              comprobarla; la exigirán cuando se les ponga la imagen del laboratorio.{' '}
+              <strong>Y lo que no protege en ninguno</strong>: lo que viaja va{' '}
               <strong>sin cifrar</strong>, así que alguien en la misma red puede leer la
               telemetría aunque no pueda conducir. Y quien ejecute código{' '}
               <em>dentro</em> del robot desde el Taller tiene más permisos que esta pantalla.
@@ -173,10 +213,25 @@ function PortadaPublica() {
             */}
             <div className="max-w-prose">
               <h2 className="microetiqueta">para usar los robots</h2>
+              {/*
+                🔴 LA SEGUNDA AFIRMACION FALSA, y se corrige por la MISMA razon
+                   que la de arriba: «los robots solo aceptan ordenes de un
+                   navegador con credencial» era cierto de UNO.
+
+                📌 Lo que SI es cierto de los dieciseis es lo otro que ya decia
+                   —«sin sesion no se conecta con ninguno»—, pero por un motivo
+                   distinto que ahora se dice: es **esta plataforma** la que se
+                   niega a intentarlo, no el robot el que lo rechaza. Confundir
+                   «me niego a llamar» con «no me abren la puerta» es
+                   exactamente la clase de deriva que la pantalla de arriba
+                   acaba de pagar.
+              */}
               <p className="mt-3 text-[15px] leading-relaxed">
-                Hace falta <strong>entrar con una cuenta</strong>. No es una formalidad: los robots
-                solo aceptan órdenes de un navegador con credencial, así que{' '}
-                <strong>sin sesión no se conecta con ninguno</strong>.
+                Hace falta <strong>entrar con una cuenta</strong>. No es una formalidad:{' '}
+                <strong>sin sesión esta plataforma no abre conexión con ningún robot</strong>, se
+                niega a intentarlo. Que además <em>el robot</em> rechace a quien llegue sin
+                credencial es lo que hoy {DE_LA_FLOTA.hace}{' '}
+                {ROBOTS_QUE_EXIGEN_CREDENCIAL} de los {TOTAL_ROBOTS}.
               </p>
               <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
                 Si eres alumno y aún no tienes cuenta, te la da quien imparte la práctica.
