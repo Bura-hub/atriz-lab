@@ -235,13 +235,42 @@ export function zonaDelEmisor(e: EstadoIR): LecturaIR {
  * Devuelve `null` cuando no hay nada que avisar, para que la pantalla no tenga
  * que decidir si un texto vacio se pinta.
  */
+/*
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 AQUÍ DECÍA «NO SE PUEDE PARAR DESDE AQUÍ», Y ERA FALSO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * La parada de emergencia **sí corta los dos modos**, y no de casualidad: el
+ * driver manda `stop_robot_to_robot_infrared_evading()` y `..._following()`
+ * explícitamente, con su propio comentario diciendo por qué `drive_stop()` no
+ * basta — son modos del firmware, así que el RVR volvería a conducir en la
+ * siguiente detección.
+ *
+ * 🔴 **Y lleva haciéndolo desde el 2026-08-01**, en un commit del robot titulado
+ *    *«La parada de emergencia no cubría la evasión IR, y el manual decía que
+ *    sí»*. O sea que el proyecto **ya había pagado exactamente este error una
+ *    vez**, en el manual. Esta frase se escribió el **2026-08-16**, quince días
+ *    después — y en el commit que arreglaba «los dos rótulos falsos» de la
+ *    pestaña Acciones. Arreglar rótulos falsos e introducir uno nuevo, en el
+ *    mismo commit.
+ *
+ * ⚠️ Y es la peor dirección posible para equivocarse: mandaba a una persona a
+ *    **perseguir el robot por el aula** en vez de pulsar el botón rojo que tiene
+ *    delante. Un aviso que desaconseja el remedio bueno es peor que no avisar.
+ *
+ * 📌 Hay ADEMÁS un segundo camino, más suave, y tampoco se decía: «Apagar» en la
+ *    baliza manda `/set_ir_baliza` con `encender:false`, y el `off` del driver
+ *    apaga **las tres cosas** —baliza, seguimiento y evasión—. Sirve para parar
+ *    un seguimiento sin bloquear el robot entero con la parada.
+ */
 export function avisoConduccionIR(e: EstadoIR): string | null {
   if (!e.conduciendo_por_ir) return null
   const modo = e.modo === 'following' || e.modo === 'evading' ? ` en modo «${e.modo}»` : ''
   return (
     `ESTE ROBOT SE ESTÁ MOVIENDO SOLO, por infrarrojos${modo}. Lo conduce su firmware, no las `
     + 'órdenes de esta web: no pasa por cmd_vel, así que ni el vigilante ni la capa de seguridad '
-    + 'lo ven. No se puede parar desde aquí — se para en el robot.'
+    + 'lo ven. SÍ se puede parar desde aquí: la parada de emergencia corta el seguimiento y la '
+    + 'evasión además de frenar los motores. Y «Apagar» en la baliza los apaga sin bloquear el '
+    + 'robot entero.'
   )
 }
 

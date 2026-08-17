@@ -148,12 +148,44 @@ describe('sensor_0, el byte que nunca llevo datos', () => {
 })
 
 describe('avisoConduccionIR', () => {
-  it('🔴 avisa cuando el robot se mueve solo, y dice que no se para desde aqui', () => {
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 ESTA PRUEBA FIJABA UNA MENTIRA, Y POR ESO SE CONSERVA LA HISTORIA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Se llamaba «y dice que no se para desde aqui» y exigia la cadena `se para en
+   * el robot`. Era FALSO: la parada de emergencia corta el seguimiento y la
+   * evasion desde el **2026-08-01**, en un commit del robot titulado *«La parada
+   * de emergencia no cubria la evasion IR, y el manual decia que si»* — o sea que
+   * el proyecto ya habia pagado este mismo error una vez, en el manual, y la web
+   * lo repitio quince dias despues.
+   *
+   * ⚠️ Y el comentario que la acompañaba —«ofrecer un boton que no existe es peor
+   *    que no ofrecer nada»— era un argumento correcto aplicado a un hecho falso:
+   *    el boton SI existe. Un buen razonamiento sobre una premisa equivocada pasa
+   *    todas las revisiones.
+   *
+   * 🔴 Lo que la hacia peligrosa: mandaba a una persona a perseguir el robot por
+   *    el aula en vez de pulsar el boton rojo que tiene delante.
+   */
+  it('🔴 avisa cuando el robot se mueve solo, y dice CÓMO pararlo desde aqui', () => {
     const aviso = avisoConduccionIR(base({ conduciendo_por_ir: true, modo: 'following' }))
     expect(aviso).toContain('SE ESTÁ MOVIENDO SOLO')
     expect(aviso).toContain('following')
-    // Ofrecer un boton que no existe es peor que no ofrecer nada.
-    expect(aviso).toContain('se para en el robot')
+    // El remedio bueno, y los DOS caminos que existen de verdad.
+    expect(aviso).toContain('parada de emergencia')
+    expect(aviso).toContain('Apagar')
+  })
+
+  /*
+   * 🔴 CONTROL NEGATIVO. Sin esto, la prueba de arriba pasaria con un texto que
+   *    dijera las dos cosas —«se para en el robot» Y «parada de emergencia»—, o
+   *    sea contradiciendose. Lo que hay que impedir no es solo que falte el
+   *    remedio: es que siga estando la frase que desaconseja usarlo.
+   */
+  it('ya NO dice que haya que ir al robot a pararlo', () => {
+    const aviso = avisoConduccionIR(base({ conduciendo_por_ir: true, modo: 'evading' }))
+    expect(aviso).not.toContain('se para en el robot')
+    expect(aviso).not.toContain('No se puede parar desde aquí')
   })
 
   it('calla cuando no hay nada que avisar', () => {
