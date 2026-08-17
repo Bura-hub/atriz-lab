@@ -552,3 +552,67 @@ export function useTopic<K extends TopicModelado>(
 
   return mensaje
 }
+
+/** Un valor y cuándo llegó. La segunda mitad no es opcional: ver abajo. */
+export interface Fechado<T> {
+  valor: T
+  /** `Date.now()` de cuando entró por el socket. */
+  recibidoEn: number
+}
+
+/**
+ * COMO `useTopic`, PERO NO ARRANCA EN BLANCO AL CAMBIAR DE PESTAÑA.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 EL PROBLEMA QUE RESUELVE, MEDIDO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Cambiar de pestaña desmonta el panel, `useTopic` vuelve a `null`, y rosbridge
+ * **no reentrega** el último valor. Así que la tarjeta se queda en rayas hasta
+ * la siguiente publicación de SU topic: 1 s para `/motor_status`, y **hasta
+ * 30 s para `/battery_state`**, que publica cada 30,0 s exactos — medio minuto
+ * mirando una raya donde había un voltaje hace un segundo.
+ *
+ * Esto se siembra del recuerdo del `Transporte`, así que la tarjeta enseña algo
+ * desde el primer fotograma.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 QUIEN LO USE TIENE QUE PINTAR LA EDAD. NO ES UN CONSEJO.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Enseñar los 7,67 V de hace 29 s como si fueran de ahora es **mentir**, y la
+ * honestidad es lo único que esta aplicación tiene ganado. Por eso el hook
+ * devuelve `recibidoEn` y no solo el valor: **no se puede usar sin tener la
+ * edad a mano**, que es la forma de que la regla no dependa de recordarla.
+ * El precedente está en el robot: `antiguedad_termico_s` existe porque una
+ * temperatura plana puede ser el mismo dato repetido.
+ *
+ * 🔴 Y NO SIRVE PARA TODOS LOS TOPICS. Sembrar `/scan` con un barrido viejo
+ *    dibujaría una geometría que ya no está ahí, y sobre eso se decide si el
+ *    robot cabe por un hueco. Por eso esto es **opt-in por tarjeta** y
+ *    `useTopic` se quedó exactamente como estaba: las siete pestañas de hoy se
+ *    comportan igual, y solo cambia quien lo pida.
+ *
+ * ⚠️ El recuerdo **muere con el enlace** (`Transporte.olvidar()`), así que tras
+ *    una caída esto vuelve a `null` como debe: un robot mudo no puede seguir
+ *    enseñando su último voltaje.
+ */
+export function useTopicFechado<K extends TopicModelado>(
+  transporte: Transporte,
+  topic: K,
+): Fechado<MensajesPorTopic[K]> | null {
+  exigirTopicPermitido(topic)
+
+  // El estado inicial es perezoso a propósito: corre en el montaje, que es
+  // justo cuando hay que sembrar del recuerdo.
+  const [estado, setEstado] = useState<Fechado<MensajesPorTopic[K]> | null>(
+    () => transporte.ultimoDe(topic) as Fechado<MensajesPorTopic[K]> | null,
+  )
+
+  useEffect(() => {
+    // Al cambiar de robot, el transporte es otro y su recuerdo está vacío: esto
+    // devuelve `null` solo, sin ningún caso especial.
+    setEstado(transporte.ultimoDe(topic) as Fechado<MensajesPorTopic[K]> | null)
+    return suscribirTopic(transporte, topic, (m) => setEstado({ valor: m, recibidoEn: Date.now() }))
+  }, [transporte, topic])
+
+  return estado
+}

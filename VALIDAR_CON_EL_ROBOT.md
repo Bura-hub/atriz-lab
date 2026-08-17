@@ -705,3 +705,39 @@ puede decir:
 1210 pruebas en verde**, porque la única guardia comprueba contención en el DOM y
 no visibilidad. Si en pantalla expandida no ves el botón rojo, **eso es un fallo de
 seguridad**, no de maqueta.
+
+---
+
+### 6j · 🆕 LO QUE EL RENDIMIENTO DEJÓ PARA MIRAR A OJO (2026-08-17)
+
+Dos cambios que **ninguna prueba de este repositorio puede ver**, porque aquí no se renderiza
+ningún componente. Los números de abajo están medidos; lo que falta es que una persona lo mire.
+
+```
+1 · entra a /robot/1  ->  las tarjetas tienen que entrar EN CASCADA, una vez
+2 · cambia de pestaña ->  NO tiene que volver a haber cascada: aparecen y ya
+3 · vuelve a entrar al robot desde el muro  ->  cascada otra vez (es por robot)
+4 · con «reducir movimiento» activado en el sistema, repite 1
+```
+
+🔴 **Si fuera falso se vería así:** en 2 vuelve la cascada → el plazo de `CASCADA_COMPLETA_MS` no
+casa con la hoja, y `cascada.test.ts` debería estar en rojo. En 4 desaparece todo movimiento →
+mal: la regla del proyecto es que reducir movimiento **conserva color y opacidad a 200 ms**, no que
+lo mate; matarlo devuelve el estroboscopio a quien pidió menos.
+
+```
+5 · /robot/1/medidas  ->  espera a que aparezca el voltaje de la batería
+6 · vete a Conducir, vuelve a Medidas
+    el voltaje tiene que seguir ahí AL INSTANTE, y con su antigüedad al lado
+7 · apaga el robot (o el WiFi) y vuelve a entrar en Medidas
+    tiene que decir «todavía no ha llegado ningún /battery_state», NO el voltaje viejo
+```
+
+🔴 **El 7 es el que importa y no es cosmético.** El valor prestado **muere con el enlace** a
+propósito: si un robot caído siguiera enseñando su último voltaje, sería el modo de fallo que este
+proyecto persigue en todas partes — el RVR dormido con el nodo vivo, el nodo muerto con systemd en
+verde. Está cubierto por dos pruebas del transporte, pero **verlo en pantalla es otra cosa**.
+
+⚠️ Y comprobado por instrumento el 2026-08-17: al volver a Medidas, **410 ms** después del clic la
+tarjeta ya daba `8,32 V · hace 2,1 s`. Como `/battery_state` publica cada 30,0 s, en 410 ms no pudo
+llegar por el socket. Lo que falta es el ojo, sobre todo para el paso 7.

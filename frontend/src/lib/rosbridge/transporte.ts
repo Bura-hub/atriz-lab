@@ -125,6 +125,18 @@ export class Transporte {
   private suscripciones = new Map<string, Set<Manejador>>()
   private anunciados = new Set<string>()
   private ultimaLlegada = new Map<string, number>()
+  /**
+   * El último mensaje de cada topic, para que una pestaña recién montada no
+   * arranque en blanco. Lo lee `useTopicFechado`; `useTopic` lo ignora.
+   *
+   * 🔴 MUERE CON EL ENLACE, y esa es la mitad del diseño. Si sobreviviera a un
+   *    cierre, un robot que se quedó mudo seguiría enseñando su último voltaje
+   *    como si estuviera vivo — el mismo modo de fallo que este proyecto
+   *    persigue en el robot: el RVR dormido con el nodo vivo, el nodo muerto
+   *    con systemd en verde, el topic registrado y sin publicar.
+   *    Se vacía en `olvidar()`, que llaman los DOS caminos de cierre.
+   */
+  private ultimoMensaje = new Map<string, { valor: unknown; recibidoEn: number }>()
   private pendientes = new RegistroPendientes()
   private oyentesCierre = new Set<() => void>()
   private oyentesAviso = new Set<(a: Aviso) => void>()
@@ -411,6 +423,10 @@ export class Transporte {
       //    siempre un conjunto vacio -codigo muerto- y perdia el reanuncio
       //    anticipado justo donde mas importa, /emergency_stop.
       this.pendientes.cancelarTodas('se cerro el WebSocket')
+      // 🔴 El OTRO camino de cierre. Sin esto, una caida del WiFi -que es la que
+      //    de verdad ocurre- dejaria el recuerdo vivo y las tarjetas seguirian
+      //    enseñando el ultimo voltaje de un robot que ya no contesta.
+      this.olvidar()
       for (const cb of this.oyentesCierre) cb()
       // 🔴 NO se libera la parada de emergencia al reconectar: liberarla es
       //    siempre un acto humano deliberado.
@@ -484,6 +500,7 @@ export class Transporte {
     if (this.ws !== null) {
       this.ws.close()
       this.pendientes.cancelarTodas('se cerro el WebSocket')
+      this.olvidar()
       // Sus promesas ya se rechazaron arriba; dejar los oyentes vivos seria una
       // fuga y, peor, un avance de una reconexion podria llegarle a un objetivo
       // que ya nadie espera.
@@ -504,7 +521,9 @@ export class Transporte {
     this.intentos = 0
 
     if (m.op === 'publish' && m.topic) {
-      this.ultimaLlegada.set(m.topic, Date.now())
+      const ahora = Date.now()
+      this.ultimaLlegada.set(m.topic, ahora)
+      this.ultimoMensaje.set(m.topic, { valor: m.msg, recibidoEn: ahora })
       for (const cb of this.suscripciones.get(m.topic) ?? []) cb(m.msg)
       return
     }
@@ -674,6 +693,33 @@ export class Transporte {
     const p = this.pendientes.registrar(id, ms + MARGEN_PLAZO_LOCAL_MS)
     this.enviar(op)
     return p
+  }
+
+  /**
+   * El último mensaje recibido de un topic, con cuándo llegó. `null` = no hay
+   * ninguno, **o el enlace se cerró** — que para quien lo pinta es lo mismo:
+   * no hay nada que se pueda afirmar de este robot ahora.
+   *
+   * ⚠️ Quien lo use TIENE que enseñar la edad al lado. Pintar los 7,67 V de
+   *    hace 29 s como si fueran de ahora es mentir, y ese es exactamente el
+   *    fallo del que este proyecto se defiende con `antiguedad_termico_s` en el
+   *    robot: una temperatura plana puede ser el mismo dato repetido.
+   *
+   * 🔴 Y NO vale para todo: sembrar `/scan` con un barrido viejo dibujaría una
+   *    geometría que ya no existe. Por eso esto es opt-in por tarjeta y no un
+   *    cambio en `useTopic`.
+   */
+  ultimoDe(topic: string): { valor: unknown; recibidoEn: number } | null {
+    return this.ultimoMensaje.get(topic) ?? null
+  }
+
+  /**
+   * Olvida lo recibido. Lo llaman los DOS caminos de cierre —`cerrar()` y el
+   * `onclose` de una caída—, porque un recuerdo que sobreviva al enlace es un
+   * robot muerto con aspecto de vivo.
+   */
+  private olvidar(): void {
+    this.ultimoMensaje.clear()
   }
 
   /** null = no ha llegado ninguno todavia. Es lo que alimenta salud.ts. */

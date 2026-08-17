@@ -88,6 +88,81 @@ describe('Transporte', () => {
     expect(t.msDesdeUltimo('/odom')).toBeGreaterThanOrEqual(0)
   })
 
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * EL RECUERDO DEL ÚLTIMO MENSAJE — para que una pestaña no arranque en blanco
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Cambiar de pestaña desmonta el panel, `useTopic` vuelve a `null` y rosbridge
+   * NO reentrega: la tarjeta se queda en rayas hasta la siguiente publicación.
+   * Con `/battery_state`, que publica cada 30,0 s exactos, eso es medio minuto
+   * mirando una raya donde había un voltaje hace un segundo.
+   *
+   * 🔴 EL RECUERDO MUERE CON EL ENLACE, y es la mitad del diseño. Si sobreviviera
+   *    a un cierre, un robot que se quedó mudo seguiría enseñando su último
+   *    voltaje como si estuviera vivo — que es EXACTAMENTE el modo de fallo que
+   *    este proyecto persigue en todas partes: el RVR dormido con el nodo vivo,
+   *    el nodo muerto con systemd en verde, el topic registrado y mudo.
+   */
+  describe('el ultimo mensaje recordado', () => {
+    it('no hay recuerdo antes del primer mensaje', () => {
+      const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+      t.conectar(); WSFalso.ultimo.abrir()
+      t.suscribir('/battery_state', () => {})
+      expect(t.ultimoDe('/battery_state')).toBeNull()
+    })
+
+    it('guarda el ultimo mensaje con cuando llego', () => {
+      const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+      t.conectar(); WSFalso.ultimo.abrir()
+      t.suscribir('/battery_state', () => {})
+
+      WSFalso.ultimo.recibir({ op: 'publish', topic: '/battery_state', msg: { voltage: 7.67 } })
+      const r = t.ultimoDe('/battery_state')
+      expect(r?.valor).toEqual({ voltage: 7.67 })
+      expect(r?.recibidoEn).toBeGreaterThan(0)
+
+      // El ULTIMO, no el primero.
+      WSFalso.ultimo.recibir({ op: 'publish', topic: '/battery_state', msg: { voltage: 7.41 } })
+      expect(t.ultimoDe('/battery_state')?.valor).toEqual({ voltage: 7.41 })
+    })
+
+    it('sobrevive a darse de baja: es lo que hace un cambio de pestaña', () => {
+      const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+      t.conectar(); WSFalso.ultimo.abrir()
+      const baja = t.suscribir('/battery_state', () => {})
+      WSFalso.ultimo.recibir({ op: 'publish', topic: '/battery_state', msg: { voltage: 7.67 } })
+
+      baja()   // el panel se desmonta al cambiar de pestaña
+      expect(t.ultimoDe('/battery_state')?.valor).toEqual({ voltage: 7.67 })
+    })
+
+    it('🔴 se BORRA al cerrar: un robot mudo no puede seguir enseñando su ultimo voltaje', () => {
+      const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+      t.conectar(); WSFalso.ultimo.abrir()
+      t.suscribir('/battery_state', () => {})
+      WSFalso.ultimo.recibir({ op: 'publish', topic: '/battery_state', msg: { voltage: 7.67 } })
+      expect(t.ultimoDe('/battery_state')).not.toBeNull()   // control: habia algo que borrar
+
+      t.cerrar()
+      expect(t.ultimoDe('/battery_state')).toBeNull()
+    })
+
+    it('🔴 se BORRA tambien si el socket se cae solo, que es el caso que de verdad ocurre', async () => {
+      const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
+      t.conectar(); WSFalso.ultimo.abrir()
+      t.suscribir('/battery_state', () => {})
+      WSFalso.ultimo.recibir({ op: 'publish', topic: '/battery_state', msg: { voltage: 7.67 } })
+      expect(t.ultimoDe('/battery_state')).not.toBeNull()   // control
+
+      // `close()` del doble difiere su `onclose` a una microtarea, igual que un
+      // WebSocket de verdad: sin esperarla se comprobaria ANTES del cierre y la
+      // prueba pasaria sin haber ejercitado nada.
+      WSFalso.ultimo.close()   // se cayo el WiFi, no lo cerro nadie
+      await new Promise((r) => setTimeout(r, 0))
+      expect(t.ultimoDe('/battery_state')).toBeNull()
+    })
+  })
+
   it('al reconectar vuelve a suscribirse a todo', () => {
     const t = new Transporte('ws://x:9090', (u) => new WSFalso(u) as unknown as WebSocket)
     t.conectar()

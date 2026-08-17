@@ -32,7 +32,8 @@
  */
 
 import { usePathname } from 'next/navigation'
-import { CSSProperties, ReactNode } from 'react'
+import { CSSProperties, ReactNode, useEffect, useState } from 'react'
+import { CASCADA_COMPLETA_MS } from '@/lib/interfaz/cascada'
 import { entradaDeRuta } from '@/componentes/comun/RailNavegacion'
 import { ProveedorRobot, useRobot } from '@/hooks/ContextoRobot'
 import { urlDeRobot } from '@/lib/rosbridge/transporte'
@@ -261,6 +262,44 @@ export function MarcoRobot({ destino, children }: PropsMarcoRobot) {
   */
   const tono = entradaDeRuta(usePathname())?.color ?? '--estado-neutro'
 
+  /*
+    ═══════════════════════════════════════════════════════════════════════════
+    🔴 LA CASCADA DE ENTRADA CORRE UNA VEZ POR ROBOT, NO UNA POR PESTAÑA
+    ═══════════════════════════════════════════════════════════════════════════
+    Este `<main>` NO se desmonta al cambiar de pestaña —lo que se desmonta son
+    sus hijos—, así que `.escalonado` volvía a animar en CADA clic: ~540 ms de
+    tarjetas apareciendo, cada vez.
+
+    Medido el 2026-08-17 contra rvr-01, por pestaña:
+
+        next dev en frío   1369-1665 ms      <- compilación bajo demanda
+        next dev caliente    195-238 ms
+        PRODUCCIÓN            13-39 ms      <- lo que ve el aula
+
+    🔴 Con la navegación en ~20 ms, esta animación pasó a ser **el 96 % de lo
+       que la persona espera**. Dejó de estar encima del tiempo de carga: se
+       convirtió en el tiempo de carga.
+
+    → Entrar a un robot conserva su momento orquestado, igual que el muro.
+      Cambiar de pestaña deja de tenerlo. `false` en cuanto la primera cascada
+      termina, y este componente se remonta al cambiar de robot, así que el
+      estado se reinicia solo donde debe.
+
+    ⚠️ NO se toca `.escalonado` en la hoja: la usa también el muro, y
+       `piezasHuerfanas` exige que toda clase tenga consumidor.
+
+    ⚠️ Y esto NO lo cubre ninguna prueba de este repositorio: aquí no se
+       renderiza ningún componente, así que se acepta MIRÁNDOLO — entrar a un
+       robot y ver la cascada una vez, cambiar de pestaña y no verla. Lo único
+       comprobable en automático es que el plazo y la hoja no se separen, y de
+       eso se ocupa `cascada.test.ts`.
+  */
+  const [entrando, setEntrando] = useState(true)
+  useEffect(() => {
+    const t = setTimeout(() => setEntrando(false), CASCADA_COMPLETA_MS)
+    return () => clearTimeout(t)
+  }, [])
+
   return (
     <ProveedorRobot robot={destinoParaTransporte(destino)}>
       <div className="relative min-h-screen bg-background text-foreground">
@@ -274,7 +313,7 @@ export function MarcoRobot({ destino, children }: PropsMarcoRobot) {
           en cascada, el mismo momento orquestado que tiene el muro.
         */}
         <main
-          className="escalonado relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-7 sm:px-6"
+          className={`${entrando ? 'escalonado ' : ''}relative z-10 mx-auto max-w-6xl px-4 pb-16 pt-7 sm:px-6`}
           style={{ '--tono-seccion': `var(${tono})` } as CSSProperties}
         >
           {/*

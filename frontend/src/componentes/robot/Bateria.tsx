@@ -23,7 +23,7 @@
  */
 
 import { useRobot } from '@/hooks/ContextoRobot'
-import { useTopic } from '@/hooks/useTopic'
+import { useTopic, useTopicFechado } from '@/hooks/useTopic'
 import { useLatido } from '@/hooks/useTransporte'
 import { NivelBateria, V_BAJA, V_CRITICA, nivelBateria } from '@/lib/rosbridge/contrato'
 import { EscalaImpresa } from '@/componentes/ui/EscalaImpresa'
@@ -162,7 +162,22 @@ export function VoltajeDelMarco() {
 
 export function Bateria() {
   const { transporte } = useRobot()
-  const mensaje = useTopic(transporte, '/battery_state')
+  /*
+    🔴 `useTopicFechado` Y NO `useTopic`, Y ES LA TARJETA QUE MÁS LO NECESITA.
+       `/battery_state` llega cada 30,0 s exactos, y `useTopic` vuelve a `null`
+       al montar: cambiar de pestaña y volver dejaba esta tarjeta **medio minuto
+       en rayas** con el robot perfectamente vivo y un voltaje leído hace un
+       segundo. Ahora se siembra del recuerdo del transporte.
+
+    ⚠️ Lo que hace honesto el préstamo es que la ANTIGÜEDAD ya se pintaba aquí
+       —`desde`, con `useLatido()` para que envejezca en pantalla—. El valor
+       nunca aparece sin su edad al lado, que es la condición del hook.
+
+    ⚠️ Y el recuerdo muere con el enlace, así que un robot que se cae vuelve a
+       «todavía no ha llegado ninguno» en vez de congelar su último voltaje.
+  */
+  const fechado = useTopicFechado(transporte, '/battery_state')
+  const mensaje = fechado?.valor ?? null
   // El muestreo del latido: la antiguedad envejece sin que llegue nada nuevo, y
   // sin un re-render periodico se quedaria congelada en la pantalla.
   useLatido()

@@ -295,6 +295,34 @@ cara.** Comparten `.next/`. Si necesitas uno con otra configuración —por ejem
 segundo en otro puerto deja el original devolviendo 500. Pasó el 2026-08-16 y costó un rato de
 diagnóstico.
 
+**🔴🔴 `next dev` NO ES EL PRODUCTO, Y JUZGAR LA VELOCIDAD CON ÉL LLEVA A «OPTIMIZAR» LO QUE YA
+ESTÁ BIEN.** Medido el 2026-08-17 contra rvr-01 encendido, con el mismo guion y las mismas siete
+pestañas, cronometrando desde el CLIC hasta que cambia el contenido:
+
+```
+                          por pestaña
+next dev, en frío        1369-1665 ms     <- compila la ruta bajo demanda
+next dev, caliente         195-238 ms
+PRODUCCIÓN (next build)     13-39 ms      <- lo que ve el aula
+```
+
+**Setenta y cinco veces.** La lentitud que se percibía era el servidor de desarrollo: en
+producción cambiar de pestaña cuesta ~20 ms y no hay nada que optimizar.
+→ 🔴 **Y la conclusión que se estuvo a punto de tomar era la mala:** añadir una pantalla de carga
+  «para darle tiempo al sistema». Sobre una transición de 20 ms eso **mete un destello donde no
+  había espera** — el anti-brief «más bonito y más lento de usar», cometido por medir con el
+  instrumento equivocado.
+→ **Antes de tocar nada por rendimiento, mide contra `next build` + `next start`.** Y no las
+  ejecutes a la vez que `dev`: comparten `.next`.
+→ 📝 Van **nueve** veces que miente el instrumento y no lo medido. Esta es la primera en la que el
+  instrumento es el entorno de desarrollo entero.
+
+**📌 Y lo que SÍ costaba tiempo en producción no era la red:** la cascada de entrada `.escalonado`
+se reproducía en **cada** cambio de pestaña (~540 ms, el 96 % de la espera con la navegación en
+20 ms), y las tarjetas arrancaban vacías porque `useTopic` vuelve a `null` al montar y rosbridge no
+reentrega — hasta **30 s** en `/battery_state`. Las dos están arregladas; ver `cascada.ts` y
+`useTopicFechado`.
+
 **🔴🔴 LA HERRAMIENTA DE CAPTURAS PUEDE DEVOLVER UNA IMAGEN DE OTRA PANTALLA, entera y nítida.**
 Medido el 2026-08-16 leyendo el píxel del PNG contra lo que el navegador decía estar pintando:
 `getComputedStyle(document.body).backgroundColor` daba `rgb(246, 245, 243)` y el fondo de la foto
