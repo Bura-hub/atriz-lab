@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  AVISO_EMISION, CADUCIDAD_LECTURA_S, SENSOR_SIN_SENAL,
-  type EstadoIR, avisoConduccionIR, ultimoMensaje, zonaDelEmisor,
+  AVISO_EMISION, CADUCIDAD_LECTURA_S, CODIGO_MAX, CODIGO_MIN, SENSOR_SIN_SENAL,
+  type EstadoIR, avisoConduccionIR, peticionBaliza, ultimoMensaje, zonaDelEmisor,
 } from './infrarrojos'
 
 /** Un estado sano, fresco y sin nadie cerca. Cada prueba cambia lo suyo. */
@@ -184,5 +184,47 @@ describe('AVISO_EMISION', () => {
     // Medido: emitiendo SOLO por detras, el otro robot lo recibe igual. Rebota.
     expect(AVISO_EMISION).toContain('NO garantiza la dirección')
     expect(AVISO_EMISION).toContain('rebota')
+  })
+})
+
+describe('peticionBaliza — la baliza continua', () => {
+  it('enciende con los dos codigos en rango', () => {
+    expect(peticionBaliza(true, 3, 5)).toEqual({ encender: true, far_code: 3, near_code: 5 })
+    expect(peticionBaliza(true, CODIGO_MIN, CODIGO_MAX))
+      .toEqual({ encender: true, far_code: 0, near_code: 7 })
+  })
+
+  /*
+   * 🔴 `null`, NO un valor recortado. Recortar convierte «pediste algo
+   *    imposible» en «te mando otra cosa sin avisar», y este proyecto tiene el
+   *    caso medido: `limitar(nan)` devolvia EL TOPE de velocidad.
+   */
+  it('devuelve null con un codigo fuera de rango, y no lo recorta', () => {
+    for (const [f, n] of [[8, 0], [0, 8], [-1, 0], [0, -1], [1.5, 0], [0, NaN]] as const) {
+      expect(peticionBaliza(true, f, n), `far=${f} near=${n}`).toBeNull()
+    }
+  })
+
+  /*
+   * 🔴🔴 APAGAR NO PUEDE FALLAR POR UN CODIGO MALO. El `.srv` dice que con
+   *    `encender=false` los codigos se ignoran, asi que validarlos haria que un
+   *    valor invalido en pantalla IMPIDIERA apagar la baliza — lo contrario de
+   *    lo que tiene que hacer un mando que apaga algo.
+   */
+  it('apagar funciona SIEMPRE, aunque los codigos sean basura', () => {
+    for (const [f, n] of [[99, -3], [NaN, NaN], [0, 0]] as const) {
+      expect(peticionBaliza(false, f, n), `far=${f} near=${n}`)
+        .toEqual({ encender: false, far_code: 0, near_code: 0 })
+    }
+  })
+
+  /*
+   * 📌 La forma del objeto es el contrato con `SetIRBaliza.srv`. Si alguien le
+   *    añade un campo aqui sin tocar el `.srv`, rosbridge lo aceptaria y el
+   *    driver lo ignoraria en silencio.
+   */
+  it('no manda campos que el .srv no tiene', () => {
+    expect(Object.keys(peticionBaliza(true, 1, 2) ?? {}).sort())
+      .toEqual(['encender', 'far_code', 'near_code'])
   })
 })

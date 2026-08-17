@@ -47,13 +47,24 @@ import { useTopic } from '@/hooks/useTopic'
 import { SIN_DATO, horaCorta, numero } from '@/lib/interfaz/formato'
 import {
   AVISO_EMISION, CODIGO_MAX, CODIGO_MIN, FUERZA_MAX, FUERZA_MIN, FUERZA_POR_DEFECTO,
-  NOMBRE_MODO_IR, NOMBRE_ZONA, ZonaIR, avisoConduccionIR, peticionIR, ultimoMensaje,
+  NOMBRE_MODO_IR, NOMBRE_ZONA, ZonaIR, avisoConduccionIR, peticionBaliza, peticionIR, ultimoMensaje,
   zonaDelEmisor,
 } from '@/lib/robot/infrarrojos'
 import { Aviso } from '@/componentes/ui/Aviso'
 import { Dato } from '@/componentes/ui/Dato'
 
 const SERVICIO_EMITIR = '/send_infrared_message'
+/*
+ * 🔴 LA BALIZA TIENE SU PROPIO SERVICIO, Y ESO ES LA SEGURIDAD.
+ *    `set_ir_mode` lleva `broadcasting` y `following` en el mismo campo como
+ *    cadena libre, y la lista blanca filtra por servicio, no por argumento: si
+ *    la web hablara con aquel, tendría abierto también el modo que hace
+ *    **conducir al robot solo** —sin watchdog ni `collision_monitor`, porque los
+ *    modos IR son del firmware y no pasan por `cmd_vel`—.
+ *    Aquí la petición es un booleano: la orden peligrosa **no se puede
+ *    escribir**. Encargado a la Pi el 2026-08-16 y desplegado el 2026-08-17.
+ */
+const SERVICIO_BALIZA = '/set_ir_baliza'
 
 /*
  * ═══════════════════════════════════════════════════════════════════════════
@@ -99,6 +110,48 @@ export function PanelInfrarrojos() {
   const [fuerza, setFuerza] = useState(FUERZA_POR_DEFECTO)
   const [enviando, setEnviando] = useState(false)
   const [resultado, setResultado] = useState<{ hora: string; texto: string; malo: boolean } | null>(null)
+
+  const [farCode, setFarCode] = useState(0)
+  const [nearCode, setNearCode] = useState(0)
+  const [balizaEnviando, setBalizaEnviando] = useState(false)
+  const [balizaResultado, setBalizaResultado] =
+    useState<{ hora: string; texto: string; malo: boolean } | null>(null)
+
+  const cambiarBaliza = useCallback(async (encender: boolean) => {
+    const cuerpo = peticionBaliza(encender, farCode, nearCode)
+    const hora = horaCorta(Date.now())
+    /*
+     * `peticionBaliza` solo devuelve `null` al ENCENDER con un código malo:
+     * apagar funciona siempre, a propósito. Un mando que apaga algo no puede
+     * quedarse bloqueado porque haya un valor raro en otro control.
+     */
+    if (cuerpo === null) {
+      setBalizaResultado({ hora, texto: 'Los códigos tienen que estar entre 0 y 7. No se ha enviado nada.', malo: true })
+      return
+    }
+    setBalizaEnviando(true)
+    try {
+      const r = await transporte.llamar(SERVICIO_BALIZA, cuerpo) as Record<string, unknown>
+      const ok = r.success === true
+      const m = typeof r.message === 'string' && r.message !== '' ? ` El robot dice: «${r.message}»` : ''
+      setBalizaResultado({
+        hora,
+        malo: !ok,
+        texto: ok
+          ? (encender
+            ? `Baliza encendida: lejos ${farCode}, cerca ${nearCode}.${m}`
+            : `Baliza apagada — y con ella el seguimiento y la evasión.${m}`)
+          : `El robot rechazó la orden.${m}`,
+      })
+    } catch (e) {
+      setBalizaResultado({
+        hora, malo: true,
+        texto: `La orden NO se ha enviado: ${e instanceof Error ? e.message : String(e)}`,
+      })
+    } finally {
+      setBalizaEnviando(false)
+    }
+  }, [transporte, farCode, nearCode])
 
   const emitir = useCallback(async () => {
     const cuerpo = peticionIR(codigo, fuerza)
@@ -337,6 +390,94 @@ export function PanelInfrarrojos() {
               {!resultado.malo && (
                 <> No se puede comprobar desde aquí: el infrarrojo no se ve, y este robot no se
                 escucha a sí mismo. <strong>Míralo en el «último código» del otro robot.</strong></>
+              )}
+            </Aviso>
+          </div>
+        )}
+      </div>
+
+      {/*
+        ═══════════════════════════════════════════════════════════════════════
+        LA BALIZA CONTINUA — emitir hasta que alguien la apague
+        ═══════════════════════════════════════════════════════════════════════
+        🔴 SE PUEDE CONFIRMAR MEDIO EFECTO, Y HAY QUE DECIR CUAL. El `success`
+           del servicio dice que el driver acepto la peticion. Pero `/estado_ir`
+           publica `modo`, `far_code` y `near_code`, asi que la pantalla SI
+           puede enseñar que **el robot dice estar emitiendo** —eso es
+           observable, arriba, en «modo»—. Lo que sigue sin poder confirmarse es
+           que la luz infrarroja salga de verdad: es invisible y el robot no se
+           escucha a si mismo. Son dos cosas distintas y se dicen por separado.
+      */}
+      <div className="vidrio p-5">
+        <h3 className="filete-titulo text-[17px] font-semibold tracking-tight">Baliza continua</h3>
+        <p className="mt-2 max-w-prose text-[13px] leading-relaxed text-muted-foreground">
+          Deja el robot <strong>emitiendo sin parar</strong>, para que otro lo encuentre. A
+          diferencia de «Emitir», que manda un solo mensaje, esto <strong>queda encendido hasta
+          que lo apagues</strong>.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-end gap-4">
+          <label className="flex flex-col gap-1 text-[13px]">
+            <span className="microetiqueta">Código lejos</span>
+            <input
+              type="number" min={CODIGO_MIN} max={CODIGO_MAX} step={1} value={farCode}
+              onChange={(e) => setFarCode(Number(e.target.value))}
+              className="focus-ring w-20 rounded-md border border-[rgb(var(--filo)/0.2)] bg-transparent px-2 py-1.5 font-mono"
+            />
+          </label>
+          <label className="flex flex-col gap-1 text-[13px]">
+            <span className="microetiqueta">Código cerca</span>
+            <input
+              type="number" min={CODIGO_MIN} max={CODIGO_MAX} step={1} value={nearCode}
+              onChange={(e) => setNearCode(Number(e.target.value))}
+              className="focus-ring w-20 rounded-md border border-[rgb(var(--filo)/0.2)] bg-transparent px-2 py-1.5 font-mono"
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => { void cambiarBaliza(true) }}
+            disabled={!conectado || balizaEnviando}
+            aria-busy={balizaEnviando}
+            className="pulsable focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:text-muted-foreground"
+          >
+            {balizaEnviando ? 'Enviando…' : 'Encender baliza'}
+          </button>
+          <button
+            type="button"
+            onClick={() => { void cambiarBaliza(false) }}
+            disabled={!conectado || balizaEnviando}
+            aria-busy={balizaEnviando}
+            className="pulsable focus-ring rounded-md border border-[rgb(var(--filo)/0.2)] px-4 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:text-muted-foreground"
+          >
+            Apagar
+          </button>
+        </div>
+
+        {/*
+          🔴 ESTO NO ES LETRA PEQUEÑA. «Apagar» apaga TRES cosas, y quien pulse
+             para callar la baliza estara ademas desactivando el seguimiento. Es
+             la semantica del driver —lo dice el propio `.srv`— y no se adivina
+             mirando un boton que pone «Apagar».
+        */}
+        <p className="mt-3 max-w-prose text-[12.5px] leading-relaxed text-muted-foreground">
+          <strong>Apagar apaga tres cosas</strong>: la baliza, el seguimiento y la evasión. No hay
+          forma de apagar solo una. Y los códigos van <strong>de 0 a 7</strong>, así que con
+          dieciséis robots hay parejas que comparten código y son indistinguibles.
+        </p>
+
+        {balizaResultado !== null && (
+          <div className="mt-3" role="status">
+            <Aviso
+              nivel={balizaResultado.malo ? 'ERROR' : 'NOTA'}
+              titulo={`${balizaResultado.malo ? 'No salió' : 'Orden aceptada'} · ${balizaResultado.hora}`}
+            >
+              {balizaResultado.texto}
+              {!balizaResultado.malo && (
+                <> Que el robot <strong>diga</strong> estar emitiendo se ve arriba, en{' '}
+                <strong>«modo»</strong>. Que la luz infrarroja salga de verdad{' '}
+                <strong>no se puede comprobar desde aquí</strong>: es invisible y este robot no se
+                escucha a sí mismo — hace falta el «último código» del otro.</>
               )}
             </Aviso>
           </div>

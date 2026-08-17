@@ -741,3 +741,32 @@ verde. Está cubierto por dos pruebas del transporte, pero **verlo en pantalla e
 ⚠️ Y comprobado por instrumento el 2026-08-17: al volver a Medidas, **410 ms** después del clic la
 tarjeta ya daba `8,32 V · hace 2,1 s`. Como `/battery_state` publica cada 30,0 s, en 410 ms no pudo
 llegar por el socket. Lo que falta es el ojo, sobre todo para el paso 7.
+
+---
+
+### 6k · 🆕 LA BALIZA IR — **exige DOS robots**, como el resto de infrarrojos (2026-08-17)
+
+`/robot/NN/acciones` gana «Baliza continua»: deja el robot emitiendo **hasta que alguien lo
+apague**, con dos códigos (lejos y cerca) de 0 a 7. Servicio `/set_ir_baliza`, desplegado en rvr-01
+el mismo día.
+
+```
+1 · robot A · Acciones → códigos 3 y 5 → «Encender baliza»
+    la tarjeta de arriba tiene que pasar a modo «emitiendo» (broadcasting)
+2 · robot B · Acciones → mira «último código»: tiene que aparecer el 3 o el 5
+3 · robot A · «Apagar» → el modo vuelve a «apagado» en A
+4 · robot A · pon un código 9 y pulsa «Encender»  →  tiene que NEGARSE sin enviar nada
+5 · robot A · con el 9 puesto, pulsa «Apagar»  →  tiene que FUNCIONAR igual
+```
+
+🔴 **El 5 es el que importa y no es cosmético.** Apagar no puede quedarse bloqueado porque haya un
+valor raro en otro control: un mando que apaga algo tiene que apagar siempre. Está cubierto por una
+prueba pura, pero verlo es otra cosa.
+
+🔴 **Y el 2 es la única confirmación que existe.** La pantalla puede decir que el robot **dice**
+estar emitiendo —`modo` viene en `/estado_ir`—, pero **no** que la luz infrarroja salga: es
+invisible y el robot no se escucha a sí mismo. El testigo es el otro robot, y por eso esto no se
+puede cerrar con rvr-01 solo.
+
+⚠️ **Apagar apaga TRES cosas** —baliza, seguimiento y evasión—, que es la semántica del driver. La
+pantalla lo dice; comprueba que se entiende antes de dárselo a un alumno.

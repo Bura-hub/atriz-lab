@@ -82,6 +82,19 @@ export const SERVICIOS = [
    *    entra; la lista blanca cierra QUE puede pedir. Son cosas distintas.
    */
   '/send_infrared_message',
+  /*
+   * 🆕 2026-08-17. La baliza continua, y **existe para no tener que abrir
+   * `set_ir_mode`**: aquel lleva `broadcasting` y `following` en el mismo campo
+   * como cadena libre, y esta lista filtra por SERVICIO, no por argumento — o
+   * sea que abrirlo habria abierto tambien el modo que hace **conducir al robot
+   * solo**, sin watchdog ni `collision_monitor`, porque los modos IR son del
+   * firmware y no pasan por `cmd_vel`.
+   *
+   * 🔴 La seguridad no esta en que el driver valide bien: esta en que la
+   *    peticion peligrosa **no se puede escribir**. `SetIRBaliza.srv` recibe un
+   *    booleano, y no hay cadena con la que pedir `following`.
+   */
+  '/set_ir_baliza',
 ] as const
 
 /**
@@ -246,6 +259,17 @@ export const SERVICIOS_SOLO_NO_LANZO = [
    * del OTRO robot trayendo el codigo.
    */
   '/send_infrared_message',
+  /*
+   * La baliza tiene el MISMO problema y peor: el infrarrojo es invisible, el
+   * robot no se escucha a si mismo, y ademas queda ENCENDIDA — asi que ni
+   * siquiera hay un instante en el que mirar. El unico testigo sigue siendo el
+   * `/estado_ir` del OTRO robot.
+   *
+   * ⚠️ `success` del `.srv` dice que el driver acepto la peticion, no que la luz
+   *    infrarroja este saliendo. Son cosas distintas y la pantalla no puede
+   *    confundirlas.
+   */
+  '/set_ir_baliza',
 ] as const
 
 export function confirmaEfecto(servicio: string): ConfirmacionServicio {

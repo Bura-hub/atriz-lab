@@ -333,6 +333,61 @@ export function peticionIR(codigo: number, fuerza: number): PeticionIR | null {
  *    posiciones. Un nombre corto —«delante»— seria elegir una de las dos sin
  *    tener con que.
  */
+/**
+ * LA BALIZA CONTINUA: dejar el robot emitiendo hasta que alguien lo apague.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴 POR QUÉ ES UN SERVICIO PROPIO Y NO `set_ir_mode`
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `set_ir_mode` lleva `broadcasting` **y `following`** en el mismo campo `mode`
+ * como cadena libre, y la lista blanca de rosbridge filtra por **servicio, no
+ * por argumento**. Abrir aquel a la web habría abierto también el modo que hace
+ * **conducir al robot solo** — y los modos IR son del firmware, así que no pasan
+ * por `cmd_vel`: ni watchdog, ni `collision_monitor`, ni parada por polígono.
+ *
+ * `/set_ir_baliza` recibe un **booleano**: no existe la cadena con la que pedir
+ * `following`. La seguridad no está en que el driver valide bien, está en que
+ * **la petición peligrosa no se puede escribir**.
+ *
+ * 👤 Encargado a la Pi el 2026-08-16, aprobado y desplegado en rvr-01 el
+ *    2026-08-17. Contrato en `atriz_rvr_msgs/srv/SetIRBaliza.srv`.
+ *
+ * ⚠️ **Apagar apaga LAS TRES cosas** —baliza, seguimiento y evasión—, no una de
+ *    tres. Es la semántica del driver y la pantalla tiene que decirlo así: quien
+ *    pulse «apagar» para callar la baliza está además desactivando el
+ *    seguimiento, y eso no se adivina.
+ */
+export interface PeticionBaliza {
+  encender: boolean
+  far_code: number
+  near_code: number
+}
+
+/**
+ * @returns `null` si algo está fuera de rango, **nunca un valor recortado**.
+ *
+ * 🔴 No recorta a propósito, igual que `peticionIR`. Recortar convierte «pediste
+ *    algo imposible» en «te mando otra cosa parecida sin avisar», y este
+ *    proyecto tiene el caso medido: `limitar(nan)` devolvía **el tope** de
+ *    velocidad porque `abs(nan) <= tope` es falso y caía en la rama de recorte.
+ *
+ * ⚠️ Con `encender: false` los códigos se ignoran —lo dice el `.srv`—, así que
+ *    no se validan: exigir un código válido para APAGAR haría que un valor
+ *    inválido en pantalla impidiera apagar la baliza, que es justo lo contrario
+ *    de lo que tiene que pasar con un mando de parada.
+ */
+export function peticionBaliza(
+  encender: boolean,
+  farCode: number,
+  nearCode: number,
+): PeticionBaliza | null {
+  if (!encender) return { encender: false, far_code: 0, near_code: 0 }
+  const codigoValido = (v: number) =>
+    Number.isInteger(v) && v >= CODIGO_MIN && v <= CODIGO_MAX
+  if (!codigoValido(farCode) || !codigoValido(nearCode)) return null
+  return { encender: true, far_code: farCode, near_code: nearCode }
+}
+
 export const NOMBRE_ZONA: Readonly<Record<ZonaIR, string>> = {
   IZQUIERDA: 'a la izquierda',
   DETRAS: 'detrás',

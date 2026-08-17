@@ -70,7 +70,7 @@ describe('lista blanca', () => {
   // respuesta que no contiene ni un bit para confirmar. Se comprueban los
   // DIEZ, no solo dos: la primera version de esta prueba solo miraba
   // /set_leds y /start_scan y dejaba pasar el error en los otros seis.
-  it('sabe cuales de los DIEZ servicios no tienen NADA que mirar (respuesta vacia)', () => {
+  it('sabe que servicios no tienen NADA que mirar (respuesta vacia)', () => {
     expect(confirmaEfecto('/start_scan')).toBe('NINGUNA')
     expect(confirmaEfecto('/stop_scan')).toBe('NINGUNA')
     expect(confirmaEfecto('/release_emergency_stop')).toBe('NINGUNA')
@@ -81,7 +81,7 @@ describe('lista blanca', () => {
   // (`undercarriage_white`, led_id=10) NO prueba que el LED se encendiera
   // -lo enciende `enable_color_detection`, un comando distinto-. Estos cuatro
   // solo dicen "la corrutina del SDK no lanzo", nunca "confirmado".
-  it('sabe cuales de los DIEZ servicios SOLO dicen que el SDK no lanzo (bool success, NO es el efecto fisico)', () => {
+  it('sabe que servicios SOLO dicen que el SDK no lanzo (bool success, NO es el efecto fisico)', () => {
     expect(confirmaEfecto('/set_pos_and_yaw')).toBe('SOLO_QUE_NO_LANZO')
     expect(confirmaEfecto('/set_led_rgb')).toBe('SOLO_QUE_NO_LANZO')
     expect(confirmaEfecto('/set_multiple_leds')).toBe('SOLO_QUE_NO_LANZO')
@@ -105,6 +105,13 @@ describe('lista blanca', () => {
      *    `/estado_ir` de OTRO robot trayendo el codigo.
      */
     expect(confirmaEfecto('/send_infrared_message')).toBe('SOLO_QUE_NO_LANZO')
+    /*
+     * Añadido el 2026-08-17. La baliza es el caso PEOR de todos los de esta
+     * lista: el efecto es luz infrarroja —invisible—, el robot no se escucha a
+     * si mismo, y ademas queda ENCENDIDA, asi que ni siquiera hay un instante
+     * en el que mirar. `success` dice que el driver acepto la peticion.
+     */
+    expect(confirmaEfecto('/set_ir_baliza')).toBe('SOLO_QUE_NO_LANZO')
   })
 
   /*
@@ -114,13 +121,20 @@ describe('lista blanca', () => {
    *    detalle que existen para fijar. Este `toHaveLength` no comprueba nada por
    *    si mismo: obliga a que alguien MIRE las de arriba al añadir un servicio.
    */
+  /*
+   * 📝 Y los TITULOS de esos dos `it` ya no llevan numero. Decian «los DIEZ
+   *    servicios» con TRECE en la lista: el numero escrito a mano habia
+   *    envejecido solo, en el fichero cuyo trabajo es que nada envejezca. Es la
+   *    misma correccion que ya se hizo en el encabezado «Dos trampas» y en «las
+   *    CINCO causas»: si el numero no aporta, se quita; si aporta, se deriva.
+   */
   it('🔴 si esto falla, actualiza tambien las DOS enumeraciones de arriba', () => {
-    expect(SERVICIOS).toHaveLength(13)
+    expect(SERVICIOS).toHaveLength(14)
   })
 
   // Los DIEZ de SERVICIOS estan cubiertos entre las dos pruebas de arriba:
   // ninguno se queda sin comprobar, y las dos listas fuente no se solapan.
-  it('las dos listas cubren los doce servicios sin solapar', () => {
+  it('las dos listas cubren TODOS los servicios sin solapar', () => {
     const cubiertos = [...SERVICIOS_SIN_CONFIRMACION, ...SERVICIOS_SOLO_NO_LANZO]
     expect(cubiertos.sort()).toEqual([...SERVICIOS].sort())
     expect(SERVICIOS_SIN_CONFIRMACION.some((s) => (SERVICIOS_SOLO_NO_LANZO as readonly string[]).includes(s)))
@@ -130,7 +144,7 @@ describe('lista blanca', () => {
   // La propiedad central del arreglo: el tipo no puede expresar "confirma el
   // efecto" para NINGUN servicio -no es que las pruebas no lo comprueben, es
   // que la union `ConfirmacionServicio` no tiene un tercer valor para eso.
-  it('ningun servicio de los diez devuelve un valor distinto de NINGUNA/SOLO_QUE_NO_LANZO', () => {
+  it('ningun servicio devuelve un valor distinto de NINGUNA/SOLO_QUE_NO_LANZO', () => {
     for (const s of SERVICIOS) {
       expect(['NINGUNA', 'SOLO_QUE_NO_LANZO']).toContain(confirmaEfecto(s))
     }
