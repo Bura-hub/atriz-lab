@@ -708,6 +708,15 @@ seguridad**, no de maqueta.
 
 ---
 
+### 6i · no existe — y se deja el hueco a propósito
+
+📝 La numeración salta de **6h a 6j**. Se llegó a renumerar para cerrarlo y **se deshizo**:
+estos números son anclas que citan `TRASPASO.md` y `ESTADO_ACTUAL.md` del repositorio de
+migración, y también mensajes de commit **ya subidos**, que no se pueden corregir. Un hueco
+es cosmético; una cita rota manda a alguien a leer la sección equivocada.
+
+---
+
 ### 6j · 🆕 LO QUE EL RENDIMIENTO DEJÓ PARA MIRAR A OJO (2026-08-17)
 
 Dos cambios que **ninguna prueba de este repositorio puede ver**, porque aquí no se renderiza
