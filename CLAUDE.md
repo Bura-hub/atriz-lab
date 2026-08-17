@@ -315,11 +315,22 @@ expect(existsSync(SRV), 'no lo encuentro: …').toBe(true)             ✅ falla
   cometida aquí. Antes de dar por buena una prueba que compara con algo externo, **rómpela a
   propósito** y comprueba que se pone roja.
 
-**📝 Y dos papercuts del mismo rato:** en una plantilla de JS, `` `…${x}` `` mete un **retroceso**
-(U+0008), no un límite de palabra —`\s` y `\w` se quedan en `s` y `w`—, así que un patrón de
-validación construido así no casa nada. Y reescribir un fichero entero desde un script que puede
-reventar a mitad **lo deja vacío**: pasó con un `json.dumps` y un emoji. Para tocar código, mejor
-ediciones precisas que reescrituras.
+**📝 Y dos papercuts del mismo rato.** El primero: construir una expresion regular con una
+plantilla de JavaScript **se come los escapes**. En una plantilla `\b` es el caracter *retroceso*
+(U+0008), no un limite de palabra, y `\s`/`\w` se quedan en `s`/`w` — el patron no casa nada, sin
+avisar:
+
+```js
+new RegExp(`^\s*\w+\s+${campo}\b`, "m")            // 🔴 no casa NADA
+new RegExp("^\\s*\\w+\\s+" + campo + "\\b", "m")   // ✅ concatenando, con las barras dobladas
+```
+
+⚠️ **Y esta nota se rompio a si misma al escribirla**: el script que la inserto se comio justo el
+`\b` del que hablaba —el fichero acabo con un retroceso LITERAL dentro—, y quedo una frase sobre
+un caracter invisible… sin el caracter. Lo cual lleva al segundo papercut: **reescribir un fichero
+entero desde un script que puede reventar a mitad lo deja VACIO** — paso con un `json.dumps` y un
+emoji, y hubo que restaurarlo del ultimo commit. Para tocar codigo y documentacion, **ediciones
+precisas antes que reescrituras**.
 
 **🔴🔴 `next dev` NO ES EL PRODUCTO, Y JUZGAR LA VELOCIDAD CON ÉL LLEVA A «OPTIMIZAR» LO QUE YA
 ESTÁ BIEN.** Medido el 2026-08-17 contra rvr-01 encendido, con el mismo guion y las mismas siete
