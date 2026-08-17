@@ -272,7 +272,12 @@ decían «no llego» sobre un robot que estaba perfectamente.
 → 📝 **La regla general: `ping` y `Resolve-DnsName` pueden dar verde los dos con el navegador
   colgado.** Para un cliente web, el único testigo válido es abrir el socket desde el navegador.
 
-### Dos trampas de este repositorio en concreto
+### Trampas de este repositorio en concreto
+
+<!-- Sin número: decía «Dos trampas» y al añadir dos más se quedó rancio en el mismo
+     commit que lo añadía. Un número escrito a mano en un encabezado caduca en cuanto
+     alguien amplía la lista, y este repositorio ya pagó el mismo error con «estas tres
+     piezas» sobre dos que se movieron. -->
 
 **🔴 `npm run build` con `npm run dev` corriendo rompe el servidor.** Los dos escriben en
 `.next/`: la compilación de producción pisa el caché del de desarrollo y las rutas empiezan a
@@ -283,6 +288,30 @@ Uno u otro, nunca los dos a la vez.
 **🔴 Un glob roto en `tailwind.config.ts` hace que los componentes salgan SIN ESTILOS y sin dar
 error.** Lo dice el comentario del propio fichero. Hay una prueba que comprueba que cada glob
 de `content` apunta a un directorio que existe: si la tocas, deja algo equivalente.
+
+**🔴🔴 DOS SERVIDORES DE `next dev` A LA VEZ ROMPEN EL DE ANTES, y es la misma trampa con otra
+cara.** Comparten `.next/`. Si necesitas uno con otra configuración —por ejemplo
+`NEXT_PUBLIC_ATRIZ_TESTIGO=0` para llegar a un robot por IP—, **para el primero**: levantar el
+segundo en otro puerto deja el original devolviendo 500. Pasó el 2026-08-16 y costó un rato de
+diagnóstico.
+
+**🔴🔴 LA HERRAMIENTA DE CAPTURAS PUEDE DEVOLVER UNA IMAGEN DE OTRA PANTALLA, entera y nítida.**
+Medido el 2026-08-16 leyendo el píxel del PNG contra lo que el navegador decía estar pintando:
+`getComputedStyle(document.body).backgroundColor` daba `rgb(246, 245, 243)` y el fondo de la foto
+`rgb(24, 26, 27)`. Tres caminos lo provocan —`clip`, `--hide-scrollbars` y **desplazar la
+página**— y el tercero envenena hasta la captura simple.
+
+→ `recorte.mjs` ya no usa ninguno de los tres y **compara la foto con el token `--background`**:
+  si no cuadran, repite, y si sigue sin cuadrar **avisa por consola de que esa captura no sirve
+  para juzgar color**. Si ves ese aviso, no juzgues color con esa imagen.
+→ 📝 Y la lección de método: perseguirlo por parecido costó **cuatro atribuciones falsas**
+  seguidas. Lo cerró una tabla cambiando **una** cosa cada vez. Ante una captura rara, sospecha
+  del instrumento antes que del CSS — es la octava vez en este proyecto.
+
+**📌 Y para mirar el Taller hace falta `--teclear`:** el editor arranca **vacío**, así que los
+colores de sintaxis no existen hasta que alguien escribe. Sin eso la captura enseña un marcador de
+posición gris y se lee como «el resaltado no funciona». Un clic sintetizado **no mueve el foco**
+—eso solo lo hace el ratón de verdad—, así que `--clic` lo pide a mano.
 
 ---
 

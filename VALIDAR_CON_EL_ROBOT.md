@@ -538,8 +538,8 @@ hay respuesta, no es una medida.
 
 ## 6 · Lo que el rediseño de agosto dejó SIN VERIFICAR contra el robot
 
-> Escrito el 2026-08-16. Cada línea dice **qué se vería si fuera falso** — sin eso
-> no es una casilla, es un deseo.
+> Escrito el 2026-08-16 y ampliado la misma noche con F5 (§6d-6h). Cada línea dice
+> **qué se vería si fuera falso** — sin eso no es una casilla, es un deseo.
 
 ### 6a · 🔴 Conducir con el teclado **MUEVE EL ROBOT, y no se ha probado en uno**
 
@@ -587,3 +587,121 @@ una pared.
 
 **Si «mirar» y «hay que ir» se siguen pareciendo desde el fondo del aula, se
 suben.** Es un número, no un rediseño.
+
+---
+
+### 6d · 🆕🔴 LA VELOCIDAD ABIERTA — 2,0 rad/s de giro y 0,40 m/s con pestillo
+
+Lo más físico que dejó la sesión del 2026-08-16, y lo único cuya respuesta correcta
+**no la puede dar una medida**: es un juicio de quien tiene el aula.
+
+Lo que hay detrás: la franja está **medida** —lineal 0,20→0,199 y 0,40→0,401 al
+100 %; angular 0,5-2,0 al 99-102 %—, hay 22 pruebas puras que barren **más de
+15 000 puntos** del espacio de ajustes, y el hueco al parar del `collision_monitor`
+sube solo de **6,3 a 7,4 cm** al doblar la velocidad. Lo que **no** hay: nadie ha
+conducido así.
+
+```
+1 · /robot/1/conducir → «Arrancar barrido» → sube «giro máximo» a 2,0
+2 · gira sobre el eje con la palanca al tope lateral
+    ¿se puede parar donde quieres, mirando la pantalla a un metro del robot?
+3 · marca «Dejar llegar hasta 0,40 m/s» y sube el deslizador al tope
+4 · avanza en línea recta por un pasillo despejado y suelta a media distancia
+5 · recarga la página  →  el pestillo tiene que estar ECHADO otra vez (0,20)
+6 · desenchufa el WiFi del robot un momento →  el pestillo se echa solo
+```
+
+🔴 **Si fuera falso se vería así:** en 2, el robot da la vuelta antes de que
+reacciones → 2,0 es demasiado para esta pantalla y hay que bajar `W_MAX`. En 4, la
+distancia de parada te sorprende → recuerda que **el LIDAR barre a 15,5 cm del
+suelo y por debajo no ve nada**, y ahí la energía va con v². En 5 o 6 el deslizador
+sigue en 0,40 → el pestillo no se está echando, y eso es lo único que separa este
+mando del Taller.
+
+⚠️ **Y la pregunta que no es técnica:** ¿0,40 m/s en un pasillo con dieciséis
+robots y alumnos alrededor te parece bien? Eso lo decide quien da la clase, no una
+medida. Si la respuesta es no, `V_MAX_DURO` en `lib/interfaz/palanca.ts` es una
+línea.
+
+---
+
+### 6e · 🆕 LOS COLORES DE LED, que solo se juzgan MIRANDO el robot
+
+La paleta cambió: eran los ocho tonos de sección de la aplicación —validados como
+**tinta sobre papel**— y ahora son ocho a 45° con saturación y brillo máximos. Las
+pruebas garantizan la geometría del color; **ninguna puede decir si se distinguen
+en un RVR**, que lleva los LEDs bajo plástico de colores, sobre chasis blanco y con
+la luz que haya en la sala.
+
+```
+1 · /robot/1/acciones → deja los diez grupos marcados → prueba los nueve colores
+2 · ponte al otro lado del aula y mira: ¿cuáles se confunden entre sí?
+3 · marca SOLO «Faros» y manda un color → ¿se encienden solo los faros?
+4 · marca «Freno» → ¿los de detrás?
+5 · «Apagar todo» con solo dos grupos marcados → tienen que apagarse LOS DIEZ
+```
+
+🔴 **Si fuera falso se vería así:** en 3 o 4 se enciende todo → `peticionPara()`
+está colapsando a `all_lights` cuando no debe. En 5 quedan luces encendidas → el
+atajo está respetando la selección, y su caso de uso es justo el contrario:
+**apagar de golpe un robot que estorba**.
+
+📌 El resultado de 2 es un dato que hoy no existe: **cuántos colores se distinguen
+de verdad en un RVR**. Si son menos de nueve, la paleta debería encogerse — y esa
+es la clase de medida que solo se toma una vez.
+
+---
+
+### 6f · 🆕 EL POLÍGONO DE SEGURIDAD DIBUJADO — comprobar que el dibujo dice la verdad
+
+`/robot/NN/lo-que-ve` dibuja ahora las dos zonas del `collision_monitor` y una
+lectura de lo que está haciendo. **Es una deducción del barrido**, no una medida:
+lo que de verdad hace lo publica `/collision_monitor_state`.
+
+```
+1 · barrido encendido, robot despejado  →  «Capa de seguridad: sin recorte»
+2 · acerca una caja a ~30 cm del frente →  «frena al 40 %»
+3 · acércala a ~12 cm                   →  «no se mueve»
+4 · con la caja a 12 cm, intenta conducir ALEJÁNDOTE  →  0,0 cm, y la pantalla
+    ya lo dice: «ni siquiera para alejarse»
+```
+
+🔴 **Si fuera falso se vería así:** en 2 dice «no se mueve» → los `min_points`
+están mal (son **2** para el círculo y **4** para el rectángulo, y este módulo nació
+con uno solo). En 3 dice «frena» → el círculo se dibuja o se cuenta con el radio
+equivocado; tiene que ser **0,15**, no 0,18.
+
+---
+
+### 6g · 🆕 LOS INFRARROJOS — **exigen DOS robots**, y ya hay pantalla
+
+Ver §2ter, que ya estaba escrito. Lo que cambia el 2026-08-16 es que **ahora hay
+dónde mirarlo**: `/robot/NN/acciones` enseña la zona, el modo, el último código con
+su antigüedad y los tres sensores, y deja emitir un código 0-7.
+
+⚠️ Y lo que la pantalla **no puede** confirmar, por diseño: que se emitió. El
+infrarrojo es invisible y este robot no se escucha a sí mismo. **El único testigo
+es el «último código» del OTRO robot.**
+
+---
+
+### 6h · 🆕 EL TALLER OSCURO — lo único que necesita robot es el enlace
+
+La consola, los seis colores de sintaxis y el modo expandido se vieron en un
+navegador contra el doble. Contra el robot solo queda comprobar que **la salida de
+un programa real se lee bien sobre el fondo oscuro**, que es lo que ningún doble
+puede decir:
+
+```
+1 · /robot/1 → abre una práctica y ejecútala
+2 · provoca un error (una línea con `1/0`)  →  la traza tiene que leerse:
+    filete lateral visible, `File "..."` en tinta apagada, el mensaje final en
+    tinta plena
+3 · pulsa «Expandir el terminal»  →  la PARADA DE EMERGENCIA tiene que seguir
+    visible y pulsable en el raíl
+```
+
+🔴 **El 3 es el que importa** y no es cosmético: hoy **tapar la parada deja las
+1210 pruebas en verde**, porque la única guardia comprueba contención en el DOM y
+no visibilidad. Si en pantalla expandida no ves el botón rojo, **eso es un fallo de
+seguridad**, no de maqueta.

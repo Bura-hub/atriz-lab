@@ -211,8 +211,9 @@ await cmd('Page.enable'); await cmd('Runtime.enable'); await cmd('Network.enable
  * 🔴 x2. Un recorte existe para mirar 1 px de cerca, y a escala 1 el
  *    antialiasing se come justo lo que se va a juzgar.
  */
+const ANCHO = Number(arg('--ancho', '1440'))
 await cmd('Emulation.setDeviceMetricsOverride',
-  { width: 1440, height: 1100, deviceScaleFactor: 2, mobile: false })
+  { width: ANCHO, height: 1100, deviceScaleFactor: 2, mobile: ANCHO < 500 })
 if (COOKIE !== '') {
   await cmd('Network.setCookie', {
     name: 'atriz_sesion', value: COOKIE, domain: new URL(WEB).hostname,
