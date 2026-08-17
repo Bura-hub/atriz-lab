@@ -15,6 +15,7 @@ import {
   Frescura, NivelBateria, V_BAJA, V_CRITICA, interpretarAntiguedad, nivelBateria,
 } from '../rosbridge/contrato'
 import { EstadoRobot } from '../rosbridge/salud'
+import { FRASE_CUELGUE_PARCIAL, hayCuelgueParcial } from './cuelgue_parcial'
 
 /**
  * El driver republica `/motor_status` con `create_timer(1.0, self._publicar_motores)`
@@ -122,6 +123,16 @@ export interface EntradaBaldosa {
   msDesdeUltimoLatido: number | null
   /** `/estado_robot`. `null` = no llega, que NO es «todo bien». */
   estadoRobot: EntradaEstadoRobot | null
+  /**
+   * ms desde el ultimo `/battery_state`. `null` = no ha llegado ninguno.
+   *
+   * 🔴 ES EL TESTIGO DEL CUELGUE PARCIAL DEL RVR (evidencia 129, 2026-08-17). El
+   *    latido de esta baldosa es `/motor_status`, que el driver **republica a
+   *    1 Hz con su propio temporizador**: sigue llegando puntual aunque el RVR
+   *    haya dejado de contestar. `/battery_state` viene del RVR de verdad, asi
+   *    que su silencio es lo unico que distingue «vivo» de «medio colgado».
+   */
+  msDesdeBateria: number | null
 }
 
 /**
@@ -290,6 +301,18 @@ export function resumirBaldosa(e: EntradaBaldosa): Baldosa {
           'de arrancar, dale un par de minutos: se reinicia solo una vez por arranque',
     )
   } else {
+    /*
+     * 🔴 EL CUELGUE PARCIAL VA EL PRIMERO DE ESTA RAMA, y por lo mismo que la
+     *    parada: si el robot esta medio colgado, TODO lo demas que diga esta
+     *    baldosa sale de datos viejos —la bateria, la temperatura, el atasco— y
+     *    leerlos como actuales manda a diagnosticar lo que no es.
+     *
+     * ⚠️ Se dice como SOSPECHA: el fenomeno se vio UNA vez y un mal rato de WiFi
+     *    lo produce igual. Lo que si esta medido es el remedio.
+     */
+    if (hayCuelgueParcial({ latidoVivo: true, msDesdeTestigo: e.msDesdeBateria })) {
+      anota('medidas viejas', FRASE_CUELGUE_PARCIAL)
+    }
     // 🔴 `atascado: null` no genera frase: que no se sepa no es que no lo haya,
     //    y tampoco es un atasco. Solo `true` afirma algo.
     // 🔴 La parada va PRIMERA de los motivos: explica por si sola que el robot

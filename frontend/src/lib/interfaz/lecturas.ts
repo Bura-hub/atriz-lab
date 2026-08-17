@@ -127,10 +127,21 @@ export function entradaDeBaldosa(datos: {
    */
   estado?: LecturaEstadoRobot | null
   latidoPrevio?: number | null
+  /**
+   * ms desde el ultimo `/battery_state`. Es el TESTIGO del cuelgue parcial del
+   * RVR (evidencia 129): el latido de la baldosa lo republica el driver, asi que
+   * sigue vivo con el RVR medio colgado; esto viene del RVR de verdad.
+   *
+   * ⚠️ Opcional aqui y OBLIGATORIO en `EntradaBaldosa`: quien no lo pase esta
+   *    diciendo «no lo se», y `null` no dispara nada. Asi ningun llamador
+   *    antiguo empieza a afirmar algo que no ha mirado.
+   */
+  msDesdeBateria?: number | null
 }): EntradaBaldosa {
   return {
     id: datos.id,
     conectado: datos.conectado,
+    msDesdeBateria: datos.msDesdeBateria ?? null,
     voltios: voltajeDe(datos.bateria),
     antiguedadTermicoS: numeroValido(datos.motores?.antiguedad_termico_s),
     atascado: atascoDe(datos.motores),

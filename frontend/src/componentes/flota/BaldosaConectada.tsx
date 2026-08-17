@@ -76,6 +76,13 @@ function Contenido({ id, alResumir }: { id: number; alResumir?: AlResumir }) {
       bateria,
       motores,
       msDesdeUltimoMotorStatus: transporte.msDesdeUltimo(TOPIC_LATIDO_MURO),
+      /*
+       * 🔴 EL TESTIGO DEL CUELGUE PARCIAL (evidencia 129). El latido de arriba
+       *    lo REPUBLICA el driver a 1 Hz con su propio temporizador, asi que
+       *    sigue puntual con el RVR medio colgado; `/battery_state` viene del
+       *    RVR de verdad, y su silencio es lo unico que los distingue.
+       */
+      msDesdeBateria: transporte.msDesdeUltimo('/battery_state'),
       estado,
       latidoPrevio: latidoAnterior,
     }),

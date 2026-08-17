@@ -137,6 +137,12 @@ describe('entradaDeBaldosa', () => {
       msDesdeUltimoLatido: 900,
       // Sin `/estado_robot` la entrada lo dice: `null`, que NO es «todo bien».
       estadoRobot: null,
+      /*
+       * 🔴 Quien no lo pasa está diciendo «no lo sé», y `null` no dispara nada.
+       *    Es lo que impide que un llamador antiguo empiece a afirmar que hay un
+       *    cuelgue parcial solo porque no ha mirado la batería.
+       */
+      msDesdeBateria: null,
     })
   })
 

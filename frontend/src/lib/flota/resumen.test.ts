@@ -30,6 +30,12 @@ const sana = (cambios: Partial<EntradaBaldosa> = {}): EntradaBaldosa => ({
   atascado: false,
   estadoRobot: estadoSano(),
   msDesdeUltimoLatido: 900,
+  /*
+   * 🔴 Una batería recién llegada, no `null`. Un robot SANO recibe su
+   *    `/battery_state` cada 30,0 s; poner `null` aquí haría que el testigo del
+   *    cuelgue parcial no se ejercitara en ninguna prueba de las que ya hay.
+   */
+  msDesdeBateria: 1_000,
   ...cambios,
 })
 
@@ -464,5 +470,48 @@ describe('etiquetas — la version que cabe en una baldosa', () => {
     for (const clave of ['parada', 'odometría', 'RVR', 'atasco', 'batería', 'temperatura']) {
       expect(junto, `falta «${clave}» en las etiquetas`).toContain(clave)
     }
+  })
+})
+
+describe('el cuelgue parcial del RVR, en la baldosa (evidencia 129)', () => {
+  /*
+   * 🔴 EL CASO QUE EL MURO NO PODIA VER. El latido es `/motor_status`, que el
+   *    driver REPUBLICA a 1 Hz con su propio temporizador: sigue puntual aunque
+   *    el RVR haya dejado de contestar. Sin este motivo, la baldosa salia «en
+   *    linea» con un voltaje congelado — el RVR dormido con el nodo vivo, otra
+   *    vez, pero en la pantalla que existe para no cometerlo.
+   */
+  it('lo dice cuando el latido va y la bateria lleva mas de tres publicaciones sin llegar', () => {
+    const b = resumirBaldosa(sana({ msDesdeBateria: 15 * 60_000 }))
+    expect(b.estado).toBe('EN_LINEA')          // el latido SIGUE vivo: por eso hace falta el aviso
+    expect(b.motivos.join(' ')).toMatch(/medidas est[áa]n viejas/)
+  })
+
+  it('no lo dice con la bateria llegando a su ritmo normal', () => {
+    expect(resumirBaldosa(sana({ msDesdeBateria: 30_000 })).motivos.join(' '))
+      .not.toMatch(/medidas est[áa]n viejas/)
+  })
+
+  /*
+   * 🔴 «Todavia no ha llegado ninguna» NO es «dejo de llegar». Es el estado
+   *    normal de los primeros 30 s de cualquier conexion.
+   */
+  it('no lo dice si no ha llegado ninguna bateria todavia', () => {
+    expect(resumirBaldosa(sana({ msDesdeBateria: null })).motivos.join(' '))
+      .not.toMatch(/medidas est[áa]n viejas/)
+  })
+
+  /*
+   * 🔴 Y va DELANTE de lo demas de su rama: si el robot esta medio colgado, todo
+   *    lo que diga esta baldosa sale de datos viejos, asi que leer la bateria o
+   *    el atasco como actuales manda a diagnosticar lo que no es.
+   */
+  it('va antes que el atasco, porque explica por que el atasco puede ser rancio', () => {
+    const b = resumirBaldosa(sana({ msDesdeBateria: 15 * 60_000, atascado: true }))
+    const iCuelgue = b.motivos.findIndex((m) => /medidas est[áa]n viejas/.test(m))
+    const iAtasco = b.motivos.findIndex((m) => /atasc/i.test(m))
+    expect(iCuelgue).toBeGreaterThanOrEqual(0)
+    expect(iAtasco).toBeGreaterThanOrEqual(0)
+    expect(iCuelgue).toBeLessThan(iAtasco)
   })
 })
