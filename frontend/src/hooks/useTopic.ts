@@ -485,12 +485,16 @@ export interface MensajesPorTopic {
    * 🆕 2026-08-11. Modelado ENTERO —los catorce campos—, con sus trampas en
    * `lib/robot/infrarrojos.ts`.
    *
-   * ⚠️ Y HOY NINGUNA PANTALLA SE SUSCRIBE, a proposito. El mismo dia el robot
-   *    duplico `conduciendo_por_ir` en `/estado_robot` —el canal barato, el que
-   *    el muro paga por los dieciseis— y esa es la unica lectura que la interfaz
-   *    necesitaba de aqui. Se conserva el modelo porque el robot lo autoriza y
-   *    porque las TRES zonas de `infrarrojos.ts` estan escritas y probadas: el
-   *    dia que haya una pantalla de infrarrojos, el tipo ya esta.
+   * ✅ Y DESDE EL 2026-08-16 SI HAY PANTALLA: `PanelInfrarrojos` se suscribe
+   *    (`componentes/robot/PanelInfrarrojos.tsx`). Solo corre mientras esa
+   *    pestaña esta abierta; el muro sigue leyendo `conduciendo_por_ir` de
+   *    `/estado_robot`, que es el canal barato que paga por los dieciseis.
+   *
+   * 📝 Aqui ponia «HOY NINGUNA PANTALLA SE SUSCRIBE, a proposito», y quedo
+   *    falso al construirse esa pestaña. Lo destapo una auditoria, no una
+   *    prueba: **ningun comprobador de este repositorio puede ver que un
+   *    comentario dejo de ser cierto**, asi que el «hoy» de un comentario es
+   *    una fecha de caducidad sin poner.
    *
    * 🔴 `/infrared_messages` NO esta aqui, y no es un olvido: es un EVENTO y
    *    `/estado_ir` ya trae el ultimo codigo con su antiguedad.

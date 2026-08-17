@@ -761,12 +761,63 @@ export function piezasHuerfanas(
    *    ya existia para esto.
    * ═══════════════════════════════════════════════════════════════════════════
    */
-  const todo = fuentes.map((f) => lineasDeCodigo(f).join('\n')).join('\n')
+  const todo = fuentes.map((f) => textoDeCadenas(lineasDeCodigo(f).join('\n'))).join('\n')
   return clasesDefinidas(css)
     .filter((c) => !exenta.has(c))
     // Se busca el nombre con frontera por delante: `trama-ir` no debe casar
     // dentro de `mi-trama-ir`, pero SI dentro de `class="vidrio pulsable"`.
     .filter((c) => !new RegExp(`(^|[^\\w-])${c}(?![\\w-])`).test(todo))
+}
+
+/**
+ * EL TEXTO DE LOS LITERALES DE CADENA, y nada más.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 SEXTA VEZ DE LA MISMA FAMILIA, Y AHORA UN PASO MÁS ADENTRO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * `piezasHuerfanas` ya dejó de contar comentarios —esa fue la quinta— pero
+ * seguía buscando en **todo el código**. Y catorce de las clases de esta hoja
+ * son palabras españolas sueltas, así que una auditoría del 2026-08-17 midió
+ * que **seis no podían declararse huérfanas NUNCA**, aunque se borrara su
+ * último `className`:
+ *
+ *     unidad      `{ unidad: 'cm' }`              un nombre de campo
+ *     cifra       `const { numero: cifra }`       un nombre de variable
+ *     proyeccion  `proyeccion: boolean`           un nombre de propiedad
+ *     entrar      `href: '/entrar'`               una RUTA
+ *     palanca     `from '@/lib/interfaz/palanca'` un MÓDULO
+ *
+ * Ya no cuenta comentarios: contaba **código que no es una clase**.
+ *
+ * 🔴 Y la restricción NO puede ser «solo dentro de `className=`», que es lo
+ *    primero que se piensa: varias clases vivas viven en **tablas de estilo**
+ *    —`Insignia.tsx`, `PanelInfrarrojos.tsx`, `BaldosaRobot.tsx`— y no en un
+ *    `className` directo. Eso las habría declarado huérfanas: un falso
+ *    positivo, que en una guardia es peor que el falso negativo, porque se
+ *    acaba desactivando.
+ *
+ * → Lo que queda: **el texto de los literales**, menos los que son rutas de
+ *   módulo o de navegación (`@/…`, `./…`, `/…`, `node:…`). Una clase siempre
+ *   viaja dentro de una cadena; un nombre de variable, nunca.
+ *
+ * 🔴 Y el `${…}` de las plantillas NO se sustituye, al contrario que en
+ *    `gruposDeClases`. Copiar aquel `replace` fue mi primer intento y **dio dos
+ *    falsos positivos inmediatos**: `proyeccion` y `palanca-puno-suelto` viven
+ *    justo DENTRO de la sustitución —`${cond ? 'proyeccion' : ''}`—, que es el
+ *    modo natural de poner una clase condicional. Borrarla borraba la clase.
+ *    El pegado que aquel `replace` evitaba ya lo impide la frontera de palabra
+ *    del `RegExp` de arriba.
+ */
+export function textoDeCadenas(fuente: string): string {
+  const trozos: string[] = []
+  for (const m of fuente.matchAll(/'([^'\n]*)'|"([^"\n]*)"|`([^`]*)`/g)) {
+    const v = m[1] ?? m[2] ?? m[3] ?? ''
+    if (v === '') continue
+    // Rutas de módulo y de navegación: nunca son un nombre de clase.
+    if (/^[@.]?\//.test(v) || v.startsWith('node:')) continue
+    trozos.push(v)
+  }
+  return trozos.join('\n')
 }
 
 /** Un triplete `R G B` como los que declara `globals.css`. No un color CSS. */

@@ -56,11 +56,27 @@ describe('dependencias de ejecucion', () => {
    *    estorbar. Una prohibición sin salida se acaba borrando; una con salida se
    *    respeta.
    */
-  it('ninguna biblioteca que anime desde JS entra sin una guardia contra lo infinito', () => {
-    const instaladas = ANIMAN_DESDE_JS.filter(
-      (n) => PAQUETE.dependencies?.[n] !== undefined || PAQUETE.devDependencies?.[n] !== undefined,
-    )
-    if (instaladas.length === 0) return
+  /*
+   * 🔴🔴 `it.skipIf` Y NO UN `return`, Y ESTO ES UNA CORRECCIÓN DEL MISMO DÍA.
+   *    Esta prueba nació con `if (instaladas.length === 0) return` dentro del
+   *    cuerpo: con `motion` desinstalada eso **sale sin ejecutar un solo
+   *    `expect`** y vitest lo cuenta como `✓ … 0ms` — indistinguible en la
+   *    salida de una comprobación que sí midió.
+   *
+   *    Con `skipIf`, vitest lo cuenta como **saltada**, que es lo que es. Es la
+   *    regla que este repositorio ya aplica en `resaltado.test.ts` con el
+   *    comentario «SALTADA NO ES APROBADA», cometida en el fichero escrito
+   *    precisamente contra los controles que no pueden fallar.
+   *
+   * 📌 Y la lista se calcula FUERA del `it`: `skipIf` se evalúa al registrar la
+   *    prueba, no al correrla.
+   */
+  const INSTALADAS = ANIMAN_DESDE_JS.filter(
+    (n) => PAQUETE.dependencies?.[n] !== undefined || PAQUETE.devDependencies?.[n] !== undefined,
+  )
+
+  it.skipIf(INSTALADAS.length === 0)('ninguna biblioteca que anime desde JS entra sin una guardia contra lo infinito', () => {
+    const instaladas = INSTALADAS
 
     /*
      * 🔴 SE COMPRUEBA EL COMPORTAMIENTO, NO EL NOMBRE — y este fichero nació con

@@ -35,7 +35,19 @@ describe('las frases honestas', () => {
 })
 
 describe('textoDeConfirmacion — lo decide contrato.ts, no este fichero', () => {
-  it('🔴 NINGUNO de los diez servicios se describe como «confirmado»', () => {
+  /*
+   * 🔴 EL CONTEO VA ANTES DEL BUCLE, y no es ceremonia: este `it` se llamaba
+   *    «los DIEZ servicios» cuando ya eran QUINCE. La lista creció un 50 % y
+   *    nada se puso rojo, porque el número vivía en la prosa y no en un
+   *    `expect`. Un bucle sobre una lista que nadie cuenta pasa igual de verde
+   *    con la lista entera que con la lista vacía.
+   *
+   * → El título ya no lleva número: lo lleva la aserción, que es lo único que
+   *   puede caducar en rojo.
+   */
+  it('🔴 NINGUN servicio se describe como «confirmado»', () => {
+    expect(SERVICIOS.length, 'si esto falla, mira si el servicio nuevo trae una frase prohibida')
+      .toBe(15)
     for (const s of SERVICIOS) {
       const t = normalizar(textoDeConfirmacion(s))
       expect(t).not.toContain('confirmad')
@@ -43,7 +55,8 @@ describe('textoDeConfirmacion — lo decide contrato.ts, no este fichero', () =>
     }
   })
 
-  it('los cuatro de respuesta vacia dicen que no llega ni un bit', () => {
+  it('los de respuesta vacia dicen que no llega ni un bit', () => {
+    expect(SERVICIOS_SIN_CONFIRMACION.length).toBe(4)
     for (const s of SERVICIOS_SIN_CONFIRMACION) {
       expect(textoDeConfirmacion(s)).toContain('vacío')
     }

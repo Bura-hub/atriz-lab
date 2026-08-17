@@ -38,19 +38,20 @@
  *    cadena `following`. Aquí, porque no existe la petición «para siempre».
  *
  * ═══════════════════════════════════════════════════════════════════════════
- * ⏳ ESTE MÓDULO NO ESTÁ CABLEADO A NINGUNA PANTALLA TODAVÍA, Y ES DELIBERADO
+ * ✅ CABLEADO Y EN PRODUCCIÓN DESDE EL 2026-08-17
  * ═══════════════════════════════════════════════════════════════════════════
- * El servicio `/set_ir_conduccion` **no existe aún en el robot**. Ofrecer un
- * botón que va a contestar «servicio no disponible» es peor que no ofrecerlo:
- * quien lo pulse buscará el fallo en su clic. Y hay precedente caro —evidencia
- * 124—: cablear el arranque antes de que la pieza exista es el ÚLTIMO paso de
- * una migración, no el primero.
+ * `/set_ir_conduccion` existe en el robot (`SetIRConduccion.srv`, verificado por
+ * efecto en la evidencia 128), está en la lista blanca, y el mando vive en
+ * `PanelInfrarrojos`. `TOPE_SEGUNDOS` **se contrasta leyendo el `.srv`** en
+ * `conduccion_ir.test.ts`, así que si el robot lo cambia, aquí se pone rojo.
  *
- * → Lo que falta para encenderlo: el `.srv` y el manejador en la Pi, la entrada
- *   en la lista blanca, y entonces tres cosas aquí — el servicio en
- *   `contrato.ts`, el mando en `PanelInfrarrojos`, y una prueba que ate
- *   `TOPE_SEGUNDOS` a la constante del `.srv` como `cascada.test.ts` ata su
- *   plazo a `globals.css`.
+ * 📝 AQUÍ PONÍA LO CONTRARIO —«este módulo no está cableado» y «el servicio no
+ *    existe aún»— y las dos frases envejecieron **el mismo día en que se
+ *    escribieron**, en cuanto la Pi entregó su parte. Lo destapó una auditoría,
+ *    no una prueba: **ningún comprobador de este repositorio puede ver que un
+ *    comentario dejó de ser cierto.** Es la razón por la que un comentario que
+ *    describe el ESTADO de otra máquina hay que revisarlo al cerrar la tarea,
+ *    no al empezarla.
  */
 
 import { CODIGO_MAX, CODIGO_MIN } from './infrarrojos'
