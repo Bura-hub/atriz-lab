@@ -121,9 +121,40 @@ describe('CAUDAL_KBS — los numeros medidos', () => {
     expect(CAUDAL_KBS['/scan']).toBeCloseTo(66.981, 3)
   })
 
-  it('los tres del muro son los tres mas baratos de todos los medidos', () => {
-    const ordenados = Object.entries(CAUDAL_KBS).sort((a, b) => a[1] - b[1]).map(([t]) => t)
-    expect(ordenados.slice(0, 3).sort()).toEqual([...TOPICS_MURO].sort())
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴 AQUI PONIA «los tres del muro son los tres mas baratos de todos los
+   *    medidos», Y ERA UNA COINCIDENCIA DEL CONTENIDO DE LA TABLA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Se puso en rojo el 2026-08-17 al anotar `/estado_ir` (0,40 kB/s, medido por
+   * el robot): es mas barato que `/motor_status` (0,45), asi que los tres del
+   * muro dejaron de ser los tres primeros de la lista. **Y el muro no habia
+   * cambiado**: no se le añadio `/estado_ir` ni nada.
+   *
+   * O sea que la afirmacion se rompia por medir un topic que el muro no usa —
+   * un test que falla cuando el sistema mejora no esta protegiendo el sistema.
+   * Lo que de verdad hay que impedir es **poner algo CARO en dieciseis
+   * baldosas**, y eso se dice con techos, que no dependen de que mas haya en la
+   * tabla.
+   *
+   * ⚠️ Comprobado que los techos siguen cazando lo malo: con `/odom` (13,05) o
+   *    `/scan` (66,98) en `TOPICS_MURO`, los dos revientan.
+   */
+  it('ningun topic del muro pasa de 1 kB/s: el muro existe para ser barato', () => {
+    for (const t of TOPICS_MURO) {
+      const c = CAUDAL_KBS[t]
+      expect(c, `${t} no esta medido`).toBeTypeOf('number')
+      expect(c, `${t} cuesta ${c} kB/s — demasiado para multiplicarlo por 16`).toBeLessThanOrEqual(1)
+    }
+  })
+
+  it('el muro entero, con los 16 robots, se queda muy por debajo de la AP', () => {
+    const porRobot = TOPICS_MURO.reduce((s, t) => s + CAUDAL_KBS[t], 0)
+    const flota = porRobot * 16
+    // 25 kB/s deja sitio para UN topic barato mas y sigue excluyendo cualquier
+    // cosa grande: con `/odom` dentro se pasaria de 200, que sobre una sola AP
+    // compartida con los portatiles del aula es otra conversacion.
+    expect(flota, `${flota.toFixed(1)} kB/s para los 16`).toBeLessThanOrEqual(25)
   })
 
   it('✅ /estado_robot vale 0,35 — MEDIDO, y doce veces el 0,03 que se copiaba', () => {

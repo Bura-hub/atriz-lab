@@ -62,6 +62,24 @@ export const CAUDAL_KBS: Readonly<Record<string, number>> = {
    *    valido HOY sobre este robot antes de creerse el numero nuevo.
    */
   '/estado_robot': 0.35,
+  /*
+   * ✅ MEDIDO EL 2026-08-17 (evidencia 127), a petición de esta web: **412-414
+   * bytes por mensaje a ~1,0 Hz**, n=2, con un control que reprodujo la
+   * evidencia 110 **al byte** (348 B en `/estado_robot`).
+   *
+   * 🔴 Y aquí cayó una estimación MÍA: había escrito que con `'broadcasting'`
+   *    —el nombre de modo más largo— rondaría los **~421 B**. Medido el mismo
+   *    día: **413-414**. Mandan los `float32` serializados a JSON, que se van
+   *    hasta 22 caracteres cada uno, no el nombre del modo. La estimación quedó
+   *    refutada por su propia medición, que es exactamente para lo que este
+   *    módulo se niega a estimar.
+   *
+   * ⚠️ Tener la cifra **no significa que el muro lo lleve**: añadirlo sube el
+   *    coste por robot de 0,83 a 1,23 kB/s (+48 %), y si `/estado_ir` merece
+   *    estar en la vista de flota es una decisión de producto, no un hueco que
+   *    haya que rellenar porque ya se puede. Ver `TOPICS_MURO`.
+   */
+  '/estado_ir': 0.40,
 }
 
 /**
