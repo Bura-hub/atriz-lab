@@ -66,6 +66,8 @@
 import { CSSProperties, useCallback, useRef, useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useTopic } from '@/hooks/useTopic'
+import { useEstadoNavegacion } from '@/hooks/useEstadoNavegacion'
+import { leer } from '@/lib/robot/navegacion'
 import { useSesion } from '@/hooks/ContextoSesion'
 import { SIN_DATO, aGrados, grados, horaCorta, metros, numero, yawDeCuaternion } from '@/lib/interfaz/formato'
 import { numeroValido } from '@/lib/interfaz/lecturas'
@@ -199,12 +201,34 @@ export function PanelNavegar() {
    * parado, así que **no existe el servidor de `/navigate_to_pose`**: un
    * objetivo contesta «No action server available», medido.
    *
-   * ⚠️ Se deduce de `/amcl_pose`, no se pregunta: AMCL y el servidor de acción
-   *    vienen del MISMO launch, así que sin AMCL no hay a quién mandar nada. No
-   *    es una comprobación directa, y por eso la pantalla dice «parece» y manda
-   *    a mirar el robot en vez de afirmarlo.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 ESTO ERA `= hayPose`, Y ACUSABA A UN Nav2 SANO. Corregido 2026-08-20.
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Deducirlo de `/amcl_pose` parecía razonable —AMCL y el servidor de acción
+   * salen del MISMO launch— y es **falso en el caso más normal que hay**: la Pi
+   * midió el 2026-08-20 que `/amcl_pose` **no llega con el robot quieto**
+   * (AMCL sólo publica tras moverse `update_min_d`, 0,15 m): **20 s suscrito,
+   * cero mensajes, robot perfectamente sano.**
+   *
+   * O sea que un profesor que arranca Nav2 y abre esta pantalla **sin haber
+   * movido el robot** veía el mapa deshabilitado y un cartel diciendo que esto
+   * «parece SLAM». La pantalla acusaba de avería lo que era reposo — el modo de
+   * fallo que este proyecto persigue en todas partes.
+   *
+   * 📌 Ya se sabía a medias, y ahí está lo caro: el propio `pose_inicial.ts` lo
+   *    tiene escrito, y el rótulo de la pose de abajo ya avisaba de que «no
+   *    llega con el robot quieto». Lo sabía el texto y no lo sabía la guarda.
+   *
+   * ✅ Ahora se PREGUNTA: `/estado_navegacion` lo publica el supervisor a 1 Hz,
+   *    va TRANSIENT_LOCAL —llega enseguida, sin esperar a que el robot se
+   *    mueva— y trae los seis estados. `hayPose` se conserva como camino
+   *    alternativo porque sigue siendo prueba POSITIVA: si llegan poses, AMCL
+   *    está vivo, diga lo que diga el supervisor.
    */
-  const puedeNavegar = hayPose
+  const { estado: estadoNav, avanza: latidoNavAvanza } = useEstadoNavegacion(transporte)
+  const lecturaNav = leer(estadoNav, 'nav', latidoNavAvanza)
+  const nav2Funcionando = lecturaNav.pintado === 'FUNCIONANDO'
+  const puedeNavegar = nav2Funcionando || hayPose
   const recuento = hayMapa ? recuentoDeCeldas(mapa.data) : null
   const total = recuento === null ? 0 : recuento.LIBRE + recuento.OCUPADA + recuento.DESCONOCIDA
   // Un relleno por inundación sobre ~5000 celdas: gratis, y es lo único que
@@ -224,8 +248,8 @@ export function PanelNavegar() {
         <ControlNavegacion />
       </Grupo>
 
-      <Grupo titulo="El mapa" fuente="/map y /amcl_pose · los dos vienen de Nav2, que hoy no arranca solo">
-        {mapa === null && !hayPose ? (
+      <Grupo titulo="El mapa" fuente="/map y /estado_navegacion · el mapa lo emite Nav2; si está levantado lo dice el supervisor, no /amcl_pose">
+        {mapa === null && !hayPose && !nav2Funcionando ? (
           <Nav2Parado />
         ) : mapa === null ? (
           <MapaQueNoLlega />

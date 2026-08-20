@@ -122,9 +122,23 @@ export function ResultadoObjetivo({ hora, accion, recorrido, motivo }: PropsResu
             <span aria-hidden="true" className={`marca-estado ${MARCA[accion]}`} />
             <span className="text-lg font-semibold leading-none">{rotuloDe(accion)}</span>
           </div>
+          {/*
+            🔴 LAS DOS CIFRAS, Y NO SOBRA NINGUNA. Añadida la de ~15 cm el
+               2026-08-20, medida por la Pi EN LA ARENA con el mapa bueno: cruz
+               marcada en el suelo y cinta, n=2, **14 y 17 cm con `SUCCEEDED`
+               las dos veces** y AMCL creyéndose a 6,4 y 8,2.
+
+               Los 41 cm son el caso extremo —mapa equivocado— y por sí solos se
+               leen como «esto pasa cuando algo va mal». Los 15 son el caso
+               NORMAL, con todo en su sitio, y dicen lo que de verdad hay que
+               saber: la `xy_goal_tolerance` de 10 cm **no se cumple en el mundo
+               real**, porque el controlador para cuando *cree* estar dentro y el
+               desenlace hereda el error de localización entero.
+          */}
           <p className="mt-2 max-w-prose text-[11px] leading-snug text-muted-foreground/80">
-            No dice dónde paró el robot. Se ha medido dando por cumplido un objetivo a{' '}
-            <strong>41 cm</strong>, y abortando otro que el robot cumplió.
+            No dice dónde paró el robot. Con todo en su sitio se ha medido dando por cumplidos
+            objetivos a <strong>~15 cm</strong> (14 y 17, con cinta), y con un mapa equivocado a{' '}
+            <strong>41 cm</strong>. También ha abortado uno que el robot sí cumplió.
           </p>
         </div>
       </div>

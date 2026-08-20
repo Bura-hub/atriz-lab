@@ -73,13 +73,14 @@
  *    desde la consola del navegador sin pasar por aquí. Eso es la Fase B.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useRobot } from '@/hooks/ContextoRobot'
 import { useSesion } from '@/hooks/ContextoSesion'
 import { useTopic } from '@/hooks/useTopic'
+import { useEstadoNavegacion } from '@/hooks/useEstadoNavegacion'
 import { horaCorta } from '@/lib/interfaz/formato'
 import {
-  UMBRAL_LATIDO_NAV_MS, decidirBoton, frase, leer, leerMapa, tono,
+  decidirBoton, frase, leer, leerMapa, tono,
   type Sistema,
 } from '@/lib/robot/navegacion'
 import { Aviso } from '@/componentes/ui/Aviso'
@@ -112,8 +113,6 @@ interface Envio { hora: string; texto: string; malo: boolean; pedia: 'ARRANCAR' 
 export function ControlNavegacion() {
   const { transporte, conectado } = useRobot()
   const { usuario } = useSesion()
-  const estado = useTopic(transporte, '/estado_navegacion')
-
   /*
    * 🔴 SI EL LATIDO NO AVANZA, TODO LO DEMAS ES VIEJO.
    *
@@ -122,30 +121,12 @@ export function ControlNavegacion() {
    * como si fuera de ahora. Sin esta guardia la pantalla pintaría FUNCIONANDO
    * sobre un robot que no tiene a nadie detrás — que es exactamente el fallo
    * que este proyecto lleva documentado desde el RVR dormido con el nodo vivo.
+   *
+   * 📌 Vivía aquí dentro, y por eso `PanelNavegar` —la misma pantalla— no podía
+   *    preguntar si Nav2 estaba levantado y lo DEDUCÍA de `/amcl_pose`. Movida
+   *    a `useEstadoNavegacion` sin cambiarle el comportamiento.
    */
-  const visto = useRef<{ latido: number; cuando: number } | null>(null)
-  const [avanza, setAvanza] = useState(false)
-
-  useEffect(() => {
-    if (estado === null) return
-    const ahora = Date.now()
-    if (visto.current === null || estado.latido > visto.current.latido) {
-      visto.current = { latido: estado.latido, cuando: ahora }
-      setAvanza(true)
-    }
-  }, [estado])
-
-  // Y hay que MIRAR EL RELOJ, no solo reaccionar a los mensajes: si dejan de
-  // llegar, este efecto no se vuelve a disparar nunca y `avanza` se quedaría
-  // en `true` para siempre. Es la misma forma que el detector de silencio del
-  // driver, y por la misma razón.
-  useEffect(() => {
-    const t = setInterval(() => {
-      const v = visto.current
-      setAvanza(v !== null && Date.now() - v.cuando < UMBRAL_LATIDO_NAV_MS)
-    }, 1000)
-    return () => clearInterval(t)
-  }, [])
+  const { avanza } = useEstadoNavegacion(transporte)
 
   if (!conectado) {
     return (

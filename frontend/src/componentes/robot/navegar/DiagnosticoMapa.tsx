@@ -80,26 +80,40 @@ export function MapaQueNoLlega() {
 }
 
 /**
- * Hay `/map` pero no `/amcl_pose`: esto es SLAM, no Nav2.
+ * Hay `/map` y el supervisor NO dice que Nav2 esté funcionando: esto es SLAM.
  *
  * 🔴 Sin esta distinción la pantalla decía «pulsa en el mapa para mandar al
  *    robot» sobre un robot que no puede recibir el objetivo. Invitar a un gesto
  *    que va a fallar es peor que no ofrecerlo: quien lo pulsa busca el fallo en
  *    su clic.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 🔴🔴 ESTE CARTEL ACUSABA A UN Nav2 SANO. Corregido el 2026-08-20.
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Salía cuando no llegaba `/amcl_pose`, y la Pi midió ese mismo día que
+ * `/amcl_pose` **no llega con el robot quieto** —AMCL sólo publica tras moverse
+ * 0,15 m—: **20 s suscrito, cero mensajes, con el robot sano.** O sea que quien
+ * arrancaba Nav2 y abría esta pantalla sin mover el robot leía que su Nav2
+ * «parece SLAM». Ahora la condición la pone `/estado_navegacion`, que es el
+ * topic que EXISTE para contestar esto, y el texto ya no cuelga de un silencio
+ * que es normal.
  */
 export function PareceSlamNoNav2() {
   return (
-    <Aviso nivel="NOTA" titulo="Esto parece SLAM, no Nav2: hay mapa pero no navegación">
-      Llega <code>/map</code> pero no <code>/amcl_pose</code>, y los dos salen del
-      mismo arranque de Nav2. Así que el mapa se está dibujando —eso funciona— pero{' '}
-      <strong>no hay servidor al que mandarle un objetivo</strong>: pulsar aquí
-      contestaría «no hay servidor de acción». Es lo que pasa con{' '}
-      <code>slam.launch.py</code> a solas, que es justo lo que hace falta para{' '}
-      <strong>crear</strong> el mapa.
+    <Aviso nivel="NOTA" titulo="Hay mapa, pero el robot no dice que Nav2 esté funcionando">
+      Llega <code>/map</code> —así que algo lo está dibujando— pero{' '}
+      <code>/estado_navegacion</code>, que lo publica el supervisor del robot a 1 Hz,{' '}
+      <strong>no dice que Nav2 esté funcionando</strong>. Sin Nav2 no hay servidor al que
+      mandarle un objetivo: pulsar aquí contestaría «no hay servidor de acción». Es lo que
+      pasa con <code>slam.launch.py</code> a solas, que es justo lo que hace falta para{' '}
+      <strong>crear</strong> el mapa. El estado exacto y el botón para arrancarlo están{' '}
+      <strong>en el panel de arriba</strong>.
       <br /><br />
-      Para navegar hace falta el mapa guardado y AMCL. Y esto se deduce de que no
-      llegue <code>/amcl_pose</code>, no se pregunta: si crees que Nav2 sí está
-      levantado, míralo en el robot.
+      📌 <strong>Y no se juzga por <code>/amcl_pose</code>, a propósito:</strong> ese topic{' '}
+      <strong>no llega con el robot quieto</strong> —AMCL sólo publica tras moverse 15 cm; se
+      midieron 20 s sin un solo mensaje sobre un robot sano—, así que su silencio no distingue
+      «Nav2 apagado» de «robot parado». Esta tarjeta llegó a salir sobre un Nav2 perfectamente
+      levantado por confundir las dos cosas.
     </Aviso>
   )
 }

@@ -441,11 +441,46 @@ if (!existsSync(rutaNucleo)) {
     problemas.push(`tope de codigo: el agente ${topePy} B y la web ${topeTs} B`)
   }
 
-  // 6d · El subprotocolo y el prefijo del testigo. Estan en el verificador de
-  //      Python (`atriz_testigo.py`) y en la web; si divergen, el navegador no
-  //      abre y el motivo no aparece por ninguna parte.
-  const rutaTestigoPy = join(raizRvr, '../atriz_migracion/scripts/atriz_testigo.py')
-  if (existsSync(rutaTestigoPy)) {
+  /*
+   * 6d · El subprotocolo y el prefijo del testigo. Estan en el verificador de
+   *      Python (`atriz_testigo.py`) y en la web; si divergen, el navegador no
+   *      abre y el motivo no aparece por ninguna parte.
+   *
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 🔴🔴 ESTE CONTROL LLEVABA SALTANDOSE EN SILENCIO, Y EL ✅ DE ABAJO MENTIA
+   * ═══════════════════════════════════════════════════════════════════════════
+   * Lo cazo la auditoria de la Pi (evidencia 130 §3e) y se confirmo aqui el
+   * 2026-08-20: buscaba **una sola ruta**, `../atriz_migracion/`, y el
+   * repositorio se llama `Atriz_migracion_ros2`. Con la disposicion real de los
+   * clones el `existsSync` daba `false`, el bloque entero se saltaba… y la linea
+   * final seguia diciendo **«y subprotocolo coinciden con el agente»** sobre algo
+   * que no se habia comparado.
+   *
+   * 📌 Y la ironia esta escrita dos parrafos mas abajo: el interior de este
+   *    mismo bloque ya se endurecio para no callar cuando no encuentra una
+   *    constante. Se endurecio el dentro y se dejo el fuera.
+   *
+   * → Ahora se prueban las disposiciones conocidas y, si no aparece en ninguna,
+   *   **es un fallo con su ruta**, no un silencio. Es la misma regla que este
+   *   guion aplica cuando no encuentra `robot.launch.py`.
+   */
+  const CANDIDATAS_TESTIGO_PY = [
+    '../Atriz_migracion_ros2/scripts/atriz_testigo.py',
+    '../atriz_migracion/scripts/atriz_testigo.py',
+    '../atriz_migracion_ros2/scripts/atriz_testigo.py',
+  ]
+  const rutaTestigoPy = CANDIDATAS_TESTIGO_PY
+    .map((r) => join(raizRvr, r))
+    .find((r) => existsSync(r))
+
+  if (rutaTestigoPy === undefined) {
+    problemas.push(
+      'atriz_testigo.py: no lo encuentro en ninguna de estas rutas, asi que el '
+      + 'subprotocolo y el prefijo del testigo NO se han comparado con nada:\n'
+      + CANDIDATAS_TESTIGO_PY.map((r) => `      ${join(raizRvr, r)}`).join('\n')
+      + '\n      👉 clona Atriz_migracion_ros2 al lado de Atriz_rvr.',
+    )
+  } else {
     const testigoPy = readFileSync(rutaTestigoPy, 'utf8')
     for (const [nombre, re] of [
       ['PREFIJO_TESTIGO', /PREFIJO_TESTIGO\s*=\s*'([^']+)'/],
