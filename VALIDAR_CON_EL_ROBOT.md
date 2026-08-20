@@ -427,6 +427,51 @@ sin la clave REAL publicada, un navegador no abre nada.
 | ✅ **Repartir la clave pública REAL** | `node herramientas/publicar_clave.mjs` en el PC → `/etc/atriz/testigo.pub` en cada robot. La privada vive **solo** en el `.env.local` del portátil que sirve la web | ✅ **HECHO en rvr-01 el 2026-08-15, y MEDIDO sin querer**: el navegador abrió rosbridge con un testigo firmado por ese `.env.local` (`7,95 V` en pantalla), y eso **solo puede pasar si la clave del robot es la pareja de la privada del PC**. 🔴 **Y desde la Fase B esa clave ya no es solo del Taller**: sin ella rosbridge falla cerrado y el robot queda invisible para la web. Va **dentro de la imagen dorada**; `fase_6` aborta si falta. ⏳ Quedan los 15 robots |
 | ✅ **Instalar la unidad** | ~~`sudo cp` a mano~~ | ✅ **`fase_7` instala y habilita `atriz-agente`** desde el 2026-08-15, avisa si falta `testigo.pub`, y el MANIFIESTO lo vigila |
 
+🔴🔴 **LA PAREJA DE CLAVES SE CAMBIÓ EL 2026-08-18, Y ESO INVALIDA LA FILA DE ARRIBA
+PARA QUINCE ROBOTS.** `generar_clave.mjs` ya avisa de que cambiarla «no es una
+operación de clase»; aquí está lo que dejó:
+
+| | qué pasó | quién lo vio |
+|---|---|---|
+| **rvr-01** | ✅ lleva la clave **nueva**. Comprobado el **2026-08-20 con control negativo**: `diagnosticar_enlace.mjs` abre **con** testigo firmado por este PC, y **sin** testigo devuelve **4401**. Si la clave no casara, sería 4403 | el diagnóstico, desde el PC |
+| **los otros 15 y la IMAGEN DORADA** | 🔴 **llevan la clave VIEJA, que ya no firma nadie.** Su privada se sustituyó en `.env.local` y **no se puede recuperar** | ⏳ **nadie: no se ha medido.** El 2026-08-20 ninguno de los quince respondía al `ping`, así que aquí no se afirma en qué estado están — solo que la mitad privada de su pareja ya no existe |
+| **qué se verá cuando se enciendan** | cierre **4403** («la firma no es válida») y el robot **invisible en Flota**, no un error a la vista | — |
+| **qué hay que hacer** | volver a repartir la pública con `publicar_clave.mjs` a los quince **y regenerar la imagen dorada**: un robot reinstalado desde la imagen de hoy nace roto | ⏳ pendiente |
+
+⚠️ **Y una trampa que costó un diagnóstico entero el mismo día:** instalar
+`/etc/atriz/testigo.pub` **no basta**. El servicio lee la clave **al arrancar** y se
+la queda en memoria, así que un robot que ya estaba corriendo sigue rechazando con
+**4403** con la clave buena en el disco. Hace falta
+`sudo systemctl restart atriz-robot.service`. El síntoma —4403 con el fichero
+correcto delante— se lee como «la clave está mal» y no lo está: está **vieja en RAM**.
+
+📌 Por qué se cambió: el 2026-08-18 rvr-01 no aparecía en Flota. La cadena de red
+estaba entera (mDNS, `ping`, 9090 y 22 en verde) y el robot cerraba con **4401** — no
+llegaba testigo. Se generó otra pareja porque **la vieja no se podía recuperar**: el
+respaldo de `.env.local` de ese día —`.env.local.respaldo-20260818-092529`, que sigue
+al lado— **no contiene ninguna `ATRIZ_CLAVE`**, comprobado el 2026-08-20. O sea que
+la privada del 2026-08-15 no vivía ya en este PC, y `generar_clave.mjs` no guarda
+copia por diseño.
+
+🔑 **Para saber cuál está puesta sin destapar nada**, la huella SHA-256 de la pública
+**nueva** —la que casa con la privada de este PC— es:
+
+```
+bwU1sHB0DMEAUPIrKC/g3ltf7QRzihqGoLaCVzFalcQ=
+```
+
+y se saca del robot **sin `node`**, con lo que ya lleva dentro (comprobado el
+2026-08-20: da exactamente esa cadena):
+
+```bash
+# en el robot
+openssl pkey -pubin -in /etc/atriz/testigo.pub -outform DER | openssl dgst -sha256 -binary | base64
+```
+
+Un robot cuyo `testigo.pub` no dé esa huella lleva la vieja y responderá **4403**. Es
+un hash de la mitad **pública**: no compromete nada, y evita adivinar por el número de
+cierre cuál de las dos parejas hay delante.
+
 ### 4b · ✅ CERRADO: lo que se hace en cualquier Linux, sin RVR
 
 Los requisitos 1 y 2 del taller —PTY y `stdin`— no necesitan robot, solo un
@@ -541,15 +586,51 @@ hay respuesta, no es una medida.
 > Escrito el 2026-08-16 y ampliado la misma noche con F5 (§6d-6h). Cada línea dice
 > **qué se vería si fuera falso** — sin eso no es una casilla, es un deseo.
 
-### 6a · 🔴 Conducir con el teclado **MUEVE EL ROBOT, y no se ha probado en uno**
+### 6a · 🔴 Conducir con el teclado — **YA SE PROBÓ EN UNO, y salió un defecto que SIGUE ABIERTO**
 
 Flechas y WASD conducen desde `/robot/NN/conducir` (mantener pulsado, soltar para).
 Lo que hay detrás: **15 pruebas** de la lógica pura (`lib/interfaz/teclado.ts`),
-`tsc` y `eslint` limpios, y la pantalla renderiza. Lo que **no** hay: un robot
-moviéndose.
+`tsc` y `eslint` limpios, y la pantalla renderiza. ~~Lo que **no** hay: un robot
+moviéndose.~~ **Falso desde el 2026-08-18**: lo condujo el usuario sobre rvr-01, y
+el paso 2 de la receta de abajo **movió el robot**.
 
-⚠️ **No se probó a propósito**: mover un robot sin nadie delante es una acción
-física, y la regla del proyecto es avisar antes, no pedir perdón después.
+⚠️ ~~**No se probó a propósito**: mover un robot sin nadie delante es una acción
+física, y la regla del proyecto es avisar antes, no pedir perdón después.~~ Se probó
+cuando hubo alguien delante — que era la condición, no una excusa para no probarlo.
+
+🔴🔴 **Y lo que encontró no lo habría visto ninguna prueba pura: VA A TIRONES.** No
+lo trajo esta casilla; lo trajo el usuario conduciendo («*va a tirones con el
+teclado, con el joystick no*»), y por eso la casilla se queda **abierta con un
+defecto dentro** en vez de cerrarse en verde.
+
+Medido el 2026-08-18 **dentro de rvr-01** —no por rosbridge, ver el 📌 de abajo— con
+la tecla mantenida:
+
+```
+ 896 ms : v=0.100     <- avanzando
+ 994 ms : v=0.000     <- CERO
+1023 ms : v=0.100     <- rearranca 29 ms después
+```
+
+**6 frenazos en 6,4 s, con una cadencia clavada en ~500 ms** — dos ceros por segundo,
+de 18-30 ms cada uno. La causa está en `CLAUDE.md` («un objeto nuevo en cada render,
+más un latido de 500 ms»): el efecto del teclado se remonta a 2 Hz y su limpieza
+llama a `parar()`. El joystick se libraba **por casualidad**, porque esa limpieza sale
+antes si no hay ninguna tecla pulsada.
+
+| | |
+|---|---|
+| **quién lo vio** | el usuario conduciendo, y un medidor **dentro del robot** suscrito a `/cmd_vel_raw` y `/cmd_vel` |
+| **qué descarta al `collision_monitor`** | los **mismos 6 frenazos** en los dos topics: los ceros ya salen de la web |
+| **estado** | 🔴 **ABIERTO. El defecto está en el árbol hoy.** Hubo un arreglo el mismo día, se midió, y **se revirtió a petición del usuario** |
+| **qué se midió del arreglo** | los primeros 2,9 s pasaron de ceros en 994 · 1496 · 1994 · 2451 ms a **29 mensajes seguidos a `v=0.100` sin un solo cero**: la cadencia de 2 Hz desapareció |
+| ⚠️ **qué NO se midió del arreglo** | **una pulsación continua sin soltar.** El resumen seguía marcando 6 frenazos, compatibles con las sueltas reales del usuario —se le pidieron tramos de 2-3 s— pero **eso no se aisló**. Con una sola tecla mantenida 12 s lo correcto son **0**, y nadie lo ha visto |
+
+📌 **El instrumento mintió antes que el código, otra vez.** La primera sonda escuchaba
+`/cmd_vel_raw` **por rosbridge desde el PC** y no recibió **nada** con el robot
+moviéndose a la vista. En vez de dar por buena la hipótesis (la lista blanca de
+suscripciones), la medición se mudó dentro del robot. Una sonda muda y un robot
+quieto se parecen demasiado como para distinguirlos por lo que **no** llega.
 
 **Cómo comprobarlo, y son 30 segundos** (con el robot en el suelo y espacio libre):
 

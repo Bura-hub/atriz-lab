@@ -378,6 +378,66 @@ colores de sintaxis no existen hasta que alguien escribe. Sin eso la captura ens
 posición gris y se lee como «el resaltado no funciona». Un clic sintetizado **no mueve el foco**
 —eso solo lo hace el ratón de verdad—, así que `--clic` lo pide a mano.
 
+**🔴🔴 UN OBJETO NUEVO EN CADA RENDER, MÁS UN LATIDO DE 500 ms, REMONTA CUALQUIER EFECTO QUE
+DEPENDA DE ÉL DOS VECES POR SEGUNDO.** Y si ese efecto limpia parando el robot, el aula lo nota:
+conducir con el teclado va **a tirones**. Medido el 2026-08-18 **dentro de rvr-01**, con la tecla
+mantenida:
+
+```
+ 896 ms : v=0.100     <- avanzando
+ 994 ms : v=0.000     <- CERO
+1023 ms : v=0.100     <- rearranca 29 ms después
+```
+
+**6 frenazos en 6,4 s, con una cadencia clavada en ~500 ms.** La cadena, eslabón a eslabón:
+
+1. `useTeleoperacion` acaba en `return { ...acciones, ultimoAviso }` — **objeto nuevo cada
+   render**, por mucho que `acciones` esté memorizada con `useMemo`.
+2. El proveedor re-renderiza **cada 500 ms** por `useLatido` (`PERIODO_MUESTREO_MS`).
+3. El efecto del teclado de `MandoPalanca` lleva `teleoperacion` en sus dependencias → se remonta
+   a 2 Hz.
+4. Su limpieza llama a `soltarTodo()`, que **con una tecla pulsada** hace `parar()`: twist cero y
+   `clearInterval` del bucle de 10 Hz.
+5. El auto-repeat rearranca 18-29 ms después. Nadie ve un error: solo se conduce peor.
+
+→ 🔴 **El joystick se libraba por CASUALIDAD, no por diseño**: `soltarTodo()` sale antes si
+  `pulsadas` está vacío, y el arrastre vive en otro estado. Que un mando fallara y el otro no fue
+  justo lo que permitió localizarlo — pero «en el otro mando va bien» no absuelve al código común.
+→ 🔴 **`/cmd_vel_raw` y `/cmd_vel` traían LOS MISMOS 6 frenazos**, y eso es lo que descarta al
+  `collision_monitor`: los ceros salen de la web. Mirar un solo topic no habría distinguido al
+  culpable del mensajero.
+→ ⚠️ **ESTO SIGUE EN EL ÁRBOL.** Hubo un arreglo el mismo día que quitó la cadencia de 2 Hz —29
+  mensajes seguidos a `v=0.100` en los primeros 2,9 s, sin un cero— y **se revirtió a petición del
+  usuario**. No está arreglado, y el defecto es reproducible. Ver §6a de `VALIDAR_CON_EL_ROBOT.md`.
+→ 📌 **Y el instrumento volvió a mentir antes que el código**: la primera sonda escuchaba
+  `/cmd_vel_raw` por rosbridge desde el PC y **no recibió NADA** con el robot moviéndose delante.
+  En vez de dar por buena la hipótesis de la lista blanca, la medición se mudó **dentro del
+  robot**, donde no depende de rosbridge. Una sonda muda y un robot quieto se parecen mucho.
+
+**🔴🔴 `secure: NODE_ENV === 'production'` NO PROTEGE AL LABORATORIO: LO ROMPE.** El comentario de
+`lib/sesion/peticion.ts` dice que la guardia está ahí porque el aula corre en HTTP sin TLS y «con
+`secure: true` el navegador descartaría la cookie sin decir nada». La descripción es exacta —y es
+justo lo que pasa, porque **el laboratorio se sirve con `npm run start`, que ES producción**. La
+guardia solo cubre `next dev`.
+
+Medido el 2026-08-20 contra el servidor desplegado, con navegador real y control positivo:
+
+| origen | API `entrar` | ¿el navegador guarda la cookie? | al ir a `/flota` acaba en |
+|---|---|---|---|
+| `http://localhost:3000` | 200 | **sí** | `/flota` |
+| `http://10.14.0.54:3000` | 200 | **NO** | `/?volver=%2Fflota` |
+
+Mismo servidor, misma compilación, mismas credenciales, y **200 las dos veces**: `localhost` es
+contexto seguro para el navegador y acepta una cookie `Secure`; la IP de la red, no.
+
+→ 🔴 Por eso hay que entrar por `localhost`, y por eso **un 200 de `curl` no dice que el inicio de
+  sesión funcione**: la cabecera sale perfecta y el navegador la tira. Es la frontera de siempre
+  entre el emisor y el testigo, esta vez dentro de la propia web.
+→ 🔴 Se ve como «pulso Entrar y no pasa nada», el modo de fallo favorito de este proyecto.
+→ 👤 **Arreglarlo es decisión del usuario**, porque las dos salidas tienen precio: servir el
+  laboratorio con TLS, o dejar caer `secure` fuera de `localhost` y aceptar que la cookie de sesión
+  viaje en claro por la red del aula. Anotado, no olvidado.
+
 ---
 
 ## Comandos
